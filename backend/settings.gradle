@@ -1,0 +1,11 @@
+rootProject.name = 's15p21a107-backend'
+
+// 공유 라이브러리 (실행 불가)
+include ':modules:core'
+
+// 실행 가능한 Spring Boot 앱
+include ':apps:api-market'
+include ':apps:api-trading'
+
+// NOTE: backend/ingest 는 Go 모듈이므로 의도적으로 포함하지 않는다.
+//       각 빌드 도구가 자기 서브트리만 소유한다.
