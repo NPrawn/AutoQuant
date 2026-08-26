@@ -1,6 +1,6 @@
 spring:
   application:
-    name: api-market
+    name: a107-backend
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:a107}
@@ -15,10 +15,8 @@ spring:
     open-in-view: false
 
   flyway:
-    # 마이그레이션 실행 주체 — 이 앱만 true.
     enabled: true
     locations: classpath:db/migration
-    baseline-on-migrate: true
 
   data:
     redis:

@@ -4,9 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ApiMarketApplication {
+public class A107Application {
 
     public static void main(String[] args) {
-        SpringApplication.run(ApiMarketApplication.class, args);
+        SpringApplication.run(A107Application.class, args);
     }
 }

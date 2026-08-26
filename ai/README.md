@@ -5,22 +5,22 @@
 ## 책임 (예정)
 
 - 시세 · 캔들 데이터를 입력받아 매매 전략을 추론
-- `apps/api-market`이 HTTP로 호출하는 내부 서비스
+- `backend`가 HTTP로 호출하는 내부 서비스
 
 ## 호출 방향
 
 ```
-apps/api-market  ──HTTP──>  ai (FastAPI)
+backend  ──HTTP──>  ai (FastAPI)
 ```
 
-**단방향이다.** AI 서비스가 Spring 앱을 호출하지 않는다. 데이터가 필요하면 요청 페이로드로 전달받는다.
+**단방향이다.** AI 서비스가 backend를 호출하지 않는다. 데이터가 필요하면 요청 페이로드로 전달받는다.
 
 ## 담지 않는 것
 
 | 담지 않음 | 대신 어디로 |
 |---|---|
-| DB · Redis 직접 접근 | `api-market`이 조회해서 요청에 담아 전달 |
-| 사용자 인증 | `apps/api-market` |
+| DB · Redis 직접 접근 | `backend`가 조회해서 요청에 담아 전달 |
+| 사용자 인증 | `backend`의 `auth` 패키지 |
 | 시세 수집 | `backend/ingest` |
 
 ## 예정 스택

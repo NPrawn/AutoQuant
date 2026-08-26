@@ -42,8 +42,8 @@ ingest/
 
 | 담지 않음 | 이유 / 대신 어디로 |
 |---|---|
-| **DB 스키마 생성 · 변경** | 스키마는 `modules/core`의 Flyway가 단독 소유한다. 여기서는 INSERT만 |
-| **Redis 읽기** (JVM 소비용) | 읽기는 `modules/core` 의 `cache` 패키지 담당. 여기서는 쓰기만 |
+| **DB 스키마 생성 · 변경** | 스키마는 `backend/src` 의 Flyway 마이그레이션이 단독 소유한다. 여기서는 INSERT만 |
+| **Redis 읽기** (JVM 소비용) | 읽기는 `cache` 패키지 담당 (backend/src). 여기서는 쓰기만 |
 | REST API 서빙 | `backend/apps/*` |
 | 랭킹 계산 · 전략 로직 | `backend/apps/*` |
 
@@ -54,8 +54,8 @@ ingest/
 
 ## 규칙
 
-1. **Redis 키 포맷을 바꾸면 `modules/core` 의 `cache` 패키지를 같은 커밋에서 함께 수정한다.** 컴파일러가 잡아주지 못하는 계약이다.
-2. **DB 스키마를 변경하지 않는다.** 컬럼이 필요하면 `modules/core`에 마이그레이션 SQL을 추가하고, 그 후 여기의 INSERT를 맞춘다.
+1. **Redis 키 포맷을 바꾸면 `backend/src` 의 `cache` 패키지를 같은 커밋에서 함께 수정한다.** 컴파일러가 잡아주지 못하는 계약이다.
+2. **DB 스키마를 변경하지 않는다.** 컬럼이 필요하면 `backend/src/main/resources/db/migration` 에 SQL 을 추가하고, 그 후 여기의 INSERT를 맞춘다.
 3. **키 규칙과 토픽 이름은 상수로 한 곳에만 정의한다.** (`internal/redis`, `internal/kafka`)
 4. **모든 바이너리는 SIGINT / SIGTERM에서 그레이스풀 종료한다.** 상시 실행 프로세스가 중간 상태를 남기면 재기동 시 중복·누락이 생긴다.
 

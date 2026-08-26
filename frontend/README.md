@@ -18,23 +18,22 @@ React 19 + TypeScript + Vite.
 ## 백엔드 호출
 
 ```
-frontend ──/api/market ──> apps/api-market   :8080   랭킹 · 체결 · 전략 · 인증
-         ──/api/trading──> apps/api-trading  :8081   모의투자 · 백테스팅
+frontend ──/api──> backend  :8080   랭킹 · 체결 · 전략 · 인증 · 모의투자 · 백테스팅
 ```
 
-**dev 서버는 프록시로 요청을 넘긴다.** API가 두 개라 프론트에서 CORS를 두 번 겪게 되는데, 프록시로 같은 오리진에서 받으면 개발 중에는 CORS가 아예 생기지 않는다. 프록시 대상 주소는 `.env`로 바꿀 수 있다.
+**dev 서버는 프록시로 요청을 넘긴다.** 같은 오리진에서 받으므로 개발 중에는 CORS가 생기지 않는다. 프록시 대상 주소는 `.env`로 바꿀 수 있다.
 
 ```
-/api/market/ranking   →  http://localhost:8080/ranking
-/api/trading/orders   →  http://localhost:8081/orders
+/api/ranking  →  http://localhost:8080/ranking
+/api/orders   →  http://localhost:8080/orders
 ```
 
-Kafka · Redis · DB에 직접 접근하지 않는다. 모든 데이터는 두 API를 통해서만 받는다.
+Kafka · Redis · DB에 직접 접근하지 않는다. 모든 데이터는 API를 통해서만 받는다.
 
 ## 실행
 
 ```bash
-cp .env.example .env      # 프록시 대상 주소 (기본값 그대로면 생략 가능)
+cp .env.example .env      # 기본값 그대로면 생략 가능
 npm install
 npm run dev               # :5173
 npm run build             # tsc -b && vite build → dist/
