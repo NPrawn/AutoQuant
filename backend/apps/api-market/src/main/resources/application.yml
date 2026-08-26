@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: api-market
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:a107}
+    username: ${DB_USER:a107}
+    password: ${DB_PASSWORD:a107}
+
+  jpa:
+    hibernate:
+      # 스키마는 Flyway 마이그레이션이 단독 소유한다.
+      # update 로 두면 Hibernate 가 Go consumer 가 INSERT 하는 테이블을 변경한다.
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    # 마이그레이션 실행 주체 — 이 앱만 true.
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# ai/ FastAPI 전략 추론 서비스
+ai:
+  base-url: ${AI_BASE_URL:http://localhost:8000}
