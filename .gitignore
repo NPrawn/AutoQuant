@@ -1,0 +1,58 @@
+# ── OMC (oh-my-claudecode) 세션 상태 ─────────────────────────
+.omc/
+
+# ── JVM / Gradle ────────────────────────────────────────────
+build/
+.gradle/
+out/
+*.class
+*.jar
+!gradle-wrapper.jar
+*.war
+*.log
+hs_err_pid*
+
+# ── Go ──────────────────────────────────────────────────────
+# cmd/ 아래 빌드된 바이너리 (디렉토리명과 동일한 확장자 없는 파일)
+backend/ingest/producer
+backend/ingest/consumer
+backend/ingest/backfill
+*.exe
+*.exe~
+*.test
+*.out
+vendor/
+
+# ── Node / Frontend ─────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── Python / AI ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# ── 환경변수 (절대 커밋 금지) ────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── IDE / OS ────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
