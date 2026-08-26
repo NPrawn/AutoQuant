@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: api-trading
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:a107}
+    username: ${DB_USER:a107}
+    password: ${DB_PASSWORD:a107}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    # 비활성 — 마이그레이션은 api-market 이 단독 실행한다.
+    # 여기서 켜면 두 앱이 동시 부팅될 때 경합한다.
+    enabled: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+server:
+  port: ${SERVER_PORT:8081}
