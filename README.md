@@ -24,7 +24,7 @@ Upbit ──REST────────> Backfill ─────────�
 
 | 경로 | 언어 | 역할 |
 |---|---|---|
-| `backend/src/` | Java 21 | Spring Boot API 서버 (모듈러 모놀리스) |
+|  `backend/api/` | Java 21 | Spring Boot API 서버 (모듈러 모놀리스) |
 | `backend/ingest/` | Go | Upbit 수집·적재 파이프라인 (바이너리 3개) |
 | `ai/` | Python | FastAPI 전략 추론 서비스 |
 | `frontend/` | TypeScript | 트레이딩 차트 UI (React) |
@@ -53,7 +53,7 @@ cp infra/.env.example infra/.env
 docker compose -f infra/docker-compose.yml up -d
 
 # 2. API 서버 (부팅 시 Flyway 마이그레이션 적용)
-cd backend && ./gradlew bootRun          # :8080
+cd backend/api && ./gradlew bootRun          # :8080
 
 # 3. 프론트엔드
 cd frontend && npm install && npm run dev  # :5173

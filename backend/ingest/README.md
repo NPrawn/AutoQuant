@@ -3,7 +3,7 @@
 > Upbit 데이터 수집 · 적재 파이프라인. Go 모듈 하나에서 바이너리 3개를 만든다.
 > **아직 코드가 없다 — 디렉토리 골격과 go.mod 만 있는 상태다.**
 
-JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리의 존재를 모른다 (`settings.gradle`에 포함되지 않음). 결합은 런타임에만 존재하며, 그 접점은 두 개다 — Redis 키/값 포맷과 DB 스키마.
+JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리의 존재를 모른다 (Gradle 프로젝트는 형제 디렉토리 `../api` 에 있음). 결합은 런타임에만 존재하며, 그 접점은 두 개다 — Redis 키/값 포맷과 DB 스키마.
 
 ## 바이너리
 
@@ -42,8 +42,8 @@ ingest/
 
 | 담지 않음 | 이유 / 대신 어디로 |
 |---|---|
-| **DB 스키마 생성 · 변경** | 스키마는 `backend/src` 의 Flyway 마이그레이션이 단독 소유한다. 여기서는 INSERT만 |
-| **Redis 읽기** (JVM 소비용) | 읽기는 `cache` 패키지 담당 (backend/src). 여기서는 쓰기만 |
+| **DB 스키마 생성 · 변경** | 스키마는 `backend/api` 의 Flyway 마이그레이션이 단독 소유한다. 여기서는 INSERT만 |
+| **Redis 읽기** (JVM 소비용) | 읽기는 `api` 의 `cache` 패키지 담당. 여기서는 쓰기만 |
 | REST API 서빙 | `backend/apps/*` |
 | 랭킹 계산 · 전략 로직 | `backend/apps/*` |
 
@@ -54,8 +54,8 @@ ingest/
 
 ## 규칙
 
-1. **Redis 키 포맷을 바꾸면 `backend/src` 의 `cache` 패키지를 같은 커밋에서 함께 수정한다.** 컴파일러가 잡아주지 못하는 계약이다.
-2. **DB 스키마를 변경하지 않는다.** 컬럼이 필요하면 `backend/src/main/resources/db/migration` 에 SQL 을 추가하고, 그 후 여기의 INSERT를 맞춘다.
+1. **Redis 키 포맷을 바꾸면 `api` 의 `cache` 패키지를 같은 커밋에서 함께 수정한다.** 컴파일러가 잡아주지 못하는 계약이다.
+2. **DB 스키마를 변경하지 않는다.** 컬럼이 필요하면 `backend/api/src/main/resources/db/migration` 에 SQL 을 추가하고, 그 후 여기의 INSERT를 맞춘다.
 3. **키 규칙과 토픽 이름은 상수로 한 곳에만 정의한다.** (`internal/redis`, `internal/kafka`)
 4. **모든 바이너리는 SIGINT / SIGTERM에서 그레이스풀 종료한다.** 상시 실행 프로세스가 중간 상태를 남기면 재기동 시 중복·누락이 생긴다.
 
