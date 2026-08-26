@@ -1,0 +1,6 @@
+rootProject.name = 's15p21a107-backend'
+
+// 단일 Gradle 프로젝트다. 포함할 서브프로젝트가 없다.
+//
+// backend/ingest 는 Go 모듈이므로 Gradle 빌드와 무관하다.
+// 앞으로 배포 단위를 쪼갤 이유가 생기면 그때 서브프로젝트를 추가한다.
