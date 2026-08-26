@@ -1,33 +1,48 @@
 # frontend
 
-> 트레이딩 차트 UI. **프레임워크 미정 — 플레이스홀더.**
+> 트레이딩 차트 UI. **환경만 구성됨 — 화면 구현 없음.**
 
-## 결정 대기
+React 19 + TypeScript + Vite.
 
-데이터 흐름도에 **Vue와 React가 모두 표기**되어 있어 아직 확정되지 않았다. 결정 후 이 디렉토리를 초기화한다.
+## 스택
 
-| 후보 | 참고 |
+| 항목 | 버전 |
 |---|---|
-| React | TradingView Lightweight Charts 예제·생태계가 가장 두텁다 |
-| Vue | 팀 숙련도가 높다면 유리. 주요 차트 라이브러리는 프레임워크 무관 |
+| React | 19 |
+| TypeScript | 6 |
+| Vite | 8 |
+| 린터 | oxlint (템플릿 기본) |
 
-## 책임 (예정)
+**차트 라이브러리 · 라우터 · 상태관리는 아직 넣지 않았다.** 화면을 만들 때 결정할 일이다.
 
-- 실시간 시세 차트 (TradingChart)
-- 랭킹 · 체결 내역 표시
-- 모의투자 주문 UI, 백테스팅 결과 시각화
-
-## 호출 대상
+## 백엔드 호출
 
 ```
-frontend ──HTTP──> apps/api-market   :8080   랭킹 · 체결 · 전략 · 인증
-         ──HTTP──> apps/api-trading  :8081   모의투자 · 백테스팅
+frontend ──/api/market ──> apps/api-market   :8080   랭킹 · 체결 · 전략 · 인증
+         ──/api/trading──> apps/api-trading  :8081   모의투자 · 백테스팅
+```
+
+**dev 서버는 프록시로 요청을 넘긴다.** API가 두 개라 프론트에서 CORS를 두 번 겪게 되는데, 프록시로 같은 오리진에서 받으면 개발 중에는 CORS가 아예 생기지 않는다. 프록시 대상 주소는 `.env`로 바꿀 수 있다.
+
+```
+/api/market/ranking   →  http://localhost:8080/ranking
+/api/trading/orders   →  http://localhost:8081/orders
 ```
 
 Kafka · Redis · DB에 직접 접근하지 않는다. 모든 데이터는 두 API를 통해서만 받는다.
 
+## 실행
+
+```bash
+cp .env.example .env      # 프록시 대상 주소 (기본값 그대로면 생략 가능)
+npm install
+npm run dev               # :5173
+npm run build             # tsc -b && vite build → dist/
+npm run lint
+```
+
 ## 다음 단계
 
-- [ ] 프레임워크 확정 (React / Vue)
-- [ ] 프로젝트 초기화 (Vite + TypeScript)
-- [ ] 차트 라이브러리 선정
+- [ ] 차트 라이브러리 선정 (TradingView Lightweight Charts 등)
+- [ ] 라우터 · 상태관리 도입 여부 결정
+- [ ] API 클라이언트 레이어
