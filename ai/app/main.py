@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 
 from app.api.error_handlers import register_exception_handlers
 from app.api.v1.health import router as health_router
+from app.core.config import settings
 from app.core.logging import (
     configure_logging,
     log_request_completed,
@@ -15,7 +16,7 @@ from app.core.logging import (
 )
 
 
-configure_logging()
+configure_logging(settings.log_level)
 app = FastAPI()
 register_exception_handlers(app)
 app.include_router(health_router)

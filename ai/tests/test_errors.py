@@ -23,3 +23,15 @@ def test_domain_errors_expose_stable_http_contract(error_type, status_code, code
     assert error.status_code == status_code
     assert error.code == code
     assert str(error) == "request failed"
+
+
+@pytest.mark.parametrize(
+    "error_type",
+    [LLMTimeoutError, LLMUpstreamError, DSLValidationError, PromptTooLongError],
+)
+def test_domain_errors_use_their_default_message_when_raised_without_arguments(
+    error_type,
+):
+    error = error_type()
+
+    assert str(error) == error.default_message

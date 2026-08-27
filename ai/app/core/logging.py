@@ -37,16 +37,16 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, ensure_ascii=False)
 
 
-def configure_logging() -> None:
+def configure_logging(log_level: str) -> None:
     """Configure JSON output only when the process has no logging handler yet."""
     root_logger = logging.getLogger()
+    root_logger.setLevel(log_level.upper())
     if root_logger.handlers:
         return
 
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
     root_logger.addHandler(handler)
-    root_logger.setLevel(logging.INFO)
 
 
 def set_request_id(request_id: str) -> Token[str | None]:

@@ -1,4 +1,5 @@
 import importlib
+import logging
 import sys
 
 import pytest
@@ -37,3 +38,21 @@ def test_settings_masks_api_key_and_applies_default_values(monkeypatch):
     assert config.settings.max_retries == 2
     assert config.settings.log_level == "INFO"
     assert "test-secret-key" not in repr(config.settings)
+
+
+def test_configure_logging_uses_log_level_from_environment(monkeypatch):
+    for name, value in REQUIRED_ENVIRONMENT.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+    config = import_config_module()
+
+    from app.core.logging import configure_logging
+
+    root_logger = logging.getLogger()
+    previous_level = root_logger.level
+    try:
+        configure_logging(config.settings.log_level)
+
+        assert root_logger.level == logging.DEBUG
+    finally:
+        root_logger.setLevel(previous_level)
