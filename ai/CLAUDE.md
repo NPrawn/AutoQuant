@@ -118,10 +118,40 @@ uvicorn app.main:app --reload
 
 `GET /health`는 프로세스 생존, `GET /health/ready`는 설정과 프롬프트 파일 존재를 본다. **프롬프트 파일이 없는 지금은 `/health/ready`가 503인 게 정상이다.** 503이 뜬다고 통과시키려고 검사를 무르게 만들지 않는다.
 
+## 팀 컨벤션
+
+백엔드 컨벤션 문서를 따른다. Python에 그대로 오지 않는 항목은 대응되는 쪽으로 읽는다.
+
+**코드 스타일**
+
+- 모든 파일의 마지막은 개행으로 끝낸다
+- 와일드카드 임포트(`from x import *`)를 쓰지 않는다
+
+**API 경로**
+
+- 리소스명은 **복수형**이다. `POST /api/v1/ai/strategies/translate`
+- 여러 단어는 kebab-case
+- 파라미터는 camelCase
+
+**이름**
+
+요청 DTO는 `XXXRequest`, 응답 DTO는 `XXXResponse`. 우리 `TranslateRequest`·`TranslateResponse`가 여기 해당한다.
+
+**디렉터리 대응**
+
+| 컨벤션 | 우리 |
+|---|---|
+| `global/config` | `app/core/config.py` |
+| `global/exception` | `app/core/errors.py` |
+| `global/response` | `app/api/error_handlers.py` |
+| 도메인별 패키지 | `app/api/v1/`, `app/services/` |
+
 ## 브랜치와 커밋
 
-- `develop`에서 `feat/ai-server/<작업ID>` 형식으로 분기한다 (예: `feat/ai-server/A-1`)
-- `main` / `master` / `develop`에 직접 푸시하지 않는다
+- `develop`에서 **`feat/{이슈번호}`** 형식으로 분기한다 (예: `feat/3`). 마디를 더 늘리지 않는다
+- `feat` → `develop`은 merge, `develop` → `master`는 merge commit으로 병합한다
+- **`develop`과 `master`에는 force-push와 삭제를 하지 않는다.** 작업 브랜치에만 허용된다
+- 커밋 메시지는 Conventional Commits(`feat:` `fix:` `docs:` `refactor:` `chore:`)를 쓰고, footer에 `Refs: S15P21A107-N`을 붙인다
 - 완료 보고에 커밋 SHA를 포함한다. SHA 없는 보고는 반려한다
 - 각 티켓의 완료 조건에 적힌 명령이 실제로 통과해야 완료다
 

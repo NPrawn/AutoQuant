@@ -344,7 +344,7 @@ DSL 스펙과 API 형태를 우리가 먼저 예시로 만들되, **나중에 �
 
 ### 원칙 4 수정 — 경로에 `ai` 구간 추가
 
-`POST /api/v1/ai/strategy/translate`
+`POST /api/v1/ai/strategies/translate`
 
 Spring이 여러 내부 서비스를 앞에서 묶을 때 AI 파트가 경로로 구분된다. 나중에 역할 2(견고성 점수)가 붙으면 `POST /api/v1/ai/score/robustness` 같은 식으로 같은 구간 아래에 들어간다.
 
