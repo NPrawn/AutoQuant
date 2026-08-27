@@ -71,7 +71,7 @@ ai-server/
 FastAPI 앱 객체를 만들고 라우터를 붙인다. 예외 핸들러를 등록해 `core/errors.py`의 예외 타입을 HTTP 응답으로 바꾼다. 기동 시 설정 검증(필수 환경변수 존재 확인)을 여기서 한다. CORS는 두지 않는다 — 이 서버는 Spring만 호출한다. 비즈니스 로직은 한 줄도 두지 않는다.
 
 **`app/api/v1/strategy.py`**
-`POST /api/v1/ai/strategy/translate` 엔드포인트 하나를 정의한다. 요청 본문을 받아 `services/translator.py`에 넘기고, 결과를 응답 모델로 감싸 반환한다. LLM이나 검증을 직접 호출하지 않는다. 라우터는 얇게 유지한다.
+`POST /api/v1/ai/strategies/translate` 엔드포인트 하나를 정의한다. 요청 본문을 받아 `services/translator.py`에 넘기고, 결과를 응답 모델로 감싸 반환한다. LLM이나 검증을 직접 호출하지 않는다. 라우터는 얇게 유지한다.
 
 **`app/api/v1/health.py`**
 `GET /health`(프로세스 생존)와 `GET /health/ready`(설정·프롬프트 파일 로드 가능 여부)를 제공한다. LLM API를 호출하지 않는다. 과금 요인이 헬스체크에 붙으면 안 된다.
@@ -169,7 +169,7 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
 
 ## 3. API 명세
 
-### `POST /api/v1/ai/strategy/translate`
+### `POST /api/v1/ai/strategies/translate`
 
 요청:
 
@@ -357,7 +357,7 @@ Spring 쪽과의 계약: 모든 오류 응답은 위 네 필드 형태를 지킨
 
 **9단계 — API 연결 (1일)**
 `app/api/v1/strategy.py`, `app/api/deps.py`, `tests/test_api_strategy.py`.
-목표: `POST /api/v1/ai/strategy/translate`가 §3의 요청·응답 예시대로 동작한다.
+목표: `POST /api/v1/ai/strategies/translate`가 §3의 요청·응답 예시대로 동작한다.
 
 **10단계 — 프롬프트 튜닝 (3일)**
 `tests/fixtures/golden_cases.json`을 채우고 실전 LLM으로 돌리며 프롬프트를 고친다. 코드 수정은 최소로 하고 `.txt`만 손댄다. 재시도 발생률과 최종 실패율을 기록해 둔다.

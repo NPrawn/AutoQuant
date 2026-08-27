@@ -246,7 +246,7 @@
 | ID | 작업 | 파일 | 선행 | 완료 조건 |
 |---|---|---|---|---|
 | H-1 | 의존성 주입 | `app/api/deps.py` | G-5 | 설정과 translator를 주입. 테스트에서 오버라이드 가능 |
-| H-2 | 변환 엔드포인트 | `app/api/v1/strategy.py`, `app/main.py` | H-1, B-4 | `POST /api/v1/ai/strategy/translate` 동작 |
+| H-2 | 변환 엔드포인트 | `app/api/v1/strategy.py`, `app/main.py` | H-1, B-4 | `POST /api/v1/ai/strategies/translate` 동작 |
 | H-3 | API 테스트 | `tests/test_api_strategy.py` | H-2 | 아래 케이스 통과 |
 
 **H-3 케이스**

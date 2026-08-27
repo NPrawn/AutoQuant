@@ -1,34 +1,107 @@
-# ai
+# AI 전략 변환 서비스
 
-> FastAPI 기반 전략 추론 서비스. **미구현 — 플레이스홀더.**
+자연어로 설명한 투자 전략을 검증 가능한 전략 DSL(JSON)로 바꾸는 FastAPI 서비스다.
 
-## 책임 (예정)
+## 서비스 경계
 
-- 시세 · 캔들 데이터를 입력받아 매매 전략을 추론
-- `backend`가 HTTP로 호출하는 내부 서비스
+Spring 백엔드가 HTTP로 이 서비스를 호출한다. 호출 방향은 한쪽뿐이다.
 
-## 호출 방향
-
-```
-backend  ──HTTP──>  ai (FastAPI)
+```text
+Spring 백엔드 -> AI 서비스
 ```
 
-**단방향이다.** AI 서비스가 backend를 호출하지 않는다. 데이터가 필요하면 요청 페이로드로 전달받는다.
+이 서비스는 DB나 Redis에 직접 연결하지 않고, 사용자를 인증하거나 시세를 수집하지도 않는다. 필요한 데이터는 Spring이 요청에 담아 전달한다. 상태를 갖지 않는다.
 
-## 담지 않는 것
+## 구성
 
-| 담지 않음 | 대신 어디로 |
+- Python 3.11 이상 (개발 장비 3.14.6)
+- FastAPI, Uvicorn
+- Pydantic v2, pydantic-settings
+- SSAFY GMS 게이트웨이를 거치는 OpenAI SDK
+- pytest, httpx
+
+## 로컬 실행
+
+```bash
+python -m pip install -r requirements.txt
+cp .env.example .env      # 필수 항목을 채운다
+uvicorn app.main:app --reload
+```
+
+8000 포트, loopback 바인딩이다. **`--host 0.0.0.0`을 붙이지 않는다.** 붙이는 순간 같은 네트워크의 누구나 GMS 크레딧을 쓸 수 있는 엔드포인트가 열린다. 컨테이너로 옮길 때만 바꾼다.
+
+## 환경변수
+
+`.env.example`을 `.env`로 복사해서 쓴다. **`.env`는 커밋하지 않는다.**
+
+**필수 넷** — 없으면 임포트 단계에서 예외가 난다. 첫 요청까지 가지 않는다.
+
+| 이름 | 예시 |
 |---|---|
-| DB · Redis 직접 접근 | `backend`가 조회해서 요청에 담아 전달 |
-| 사용자 인증 | `backend`의 `auth` 패키지 |
-| 시세 수집 | `backend/ingest` |
+| `LLM_BASE_URL` | `https://gms.ssafy.io/gmsapi/api.openai.com/v1` |
+| `LLM_API_KEY` | GMS 팀 키 |
+| `LLM_MODEL` | `gpt-5.4-mini` |
+| `APP_ENV` | `local` |
 
-## 예정 스택
+**선택 셋** — 기본값이 있다.
 
-Python 3.12+, FastAPI, uvicorn
+| 이름 | 기본값 |
+|---|---|
+| `LLM_TIMEOUT_SECONDS` | 30 |
+| `MAX_RETRIES` | 2 |
+| `LOG_LEVEL` | INFO |
 
-## 다음 단계
+선택 항목을 `.env`에서 **빈 값으로 두면 안 된다.** 주석 처리하거나 값을 넣는다. `LLM_TIMEOUT_SECONDS=`처럼 비워 두면 빈 문자열이 정수 파싱에 걸려 기동이 실패하고, `LOG_LEVEL=`은 예외 없이 기본값 `INFO`를 빈 문자열로 덮어쓴다.
 
-- [ ] Python 설치 및 가상환경 구성
-- [ ] FastAPI 프로젝트 초기화
-- [ ] 전략 추론 인터페이스 정의 (요청/응답 스키마)
+환경변수를 읽는 파일은 `app/core/config.py` 하나다. 다른 파일에서 `os.environ`을 직접 읽지 않는다.
+
+**공급자를 바꾼다는 것은 `LLM_BASE_URL`을 바꾼다는 뜻이다.** GMS가 upstream 호스트를 경로에 그대로 끼우는 구조라 Anthropic은 `.../gmsapi/api.anthropic.com`, Gemini는 `.../gmsapi/generativelanguage.googleapis.com`으로 간다. 코드에 공급자 이름으로 분기하는 문자열을 두지 않는다.
+
+## 엔드포인트
+
+| 경로 | 응답 |
+|---|---|
+| `GET /health` | 200 `{"status": "ok"}` |
+| `GET /health/ready` | 프롬프트 파일이 있으면 200, 없으면 503 |
+
+**지금 `/health/ready`가 503인 것은 정상이다.** `app/prompts/` 아래에 `.txt`가 아직 없어서다. 프롬프트가 들어가면 200이 된다. 장애가 아니다.
+
+헬스체크는 LLM API를 호출하지 않는다. 과금 요인이 헬스체크에 붙으면 안 된다.
+
+## 오류 응답
+
+**모든 오류가 세 필드를 갖는다.** Spring과의 계약이다.
+
+```json
+{
+  "code": "LLM_TIMEOUT",
+  "message": "...",
+  "detail": null
+}
+```
+
+`detail`은 객체 또는 `null`이다. `code`는 기계가 분기하는 값이라 안정적으로 유지한다. `message`는 개발자용이고, 사용자에게 보일 문구는 Spring이나 프론트가 다시 만든다.
+
+| 상황 | 상태 | `code` |
+|---|---|---|
+| LLM 응답 시간 초과 | 504 | `LLM_TIMEOUT` |
+| LLM 게이트웨이 오류 | 502 | `LLM_UPSTREAM_ERROR` |
+| 생성된 DSL이 스펙 위반 | 422 | `DSL_VALIDATION_FAILED` |
+| 요청 본문이 잘못됨 | 400 | `INVALID_REQUEST` |
+| 그 밖 | 500 | `INTERNAL_ERROR` |
+
+요청 검증 실패의 `detail`에는 필드 경로와 사유만 담는다. 보낸 값은 되돌려주지 않는다.
+
+500 응답의 `message`는 고정 문구다. 실제 예외와 스택 트레이스는 로그에만 남는다.
+
+## 테스트
+
+```bash
+python -m pytest
+```
+
+**GMS 키 없이 전부 돈다.** 실제 LLM API를 치는 테스트가 없다. 필요한 환경변수는 테스트가 직접 주입한다.
+
+## 문서
+
+계획, 도메인 결정, 인계 명세는 [docs/README.md](docs/README.md)에 색인이 있다. 작업 규칙은 [CLAUDE.md](CLAUDE.md)에 있다.
