@@ -19,7 +19,6 @@ def health() -> dict[str, str]:
 
 @router.get("/health/ready")
 def readiness() -> JSONResponse:
-    _ = settings
     if not any(PROMPTS_DIRECTORY.glob("*.txt")):
         return JSONResponse(status_code=503, content={"status": "unavailable"})
     return JSONResponse(content={"status": "ok"})

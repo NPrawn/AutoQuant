@@ -25,3 +25,13 @@ def test_ready_reports_unavailable_before_prompt_files_exist(monkeypatch):
     response = create_client(monkeypatch).get("/health/ready")
 
     assert response.status_code == 503
+
+
+def test_ready_reports_available_when_prompt_files_exist(monkeypatch, tmp_path):
+    client = create_client(monkeypatch)
+    monkeypatch.setattr("app.api.v1.health.PROMPTS_DIRECTORY", tmp_path)
+    (tmp_path / "system.txt").write_text("system prompt", encoding="utf-8")
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 200
