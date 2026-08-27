@@ -34,13 +34,17 @@ async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
     )
 
 
-async def handle_unexpected_error(_: Request, error: Exception) -> JSONResponse:
-    logger.exception("Unhandled API exception", exc_info=error)
-    return error_response(
+async def handle_unexpected_error(request: Request, error: Exception) -> JSONResponse:
+    request_id = getattr(request.state, "request_id", None)
+    logger.exception("Unhandled API exception", exc_info=error, extra={"request_id": request_id})
+    response = error_response(
         status_code=500,
         code="INTERNAL_ERROR",
         message="Internal server error",
     )
+    if request_id is not None:
+        response.headers["X-Request-ID"] = request_id
+    return response
 
 
 async def handle_request_validation_error(

@@ -1,5 +1,7 @@
 import importlib
+import logging
 import sys
+from uuid import UUID
 
 from fastapi.testclient import TestClient
 
@@ -19,6 +21,28 @@ def test_health_reports_process_liveness(monkeypatch):
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_request_id_header_is_preserved_and_logged(monkeypatch, caplog):
+    request_id = "spring-request-123"
+
+    with caplog.at_level(logging.INFO):
+        response = create_client(monkeypatch).get(
+            "/health", headers={"X-Request-ID": request_id}
+        )
+
+    assert response.headers["X-Request-ID"] == request_id
+    assert any(
+        record.message == "request_completed"
+        and record.request_id == request_id
+        for record in caplog.records
+    )
+
+
+def test_request_id_header_is_generated_when_absent(monkeypatch):
+    response = create_client(monkeypatch).get("/health")
+
+    assert UUID(response.headers["X-Request-ID"])
 
 
 def test_ready_reports_unavailable_before_prompt_files_exist(monkeypatch):

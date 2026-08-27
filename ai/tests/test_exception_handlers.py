@@ -1,5 +1,6 @@
 import importlib
 import sys
+from uuid import UUID
 
 import pytest
 from fastapi import Body
@@ -73,6 +74,7 @@ def test_unexpected_errors_return_a_fixed_safe_response(monkeypatch):
         "message": "Internal server error",
         "detail": None,
     }
+    assert UUID(response.headers["X-Request-ID"])
 
 
 @pytest.mark.parametrize(
