@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.errors import DomainError
@@ -42,6 +43,27 @@ async def handle_unexpected_error(_: Request, error: Exception) -> JSONResponse:
     )
 
 
+async def handle_request_validation_error(
+    _: Request, error: RequestValidationError
+) -> JSONResponse:
+    detail = {
+        "fields": [
+            {
+                "path": ".".join(str(part) for part in item["loc"]),
+                "reason": item["msg"],
+            }
+            for item in error.errors()
+        ]
+    }
+    return error_response(
+        status_code=400,
+        code="INVALID_REQUEST",
+        message="Request validation failed",
+        detail=detail,
+    )
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(DomainError, handle_domain_error)
+    app.add_exception_handler(RequestValidationError, handle_request_validation_error)
     app.add_exception_handler(Exception, handle_unexpected_error)

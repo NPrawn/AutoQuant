@@ -2,7 +2,9 @@ import importlib
 import sys
 
 import pytest
+from fastapi import Body
 from fastapi.testclient import TestClient
+from pydantic import BaseModel, Field
 
 from app.core.errors import (
     DSLValidationError,
@@ -10,6 +12,10 @@ from app.core.errors import (
     LLMUpstreamError,
     PromptTooLongError,
 )
+
+
+class ValidationRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
 
 
 def create_app(monkeypatch):
@@ -66,4 +72,35 @@ def test_unexpected_errors_return_a_fixed_safe_response(monkeypatch):
         "code": "INTERNAL_ERROR",
         "message": "Internal server error",
         "detail": None,
+    }
+
+
+@pytest.mark.parametrize(
+    "text",
+    [pytest.param("", id="empty"), pytest.param("x" * 2001, id="too-long")],
+)
+def test_request_validation_errors_follow_the_safe_error_contract(monkeypatch, text):
+    path = "/__test/request-validation"
+    app = create_app(monkeypatch)
+
+    def accept_request(payload: ValidationRequest = Body()):
+        return payload
+
+    app.add_api_route(path, accept_request, methods=["POST"])
+    response = TestClient(app, raise_server_exceptions=False).post(path, json={"text": text})
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "code": "INVALID_REQUEST",
+        "message": "Request validation failed",
+        "detail": {
+            "fields": [
+                {
+                    "path": "body.text",
+                    "reason": "String should have at least 1 character"
+                    if text == ""
+                    else "String should have at most 2000 characters",
+                }
+            ]
+        },
     }
