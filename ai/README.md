@@ -1,34 +1,34 @@
-# ai
+# AI 전략 변환 서비스
 
-> FastAPI 기반 전략 추론 서비스. **미구현 — 플레이스홀더.**
+자연어로 설명한 투자 전략을 검증 가능한 전략 DSL(JSON)로 바꾸는 FastAPI 서비스다.
 
-## 책임 (예정)
+## 서비스 경계
 
-- 시세 · 캔들 데이터를 입력받아 매매 전략을 추론
-- `backend`가 HTTP로 호출하는 내부 서비스
+Spring 백엔드가 HTTP로 이 서비스를 호출한다. 호출 방향은 한쪽뿐이다.
 
-## 호출 방향
-
-```
-backend  ──HTTP──>  ai (FastAPI)
+```text
+Spring 백엔드 -> AI 서비스
 ```
 
-**단방향이다.** AI 서비스가 backend를 호출하지 않는다. 데이터가 필요하면 요청 페이로드로 전달받는다.
+이 서비스는 DB나 Redis에 직접 연결하지 않고, 사용자를 인증하거나 시세를 수집하지도 않는다. 필요한 데이터는 Spring이 요청에 담아 전달한다.
 
-## 담지 않는 것
+## 구성
 
-| 담지 않음 | 대신 어디로 |
-|---|---|
-| DB · Redis 직접 접근 | `backend`가 조회해서 요청에 담아 전달 |
-| 사용자 인증 | `backend`의 `auth` 패키지 |
-| 시세 수집 | `backend/ingest` |
+- Python 3.11 이상
+- FastAPI, Uvicorn
+- Pydantic v2, pydantic-settings
+- SSAFY GMS 게이트웨이를 거치는 OpenAI SDK
+- pytest, httpx
 
-## 예정 스택
+## 로컬 실행
 
-Python 3.12+, FastAPI, uvicorn
+```bash
+python -m pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
-## 다음 단계
+로컬 서버는 8000 포트와 기본 loopback 바인딩을 사용한다. 컨테이너 배포 범위가 아닌 이상 `--host 0.0.0.0`으로 외부에 노출하지 않는다.
 
-- [ ] Python 설치 및 가상환경 구성
-- [ ] FastAPI 프로젝트 초기화
-- [ ] 전략 추론 인터페이스 정의 (요청/응답 스키마)
+## 환경변수
+
+환경변수 설정은 A-2에서 추가한다. 사용할 항목은 `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `LLM_TIMEOUT_SECONDS`, `MAX_RETRIES`, `LOG_LEVEL`, `APP_ENV`다.
