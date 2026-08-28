@@ -3,6 +3,11 @@ import logging
 import sys
 from types import SimpleNamespace
 
+import httpx
+import openai
+import pytest
+
+from app.core.errors import LLMTimeoutError, LLMUpstreamError
 
 REQUIRED_ENVIRONMENT = {
     "LLM_BASE_URL": "https://gms.ssafy.io/gmsapi/api.openai.com/v1",
@@ -28,6 +33,70 @@ class FakeOpenAI:
         assert api_key == "test-secret-key"
         assert base_url == "https://gms.ssafy.io/gmsapi/api.openai.com/v1"
         self.chat = SimpleNamespace(completions=FakeCompletions())
+
+
+def raising_openai(error):
+    class RaisingOpenAI:
+        def __init__(self, **kwargs):
+            self.chat = SimpleNamespace(
+                completions=SimpleNamespace(create=lambda **kwargs: (_ for _ in ()).throw(error))
+            )
+
+    return RaisingOpenAI
+
+
+REQUEST = httpx.Request("POST", "https://gms.ssafy.io/gmsapi/api.openai.com/v1/chat/completions")
+
+
+@pytest.mark.parametrize(
+    ("provider_error", "expected_error"),
+    [
+        (openai.APITimeoutError(request=REQUEST), LLMTimeoutError),
+        (
+            openai.APIConnectionError(
+                message="gateway connection detail", request=REQUEST
+            ),
+            LLMUpstreamError,
+        ),
+        (
+            openai.RateLimitError(
+                "gateway response detail",
+                response=httpx.Response(429, request=REQUEST),
+                body={"error": "sensitive upstream body"},
+            ),
+            LLMUpstreamError,
+        ),
+        (
+            openai.InternalServerError(
+                "gateway response detail",
+                response=httpx.Response(503, request=REQUEST),
+                body={"error": "sensitive upstream body"},
+            ),
+            LLMUpstreamError,
+        ),
+    ],
+)
+def test_complete_translates_provider_errors_without_exposing_details(
+    monkeypatch, caplog, provider_error, expected_error
+):
+    for name, value in REQUIRED_ENVIRONMENT.items():
+        monkeypatch.setenv(name, value)
+    llm_client = import_llm_client()
+    monkeypatch.setattr(llm_client, "OpenAI", raising_openai(provider_error))
+
+    with caplog.at_level(logging.INFO, logger="app"):
+        with pytest.raises(expected_error) as raised:
+            llm_client.complete(
+                messages=[{"role": "user", "content": "전략을 만들어 줘"}],
+                timeout_seconds=12.5,
+            )
+
+    assert str(raised.value) == expected_error.default_message
+    assert "gateway" not in str(raised.value)
+    assert "sensitive" not in str(raised.value)
+    record = next(record for record in caplog.records if record.msg == "llm_call")
+    assert record.success is False
+    assert record.tokens is None
 
 
 def import_llm_client():

@@ -1,11 +1,16 @@
 """Gateway boundary for LLM completion requests."""
 
 from collections.abc import Mapping, Sequence
+import logging
 from time import perf_counter
 
-from openai import OpenAI
+from openai import APIError, APITimeoutError, OpenAI
 
+from app.core.errors import LLMTimeoutError, LLMUpstreamError
 from app.core.logging import log_llm_call
+
+
+_logger = logging.getLogger(__name__)
 
 
 def complete(
@@ -30,6 +35,12 @@ def complete(
         tokens = response.usage.total_tokens if response.usage is not None else None
         success = True
         return response.choices[0].message.content or "", tokens
+    except APITimeoutError as error:
+        _logger.exception("llm_request_timed_out")
+        raise LLMTimeoutError() from error
+    except APIError as error:
+        _logger.exception("llm_request_failed")
+        raise LLMUpstreamError() from error
     finally:
         log_llm_call(
             attempt=attempt,
