@@ -76,3 +76,4 @@ go run ./cmd/backfill                    # 1분봉 누락 보정 (일회성)
 | Python | 3.12+ |
 | Node.js | 20+ |
 | Docker | Compose v2 포함 |
+
