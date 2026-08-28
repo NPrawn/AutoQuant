@@ -1,0 +1,126 @@
+<!-- @dsCard group="전략" name="랭킹 · 최근 회차" viewport="1440x1120" -->
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoQuant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body style="">
+
+<div class="shell">
+  <aside class="rail">
+    <div class="brandmark" onclick="go('home')">
+      <span class="logo"><path d="M4 17l5-5 4 4 7-8"><path d="M15 8h5v5"></path></path></span>
+      <span><b>AutoQuant</b><small>CRYPTO STRATEGY</small></span>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">탐색</span>
+      <button class="navbtn" data-t="home"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"></path><path d="M6 10v9h12v-9"></path></svg>전략 만들기</button>
+      <button class="navbtn" data-t="chart"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="8"></line><rect x="4" y="8" width="4" height="7" rx="1"></rect><line x1="6" y1="15" x2="6" y2="21"></line><line x1="13" y1="5" x2="13" y2="10"></line><rect x="11" y="10" width="4" height="6" rx="1"></rect><line x1="13" y1="16" x2="13" y2="20"></line><line x1="20" y1="4" x2="20" y2="9"></line><rect x="18" y="9" width="4" height="6" rx="1"></rect><line x1="20" y1="15" x2="20" y2="20"></line></svg>차트</button>
+      <button class="navbtn" data-t="contest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.2"></circle><path d="M9 13.6L7.2 21l4.8-2.8 4.8 2.8-1.8-7.4"></path></svg>대회</button>
+      <button class="navbtn active" data-t="ranking"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V12M12 21V4M19 21v-6"></path></svg>전략 랭킹</button>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">운용</span>
+      <button class="navbtn" data-t="strategies"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>전략 관리</button>
+      <button class="navbtn" data-t="backtest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v5.5L4.8 17a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 8.5V3"></path></svg>백테스트</button>
+      <button class="navbtn" data-t="simulation"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>모의투자</button>
+    </div>
+
+    <div class="rail-foot">
+      <span class="st"><i class="dot"></i>Upbit · KRW 연결됨</span>
+      <small>1시간봉 · 2018-01~ · 엔진 v0.9.2</small>
+    </div>
+  </aside>
+
+  <div class="col">
+    <header class="topbar">
+      <div class="crumb" id="crumb"><b>전략 랭킹</b></div>
+      <div class="topbar-ctx"><i></i><b>이평선 골든크로스 + 변동성 축소</b><span>v2 · Upbit KRW · 1시간봉</span></div>
+      <div class="topbar-r">
+        <button class="icon-btn" type="button" title="알림"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15v-4a6 6 0 1 0-12 0v4l-1.5 3h15z"></path><path d="M10 21h4"></path></svg><span class="dot-count">3</span></button>
+        <span class="tag">데모 데이터</span>
+        <div class="acct">
+          <button class="avatar" type="button">하윤</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+
+      <!-- ============== HOME ============== -->
+      
+
+      <!-- ============== CHART ============== -->
+      
+
+      <!-- ============== STRATEGIES ============== -->
+      
+
+      <!-- ============== BUILDER ============== -->
+      
+
+      <!-- ============== BACKTEST ============== -->
+      
+
+      <!-- ============== SIMULATION ============== -->
+      
+
+      <!-- ============== RANKING ============== -->
+      <section class="view active" id="view-ranking">
+        <div class="page-head">
+          <div><span class="eyebrow">제32회 채점 완료 · 1,284팀</span><h1>어떤 장세에도 버티는 전략</h1><p class="sub">대회 결과로만 매겨지는 순위입니다. 한 장세에서 크게 번 전략보다 세 장세를 고르게 버틴 전략이 위로 올라갑니다.</p></div>
+          <button class="btn primary" type="button">제32회 참가</button>
+        </div>
+        
+        <div id="rank-round">
+          <div class="callout"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16h.01"></path></svg><span><b>제32회 채점 결과</b> — AI 상승장·하락장·횡보장에서 같은 전략을 돌려 국면별 백분위를 냅니다. <b>종합 = 평균 백분위 × 0.6 + 최저 국면 백분위 × 0.4</b>, 안정성은 세 국면 편차를 100점으로 환산한 값입니다.</span></div>
+          <div class="rfilt">
+            <select><option>제32회 · 2026-08-30</option><option>제31회</option><option>제30회</option></select>
+            <select><option>정렬: 종합 점수</option><option>안정성</option></select>
+            <select><option>국면 강점: 전체</option><option>상승장</option><option>하락장</option><option>횡보장</option></select>
+          </div>
+          <div class="card">
+            <div class="table-scroll">
+            <table>
+            <thead><tr><th style="width:58px">순위</th><th>전략</th><th class="r">종합 점수</th><th class="r">안정성</th><th class="r">상승</th><th class="r">하락</th><th class="r">횡보</th><th></th></tr></thead>
+            <tbody id="rankBody">
+              <tr class="click" onclick="openDetail('r1')"><td><span class="rnum top">01</span></td><td class="strategy-name-cell"><b>변동성 눌림 스윙</b><small>가온</small></td><td class="r"><b class="mono">89.8</b></td><td class="r mono">95</td><td class="r"><span class="mono updown up">94</span></td><td class="r"><span class="mono updown down">91</span></td><td class="r mono">88</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r2')"><td><span class="rnum top">02</span></td><td class="strategy-name-cell"><b>레인지 리버설</b><small>세아</small></td><td class="r"><b class="mono">86.4</b></td><td class="r mono">89</td><td class="r"><span class="mono updown up">82</span></td><td class="r"><span class="mono updown down">90</span></td><td class="r mono">96</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r3')"><td><span class="rnum top">03</span></td><td class="strategy-name-cell"><b>국면 감지 듀얼</b><small>리호</small></td><td class="r"><b class="mono">85.2</b></td><td class="r mono">97</td><td class="r"><span class="mono updown up">88</span></td><td class="r"><span class="mono updown down">86</span></td><td class="r mono">84</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r4')"><td><span class="rnum">04</span></td><td class="strategy-name-cell"><b>저변동 캐리</b><small>유진</small></td><td class="r"><b class="mono">82.0</b></td><td class="r mono">86</td><td class="r"><span class="mono updown up">76</span></td><td class="r"><span class="mono updown down">92</span></td><td class="r mono">90</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r5')"><td><span class="rnum">05</span></td><td class="strategy-name-cell"><b>볼린저 스퀴즈</b><small>나윤</small></td><td class="r"><b class="mono">79.6</b></td><td class="r mono">95</td><td class="r"><span class="mono updown up">84</span></td><td class="r"><span class="mono updown down">80</span></td><td class="r mono">78</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r6')"><td><span class="rnum">06</span></td><td class="strategy-name-cell"><b>추세 추종 v7</b><small>이든</small></td><td class="r"><b class="mono">78.4</b></td><td class="r mono">81</td><td class="r"><span class="mono updown up">96</span></td><td class="r"><span class="mono updown down">72</span></td><td class="r mono">80</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r7')"><td><span class="rnum">07</span></td><td class="strategy-name-cell"><b>모멘텀 리밸런스</b><small>도현</small></td><td class="r"><b class="mono">75.2</b></td><td class="r mono">84</td><td class="r"><span class="mono updown up">90</span></td><td class="r"><span class="mono updown down">70</span></td><td class="r mono">76</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r8')"><td><span class="rnum">08</span></td><td class="strategy-name-cell"><b>그리드 봇 v3</b><small>지호</small></td><td class="r"><b class="mono">70.0</b></td><td class="r mono">89</td><td class="r"><span class="mono updown up">66</span></td><td class="r"><span class="mono updown down">72</span></td><td class="r mono">80</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r9')"><td><span class="rnum">09</span></td><td class="strategy-name-cell"><b>듀얼 모멘텀</b><small>시우</small></td><td class="r"><b class="mono">67.6</b></td><td class="r mono">92</td><td class="r"><span class="mono updown up">72</span></td><td class="r"><span class="mono updown down">64</span></td><td class="r mono">74</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r10')"><td><span class="rnum">10</span></td><td class="strategy-name-cell"><b>RSI 눌림목</b><small>예린</small></td><td class="r"><b class="mono">64.8</b></td><td class="r mono">94</td><td class="r"><span class="mono updown up">68</span></td><td class="r"><span class="mono updown down">62</span></td><td class="r mono">70</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r11')"><td><span class="rnum">11</span></td><td class="strategy-name-cell"><b>BTC 단일 추세</b><small>준서</small></td><td class="r"><b class="mono">55.2</b></td><td class="r mono">60</td><td class="r"><span class="mono updown up">92</span></td><td class="r"><span class="mono updown down">42</span></td><td class="r mono">58</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="click" onclick="openDetail('r12')"><td><span class="rnum">12</span></td><td class="strategy-name-cell"><b>고빈도 스캘핑</b><small>태오</small></td><td class="r"><b class="mono">50.8</b></td><td class="r mono">71</td><td class="r"><span class="mono updown up">74</span></td><td class="r"><span class="mono updown down">38</span></td><td class="r mono">66</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">복제</button></td></tr>
+              <tr class="rank-me"><td><span class="rnum">23</span></td><td class="strategy-name-cell"><b>이평선 골든크로스 + 변동성 축소</b><small>하윤 · 내 전략</small></td><td class="r"><b class="mono">66.0</b></td><td class="r mono">82</td><td class="r"><span class="mono updown up">78</span></td><td class="r"><span class="mono updown down">58</span></td><td class="r mono">78</td><td style="text-align:right"><button class="rank-action" type="button" onclick="event.stopPropagation()">결과 보기</button></td></tr>
+            </tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

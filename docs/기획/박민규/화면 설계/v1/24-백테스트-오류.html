@@ -1,0 +1,66 @@
+<!-- @dsCard group="백테스트" name="실행 실패" viewport="1440x960" -->
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<title>AutoQuant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+</head><body>
+<div class="shell">
+<aside class="rail">
+    <div class="brandmark" onclick="go('home')">
+      <span class="logo"><path d="M4 17l5-5 4 4 7-8"><path d="M15 8h5v5"></path></path></span>
+      <span><b>AutoQuant</b><small>CRYPTO STRATEGY</small></span>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">탐색</span>
+      <button class="navbtn" data-t="home"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"></path><path d="M6 10v9h12v-9"></path></svg>전략 만들기</button>
+      <button class="navbtn" data-t="chart"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="8"></line><rect x="4" y="8" width="4" height="7" rx="1"></rect><line x1="6" y1="15" x2="6" y2="21"></line><line x1="13" y1="5" x2="13" y2="10"></line><rect x="11" y="10" width="4" height="6" rx="1"></rect><line x1="13" y1="16" x2="13" y2="20"></line><line x1="20" y1="4" x2="20" y2="9"></line><rect x="18" y="9" width="4" height="6" rx="1"></rect><line x1="20" y1="15" x2="20" y2="20"></line></svg>차트</button>
+      <button class="navbtn" data-t="contest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.2"></circle><path d="M9 13.6L7.2 21l4.8-2.8 4.8 2.8-1.8-7.4"></path></svg>대회</button>
+      <button class="navbtn" data-t="ranking"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V12M12 21V4M19 21v-6"></path></svg>전략 랭킹</button>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">운용</span>
+      <button class="navbtn" data-t="strategies"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>전략 관리</button>
+      <button class="navbtn active" data-t="backtest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v5.5L4.8 17a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 8.5V3"></path></svg>백테스트</button>
+      <button class="navbtn" data-t="simulation"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>모의투자</button>
+    </div>
+
+    <div class="rail-foot">
+      <span class="st"><i class="dot"></i>Upbit · KRW 연결됨</span>
+      <small>1시간봉 · 2018-01~ · 엔진 v0.9.2</small>
+    </div>
+  </aside>
+<div class="col">
+<header class="topbar">
+<div class="crumb"><b>백테스트</b></div>
+<div class="topbar-ctx"><i></i><b>이평선 골든크로스 + 변동성 축소</b><span>v2 · Upbit KRW · 1시간봉</span></div>
+<div class="topbar-r"><button class="icon-btn" type="button" title="알림"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15v-4a6 6 0 1 0-12 0v4l-1.5 3h15z"></path><path d="M10 21h4"></path></svg><span class="dot-count">3</span></button>
+        <span class="tag">데모 데이터</span><div class="acct">
+          <button class="avatar" type="button">하윤</button>
+        </div></div>
+</header>
+<main class="wrap">
+<section class="view active">
+<div class="page-head"><div><span class="eyebrow">검증</span><h1>백테스트</h1><p class="sub">과거 시점의 캔들 위에서 전략 신호와 가상 체결, 포지션 변화를 재현하고 전체 성과를 함께 분석합니다.</p></div></div>
+<div class="state-block is-error">
+<div class="state-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"></path><circle cx="12" cy="12" r="9"></circle></svg></div>
+<h3>평가 기간의 캔들이 부족해 계산을 멈췄습니다</h3>
+<p>선택한 종목 중 일부가 요청한 시작일보다 늦게 상장되어, 같은 기준으로 비교할 수 없습니다. 기간을 좁히거나 해당 종목을 제외하고 다시 실행하세요.</p>
+<div class="state-detail">
+<div><span>요청 기간</span><strong>2018-01-01 ~ 2025-12-31</strong></div>
+<div><span>부족한 종목</span><strong>KRW-SUI · KRW-SEI</strong></div>
+<div><span>사용 가능한 시작일</span><strong>2023-05-19</strong></div>
+<div><span>오류 코드</span><strong>BT-412 / INSUFFICIENT_CANDLES</strong></div>
+</div>
+<div class="state-acts"><button class="btn primary">2023-05-19부터 다시 실행</button><button class="btn">종목 다시 고르기</button></div>
+</div>
+</section>
+</main>
+</div>
+</div>
+</body></html>

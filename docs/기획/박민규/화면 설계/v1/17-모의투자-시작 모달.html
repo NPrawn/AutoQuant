@@ -1,0 +1,168 @@
+<!-- @dsCard group="모의투자" name="적용 확인 모달" viewport="1440x1248" -->
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoQuant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body style="">
+
+<div class="shell">
+  <aside class="rail">
+    <div class="brandmark" onclick="go('home')">
+      <span class="logo"><path d="M4 17l5-5 4 4 7-8"><path d="M15 8h5v5"></path></path></span>
+      <span><b>AutoQuant</b><small>CRYPTO STRATEGY</small></span>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">탐색</span>
+      <button class="navbtn" data-t="home"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"></path><path d="M6 10v9h12v-9"></path></svg>전략 만들기</button>
+      <button class="navbtn" data-t="chart"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="8"></line><rect x="4" y="8" width="4" height="7" rx="1"></rect><line x1="6" y1="15" x2="6" y2="21"></line><line x1="13" y1="5" x2="13" y2="10"></line><rect x="11" y="10" width="4" height="6" rx="1"></rect><line x1="13" y1="16" x2="13" y2="20"></line><line x1="20" y1="4" x2="20" y2="9"></line><rect x="18" y="9" width="4" height="6" rx="1"></rect><line x1="20" y1="15" x2="20" y2="20"></line></svg>차트</button>
+      <button class="navbtn" data-t="contest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.2"></circle><path d="M9 13.6L7.2 21l4.8-2.8 4.8 2.8-1.8-7.4"></path></svg>대회</button>
+      <button class="navbtn" data-t="ranking"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V12M12 21V4M19 21v-6"></path></svg>전략 랭킹</button>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">운용</span>
+      <button class="navbtn" data-t="strategies"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>전략 관리</button>
+      <button class="navbtn" data-t="backtest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v5.5L4.8 17a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 8.5V3"></path></svg>백테스트</button>
+      <button class="navbtn active" data-t="simulation"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>모의투자</button>
+    </div>
+
+    <div class="rail-foot">
+      <span class="st"><i class="dot"></i>Upbit · KRW 연결됨</span>
+      <small>1시간봉 · 2018-01~ · 엔진 v0.9.2</small>
+    </div>
+  </aside>
+
+  <div class="col">
+    <header class="topbar">
+      <div class="crumb" id="crumb"><b>모의투자</b></div>
+      <div class="topbar-ctx"><i></i><b>이평선 골든크로스 + 변동성 축소</b><span>v2 · Upbit KRW · 1시간봉</span></div>
+      <div class="topbar-r">
+        <button class="icon-btn" type="button" title="알림"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15v-4a6 6 0 1 0-12 0v4l-1.5 3h15z"></path><path d="M10 21h4"></path></svg><span class="dot-count">3</span></button>
+        <span class="tag">데모 데이터</span>
+        <div class="acct">
+          <button class="avatar" type="button">하윤</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+
+      <!-- ============== HOME ============== -->
+      
+
+      <!-- ============== CHART ============== -->
+      
+
+      <!-- ============== STRATEGIES ============== -->
+      
+
+      <!-- ============== BUILDER ============== -->
+      
+
+      <!-- ============== BACKTEST ============== -->
+      
+
+      <!-- ============== SIMULATION ============== -->
+      <section class="view active" id="view-simulation">
+        <div class="page-head">
+          <div><span class="eyebrow">대회 제출 전 리허설</span><h1>모의투자</h1><p class="sub">실제 시세로 전략이 어떻게 움직이는지 확인하는 리허설입니다. 순위는 대회 결과로만 매겨지므로 이 성적은 랭킹에 반영되지 않습니다.</p></div>
+        </div>
+
+        <div id="simOverview">
+          <div class="workflow-panel">
+            <div class="workflow-field">
+              <label for="simStrategySelect">사용할 전략</label>
+              <select id="simStrategySelect" onchange="syncStrategySelection('simulation')">
+                <option value="rsi-pullback" selected="">RSI 눌림목</option>
+                <option value="golden-cross">이평선 골든크로스 + 변동성 축소</option>
+                <option value="btc-momentum">BTC 모멘텀 롱숏</option>
+              </select>
+            </div>
+            <div class="workflow-field">
+              <label for="simCapital">초기 모의자산</label>
+              <input id="simCapital" value="3,000,000원">
+            </div>
+            <button class="btn primary" onclick="prepareSimulation()">새 모의투자 시작</button>
+            <span class="workflow-meta" id="simStrategyMeta">v3 · RSI 과매도 구간 분할 진입 · 최근 리허설 2026-08-13 <b>13일째 운용</b></span>
+          </div>
+
+          <div class="callout warn"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.9L2.5 18a1.8 1.8 0 0 0 1.5 2.7h16a1.8 1.8 0 0 0 1.5-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0z"></path></svg><span><b>BTC 모멘텀 롱숏</b>의 스테이블코인 총 노출이 규칙 상한 20%에 근접했습니다 (현재 18.4%).</span></div>
+
+          <div class="sim-overview-title"><div><h2>운용 중인 전략</h2></div><span>카드를 선택하면 실시간 운용 화면으로 이동합니다</span></div>
+          <div class="simg">
+            <article class="card pad sim-strategy-card" role="button" tabindex="0" onclick="openLiveSimulation('rsi-pullback')" onkeydown="if(event.key==='Enter') openLiveSimulation('rsi-pullback')">
+              <div class="simh"><div><h4>RSI 눌림목</h4><div class="m">v3 · 적용 2026-08-13 · 13일째 운용</div></div><span class="chip good">정상</span></div>
+              <div class="sim-chart">
+                <div class="sim-chart-head"><span>운용 수익 곡선</span><span>최근 7일</span></div>
+                <svg class="spark" viewBox="0 0 600 140" aria-label="RSI 눌림목 최근 7일 수익 곡선">
+                  <defs><linearGradient id="simGradA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e26570" stop-opacity=".24"></stop><stop offset="1" stop-color="#e26570" stop-opacity="0"></stop></linearGradient></defs>
+                  <path class="sim-grid" d="M0 35H600M0 70H600M0 105H600"></path><path d="M0 103 C45 100 72 105 110 92 S175 75 215 81 S282 61 325 67 S392 43 438 50 S522 28 600 32 L600 140 L0 140Z" fill="url(#simGradA)"></path><path class="sim-line" d="M0 103 C45 100 72 105 110 92 S175 75 215 81 S282 61 325 67 S392 43 438 50 S522 28 600 32"></path><circle class="sim-point" cx="600" cy="32" r="4"></circle>
+                </svg>
+              </div>
+              <div class="sims"><div><span class="k">평가손익</span><span class="v updown up">+36,200</span></div><div><span class="k">수익률</span><span class="v updown up">+2.4%</span></div><div><span class="k">최근 신호</span><span class="v sim-last-signal">08-26 04:00 진입</span></div></div>
+              <div class="sim-open">실시간 운용 보기 <span>→</span></div>
+            </article>
+            <article class="card pad sim-strategy-card" role="button" tabindex="0" onclick="openLiveSimulation('btc-momentum')" onkeydown="if(event.key==='Enter') openLiveSimulation('btc-momentum')">
+              <div class="simh"><div><h4>BTC 모멘텀 롱숏</h4><div class="m">v1 · 공개 전략 · 적용 2026-07-02 · 55일째 운용</div></div><span class="chip warn">확인 필요</span></div>
+              <div class="sim-chart">
+                <div class="sim-chart-head"><span>운용 수익 곡선</span><span>최근 7일</span></div>
+                <svg class="spark" viewBox="0 0 600 140" aria-label="BTC 모멘텀 롱숏 최근 7일 수익 곡선">
+                  <defs><linearGradient id="simGradB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d5b15f" stop-opacity=".22"></stop><stop offset="1" stop-color="#d5b15f" stop-opacity="0"></stop></linearGradient></defs>
+                  <path class="sim-grid" d="M0 35H600M0 70H600M0 105H600"></path><path d="M0 72 C45 58 75 66 112 80 S175 100 214 82 S275 68 315 88 S374 96 414 74 S475 66 514 55 S563 49 600 43 L600 140 L0 140Z" fill="url(#simGradB)"></path><path class="sim-line warn-line" d="M0 72 C45 58 75 66 112 80 S175 100 214 82 S275 68 315 88 S374 96 414 74 S475 66 514 55 S563 49 600 43"></path><circle class="sim-point warn-point" cx="600" cy="43" r="4"></circle>
+                </svg>
+              </div>
+              <div class="sims"><div><span class="k">평가손익</span><span class="v updown up">+150,200</span></div><div><span class="k">수익률</span><span class="v updown up">+5.0%</span></div><div><span class="k">최근 신호</span><span class="v sim-last-signal">08-26 09:00 청산</span></div></div>
+              <div class="sim-open">실시간 운용 보기 <span>→</span></div>
+            </article>
+          </div>
+
+          <div class="sec-head"><div><div class="sec-title">최근 모의 체결</div><div class="sec-sub">전체 운용 전략의 최근 주문을 모아봅니다</div></div></div>
+          <div class="card table-scroll"><table><thead><tr><th>시각 (KST)</th><th>전략</th><th>종목</th><th>구분</th><th class="r">수량</th><th class="r">체결가</th></tr></thead><tbody><tr><td class="mono muted-cell">08-26 09:00</td><td>BTC 모멘텀 롱숏</td><td class="mono">KRW-BTC</td><td><span class="chip mute">청산</span></td><td class="r">0.0412</td><td class="r">128,450,000</td></tr><tr><td class="mono muted-cell">08-26 04:00</td><td>RSI 눌림목</td><td class="mono">KRW-ETH</td><td><span class="chip good">진입</span></td><td class="r">0.612</td><td class="r">4,820,000</td></tr></tbody></table></div>
+        </div>
+
+        
+      </section>
+
+      <!-- ============== RANKING ============== -->
+      
+
+      <!-- ============== DETAIL ============== -->
+      
+
+    </main>
+  </div>
+</div>
+
+
+
+
+
+<div class="mbd on" id="mbd">
+  <div class="modal">
+    <h3>모의투자 적용 확인</h3>
+    <div class="s"><b id="modalStrategyName">RSI 눌림목 · v3</b> 전략을 아래 조건으로 모의운용합니다.</div>
+    <div class="krow"><span>투자대상</span><span id="modalAssets">BTC, ETH</span></div>
+    <div class="krow"><span>기본 비중</span><span id="modalAllocation">BTC 50% · ETH 30% · 현금 20%</span></div>
+    <div class="krow"><span>최대손실 규칙</span><span class="updown down" id="modalRisk">-5% / 일</span></div>
+    <div class="krow"><span>초기 모의자산</span><span id="modalCapital">3,000,000원</span></div>
+    <label class="agree"><input type="checkbox" id="agreeBox" onchange="document.getElementById('applyBtn').disabled=!this.checked"> 위 투자대상, 비중, 위험관리 규칙을 확인했으며 이 내용으로 모의투자를 시작합니다.</label>
+    <div class="macts">
+      <button class="btn ghost" onclick="closeModal()">취소</button>
+      <button class="btn primary" id="applyBtn" disabled="" onclick="confirmApply()">모의투자 적용</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+</body></html>
