@@ -1,0 +1,108 @@
+<!-- @dsCard group="대회" name="대회 목록" viewport="1440x1500" -->
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<title>AutoQuant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+</head><body>
+<div class="shell">
+  <aside class="rail">
+    <div class="brandmark" onclick="go('home')">
+      <span class="logo"><path d="M4 17l5-5 4 4 7-8"><path d="M15 8h5v5"></path></path></span>
+      <span><b>AutoQuant</b><small>CRYPTO STRATEGY</small></span>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">탐색</span>
+      <button class="navbtn" data-t="home"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"></path><path d="M6 10v9h12v-9"></path></svg>전략 만들기</button>
+      <button class="navbtn" data-t="chart"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="8"></line><rect x="4" y="8" width="4" height="7" rx="1"></rect><line x1="6" y1="15" x2="6" y2="21"></line><line x1="13" y1="5" x2="13" y2="10"></line><rect x="11" y="10" width="4" height="6" rx="1"></rect><line x1="13" y1="16" x2="13" y2="20"></line><line x1="20" y1="4" x2="20" y2="9"></line><rect x="18" y="9" width="4" height="6" rx="1"></rect><line x1="20" y1="15" x2="20" y2="20"></line></svg>차트</button>
+      <button class="navbtn active" data-t="contest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.2"></circle><path d="M9 13.6L7.2 21l4.8-2.8 4.8 2.8-1.8-7.4"></path></svg>대회</button>
+      <button class="navbtn" data-t="ranking"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V12M12 21V4M19 21v-6"></path></svg>전략 랭킹</button>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">운용</span>
+      <button class="navbtn" data-t="strategies"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>전략 관리</button>
+      <button class="navbtn" data-t="backtest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v5.5L4.8 17a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 8.5V3"></path></svg>백테스트</button>
+      <button class="navbtn" data-t="simulation"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>모의투자</button>
+    </div>
+
+    <div class="rail-foot">
+      <span class="st"><i class="dot"></i>Upbit · KRW 연결됨</span>
+      <small>1시간봉 · 2018-01~ · 엔진 v0.9.2</small>
+    </div>
+  </aside>
+  <div class="col">
+    <header class="topbar">
+      <div class="crumb"><b>대회</b></div>
+      
+      <div class="topbar-r">
+        <button class="icon-btn" type="button" title="알림"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15v-4a6 6 0 1 0-12 0v4l-1.5 3h15z"></path><path d="M10 21h4"></path></svg><span class="dot-count">3</span></button>
+        <span class="tag">데모 데이터</span>
+        <div class="acct"><button class="avatar" type="button">하윤</button></div>
+      </div>
+    </header>
+    <main class="wrap">
+      <section class="view active">
+        <div class="page-head">
+          <div><span class="eyebrow">대회</span><h1>같은 장세 3개, 같은 전략</h1><p class="sub">AI로 만든 상승장·하락장·횡보장에서 제출된 전략을 모두 같은 조건으로 돌립니다. 한 장세에만 맞춘 전략은 여기서 걸러집니다. 랭킹은 이 대회 결과만으로 매겨집니다.</p></div>
+        </div>
+
+        <section class="card card--lead ct-live">
+          <div class="ct-live-main">
+            <div class="ct-round"><i></i>진행 중 · 제32회</div>
+            <h2>8월 3주차 정기전</h2>
+            <p>마감까지 전략을 자유롭게 교체할 수 있습니다. 마감 후 공개되는 채점용 장세로 최종 순위를 냅니다.</p>
+            <div class="ct-facts">
+              <div><span>참가</span><strong>1,284</strong></div>
+              <div><span>내 제출</span><strong class="txt">이평선 골든크로스 v2</strong></div>
+              <div><span>남은 교체</span><strong>2 / 5</strong></div>
+              <div><span>채점 장세</span><strong class="txt">상승 · 하락 · 횡보</strong></div>
+            </div>
+          </div>
+          <div class="ct-live-side">
+            <div class="ct-clock"><span>제출 마감</span><strong>2일 14:22</strong><small>2026-08-30 09:00 KST</small></div>
+            <button class="btn primary" type="button">제출 전략 바꾸기</button>
+            <button class="btn" type="button">규칙과 채점 기준</button>
+          </div>
+        </section>
+
+        <div class="sec-head" style="margin:24px 0 12px"><div><div class="sec-title">이번 회차 장세</div><div class="sec-sub">연습용 장세입니다. 채점용 장세는 마감 후 공개됩니다.</div></div><span class="chip mute">연습용</span></div>
+        <div class="regime-grid">
+          <div class="regime bull"><div class="regime-head"><i></i><b>상승장</b><em>4,320봉</em></div><svg class="regime-spark" viewBox="0 0 200 46" preserveAspectRatio="none"><path d="M4.0,40.0L8.9,38.0L13.8,36.8L18.8,35.7L23.7,34.8L28.6,35.1L33.5,35.8L38.5,34.9L43.4,32.6L48.3,31.1L53.2,30.4L58.2,29.7L63.1,29.6L68.0,30.2L72.9,29.7L77.8,27.4L82.8,25.4L87.7,24.9L92.6,24.6L97.5,24.3L102.5,24.6L107.4,24.3L112.3,22.3L117.2,19.9L122.2,19.2L127.1,19.4L132.0,19.1L136.9,19.0L141.8,18.8L146.8,17.1L151.7,14.6L156.6,13.6L161.5,14.0L166.5,14.0L171.4,13.5L176.3,13.1L181.2,11.9L186.2,9.5L191.1,8.0L196.0,8.4L196,44L4,44Z" fill="var(--up)" opacity=".13"></path><path d="M4.0,40.0L8.9,38.0L13.8,36.8L18.8,35.7L23.7,34.8L28.6,35.1L33.5,35.8L38.5,34.9L43.4,32.6L48.3,31.1L53.2,30.4L58.2,29.7L63.1,29.6L68.0,30.2L72.9,29.7L77.8,27.4L82.8,25.4L87.7,24.9L92.6,24.6L97.5,24.3L102.5,24.6L107.4,24.3L112.3,22.3L117.2,19.9L122.2,19.2L127.1,19.4L132.0,19.1L136.9,19.0L141.8,18.8L146.8,17.1L151.7,14.6L156.6,13.6L161.5,14.0L166.5,14.0L171.4,13.5L176.3,13.1L181.2,11.9L186.2,9.5L191.1,8.0L196.0,8.4" fill="none" stroke="var(--up)" stroke-width="1.5" vector-effect="non-scaling-stroke"></path></svg><dl><dt>시장 수익률</dt><dd class="updown up">+142.0%</dd><dt>변동성</dt><dd>2.8%</dd></dl></div>
+          <div class="regime bear"><div class="regime-head"><i></i><b>하락장</b><em>4,320봉</em></div><svg class="regime-spark" viewBox="0 0 200 46" preserveAspectRatio="none"><path d="M4.0,8.5L8.9,8.0L13.8,8.9L18.8,10.5L23.7,11.7L28.6,12.5L33.5,12.7L38.5,12.6L43.4,13.9L48.3,16.3L53.2,16.9L58.2,15.8L63.1,16.2L68.0,19.0L72.9,20.5L77.8,19.8L82.8,19.6L87.7,21.3L92.6,23.0L97.5,23.7L102.5,24.0L107.4,24.3L112.3,24.8L117.2,26.6L122.2,28.3L127.1,28.2L132.0,27.3L136.9,28.8L141.8,31.6L146.8,32.1L151.7,31.1L156.6,31.6L161.5,33.9L166.5,35.2L171.4,35.3L176.3,35.5L181.2,36.2L186.2,37.3L191.1,39.0L196.0,40.0L196,44L4,44Z" fill="var(--down)" opacity=".13"></path><path d="M4.0,8.5L8.9,8.0L13.8,8.9L18.8,10.5L23.7,11.7L28.6,12.5L33.5,12.7L38.5,12.6L43.4,13.9L48.3,16.3L53.2,16.9L58.2,15.8L63.1,16.2L68.0,19.0L72.9,20.5L77.8,19.8L82.8,19.6L87.7,21.3L92.6,23.0L97.5,23.7L102.5,24.0L107.4,24.3L112.3,24.8L117.2,26.6L122.2,28.3L127.1,28.2L132.0,27.3L136.9,28.8L141.8,31.6L146.8,32.1L151.7,31.1L156.6,31.6L161.5,33.9L166.5,35.2L171.4,35.3L176.3,35.5L181.2,36.2L186.2,37.3L191.1,39.0L196.0,40.0" fill="none" stroke="var(--down)" stroke-width="1.5" vector-effect="non-scaling-stroke"></path></svg><dl><dt>시장 수익률</dt><dd class="updown down">-58.4%</dd><dt>변동성</dt><dd>3.6%</dd></dl></div>
+          <div class="regime"><div class="regime-head"><i></i><b>횡보장</b><em>4,320봉</em></div><svg class="regime-spark" viewBox="0 0 200 46" preserveAspectRatio="none"><path d="M4.0,39.3L8.9,29.6L13.8,25.0L18.8,19.5L23.7,11.3L28.6,13.1L33.5,26.5L38.5,35.1L43.4,35.4L48.3,36.7L53.2,35.6L58.2,23.7L63.1,11.5L68.0,12.5L72.9,18.9L77.8,22.1L82.8,28.9L87.7,39.8L92.6,40.0L97.5,28.3L102.5,20.0L107.4,17.4L112.3,12.4L117.2,11.1L122.2,22.4L127.1,35.1L132.0,36.2L136.9,32.9L141.8,31.6L146.8,23.9L151.7,10.8L156.6,8.0L161.5,17.0L166.5,23.7L171.4,27.4L176.3,35.3L181.2,39.0L186.2,28.8L191.1,16.2L196.0,13.2L196,44L4,44Z" fill="var(--ink-2)" opacity=".13"></path><path d="M4.0,39.3L8.9,29.6L13.8,25.0L18.8,19.5L23.7,11.3L28.6,13.1L33.5,26.5L38.5,35.1L43.4,35.4L48.3,36.7L53.2,35.6L58.2,23.7L63.1,11.5L68.0,12.5L72.9,18.9L77.8,22.1L82.8,28.9L87.7,39.8L92.6,40.0L97.5,28.3L102.5,20.0L107.4,17.4L112.3,12.4L117.2,11.1L122.2,22.4L127.1,35.1L132.0,36.2L136.9,32.9L141.8,31.6L146.8,23.9L151.7,10.8L156.6,8.0L161.5,17.0L166.5,23.7L171.4,27.4L176.3,35.3L181.2,39.0L186.2,28.8L191.1,16.2L196.0,13.2" fill="none" stroke="var(--ink-2)" stroke-width="1.5" vector-effect="non-scaling-stroke"></path></svg><dl><dt>시장 수익률</dt><dd>+1.9%</dd><dt>변동성</dt><dd>1.4%</dd></dl></div>
+        </div>
+
+        <div class="callout" style="margin-top:24px"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v5M12 16h.01"></path></svg><span><b>채점 기준</b> — 국면별 Calmar(구간 수익률 ÷ 구간 최대 낙폭)를 참가자 내 백분위로 바꾼 뒤, <b>종합 = 평균 백분위 × 0.6 + 최저 국면 백분위 × 0.4</b>. 한 국면에서 최대 낙폭 50%를 넘거나 수익률 -30% 아래면 순위에서 제외됩니다.</span></div>
+
+        <div class="sec-head" style="margin:32px 0 12px"><div><div class="sec-title">예정된 회차</div></div></div>
+        <div class="card">
+          <div class="table-scroll"><table>
+            <thead><tr><th style="width:96px">회차</th><th>이름</th><th>장세 구성</th><th class="r">제출 시작</th><th class="r">마감</th><th></th></tr></thead>
+            <tbody>
+              <tr><td class="mono">제33회</td><td>8월 4주차 정기전</td><td class="muted-cell">상승 · 하락 · 횡보</td><td class="r">2026-08-30</td><td class="r">2026-09-06</td><td style="text-align:right"><button class="rank-action" type="button">알림 받기</button></td></tr>
+              <tr><td class="mono">특별전</td><td>급락 이벤트 스트레스전</td><td class="muted-cell">플래시 크래시 3종</td><td class="r">2026-09-07</td><td class="r">2026-09-09</td><td style="text-align:right"><button class="rank-action" type="button">알림 받기</button></td></tr>
+            </tbody>
+          </table>
+        </div></div>
+
+        <div class="sec-head" style="margin:32px 0 12px"><div><div class="sec-title">지난 회차</div><div class="sec-sub">회차마다 장세가 다르므로 회차 간 점수를 그대로 비교하지 않습니다.</div></div></div>
+        <div class="card">
+          <div class="table-scroll"><table>
+            <thead><tr><th style="width:96px">회차</th><th>이름</th><th class="r">참가</th><th>1위 전략</th><th class="r">내 순위</th><th class="r">종합 점수</th></tr></thead>
+            <tbody>
+              <tr class="click"><td class="mono">제31회</td><td>8월 2주차 정기전</td><td class="r">1,196</td><td class="strategy-name-cell"><b>변동성 눌림 스윙</b><small>가온</small></td><td class="r">14</td><td class="r">66.0</td></tr>
+              <tr class="click"><td class="mono">제30회</td><td>8월 1주차 정기전</td><td class="r">1,131</td><td class="strategy-name-cell"><b>추세 추종 v7</b><small>이든</small></td><td class="r">28</td><td class="r">58.4</td></tr>
+              <tr class="click"><td class="mono">제29회</td><td>7월 4주차 정기전</td><td class="r">1,088</td><td class="strategy-name-cell"><b>레인지 리버설</b><small>세아</small></td><td class="r">7</td><td class="r">71.8</td></tr>
+            </tbody>
+          </table>
+        </div></div>
+      </section>
+    </main>
+  </div>
+</div>
+</body></html>

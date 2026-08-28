@@ -1,0 +1,192 @@
+<!-- @dsCard group="전략 편집" name="구성 탭" viewport="1440x900" -->
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoQuant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body style="">
+
+<div class="shell">
+  <aside class="rail">
+    <div class="brandmark" onclick="go('home')">
+      <span class="logo"><path d="M4 17l5-5 4 4 7-8"><path d="M15 8h5v5"></path></path></span>
+      <span><b>AutoQuant</b><small>CRYPTO STRATEGY</small></span>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">탐색</span>
+      <button class="navbtn active" data-t="home"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"></path><path d="M6 10v9h12v-9"></path></svg>전략 만들기</button>
+      <button class="navbtn" data-t="chart"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="8"></line><rect x="4" y="8" width="4" height="7" rx="1"></rect><line x1="6" y1="15" x2="6" y2="21"></line><line x1="13" y1="5" x2="13" y2="10"></line><rect x="11" y="10" width="4" height="6" rx="1"></rect><line x1="13" y1="16" x2="13" y2="20"></line><line x1="20" y1="4" x2="20" y2="9"></line><rect x="18" y="9" width="4" height="6" rx="1"></rect><line x1="20" y1="15" x2="20" y2="20"></line></svg>차트</button>
+      <button class="navbtn" data-t="contest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.2"></circle><path d="M9 13.6L7.2 21l4.8-2.8 4.8 2.8-1.8-7.4"></path></svg>대회</button>
+      <button class="navbtn" data-t="ranking"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V12M12 21V4M19 21v-6"></path></svg>전략 랭킹</button>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">운용</span>
+      <button class="navbtn" data-t="strategies"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>전략 관리</button>
+      <button class="navbtn" data-t="backtest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v5.5L4.8 17a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 8.5V3"></path></svg>백테스트</button>
+      <button class="navbtn" data-t="simulation"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>모의투자</button>
+    </div>
+
+    <div class="rail-foot">
+      <span class="st"><i class="dot"></i>Upbit · KRW 연결됨</span>
+      <small>1시간봉 · 2018-01~ · 엔진 v0.9.2</small>
+    </div>
+  </aside>
+
+  <div class="col">
+    <header class="topbar">
+      <div class="crumb" id="crumb"><b>전략 편집</b></div>
+      <div class="topbar-ctx"><i></i><b>이평선 골든크로스 + 변동성 축소</b><span>v2 · Upbit KRW · 1시간봉</span></div>
+      <div class="topbar-r">
+        <button class="icon-btn" type="button" title="알림"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15v-4a6 6 0 1 0-12 0v4l-1.5 3h15z"></path><path d="M10 21h4"></path></svg><span class="dot-count">3</span></button>
+        <span class="tag">데모 데이터</span>
+        <div class="acct">
+          <button class="avatar" type="button">하윤</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="wrap">
+
+      <!-- ============== HOME ============== -->
+      
+
+      <!-- ============== CHART ============== -->
+      
+
+      <!-- ============== STRATEGIES ============== -->
+      
+
+      <!-- ============== BUILDER ============== -->
+      <section class="view active" id="view-builder">
+        <div class="page-head">
+          <div><span class="eyebrow" id="builderEyebrow">전략 편집 · v2</span><h1 id="builderTitle">이평선 골든크로스 + 변동성 축소</h1><p class="sub">입력한 목표로 만든 초안입니다. 각 블록의 값을 직접 조정해 자신만의 전략으로 만들고 저장하세요.</p></div>
+          <div style="display:flex; gap:8px;"><button class="btn ghost sm" onclick="toast('임시 저장했습니다')">임시저장</button><button class="btn primary sm" onclick="saveStrategy()">전략 저장</button></div>
+        </div>
+
+        <section class="card card--lead from-goal">
+          <span>입력한 목표</span>
+          <div>
+            <div class="goal-said">비트코인이랑 이더리움만 담아서 안전하게 버는 전략 만들어줘</div>
+            <div class="goal-read">
+              <i><span>성향</span><b>안정형</b></i>
+              <i><span>투자 대상</span><b>BTC · ETH</b></i>
+              <i><span>진입</span><b>EMA 20/60 교차 + RSI 30 이하</b></i>
+              <i><span>현금 유지</span><b>30%</b></i>
+              <i><span>종목당 상한</span><b>40%</b></i>
+              <i><span>하루 손실 한도</span><b>-5%</b></i>
+            </div>
+            <p class="goal-note">"안전하게"를 <b>현금 30% 상시 유지</b>와 <b>하루 손실 -5% 도달 시 전량 정리</b>로 해석했습니다. 추세는 EMA 20/60 교차로 확인하되, 교차 직후 바로 사지 않고 <b>RSI 30 이하로 눌릴 때</b> 들어갑니다 — 아래 블록에서 값을 바꾸면 해석도 함께 바뀝니다.</p>
+          </div>
+        </section>
+
+        <div class="build-shell">
+          <div class="card pad">
+            <div class="pgroup"><h5>진입·청산</h5>
+              <div class="pitem">RSI 기준</div><div class="pitem">이동평균 교차</div><div class="pitem">거래량 조건</div>
+            </div>
+            <div class="pgroup"><h5>자산 구성</h5>
+              <div class="pitem">종목별 비중</div><div class="pitem">리밸런싱 주기</div>
+            </div>
+            <div class="pgroup"><h5>위험 관리</h5>
+              <div class="pitem">손실 한도</div><div class="pitem">종목당 최대 비중</div>
+            </div>
+            <div class="pgroup" style="margin-bottom:0;"><h5>실행 기준</h5>
+              <div class="pitem">판단 주기</div><div class="pitem">체결 비용</div>
+            </div>
+          </div>
+
+          <div>
+            
+
+            <div class="tabp on" id="tab-blocks">
+              <div class="blk sig" data-cat="signal" id="nlBlock">
+                <div class="blk-title"><span class="blk-index">01</span><div><span class="bt">진입 조건</span><small>언제 포지션을 시작할지 정의합니다</small><button class="block-help" type="button" onclick="openBlockHelp('signal')" aria-label="진입 조건 설명"><span>i</span></button></div></div>
+                <div class="blk-body">
+                  <ul id="summarySignal"><li>RSI(14)가 32 아래면 진입 후보</li><li>EMA(20)가 EMA(60)를 상향 돌파하면 진입</li></ul>
+                  <div class="inline-editor">
+                    <div class="edit-field"><label for="cfgRsiPeriod">RSI 기간</label><input id="cfgRsiPeriod" type="number" min="2" max="100" value="14" oninput="updateStrategyConfig()"></div>
+                    <div class="edit-field"><label for="cfgRsiThreshold">진입 기준</label><div class="unit-input"><input id="cfgRsiThreshold" type="number" min="1" max="99" value="30" oninput="updateStrategyConfig()"><span>이하</span></div></div>
+                    <div class="edit-field"><label for="cfgFastEma">빠른 EMA</label><input id="cfgFastEma" type="number" min="2" max="200" value="20" oninput="updateStrategyConfig()"></div>
+                    <div class="edit-field"><label for="cfgSlowEma">느린 EMA</label><input id="cfgSlowEma" type="number" min="3" max="300" value="60" oninput="updateStrategyConfig()"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="blk pf" data-cat="alloc">
+                <div class="blk-title"><span class="blk-index">02</span><div><span class="bt">자산 배분</span><small>종목별 목표 비중과 현금 비율입니다</small><button class="block-help" type="button" onclick="openBlockHelp('portfolio')" aria-label="자산 배분 설명"><span>i</span></button></div></div>
+                <div class="blk-body">
+                  <ul id="summaryPortfolio"><li>BTC 40% · ETH 30% · 현금 30%</li><li>리밸런싱 1일</li></ul>
+                  <div class="inline-editor">
+                    <div class="edit-field"><label for="cfgBtcWeight">BTC 비중</label><div class="unit-input"><input id="cfgBtcWeight" type="number" min="0" max="100" value="40" oninput="updateStrategyConfig()"><span>%</span></div></div>
+                    <div class="edit-field"><label for="cfgEthWeight">ETH 비중</label><div class="unit-input"><input id="cfgEthWeight" type="number" min="0" max="100" value="30" oninput="updateStrategyConfig()"><span>%</span></div></div>
+                    <div class="edit-field"><label for="cfgCashWeight">현금 비중</label><div class="unit-input"><input id="cfgCashWeight" type="number" value="30" readonly=""><span>%</span></div></div>
+                    <div class="edit-field"><label for="cfgRebalance">리밸런싱</label><select id="cfgRebalance" onchange="updateStrategyConfig()"><option value="1h">1시간</option><option value="1d" selected="">1일</option><option value="1w">1주</option></select></div>
+                    <div class="allocation-status" id="allocationStatus"><span>비중 합계</span><strong>BTC 40% + ETH 30% + 현금 30% = 100%</strong></div>
+                  </div>
+                </div>
+              </div>
+              <div class="blk rk" data-cat="risk">
+                <div class="blk-title"><span class="blk-index">03</span><div><span class="bt">위험 관리</span><small>손실 확대와 과도한 집중을 제한합니다</small><button class="block-help" type="button" onclick="openBlockHelp('risk')" aria-label="위험 관리 설명"><span>i</span></button></div></div>
+                <div class="blk-body">
+                  <ul id="summaryRisk"><li>종목당 최대 비중 40%</li><li>일일 최대손실 -5% · 스테이블코인 노출 20% 이하</li></ul>
+                  <div class="inline-editor">
+                    <div class="edit-field"><label for="cfgMaxWeight">종목당 최대 비중</label><div class="unit-input"><input id="cfgMaxWeight" type="number" min="1" max="100" value="40" oninput="updateStrategyConfig()"><span>%</span></div></div>
+                    <div class="edit-field"><label for="cfgDailyLoss">하루 손실 한도</label><div class="unit-input"><input id="cfgDailyLoss" type="number" min="1" max="50" value="5" oninput="updateStrategyConfig()"><span>%</span></div></div>
+                    <div class="edit-field"><label for="cfgStableExposure">스테이블코인 한도</label><div class="unit-input"><input id="cfgStableExposure" type="number" min="0" max="100" value="20" oninput="updateStrategyConfig()"><span>%</span></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="blk ex" data-cat="exec" style="margin-bottom:0;">
+                <div class="blk-title"><span class="blk-index">04</span><div><span class="bt">실행 기준</span><small>신호 판단 주기와 비용 가정입니다</small><button class="block-help" type="button" onclick="openBlockHelp('execution')" aria-label="실행 기준 설명"><span>i</span></button></div></div>
+                <div class="blk-body">
+                  <ul id="summaryExecution"><li>1시간봉 종가 판단</li><li>수수료 0.05% · 슬리피지 5bp 반영</li></ul>
+                  <div class="inline-editor">
+                    <div class="edit-field"><label for="cfgTimeframe">판단 주기</label><select id="cfgTimeframe" onchange="updateStrategyConfig()"><option value="15m">15분봉</option><option value="1h" selected="">1시간봉</option><option value="4h">4시간봉</option><option value="1d">일봉</option></select></div>
+                    <div class="edit-field"><label for="cfgFill">체결 기준</label><select id="cfgFill" onchange="updateStrategyConfig()"><option value="close" selected="">종가</option><option value="next_open">다음 봉 시가</option></select></div>
+                    <div class="edit-field"><label for="cfgSlippage">슬리피지</label><div class="unit-input"><input id="cfgSlippage" type="number" min="0" max="100" value="5" oninput="updateStrategyConfig()"><span>bp</span></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            
+
+            
+          </div>
+        </div>
+      </section>
+
+      <!-- ============== BACKTEST ============== -->
+      
+
+      <!-- ============== SIMULATION ============== -->
+      
+
+      <!-- ============== RANKING ============== -->
+      
+
+      <!-- ============== DETAIL ============== -->
+      
+
+    </main>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

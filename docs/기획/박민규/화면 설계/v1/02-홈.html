@@ -1,0 +1,107 @@
+<!-- @dsCard group="랜딩" name="전략 만들기" viewport="1440x900" -->
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoQuant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;700;900&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="brandmark" onclick="go('home')">
+      <span class="logo"><path d="M4 17l5-5 4 4 7-8"><path d="M15 8h5v5"></path></path></span>
+      <span><b>AutoQuant</b><small>CRYPTO STRATEGY</small></span>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">탐색</span>
+      <button class="navbtn active" data-t="home"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"></path><path d="M6 10v9h12v-9"></path></svg>전략 만들기</button>
+      <button class="navbtn" data-t="chart"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="8"></line><rect x="4" y="8" width="4" height="7" rx="1"></rect><line x1="6" y1="15" x2="6" y2="21"></line><line x1="13" y1="5" x2="13" y2="10"></line><rect x="11" y="10" width="4" height="6" rx="1"></rect><line x1="13" y1="16" x2="13" y2="20"></line><line x1="20" y1="4" x2="20" y2="9"></line><rect x="18" y="9" width="4" height="6" rx="1"></rect><line x1="20" y1="15" x2="20" y2="20"></line></svg>차트</button>
+      <button class="navbtn" data-t="contest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="5.2"></circle><path d="M9 13.6L7.2 21l4.8-2.8 4.8 2.8-1.8-7.4"></path></svg>대회</button>
+      <button class="navbtn" data-t="ranking"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V12M12 21V4M19 21v-6"></path></svg>전략 랭킹</button>
+    </div>
+
+    <div class="navsec">
+      <span class="lbl">운용</span>
+      <button class="navbtn" data-t="strategies"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>전략 관리</button>
+      <button class="navbtn" data-t="backtest"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v5.5L4.8 17a2 2 0 0 0 1.7 3h11a2 2 0 0 0 1.7-3L14 8.5V3"></path></svg>백테스트</button>
+      <button class="navbtn" data-t="simulation"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M10 8.5l6 3.5-6 3.5z"></path></svg>모의투자</button>
+    </div>
+
+    <div class="rail-foot">
+      <span class="st"><i class="dot"></i>Upbit · KRW 연결됨</span>
+      <small>1시간봉 · 2018-01~ · 엔진 v0.9.2</small>
+    </div>
+  </aside>
+  <div class="col">
+    <header class="topbar">
+      <div class="crumb"><b>전략 만들기</b></div>
+      <div class="topbar-r">
+        <button class="icon-btn" type="button" title="알림"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15v-4a6 6 0 1 0-12 0v4l-1.5 3h15z"></path><path d="M10 21h4"></path></svg><span class="dot-count">3</span></button>
+        <span class="tag">데모 데이터</span>
+        <div class="acct"><button class="avatar" type="button">하윤</button></div>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="view active" id="view-home">
+        <div class="market-decor" aria-hidden="true">
+          <i class="cbar" style="--x:2%;--y:64%;--w:17px;--h:88px;--c:var(--up)"></i>
+          <i class="cbar" style="--x:5%;--y:19%;--w:24px;--h:43px;--c:var(--down)"></i>
+          <i class="cbar" style="--x:8%;--y:79%;--w:14px;--h:66px;--c:var(--down)"></i>
+          <i class="cbar" style="--x:12%;--y:6%;--w:20px;--h:74px;--c:var(--up)"></i>
+          <i class="cbar" style="--x:10%;--y:44%;--w:15px;--h:93px;--c:var(--up)"></i>
+          <i class="cbar" style="--x:16%;--y:90%;--w:26px;--h:40px;--c:var(--down)"></i>
+          <i class="cbar" style="--x:19%;--y:31%;--w:18px;--h:79px;--c:var(--down)"></i>
+          <i class="cbar" style="--x:22%;--y:58%;--w:15px;--h:91px;--c:var(--up)"></i>
+          <i class="cbar" style="--x:15%;--y:71%;--w:23px;--h:49px;--c:var(--up)"></i>
+          <i class="cbar" style="--x:25%;--y:14%;--w:16px;--h:68px;--c:var(--down)"></i>
+          <i class="cbar" style="--x:28%;--y:47%;--w:21px;--h:84px;--c:var(--up)"></i>
+          <i class="cbar" style="--x:31%;--y:76%;--w:14px;--h:57px;--c:var(--down)"></i>
+          <i class="cbar" style="--x:24%;--y:88%;--w:19px;--h:62px;--c:var(--down)"></i>
+          <i class="cbar right" style="--x:3%;--y:25%;--w:17px;--h:84px;--c:var(--down)"></i>
+          <i class="cbar right" style="--x:6%;--y:52%;--w:25px;--h:45px;--c:var(--up)"></i>
+          <i class="cbar right" style="--x:9%;--y:11%;--w:14px;--h:71px;--c:var(--up)"></i>
+          <i class="cbar right" style="--x:13%;--y:71%;--w:21px;--h:58px;--c:var(--down)"></i>
+          <i class="cbar right" style="--x:11%;--y:38%;--w:16px;--h:90px;--c:var(--down)"></i>
+          <i class="cbar right" style="--x:17%;--y:86%;--w:27px;--h:41px;--c:var(--up)"></i>
+          <i class="cbar right" style="--x:20%;--y:17%;--w:18px;--h:76px;--c:var(--up)"></i>
+          <i class="cbar right" style="--x:23%;--y:60%;--w:15px;--h:88px;--c:var(--down)"></i>
+          <i class="cbar right" style="--x:16%;--y:45%;--w:22px;--h:52px;--c:var(--down)"></i>
+          <i class="cbar right" style="--x:27%;--y:80%;--w:16px;--h:64px;--c:var(--up)"></i>
+          <i class="cbar right" style="--x:30%;--y:29%;--w:20px;--h:81px;--c:var(--down)"></i>
+        </div>
+
+        <div class="hero-in">
+          <span class="hero-badge"><i></i>UPBIT KRW · AUTOQUANT</span>
+          <h1><span>투자 아이디어를</span><span>전략으로.</span></h1>
+          <p class="sub">어떤 전략을 원하는지 목표만 적으면 됩니다. 조건과 수치는 만들어 드리고, 블록에서 직접 조정할 수 있습니다.</p>
+
+          <div class="prompt-box">
+            <textarea id="heroPrompt" rows="2" placeholder="예: 추세를 타는 종목을 사는 전략 만들어줘 / 안전하게 조금씩 버는 전략"></textarea>
+            <div class="prompt-foot">
+              <span class="prompt-hint">목표만 적으면 조건·비중·손실 한도까지 채워 초안을 만듭니다</span>
+              <button class="btn primary" onclick="submitPrompt()">전략 만들기
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="chips">
+            <button class="chip-ex" onclick="fillPrompt(this)">추세를 타는 종목을 사는 전략</button>
+            <button class="chip-ex" onclick="fillPrompt(this)">안전하게 조금씩 버는 전략</button>
+            <button class="chip-ex" onclick="fillPrompt(this)">하이리스크 하이리턴으로 공격적으로</button>
+            <button class="chip-ex" onclick="fillPrompt(this)">하락장에서도 안 깨지는 전략</button>
+          </div>
+
+          <p class="hero-note">만든 초안은 블록에서 값을 조정한 뒤 저장하면 v1이 됩니다.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</body></html>
