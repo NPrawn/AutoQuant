@@ -19,7 +19,8 @@ def import_config_module():
     return importlib.import_module("app.core.config")
 
 
-def test_import_fails_when_required_environment_variable_is_missing(monkeypatch):
+def test_import_fails_when_required_environment_variable_is_missing(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
     for name, value in REQUIRED_ENVIRONMENT.items():
         monkeypatch.setenv(name, value)
     monkeypatch.delenv("LLM_API_KEY")
