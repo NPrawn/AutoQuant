@@ -6,9 +6,12 @@ AI 서버 문서. 코드와 같은 저장소에 두어 함께 버전 관리한�
 |---|---|---|
 | [PLAN.md](PLAN.md) | 전체 구현 계획 | 이 서버가 왜 이렇게 생겼는지 알고 싶을 때 |
 | [TASKS.md](TASKS.md) | 작업 분해 (Epic A ~ L) | 무엇을 어느 순서로 만들지 |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | 구조와 흐름 다이어그램 | 요청 하나가 어느 모듈을 어떤 순서로 지나는지 |
 | [DECISIONS.md](DECISIONS.md) | **결정 로그 겸 트레이드오프 기록** | "왜 A가 아니라 B인가" |
 | [HANDOFF-A.md](HANDOFF-A.md) | Epic A + C 인계 명세 | 지금 티켓을 잡았을 때 |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | 겪은 문제와 해결 | 같은 데서 또 막혔을 때 |
+| [REVIEW-MOCKUP.md](REVIEW-MOCKUP.md) | 화면 시안 피드백 (AI 서버 관점) | 기획과 계약을 맞출 때 |
+| [REVIEW-STRATEGY-MVP.md](REVIEW-STRATEGY-MVP.md) | 전략팀 MVP 문서 검토 (AI 서버 관점) | 전략 도메인 스펙과 계약을 맞출 때 |
 
 ## 문서 경계
 

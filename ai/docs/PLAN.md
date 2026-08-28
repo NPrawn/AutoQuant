@@ -4,7 +4,7 @@
 
 **범위:** 역할 1(자연어 → DSL)까지만. 역할 2(LightGBM 견고성 점수 추론)는 이번 계획서에서 제외하되, 라우터와 서비스 계층을 나중에 모듈만 추가하면 되도록 나눠 둔다.
 
-**기술 스택:** Python 3.11, FastAPI, Pydantic v2, httpx, pytest, LLM API(Anthropic Claude 또는 OpenAI 중 택1 — `llm_client.py` 한 파일만 교체하면 되게 격리).
+**기술 스택:** Python 3.11, FastAPI, Pydantic v2, pytest, `openai` SDK(>=1.60). LLM 호출은 SSAFY GMS 게이트웨이 경유 — 공급자 교체는 `LLM_BASE_URL` 변경으로 끝난다 (DECISIONS 결정 4).
 
 **기간/인원:** 5주, 1명.
 
@@ -84,7 +84,7 @@ DSL 스펙의 단일 정의처다. `Strategy`, `Universe`, `Signal`, `Feature`, 
 스펙이 교체될 때 수정하는 파일은 원칙적으로 여기 하나다.
 
 **`app/core/config.py`**
-환경변수를 읽어 설정 객체 하나를 만든다. `LLM_API_KEY`, `LLM_MODEL`, `LLM_TIMEOUT_SECONDS`, `MAX_RETRIES`(기본 2), `LOG_LEVEL`을 다룬다. 필수값이 없으면 앱 기동 단계에서 죽는다 — 첫 요청에서 죽으면 안 된다. 키 값 자체가 로그·응답 어디에도 나가지 않도록 표현(`repr`)을 막는다.
+환경변수를 읽어 설정 객체 하나를 만든다. `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `LLM_TIMEOUT_SECONDS`(기본 30), `MAX_RETRIES`(기본 2), `LOG_LEVEL`(기본 INFO), `APP_ENV`를 다룬다. `LLM_PROVIDER`는 두지 않는다 — 게이트웨이가 하나뿐이라 분기할 값이 아니다. 필수값이 없으면 앱 기동 단계에서 죽는다 — 첫 요청에서 죽으면 안 된다. 키 값 자체가 로그·응답 어디에도 나가지 않도록 표현(`repr`)을 막는다.
 
 **`app/core/errors.py`**
 도메인 예외 타입과 오류 코드를 정의한다. `LLMTimeoutError`, `LLMUpstreamError`, `DSLValidationError`(재시도 소진 포함), `PromptTooLongError`. 각 예외는 HTTP 상태 코드와 오류 코드 문자열을 갖는다. 예외를 응답으로 바꾸는 변환은 `main.py`의 핸들러가 맡는다.
@@ -125,7 +125,7 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
 |---|---|
 | `SignalType` | `CROSS_SECTIONAL_RANK`, `INDICATOR_CONDITION` |
 | `FeatureType` | `RETURN`, `RSI`, `SMA`, `EMA`, `VOLUME` |
-| `PortfolioType` | `EQUAL_WEIGHT`, `FIXED_WEIGHT` |
+| `PortfolioType` | `EQUAL_WEIGHT`, `RANK_WEIGHTED` |
 | `Rebalance` | `DAILY`, `WEEKLY`, `MONTHLY` |
 | `Timeframe` | `4H`, `1D` |
 
@@ -134,35 +134,48 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
 | 모델 | 필드 | 타입·제약 | 기본값 |
 |---|---|---|---|
 | `Universe` | `market` | `"UPBIT_KRW"` 고정 | `UPBIT_KRW` |
-| | `top_by_trading_value` | int, 5~50 | 없음(필수) |
-| | `min_listing_days` | int, 0 이상 | 180 |
+| | `top_by_trading_value` | int, 5~30 | 없음(필수) |
 | `Feature` | `type` | `FeatureType` | 없음 |
-| | `lookback_bars` | int, 1~200 | 없음 |
+| | `lookback_days` | int, 1~365 | 지표별 관행값 |
 | `Signal` | `type` | `SignalType` | 없음 |
 | | `feature` | `Feature` | 없음 |
-| | `select_top` | int, 1~20 | 없음 |
+| | `filters` | 후보 필터 배열, 최대 3개 | `[]` |
+| | `select_top` | int, 1~30 | 없음 |
 | `Portfolio` | `type` | `PortfolioType` | 없음 |
+| | `weight_decay` | float 0~1 또는 null | null |
 | | `max_asset_weight` | float, 0 초과 1 이하 | 0.34 |
 | `Risk` | `stop_loss` | float 또는 null, -1~0 | null |
 | | `take_profit` | float 또는 null, 0~10 | null |
 | | `regime_gate` | bool | false |
 | `Execution` | `rebalance` | `Rebalance` | 없음 |
-| | `timeframe` | `Timeframe` | 없음 |
+| | `timeframe` | `Timeframe` | `1D` |
 | `Strategy` | `universe`, `signal`, `portfolio`, `risk`, `execution` | 각 하위 모델 | 없음 |
+
+**필터 항목 하나의 내부 구조는 아직 확정되지 않았다.** 개수 상한(최대 3개)과 동작 순서(거르기 → 줄 세우기 → 자르기)만 확정이다. 확정되면 이 표에 추가한다.
 
 ### 교차 검증 규칙 (`Strategy` 수준)
 
+거부 층 (검증 실패 → 재시도):
+
 - `signal.select_top` ≤ `universe.top_by_trading_value`
-- `portfolio.max_asset_weight` × `signal.select_top` ≥ 1.0 (선택한 종목 수로 100%를 채울 수 있어야 한다)
+- `portfolio.weight_decay`는 `type`이 `RANK_WEIGHTED`일 때만 채운다. `EQUAL_WEIGHT`면 null
 - 알 수 없는 필드는 거부한다. LLM이 없는 필드를 지어내면 검증 실패로 잡혀 재시도로 이어져야 한다.
+
+경고 층 (200으로 통과시키되 `meta.warnings`에 담는다):
+
+- `signal.feature`의 기간이 `execution.rebalance` 주기의 5배 미만
+- `portfolio.max_asset_weight` × `signal.select_top` < 1.0 (1~2종목 집중)
+- 극단적 손절·익절
+
+경고로 내린 이유는 **역할 2가 잡아야 할 것을 서버가 미리 막으면 모델이 배울 사례가 사라지기 때문**이다. 자세한 근거는 [DECISIONS.md의 "검증을 세 층으로 나눈다"](DECISIONS.md).
 
 ### API 모델
 
 | 모델 | 필드 |
 |---|---|
-| `TranslateRequest` | `text`(str, 1~2000자) |
+| `TranslateRequest` | `text`(str, 1~2000자), `current_strategy`(`Strategy` 또는 null — 있으면 수정, 없으면 신규) |
 | `TranslateResponse` | `strategy`(`Strategy`), `meta`(`TranslateMeta`) |
-| `TranslateMeta` | `attempts`(int), `model`(str), `elapsed_ms`(int) |
+| `TranslateMeta` | `attempts`(int), `model`(str), `elapsed_ms`(int), `warnings`(str 목록), `assumptions`(str 목록), `changes`(str 목록) |
 | `ErrorResponse` | `code`(str), `message`(str), `detail`(object 또는 null) |
 
 ---
@@ -186,19 +199,26 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
   "strategy": {
     "universe": {
       "market": "UPBIT_KRW",
-      "top_by_trading_value": 20,
-      "min_listing_days": 180
+      "top_by_trading_value": 20
     },
     "signal": {
       "type": "CROSS_SECTIONAL_RANK",
-      "feature": { "type": "RETURN", "lookback_bars": 20 },
+      "feature": { "type": "RETURN", "lookback_days": 20 },
+      "filters": [],
       "select_top": 5
     },
-    "portfolio": { "type": "EQUAL_WEIGHT", "max_asset_weight": 0.34 },
+    "portfolio": { "type": "EQUAL_WEIGHT", "weight_decay": null, "max_asset_weight": 0.34 },
     "risk": { "stop_loss": -0.1, "take_profit": null, "regime_gate": false },
     "execution": { "rebalance": "WEEKLY", "timeframe": "1D" }
   },
-  "meta": { "attempts": 1, "model": "claude-sonnet-4", "elapsed_ms": 2140 }
+  "meta": {
+    "attempts": 1,
+    "model": "gpt-5.4-mini",
+    "elapsed_ms": 2140,
+    "warnings": [],
+    "assumptions": [],
+    "changes": []
+  }
 }
 ```
 
@@ -211,7 +231,7 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
   "detail": {
     "attempts": 3,
     "last_errors": [
-      "signal.select_top: 값 40은 허용 범위(1~20)를 벗어납니다.",
+      "signal.select_top: 값 40은 허용 범위(1~30)를 벗어납니다.",
       "execution.timeframe: '1H'는 허용값이 아닙니다. (4H, 1D)"
     ]
   }
@@ -250,7 +270,7 @@ Spring 쪽과의 계약: 모든 오류 응답은 위 네 필드 형태를 지킨
 
 1. 역할 지시 — 암호화폐 백테스트 전략 번역기. 사용자 문장을 DSL JSON으로 옮기는 일만 한다.
 2. DSL 스펙 — `Strategy` 모델의 JSON Schema를 `schema.py`에서 생성해 주입한다. 열거형 허용값과 수치 범위가 여기에 자동으로 포함되므로 프롬프트에 손으로 다시 적지 않는다.
-3. 출력 규칙 — JSON 객체 하나만 출력. 설명·인사·코드블록 금지. 사용자가 명시하지 않은 값은 스펙 기본값을 쓰고, 기본값이 없는 필수 필드는 보수적으로 추론한다(리밸런싱 언급이 없으면 `WEEKLY`, 타임프레임 언급이 없으면 `1D`).
+3. 출력 규칙 — JSON 객체 하나만 출력. 설명·인사·코드블록 금지. 사용자가 명시하지 않은 값은 스펙 기본값을 쓰고, 기본값이 없는 필수 필드는 보수적으로 추론한다(리밸런싱 언급이 없으면 `WEEKLY`, 타임프레임 언급이 없으면 `1D`). **전략과 무관하거나 부실한 입력도 거부하지 않고 만든다.** 대신 임의로 정한 값을 `meta.assumptions`에 한 줄씩 적게 한다 (DECISIONS 결정 5).
 
 사용자 프롬프트는 입력 문장을 그대로 감싼다. 입력 안에 지시문처럼 보이는 문장이 있어도 시스템 규칙을 덮지 못하도록, 사용자 입력은 구분된 블록 안에 넣는다.
 
@@ -304,7 +324,7 @@ Spring 쪽과의 계약: 모든 오류 응답은 위 네 필드 형태를 지킨
 
 ### 반드시 덮어야 할 케이스
 
-- 스키마: 각 범위 제약의 경계값(`select_top` 0/1/20/21 등), 열거형 밖의 값 거부, 알 수 없는 필드 거부, 기본값 적용, 교차 검증 규칙 두 가지.
+- 스키마: 각 범위 제약의 경계값(`select_top` 0/1/30/31 등), 열거형 밖의 값 거부, 알 수 없는 필드 거부, 기본값 적용, 거부 층 교차 검증 규칙 전부, 경고 층 규칙이 거부가 아니라 `meta.warnings`로 나가는지.
 - 검증기: 정상 JSON, 코드블록으로 감싸인 JSON, 앞뒤에 설명 문장이 붙은 응답, 깨진 JSON, 스키마 위반 JSON. 각 경우에 나오는 오류 문자열이 필드 경로를 포함하는지 확인한다.
 - translator: 1회 성공, 1회 실패 후 2회차 성공, 3회 모두 실패(`DSLValidationError`), 타임아웃 즉시 전파. 가짜 LLM이 호출된 횟수를 세서 재시도 한도를 지켰는지 검증한다.
 - API: 정상 200 응답 형태, 빈 입력 400, 검증 소진 422 응답 형태, 타임아웃 504. 오류 응답이 언제나 `code`/`message`/`detail` 형태인지 확인한다.
