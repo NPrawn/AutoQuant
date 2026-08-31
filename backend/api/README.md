@@ -98,7 +98,7 @@ POST /api/admin/assets
 
 요청에는 `exchange`와 `exchangeMarketCode`만 받는다. API가 Upbit 공개 페어 목록에서 실제 거래지원 여부와 종목명을 검증한 뒤 `reference.asset`과 `ops.market_data_collection_target`을 함께 저장한다.
 
-`collectionStatus=ENABLED`는 수집 대상으로 등록됐다는 뜻이며 실제 Go Producer의 WebSocket 구독 완료 상태는 아니다. Go Producer 연동 전까지 이 테이블은 API가 기록하는 희망 상태만 표현한다.
+`collectionStatus=ENABLED`는 API가 기록하는 수집 희망 상태다. Go Producer는 이 목록을 주기적으로 읽어 Upbit WebSocket 구독을 갱신하며, 실제 연결 상태를 이 값에 다시 기록하지 않는다.
 
 ## API 문서
 

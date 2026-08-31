@@ -23,11 +23,14 @@ Upbit WebSocket/REST → Producer → Kafka → Consumer
 internal/
 ├── common/domain       BaseEntity
 ├── common/exception    ErrorCode, Error, 재시도 정책
+├── asset/domain        시장 데이터 수집 대상
 ├── candle/domain       MinuteCandle
+├── trade/domain        실시간 MarketTrade
+├── producer            수집 대상 변경 감지
 ├── upbit               외부 API와 응답 DTO
 ├── kafka               토픽·메시지·Producer/Consumer 래퍼
 ├── redis               최신 상태 쓰기
-├── store               PostgreSQL INSERT/UPSERT
+├── store               PostgreSQL 조회·INSERT·UPSERT
 └── config              환경변수 설정
 ```
 
