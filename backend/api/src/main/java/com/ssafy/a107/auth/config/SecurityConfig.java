@@ -14,7 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({JwtProperties.class, AuthLoginProperties.class})
 public class SecurityConfig {
 
     /* 로그인과 인가 URL 발급은 토큰을 받기 전에 호출되므로 인증에서 제외한다. */
@@ -29,7 +29,7 @@ public class SecurityConfig {
             ApiAuthenticationEntryPoint authenticationEntryPoint
     ) throws Exception {
         return http
-                // 토큰 인증이라 세션 기반 CSRF 방어 대상이 없다.
+                // 토큰 쿠키가 SameSite=Lax 라 교차 사이트 요청에 실리지 않는다. CSRF 토큰은 두지 않는다.
                 .csrf(AbstractHttpConfigurer::disable)
                 // 프론트는 Vite 프록시를 거쳐 같은 오리진으로 호출한다. 배포 형태가 정해지면 다시 본다.
                 .cors(AbstractHttpConfigurer::disable)

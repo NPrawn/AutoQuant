@@ -1,12 +1,11 @@
 package com.ssafy.a107.auth.service;
 
 import com.ssafy.a107.auth.config.SsafyOAuth2Properties;
-import com.ssafy.a107.auth.service.port.SsafyAuthClient;
-import com.ssafy.a107.auth.service.port.SsafyUserInfo;
-import com.ssafy.a107.auth.controller.response.LoginResponse;
 import com.ssafy.a107.auth.controller.response.SsafyAuthorizeUrlResponse;
 import com.ssafy.a107.auth.jwt.IssuedAccessToken;
 import com.ssafy.a107.auth.jwt.JwtTokenProvider;
+import com.ssafy.a107.auth.service.port.SsafyAuthClient;
+import com.ssafy.a107.auth.service.port.SsafyUserInfo;
 import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.member.domain.LoginProvider;
@@ -59,11 +58,8 @@ public class AuthCommandService {
         return new SsafyAuthorizeUrlResponse(authorizeUrl);
     }
 
-    private static String encode(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
-    }
-
-    public LoginResponse login(String authorizationCode) {
+    /* 인가 코드를 SSAFY 토큰으로 교환하고 회원을 확정한 뒤 서비스 액세스 토큰을 발급한다. */
+    public IssuedAccessToken login(String authorizationCode) {
         if (authorizationCode == null || authorizationCode.isBlank()) {
             throw new ApiException(ApiErrorCode.AUTH_INVALID_AUTHORIZATION_CODE);
         }
@@ -80,14 +76,10 @@ public class AuthCommandService {
                 now
         );
 
-        IssuedAccessToken accessToken = jwtTokenProvider.issue(member.getMemberId(), now);
+        return jwtTokenProvider.issue(member.getMemberId(), now);
+    }
 
-        return new LoginResponse(
-                accessToken.value(),
-                accessToken.expiresAt(),
-                member.getMemberId(),
-                member.getDisplayName(),
-                member.getEmailAddress()
-        );
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }
