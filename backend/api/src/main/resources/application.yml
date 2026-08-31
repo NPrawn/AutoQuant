@@ -29,3 +29,21 @@ server:
 # ai/ FastAPI 전략 추론 서비스
 ai:
   base-url: ${AI_BASE_URL:http://localhost:8000}
+
+# SSAFY OAuth2 인증 서버. client-id 와 client-secret 은 기본값을 두지 않아 값이 없으면 기동이 실패한다.
+ssafy:
+  oauth2:
+    client-id: ${SSAFY_CLIENT_ID}
+    client-secret: ${SSAFY_CLIENT_SECRET}
+    redirect-uri: ${SSAFY_REDIRECT_URI}
+    authorize-url: ${SSAFY_AUTHORIZE_URL:https://project.ssafy.com/oauth/sso-check}
+    token-url: ${SSAFY_TOKEN_URL:https://project.ssafy.com/ssafy/oauth2/token}
+    user-info-url: ${SSAFY_USER_INFO_URL:https://project.ssafy.com/ssafy/resources/userInfo}
+    connect-timeout: ${SSAFY_CONNECT_TIMEOUT:3s}
+    read-timeout: ${SSAFY_READ_TIMEOUT:5s}
+
+# 서비스 자체 액세스 토큰. secret 은 HS256 최소 길이인 32바이트 이상이어야 한다.
+jwt:
+  secret: ${JWT_SECRET}
+  issuer: ${JWT_ISSUER:a107}
+  access-token-validity: ${JWT_ACCESS_TOKEN_VALIDITY:1h}
