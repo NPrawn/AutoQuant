@@ -8,12 +8,13 @@ import jakarta.persistence.Embeddable;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 @Embeddable
 public class MinuteCandleId implements Serializable {
 
-    @Column(name = "market_id", nullable = false)
-    private Long marketId;
+    @Column(name = "asset_id", nullable = false)
+    private UUID assetId;
 
     @Column(name = "interval_minutes", nullable = false)
     private short intervalMinutes;
@@ -24,18 +25,18 @@ public class MinuteCandleId implements Serializable {
     protected MinuteCandleId() {
     }
 
-    public MinuteCandleId(Long marketId, int intervalMinutes, Instant openTime) {
+    public MinuteCandleId(UUID assetId, int intervalMinutes, Instant openTime) {
         if (intervalMinutes <= 0 || intervalMinutes > Short.MAX_VALUE) {
             throw new ApiException(ApiErrorCode.CANDLE_INVALID_INTERVAL);
         }
 
-        this.marketId = Objects.requireNonNull(marketId);
+        this.assetId = Objects.requireNonNull(assetId);
         this.intervalMinutes = (short) intervalMinutes;
         this.openTime = Objects.requireNonNull(openTime);
     }
 
-    public Long getMarketId() {
-        return marketId;
+    public UUID getAssetId() {
+        return assetId;
     }
 
     public short getIntervalMinutes() {
@@ -55,12 +56,12 @@ public class MinuteCandleId implements Serializable {
             return false;
         }
         return intervalMinutes == that.intervalMinutes
-                && Objects.equals(marketId, that.marketId)
+                && Objects.equals(assetId, that.assetId)
                 && Objects.equals(openTime, that.openTime);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(marketId, intervalMinutes, openTime);
+        return Objects.hash(assetId, intervalMinutes, openTime);
     }
 }

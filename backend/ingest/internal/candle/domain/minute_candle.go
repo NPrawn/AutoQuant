@@ -10,7 +10,8 @@ import (
 type MinuteCandle struct {
 	commondomain.BaseEntity
 
-	MarketID        int64
+	// AssetID is the UUID assigned by reference.asset, encoded as a string.
+	AssetID         string
 	IntervalMinutes int16
 	OpenTime        time.Time
 

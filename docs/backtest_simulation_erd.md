@@ -6,7 +6,7 @@
 
 다음 테이블은 공통 도메인에서 관리하며 이 문서에서는 식별자만 참조한다.
 
-- `user`
+- `member`
 - `strategy_version`
 - `asset`
 - `candle`
@@ -33,8 +33,8 @@ RabbitMQ Queue, Backtest Worker, Container, Nginx는 인프라 구성 요소이�
 
 ```mermaid
 erDiagram
-    USER ||--o{ BACKTEST_RUN : owns
-    USER ||--o{ SIMULATION_RUN : owns
+    MEMBER ||--o{ BACKTEST_RUN : owns
+    MEMBER ||--o{ SIMULATION_RUN : owns
     STRATEGY_VERSION ||--o{ BACKTEST_RUN : executes
     STRATEGY_VERSION ||--o{ SIMULATION_RUN : executes
 
@@ -68,7 +68,7 @@ erDiagram
 | 컬럼 | 타입 | 제약 | 설명 |
 | --- | --- | --- | --- |
 | `backtest_id` | UUID | PK | 백테스트 식별자 |
-| `user_id` | UUID | FK, NOT NULL | 실행 사용자 |
+| `member_id` | UUID | FK, NOT NULL | 실행 회원 |
 | `strategy_version_id` | UUID | FK, NOT NULL | 실행한 전략 버전 |
 | `status` | VARCHAR(20) | NOT NULL | `QUEUED`, `RUNNING`, `COMPLETED`, `FAILED` |
 | `period_start` | TIMESTAMPTZ | NOT NULL | 평가 기간 시작 |
@@ -171,7 +171,7 @@ erDiagram
 | 컬럼 | 타입 | 제약 | 설명 |
 | --- | --- | --- | --- |
 | `simulation_id` | UUID | PK | 모의투자 식별자 |
-| `user_id` | UUID | FK, NOT NULL | 실행 사용자 |
+| `member_id` | UUID | FK, NOT NULL | 실행 회원 |
 | `strategy_version_id` | UUID | FK, NOT NULL | 실행한 전략 버전 |
 | `status` | VARCHAR(20) | NOT NULL | `CREATED`, `RUNNING`, `STOPPED`, `FAILED` |
 | `timeframe` | VARCHAR(10) | NOT NULL | MVP `1H` |
@@ -278,21 +278,63 @@ erDiagram
 
 ## 6. 공통 참조 테이블
 
-이 문서에서 직접 소유하지 않고 FK로만 참조하는 테이블이다.
+이 문서에서 직접 소유하지 않고 FK로 참조하는 테이블이다. 서비스 사용자는 PostgreSQL 예약어와 혼동하기 쉬운 `user` 대신 도메인 용어인 `member`로 통일한다.
+
+### 6.1 `account.member`
+
+SSAFY SSO로 식별되는 서비스 회원을 저장한다. 비밀번호와 인증 제공자의 토큰은 저장하지 않는다.
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `member_id` | UUID | PK | 서비스 내부 회원 식별자 |
+| `login_provider` | VARCHAR(30) | NOT NULL | 로그인 제공자. MVP `SSAFY` |
+| `login_provider_member_id` | VARCHAR(255) | NOT NULL | 로그인 제공자가 부여한 회원 식별자 |
+| `email_address` | VARCHAR(320) | UK, NOT NULL | 소문자로 정규화한 이메일 주소 |
+| `display_name` | VARCHAR(50) | NOT NULL | 서비스 화면에 표시할 이름 |
+| `member_status` | VARCHAR(20) | NOT NULL | `ACTIVE`, `SUSPENDED`, `WITHDRAWN` |
+| `last_login_at` | TIMESTAMPTZ | NULL | 마지막 로그인 성공 시각 |
+| `withdrawn_at` | TIMESTAMPTZ | NULL | 회원 탈퇴 시각 |
+| `created_at` | TIMESTAMPTZ | NOT NULL | 생성 시각 |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | 수정 시각 |
+
+`(login_provider, login_provider_member_id)`를 Unique로 두어 동일한 외부 계정의 중복 가입을 막는다. `WITHDRAWN` 상태이면 `withdrawn_at`이 반드시 존재해야 한다.
+
+### 6.2 `reference.asset`
+
+회원의 보유 잔액이 아니라 거래소에서 거래되는 마켓의 기준 정보를 저장한다. `asset_id`는 문자열 심볼과 분리된 서비스 내부 식별자다.
+
+| 컬럼 | 타입 | 제약 | 설명 |
+| --- | --- | --- | --- |
+| `asset_id` | UUID | PK | 서비스 내부 거래 자산 식별자 |
+| `exchange` | VARCHAR(20) | NOT NULL | 거래소. MVP `UPBIT` |
+| `exchange_market_code` | VARCHAR(30) | NOT NULL | 거래소가 부여한 마켓 코드. 예: `KRW-BTC` |
+| `base_currency_code` | VARCHAR(10) | NOT NULL | 거래 대상 통화 코드. 예: `BTC` |
+| `quote_currency_code` | VARCHAR(10) | NOT NULL | 가격 표시·결제 통화 코드. 예: `KRW` |
+| `korean_name` | VARCHAR(100) | NOT NULL | 거래 자산 한글명 |
+| `english_name` | VARCHAR(100) | NOT NULL | 거래 자산 영문명 |
+| `trading_status` | VARCHAR(20) | NOT NULL | `TRADING`, `SUSPENDED`, `DELISTED` |
+| `trading_support_started_at` | TIMESTAMPTZ | NULL | 거래지원 시작 시각. 확인할 수 없으면 NULL |
+| `trading_support_ended_at` | TIMESTAMPTZ | NULL | 거래지원 종료 시각 |
+| `created_at` | TIMESTAMPTZ | NOT NULL | 생성 시각 |
+| `updated_at` | TIMESTAMPTZ | NOT NULL | 수정 시각 |
+
+`(exchange, exchange_market_code)`를 Unique로 두며 `base_currency_code`와 `quote_currency_code`는 서로 달라야 한다. `DELISTED` 상태이면 `trading_support_ended_at`이 반드시 존재해야 한다.
+
+### 6.3 참조 식별자
 
 | 테이블 | 필수 식별자 | 역할 |
 | --- | --- | --- |
-| `user` | `user_id` | 백테스트·모의투자 실행 사용자 |
+| `account.member` | `member_id` | 백테스트·모의투자 실행 회원 |
 | `strategy_version` | `strategy_version_id` | 실행할 불변 전략 버전 |
-| `asset` | `asset_id` | 거래소·마켓·기준통화가 포함된 자산 |
-| `candle` | `asset_id`, `timeframe`, `open_time`, `market_data_version` | 전략 계산과 평가에 사용하는 시장 데이터 |
+| `reference.asset` | `asset_id` | 거래소·마켓·기준통화가 포함된 거래 자산 |
+| `market_data.minute_candle` | `asset_id`, `interval_minutes`, `open_time` | 전략 계산과 평가에 사용하는 확정 분봉 |
 
 ---
 
 ## 7. 인덱스 및 무결성 규칙
 
 - 모든 FK 컬럼에 인덱스를 둔다.
-- `backtest_run(user_id, status)` 및 `simulation_run(user_id, status)` 조회를 지원한다.
+- `backtest_run(member_id, status)` 및 `simulation_run(member_id, status)` 조회를 지원한다.
 - `backtest_trade(backtest_id, filled_at)`와 `simulation_trade(simulation_id, filled_at)`에 인덱스를 둔다.
 - `backtest_equity(backtest_id, valuation_at)`와 `simulation_equity(simulation_id, valuation_at)`는 복합 PK를 인덱스로 사용한다.
 - `FAILED` 상태에서는 `failure_reason`을 필수로 하고, 완료 상태에서는 `completed_at`과 결과 행을 필수로 한다.

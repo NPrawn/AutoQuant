@@ -62,6 +62,7 @@ ingest/
 2. **DB 스키마를 변경하지 않는다.** 컬럼이 필요하면 `backend/api/src/main/resources/db/migration` 에 SQL 을 추가하고, 그 후 여기의 UPSERT를 맞춘다.
 3. **키 규칙과 토픽 이름은 상수로 한 곳에만 정의한다.** (`internal/redis`, `internal/kafka`)
 4. **모든 바이너리는 SIGINT / SIGTERM에서 그레이스풀 종료한다.** 상시 실행 프로세스가 중간 상태를 남기면 재기동 시 중복·누락이 생긴다.
+5. **확정 분봉은 `reference.asset.asset_id` UUID를 문자열로 전달한다.** 거래소 마켓 코드를 DB 내부 식별자로 직접 사용하지 않는다.
 
 ## 명령
 

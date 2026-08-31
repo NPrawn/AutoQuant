@@ -13,7 +13,7 @@ Upbit WebSocket/REST → Producer → Kafka → Consumer
 - 원본·진행 중 이벤트를 PostgreSQL Raw 테이블에 저장하지 않는다.
 - Kafka 원본 이벤트의 수명은 retention과 디스크 정책을 따른다.
 - PostgreSQL에는 확정된 `MinuteCandle`만 멱등 UPSERT한다.
-- 멱등 키는 `(market_id, interval_minutes, open_time)`이다.
+- 멱등 키는 `(asset_id, interval_minutes, open_time)`이다.
 - Kafka offset은 PostgreSQL·Redis 처리가 성공한 뒤 수동 커밋한다.
 - 동일 마켓 이벤트 순서를 위해 Kafka 메시지 키는 마켓 코드를 사용한다.
 
@@ -37,7 +37,7 @@ internal/
 
 - 패키지명은 `market`이 아니라 `candle`이다.
 - `MinuteCandle`은 확정 분봉만 표현한다.
-- 분봉 간격은 `int16`, 시각은 `time.Time`을 사용한다.
+- 내부 `asset_id` UUID는 문자열, 분봉 간격은 `int16`, 시각은 `time.Time`을 사용한다.
 - decimal 라이브러리가 확정되기 전까지 가격·거래량 문자열을 그대로 유지한다.
 - Upbit DTO, Kafka 메시지, Candle 도메인, DB 저장 파라미터를 하나의 구조체로 재사용하지 않고 경계에서 변환한다.
 - Go에서 DDL을 실행하지 않는다. DB 변경은 `backend/api` Flyway에 추가한다.

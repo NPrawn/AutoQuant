@@ -10,6 +10,8 @@ Gradle이 소유하는 디렉토리는 여기까지다. 형제인 `../ingest/`�
 src/main/java/com/ssafy/a107/
 ├─ A107Application.java     @SpringBootApplication   :8080
 ├─ common/                  공통 엔티티 · 예외 처리
+├─ member/                  서비스 회원 계정
+├─ asset/                   거래소의 거래 자산 기준 정보
 ├─ auth/                    JWT 발급 · 검증
 ├─ candle/                  확정 분봉 도메인 · 조회
 └─ trading/                 모의투자 · 백테스팅
@@ -26,7 +28,9 @@ src/main/resources/
 | 패키지 | 담는 것 | 담지 않는 것 |
 |---|---|---|
 | `common` | 공통 엔티티, 예외 코드, 전역 예외 처리 | 기능별 비즈니스 로직 |
-| `auth` | JWT 발급·검증, 비밀번호 해싱 | 도메인 로직, 컨트롤러 |
+| `member` | 외부 로그인 식별자, 회원 프로필·상태 | 비밀번호, 인증 제공자 토큰 |
+| `asset` | 거래소 마켓, 기준·상대 통화, 거래지원 상태 | 회원 잔액, 포지션 |
+| `auth` | SSAFY SSO 연동, JWT 발급·검증 | 회원 프로필, 비밀번호·인증 제공자 토큰 저장 |
 | `candle` | 확정 분봉 엔티티·조회 | 시세 수집, Redis·Kafka 쓰기 |
 | `trading` | 모의투자 주문·체결, 백테스팅 엔진 | 시세 수집, 랭킹 |
 
@@ -34,12 +38,14 @@ src/main/resources/
 
 ```
 candle ──┐
-         ├──> common
-trading ─┘
-auth ────────> common
+asset ───┤
+member ──┼──> common
+trading ─┤
+auth ────┘
 ```
 
 - **`common`은 기능 패키지에 의존하지 않는다.**
+- **`member`는 서비스 회원, `asset`은 거래 가능한 마켓 기준 정보다.** 회원 잔액을 `asset`에 저장하지 않는다.
 - **`candle` ↔ `trading` 상호 참조 금지.** 공유가 필요하면 `common` 중 맞는 곳으로 내린다.
 - **확정 분봉 쓰기는 Go consumer 전용이다.** JVM이 쓰면 데이터 출처가 갈라진다.
 
