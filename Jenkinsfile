@@ -8,9 +8,7 @@ pipeline {
     }
 
     environment {
-        REGISTRY_HOST = 'lab.ssafy.com:5050'
-        IMAGE_PREFIX = 'lab.ssafy.com:5050/s15-fintech-finance-sub1/s15p21a107'
-        REGISTRY_CREDENTIALS = 'gitlab-registry'
+        IMAGE_PREFIX = 'a107'
         PRODUCTION_COMPOSE = 'infra/docker-compose.prod.yml'
         PRODUCTION_ENV_FILE = '/etc/a107/.env.production'
     }
@@ -133,66 +131,27 @@ pipeline {
             }
         }
 
-        stage('Push Docker Images') {
-            when {
-                branch 'develop'
-            }
-            steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: env.REGISTRY_CREDENTIALS,
-                        usernameVariable: 'REGISTRY_USERNAME',
-                        passwordVariable: 'REGISTRY_PASSWORD'
-                    )
-                ]) {
-                    sh '''
-                        set -eu
-                        printf '%s' "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" \
-                          --username "$REGISTRY_USERNAME" --password-stdin
-
-                        docker push "$IMAGE_PREFIX/backend-api:$IMAGE_TAG"
-                        docker push "$IMAGE_PREFIX/ingest:$IMAGE_TAG"
-                        docker push "$IMAGE_PREFIX/ai:$IMAGE_TAG"
-                        docker push "$IMAGE_PREFIX/frontend:$IMAGE_TAG"
-                    '''
-                }
-            }
-        }
-
         stage('Deploy to EC2') {
             when {
                 branch 'develop'
             }
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: env.REGISTRY_CREDENTIALS,
-                        usernameVariable: 'REGISTRY_USERNAME',
-                        passwordVariable: 'REGISTRY_PASSWORD'
-                    )
-                ]) {
-                    sh '''
-                        set -eu
+                sh '''
+                    set -eu
 
-                        if [ ! -f "$PRODUCTION_COMPOSE" ]; then
-                            echo "Required deployment file is missing: $PRODUCTION_COMPOSE"
-                            exit 1
-                        fi
-                        if [ ! -f "$PRODUCTION_ENV_FILE" ]; then
-                            echo "Required production environment file is missing: $PRODUCTION_ENV_FILE"
-                            exit 1
-                        fi
+                    if [ ! -f "$PRODUCTION_COMPOSE" ]; then
+                        echo "Required deployment file is missing: $PRODUCTION_COMPOSE"
+                        exit 1
+                    fi
+                    if [ ! -f "$PRODUCTION_ENV_FILE" ]; then
+                        echo "Required production environment file is missing: $PRODUCTION_ENV_FILE"
+                        exit 1
+                    fi
 
-                        printf '%s' "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" \
-                          --username "$REGISTRY_USERNAME" --password-stdin
-
-                        export IMAGE_TAG
-                        docker compose --env-file "$PRODUCTION_ENV_FILE" \
-                          -f "$PRODUCTION_COMPOSE" pull
-                        docker compose --env-file "$PRODUCTION_ENV_FILE" \
-                          -f "$PRODUCTION_COMPOSE" up -d --remove-orphans
-                    '''
-                }
+                    export IMAGE_TAG
+                    docker compose --env-file "$PRODUCTION_ENV_FILE" \
+                      -f "$PRODUCTION_COMPOSE" up -d --pull never --remove-orphans
+                '''
             }
         }
     }
