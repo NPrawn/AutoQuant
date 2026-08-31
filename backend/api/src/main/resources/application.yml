@@ -29,3 +29,8 @@ server:
 # ai/ FastAPI 전략 추론 서비스
 ai:
   base-url: ${AI_BASE_URL:http://localhost:8000}
+
+# Upbit 공개 시세 API
+upbit:
+  base-url: ${UPBIT_BASE_URL:https://api.upbit.com}
+  timeout: ${UPBIT_TIMEOUT:5s}

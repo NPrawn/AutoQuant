@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.16'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.epages.restdocs-api-spec' version '0.19.4'
 }
 
 group = 'com.ssafy.a107'
@@ -20,6 +21,7 @@ repositories {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
     // 도메인 정본 — DB
@@ -32,7 +34,20 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.rest-assured:spring-mock-mvc'
+    testImplementation 'org.springframework.restdocs:spring-restdocs-mockmvc'
+    testImplementation 'com.epages:restdocs-api-spec-mockmvc:0.19.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+openapi3 {
+    server = 'http://localhost:8080'
+    title = 'S15P21A107 API'
+    description = '암호화폐 전략 설계·백테스트·모의투자 플랫폼 API'
+    version = project.version
+    format = 'yaml'
+    outputFileNamePrefix = 'openapi'
+    tagDescriptionsPropertiesFile = 'src/test/resources/tag-descriptions.yaml'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -41,4 +56,14 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+afterEvaluate {
+    tasks.named('openapi3') {
+        dependsOn tasks.named('test')
+    }
+
+    tasks.named('build') {
+        dependsOn tasks.named('openapi3')
+    }
 }

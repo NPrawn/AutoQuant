@@ -11,7 +11,12 @@ com.ssafy.a107
 ├── common/exception/response
 │                       ApiErrorResponse
 ├── member/domain       서비스 회원 계정
-├── asset/domain        거래소의 거래 자산 기준 정보
+├── asset/controller    관리자용 종목 등록 API
+├── asset/service       외부 검증 조율과 종목 등록 트랜잭션
+├── asset/repository    Asset·수집 대상 DB 접근
+├── asset/infrastructure/upbit
+│                       Upbit 공개 페어 목록 Client
+├── asset/domain        거래소의 거래 자산·수집 대상 기준 정보
 ├── candle/domain       확정 분봉 읽기 모델
 ├── auth                인증
 └── trading             백테스트·모의투자
@@ -23,6 +28,8 @@ com.ssafy.a107
 - `asset`을 회원 보유 잔액이나 포지션 의미로 사용하지 않는다.
 - `candle`과 `trading`은 서로 직접 참조하지 않는다.
 - 확정 분봉은 Go Consumer가 쓰고 Spring은 `@Immutable` 엔티티로 읽는다.
+- `AssetTradingStatus`는 거래소 거래지원 상태이고 `MarketDataCollectionStatus`는 우리 서비스의 수집 희망 상태다. 두 상태를 합치지 않는다.
+- 종목 등록 API의 `ENABLED`는 실제 Go WebSocket 구독 완료를 의미하지 않는다.
 
 ## DB와 JPA
 
@@ -59,6 +66,8 @@ com.ssafy.a107
 - `../docs/convention/jpa-convention.md`
 - `../docs/convention/back-test-convention.md`
 
+외부 API용 `WebClient`는 이름을 부여한 Bean으로 주입한다. 이 프로젝트에서는 `WebClient.create(baseUrl)`로 생성하고 `WebClient.Builder` 주입이나 `WebClient.builder()` 호출을 사용하지 않는다.
+
 ## 검증
 
 ```bash
@@ -66,3 +75,5 @@ com.ssafy.a107
 ```
 
 테스트는 JUnit 5와 AssertJ를 사용하고 `@DisplayName`은 한국어로 작성한다. 생성물인 `bin/`과 `build/`는 직접 수정하거나 커밋하지 않는다.
+
+Controller 테스트는 `RestAssuredMockMvc`로 작성한다. 문서화 대상 테스트는 REST Docs 리소스 스니펫을 생성하고 `./gradlew openapi3`으로 `build/api-spec/openapi.yaml`을 만든다.
