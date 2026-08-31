@@ -8,8 +8,8 @@ Upbit 실시간 시세를 수집·적재하고, 랭킹과 전략 수립을 제�
 Upbit ──WebSocket──> Producer ──> Kafka ──> Consumer ──┬──> Redis ──┐
  (Go)                  (Go)                  (Go)      └──> DB ────┤
                                                                     │
-Upbit ──REST────────> Backfill ─────────────────────────────> DB ───┤
-                       (Go)      1분봉 누락 보정                     │
+Upbit ──REST────────> Backfill ──> Kafka ──> Consumer ─────> DB ───┤
+                       (Go)      누락 이벤트 보충                    │
                                                                     ↓
               [AI] FastAPI ──────────>  Backend API  ──────────> React
                 (Python)                 (Java 21)            (TradingChart)
@@ -32,7 +32,7 @@ Upbit ──REST────────> Backfill ─────────�
 
 각 디렉토리의 `README.md`에 책임 범위와 경계가 정의되어 있다.
 
-API 서버는 **앱 하나에 패키지로 경계를 둔** 구조다 (`domain` · `cache` · `auth` · `market` · `trading`). 배포 단위를 쪼갤 근거가 관측되면 그때 분리한다 — 이유는 `backend/README.md` 참조.
+API 서버는 **앱 하나에 패키지로 경계를 둔** 구조다 (`common` · `auth` · `candle` · `trading`). 배포 단위를 쪼갤 근거가 관측되면 그때 분리한다 — 이유는 `backend/README.md` 참조.
 
 ## 기술 스택
 

@@ -148,13 +148,10 @@ uvicorn app.main:app --reload
 
 ## 브랜치와 커밋
 
-- `develop`에서 **`feat/{이슈번호}`** 형식으로 분기한다 (예: `feat/3`). 마디를 더 늘리지 않는다. 스토리 티켓을 만들면 Jira 자동화가 이 브랜치를 함께 만든다 — 손으로 만들지 말고 받아 쓴다
-- **하위 작업마다 브랜치를 파지 않는다.** 스토리 하나에 브랜치 하나, 하위 작업은 커밋 하나씩이다
-- `feat` → `develop`은 merge, `develop` → `master`는 merge commit으로 병합한다
-- **`develop`과 `master`에는 force-push와 삭제를 하지 않는다.** 작업 브랜치에만 허용된다
-- 커밋 메시지는 Conventional Commits(`feat:` `fix:` `docs:` `refactor:` `chore:`)를 쓰고, footer에 `Refs: S15P21A107-N`을 붙인다
-- 완료 보고에 커밋 SHA를 포함한다. SHA 없는 보고는 반려한다
-- 각 티켓의 완료 조건에 적힌 명령이 실제로 통과해야 완료다
+저장소 공통 정본인 [`../docs/git-convention.md`](../docs/git-convention.md)를 따른다. AI 모듈만의 별도 브랜치·커밋 형식을 만들지 않는다.
+
+- 완료 보고에 커밋 SHA를 포함한다. SHA 없는 보고는 반려한다.
+- 각 티켓의 완료 조건에 적힌 명령이 실제로 통과해야 완료다.
 
 ## Jira
 
