@@ -40,7 +40,7 @@ pipeline {
                               -v "$WORKSPACE:/workspace" \
                               -w /workspace/backend/api \
                               eclipse-temurin:21-jdk \
-                              ./gradlew test --no-daemon
+                              bash ./gradlew test --no-daemon
                         '''
                     }
                 }
