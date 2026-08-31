@@ -13,7 +13,7 @@
 backend/
 ├─ api/
 │  ├─ build.gradle · settings.gradle · gradlew
-│  └─ src/main/java/com/ssafy/a107/{domain,cache,auth,market,trading}
+│  └─ src/main/java/com/ssafy/a107/{common,auth,candle,trading}
 └─ ingest/
    ├─ go.mod
    ├─ cmd/{producer,consumer,backfill}
