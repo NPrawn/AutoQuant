@@ -29,9 +29,10 @@ class FakeCompletions:
 
 
 class FakeOpenAI:
-    def __init__(self, *, api_key, base_url):
+    def __init__(self, *, api_key, base_url, max_retries):
         assert api_key == "test-secret-key"
         assert base_url == "https://gms.ssafy.io/gmsapi/api.openai.com/v1"
+        assert max_retries == 0
         self.chat = SimpleNamespace(completions=FakeCompletions())
 
 

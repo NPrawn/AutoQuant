@@ -26,6 +26,7 @@ def complete(
         client = OpenAI(
             api_key=settings.llm_api_key.get_secret_value(),
             base_url=settings.llm_base_url,
+            max_retries=0,
         )
         response = client.chat.completions.create(
             model=settings.llm_model,
