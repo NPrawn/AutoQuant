@@ -50,7 +50,7 @@ ingest/
 ## 의존성
 
 - **내부**: 없음 — JVM 모듈과 빌드 의존성 0
-- **외부**: `segmentio/kafka-go`, `redis/go-redis/v9`, `jackc/pgx/v5`, `gorilla/websocket`
+- **외부**: `twmb/franz-go`, `redis/go-redis/v9`, `jackc/pgx/v5`, `gorilla/websocket`
 
 ## 규칙
 
