@@ -13,14 +13,14 @@ Jira 작업 제목은 다음 형식을 사용한다.
 [영역] 대상과 작업 내용
 ~~~
 
-영역은 `FE`, `BE`, `INGEST`, `AI`, `INFRA`, `DOCS`, `COMMON` 중 하나를 사용한다.
+영역은 `FE`, `BE`, `INGEST`, `AI`, `INFRA`, `COMMON` 중 하나를 사용한다.
 
 - `FE`: Frontend 화면, 차트, 전략 구성 UI
 - `BE`: API, 전략, 백테스트, 모의투자 도메인
 - `INGEST`: Upbit 데이터 수집·적재·보정
 - `AI`: 전략 DSL 변환 및 AI 기능
 - `INFRA`: 인프라 및 운영 설정
-- `DOCS`: 특정 기술 영역에 속하지 않는 문서
+- 공통 문서는 `COMMON` 영역을 사용한다.
 - `COMMON`: 여러 영역에서 함께 사용하는 공통 설정·정책
 
 예시:
@@ -30,7 +30,7 @@ Jira 작업 제목은 다음 형식을 사용한다.
 [INGEST] Upbit 1시간봉 수집 및 저장
 [AI] 자연어 전략 DSL 변환 검증
 [INFRA] Kafka·Redis·PostgreSQL 개발 환경 구성
-[DOCS] 프로젝트 작업 컨벤션 작성
+[COMMON] 프로젝트 작업 컨벤션 작성
 ~~~
 
 작성 규칙:
@@ -124,7 +124,7 @@ Git Hook을 사용하는 경우 현재 브랜치명에서 Jira 키를 추출해 
 [INGEST] feat: Upbit 캔들 수집 구현-S15P21A107-41
 [AI] feat: 전략 DSL 변환 검증 구현-S15P21A107-42
 [INFRA] chore: 로컬 Kafka 환경 구성-S15P21A107-43
-[DOCS] docs: 프로젝트 작업 컨벤션 작성-S15P21A107-44
+[COMMON] docs: 프로젝트 작업 컨벤션 작성-S15P21A107-44
 ~~~
 
 작성 규칙:
