@@ -3,7 +3,6 @@ package com.ssafy.a107.auth.service;
 import com.ssafy.a107.auth.config.SsafyOAuth2Properties;
 import com.ssafy.a107.auth.service.port.SsafyAuthClient;
 import com.ssafy.a107.auth.service.port.SsafyUserInfo;
-import com.ssafy.a107.auth.controller.response.LoginResponse;
 import com.ssafy.a107.auth.jwt.IssuedAccessToken;
 import com.ssafy.a107.auth.jwt.JwtTokenProvider;
 import com.ssafy.a107.common.exception.ApiErrorCode;
@@ -73,7 +72,7 @@ class AuthCommandServiceTest {
                 .contains("redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fauth%2Fssafy%2Fcallback");
     }
 
-    @DisplayName("인가 코드로 로그인하면 서비스 액세스 토큰과 회원 정보를 반환한다")
+    @DisplayName("인가 코드로 로그인하면 서비스 액세스 토큰을 발급한다")
     @Test
     void login() {
         given(ssafyAuthClient.exchangeAuthorizationCode("authorization-code")).willReturn("ssafy-access-token");
@@ -85,13 +84,10 @@ class AuthCommandServiceTest {
         given(jwtTokenProvider.issue(MEMBER_ID, NOW))
                 .willReturn(new IssuedAccessToken("service-access-token", NOW.plus(Duration.ofHours(1))));
 
-        LoginResponse response = authCommandService.login("authorization-code");
+        IssuedAccessToken accessToken = authCommandService.login("authorization-code");
 
-        assertThat(response.accessToken()).isEqualTo("service-access-token");
-        assertThat(response.accessTokenExpiresAt()).isEqualTo(NOW.plus(Duration.ofHours(1)));
-        assertThat(response.memberId()).isEqualTo(MEMBER_ID);
-        assertThat(response.displayName()).isEqualTo("가온");
-        assertThat(response.emailAddress()).isEqualTo("gaon@ssafy.com");
+        assertThat(accessToken.value()).isEqualTo("service-access-token");
+        assertThat(accessToken.expiresAt()).isEqualTo(NOW.plus(Duration.ofHours(1)));
     }
 
     @DisplayName("인가 코드가 비어 있으면 SSAFY를 호출하지 않고 거부한다")

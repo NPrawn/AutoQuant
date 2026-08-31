@@ -3,6 +3,7 @@ package com.ssafy.a107.auth.jwt;
 import com.ssafy.a107.common.exception.ApiException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
@@ -58,13 +59,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /* 브라우저는 httpOnly 쿠키로, 그 외 클라이언트는 Authorization 헤더로 토큰을 보낸다. 헤더를 우선한다. */
     private static String resolveAccessToken(HttpServletRequest request) {
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header == null || !header.startsWith(BEARER_PREFIX)) {
+        if (header != null && header.startsWith(BEARER_PREFIX)) {
+            String value = header.substring(BEARER_PREFIX.length()).trim();
+            if (!value.isEmpty()) {
+                return value;
+            }
+        }
+        return resolveCookieToken(request);
+    }
+
+    private static String resolveCookieToken(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
             return null;
         }
-
-        String value = header.substring(BEARER_PREFIX.length()).trim();
-        return value.isEmpty() ? null : value;
+        for (Cookie cookie : cookies) {
+            if (AccessTokenCookie.NAME.equals(cookie.getName())) {
+                String value = cookie.getValue();
+                return (value == null || value.isEmpty()) ? null : value;
+            }
+        }
+        return null;
     }
 }

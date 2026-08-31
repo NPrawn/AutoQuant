@@ -65,8 +65,10 @@ auth ────┘
 |---|---|---|
 | `SSAFY_CLIENT_ID` | 없음 | SSAFY project 사이트에서 발급받은 Client ID |
 | `SSAFY_CLIENT_SECRET` | 없음 | 토큰 발급 시 함께 보내는 비밀값 |
-| `SSAFY_REDIRECT_URI` | 없음 | 인가 코드를 받을 URL, SSAFY 사이트에 등록한 값과 같아야 한다 |
+| `SSAFY_REDIRECT_URI` | 없음 | 백엔드 콜백 URL, SSAFY 사이트에 등록한 값과 같아야 한다. 로컬은 `http://localhost:8080/auth/ssafy/callback` |
 | `JWT_SECRET` | 없음 | 서비스 액세스 토큰 서명 키, 32바이트 이상 |
+| `FRONTEND_BASE_URL` | `http://localhost:5173` | 로그인 완료 후 브라우저를 돌려보낼 프론트 주소 |
+| `AUTH_COOKIE_SECURE` | `false` | HTTPS 배포에서 `true` |
 | `SSAFY_BASE_URL` | `https://project.ssafy.com` | |
 | `SSAFY_TIMEOUT` | `5s` | |
 | `JWT_ISSUER` | `a107` | |
@@ -78,15 +80,15 @@ Client ID와 Client Secret은 SSAFY project 사이트의 [내 어플리케이션
 
 ## 인증
 
-SSAFY OAuth2 Authorization Code로 로그인하고, 서비스는 자체 JWT를 발급한다. SSAFY 액세스 토큰과 refresh token은 저장하지 않는다.
+SSAFY OAuth2 Authorization Code로 로그인한다. `client_secret`을 가진 서버가 리다이렉트를 직접 받는 confidential client 구조라서 인가 코드가 브라우저 JS에 노출되지 않는다. 로그인 성공 시 서비스 JWT를 httpOnly, SameSite=Lax 쿠키(`access_token`)로 심고 프론트로 302 리다이렉트하며, 실패 시 `{FRONTEND_BASE_URL}/login?error={오류 코드}`로 보낸다. SSAFY 액세스 토큰과 refresh token은 저장하지 않는다.
 
 | 메서드 | 경로 | 인증 | 설명 |
 |---|---|---|---|
 | GET | `/auth/ssafy/authorize-url` | 불필요 | SSAFY 로그인 화면으로 보낼 인가 URL |
-| POST | `/auth/ssafy/tokens` | 불필요 | 인가 코드를 서비스 액세스 토큰으로 교환, 미가입이면 가입 |
+| GET | `/auth/ssafy/callback` | 불필요 | SSAFY가 인가 코드를 보내는 콜백, 쿠키를 심고 프론트로 리다이렉트 |
 | GET | `/members/me` | 필요 | 인증 주체로 본인 정보 조회 |
 
-보호된 API는 `Authorization: Bearer {accessToken}` 헤더를 받는다. 회원 식별자는 요청 본문이 아니라 인증 주체에서 꺼낸다.
+보호된 API는 토큰 쿠키 또는 `Authorization: Bearer {accessToken}` 헤더를 받는다. 브라우저는 쿠키가 자동으로 실리므로 프론트가 토큰을 저장할 필요가 없다. 회원 식별자는 요청 본문이 아니라 인증 주체에서 꺼낸다.
 
 ## 종목 등록 API
 

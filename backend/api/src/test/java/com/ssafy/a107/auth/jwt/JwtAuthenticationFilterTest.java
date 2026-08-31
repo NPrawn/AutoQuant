@@ -52,6 +52,26 @@ class JwtAuthenticationFilterTest {
         assertThat(response.getStatus()).isEqualTo(200);
     }
 
+    @DisplayName("httpOnly 쿠키의 토큰으로도 인증된다")
+    @Test
+    void authenticateWithCookieToken() throws Exception {
+        UUID memberId = UUID.randomUUID();
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/members/me");
+        request.setCookies(new jakarta.servlet.http.Cookie(
+                AccessTokenCookie.NAME,
+                tokenProvider.issue(memberId, Instant.now()).value()
+        ));
+        MockFilterChain filterChain = new MockFilterChain();
+
+        filter.doFilter(request, new MockHttpServletResponse(), filterChain);
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        assertThat(authentication).isNotNull();
+        assertThat(authentication.getPrincipal()).isEqualTo(new MemberPrincipal(memberId));
+        assertThat(filterChain.getRequest()).isNotNull();
+    }
+
     @DisplayName("토큰이 없으면 인증하지 않고 다음 필터로 넘긴다")
     @Test
     void passThroughWithoutToken() throws Exception {

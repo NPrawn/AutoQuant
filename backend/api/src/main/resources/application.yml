@@ -52,3 +52,8 @@ jwt:
   secret: ${JWT_SECRET}
   issuer: ${JWT_ISSUER:a107}
   access-token-validity: ${JWT_ACCESS_TOKEN_VALIDITY:1h}
+
+# 로그인 완료 후 브라우저를 돌려보낼 프론트 주소와 토큰 쿠키 설정. HTTPS 배포에서는 cookie-secure 를 켠다.
+auth:
+  frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  cookie-secure: ${AUTH_COOKIE_SECURE:false}
