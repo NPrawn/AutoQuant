@@ -13,7 +13,7 @@
 backend/
 ├─ api/
 │  ├─ build.gradle · settings.gradle · gradlew
-│  └─ src/main/java/com/ssafy/a107/{common,auth,candle,trading}
+│  └─ src/main/java/com/ssafy/a107/{common,member,asset,candle,auth,trading}
 └─ ingest/
    ├─ go.mod
    ├─ cmd/{producer,consumer,backfill}
@@ -37,7 +37,8 @@ backend/
 | 계약 | 쓰는 쪽 | 읽는 쪽 |
 |---|---|---|
 | Redis 키/값 포맷 | `ingest/internal/redis` | `api` 의 `cache` 패키지 |
-| DB 스키마 | `ingest/internal/store` (INSERT만) | `api` 의 `domain` 패키지 |
+| 확정 분봉 DB 스키마 | `ingest/internal/store` (INSERT만) | `api` 의 `candle` 패키지 |
+| 자산·수집 대상 DB 스키마 | `api` 의 `asset` 패키지 | `ingest` Producer 연동 예정 |
 
 **컴파일러가 잡아주지 못하는 계약이다.** 한쪽만 바꾸면 런타임에 조용히 깨지므로 항상 같은 커밋에서 양쪽을 함께 수정한다. 스키마 변경은 `api/src/main/resources/db/migration`에 SQL을 추가한 뒤 Go 쪽 쿼리를 맞춘다.
 
