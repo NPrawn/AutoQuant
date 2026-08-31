@@ -150,7 +150,7 @@ pipeline {
 
                     export IMAGE_TAG
                     docker compose --env-file "$PRODUCTION_ENV_FILE" \
-                      -f "$PRODUCTION_COMPOSE" up -d --pull never --remove-orphans
+                      -f "$PRODUCTION_COMPOSE" up -d --pull missing --remove-orphans
                 '''
             }
         }
