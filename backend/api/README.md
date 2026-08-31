@@ -57,6 +57,38 @@ auth ────┘
 4. **`candle`과 `trading`은 서로를 참조하지 않는다.**
 5. **확정 분봉은 Go consumer만 쓴다.**
 
+## 환경변수
+
+기본값이 없는 값은 비어 있으면 애플리케이션이 기동되지 않는다. `.env`나 실행 환경에서만 주입하고 저장소에 커밋하지 않는다.
+
+| 이름 | 기본값 | 설명 |
+|---|---|---|
+| `SSAFY_CLIENT_ID` | 없음 | SSAFY project 사이트에서 발급받은 Client ID |
+| `SSAFY_CLIENT_SECRET` | 없음 | 토큰 발급 시 함께 보내는 비밀값 |
+| `SSAFY_REDIRECT_URI` | 없음 | 인가 코드를 받을 URL, SSAFY 사이트에 등록한 값과 같아야 한다 |
+| `JWT_SECRET` | 없음 | 서비스 액세스 토큰 서명 키, 32바이트 이상 |
+| `SSAFY_AUTHORIZE_URL` | `https://project.ssafy.com/oauth/sso-check` | |
+| `SSAFY_TOKEN_URL` | `https://project.ssafy.com/ssafy/oauth2/token` | |
+| `SSAFY_USER_INFO_URL` | `https://project.ssafy.com/ssafy/resources/userInfo` | |
+| `JWT_ISSUER` | `a107` | |
+| `JWT_ACCESS_TOKEN_VALIDITY` | `1h` | |
+| `SSAFY_CONNECT_TIMEOUT` | `3s` | |
+| `SSAFY_READ_TIMEOUT` | `5s` | |
+
+Client ID와 Client Secret은 SSAFY project 사이트의 [내 어플리케이션] > [서비스 설정] > [SSAFY 로그인]에서 확인하고, Redirect URI도 같은 화면에 등록한다.
+
+## 인증
+
+SSAFY OAuth2 Authorization Code로 로그인하고, 서비스는 자체 JWT를 발급한다. SSAFY 액세스 토큰과 refresh token은 저장하지 않는다.
+
+| 메서드 | 경로 | 인증 | 설명 |
+|---|---|---|---|
+| GET | `/auth/ssafy/authorize-url` | 불필요 | SSAFY 로그인 화면으로 보낼 인가 URL |
+| POST | `/auth/ssafy/tokens` | 불필요 | 인가 코드를 서비스 액세스 토큰으로 교환, 미가입이면 가입 |
+| GET | `/members/me` | 필요 | 인증 주체로 본인 정보 조회 |
+
+보호된 API는 `Authorization: Bearer {accessToken}` 헤더를 받는다. 회원 식별자는 요청 본문이 아니라 인증 주체에서 꺼낸다.
+
 ## 명령
 
 ```bash
