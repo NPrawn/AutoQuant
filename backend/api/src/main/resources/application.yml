@@ -30,17 +30,22 @@ server:
 ai:
   base-url: ${AI_BASE_URL:http://localhost:8000}
 
+# Upbit 공개 시세 API
+upbit:
+  base-url: ${UPBIT_BASE_URL:https://api.upbit.com}
+  timeout: ${UPBIT_TIMEOUT:5s}
+
 # SSAFY OAuth2 인증 서버. client-id 와 client-secret 은 기본값을 두지 않아 값이 없으면 기동이 실패한다.
 ssafy:
   oauth2:
+    base-url: ${SSAFY_BASE_URL:https://project.ssafy.com}
     client-id: ${SSAFY_CLIENT_ID}
     client-secret: ${SSAFY_CLIENT_SECRET}
     redirect-uri: ${SSAFY_REDIRECT_URI}
-    authorize-url: ${SSAFY_AUTHORIZE_URL:https://project.ssafy.com/oauth/sso-check}
-    token-url: ${SSAFY_TOKEN_URL:https://project.ssafy.com/ssafy/oauth2/token}
-    user-info-url: ${SSAFY_USER_INFO_URL:https://project.ssafy.com/ssafy/resources/userInfo}
-    connect-timeout: ${SSAFY_CONNECT_TIMEOUT:3s}
-    read-timeout: ${SSAFY_READ_TIMEOUT:5s}
+    authorize-path: ${SSAFY_AUTHORIZE_PATH:/oauth/sso-check}
+    token-path: ${SSAFY_TOKEN_PATH:/ssafy/oauth2/token}
+    user-info-path: ${SSAFY_USER_INFO_PATH:/ssafy/resources/userInfo}
+    timeout: ${SSAFY_TIMEOUT:5s}
 
 # 서비스 자체 액세스 토큰. secret 은 HS256 최소 길이인 32바이트 이상이어야 한다.
 jwt:

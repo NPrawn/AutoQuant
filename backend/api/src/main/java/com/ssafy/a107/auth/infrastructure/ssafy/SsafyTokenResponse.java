@@ -1,4 +1,4 @@
-package com.ssafy.a107.auth.client;
+package com.ssafy.a107.auth.infrastructure.ssafy;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;

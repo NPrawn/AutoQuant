@@ -2,6 +2,7 @@ package com.ssafy.a107.auth.config;
 
 import com.ssafy.a107.auth.jwt.ApiAuthenticationEntryPoint;
 import com.ssafy.a107.auth.jwt.JwtAuthenticationFilter;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -13,6 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
     /* 로그인과 인가 URL 발급은 토큰을 받기 전에 호출되므로 인증에서 제외한다. */

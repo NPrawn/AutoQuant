@@ -28,7 +28,13 @@ public enum ApiErrorCode {
     // 자산
     ASSET_INVALID_MARKET_INFORMATION(HttpStatus.BAD_REQUEST, "ASSET-400-001", "거래 자산의 마켓 정보가 올바르지 않습니다."),
     ASSET_INVALID_TRADING_PERIOD(HttpStatus.BAD_REQUEST, "ASSET-400-002", "거래지원 기간이 올바르지 않습니다."),
+    ASSET_INVALID_MARKET_CODE(HttpStatus.BAD_REQUEST, "ASSET-400-003", "거래소 마켓 코드 형식이 올바르지 않습니다."),
+    ASSET_UNSUPPORTED_QUOTE_CURRENCY(HttpStatus.BAD_REQUEST, "ASSET-400-004", "현재 지원하지 않는 가격 표시 통화입니다."),
+    ASSET_NOT_SUPPORTED_BY_EXCHANGE(HttpStatus.NOT_FOUND, "ASSET-404-001", "거래소에서 지원하는 종목을 찾을 수 없습니다."),
     ASSET_INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "ASSET-409-001", "현재 거래지원 상태에서는 요청한 상태로 변경할 수 없습니다."),
+    ASSET_ALREADY_EXISTS(HttpStatus.CONFLICT, "ASSET-409-002", "이미 등록된 거래 자산입니다."),
+    ASSET_EXCHANGE_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "ASSET-502-001", "거래소 응답을 처리할 수 없습니다."),
+    ASSET_EXCHANGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "ASSET-503-001", "거래소 정보를 일시적으로 조회할 수 없습니다."),
 
     // 캔들
     CANDLE_INVALID_INTERVAL(HttpStatus.BAD_REQUEST, "CANDLE-400-001", "분봉 간격은 1 이상 32767 이하여야 합니다."),

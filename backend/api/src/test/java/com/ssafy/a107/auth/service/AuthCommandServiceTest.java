@@ -1,8 +1,8 @@
 package com.ssafy.a107.auth.service;
 
-import com.ssafy.a107.auth.client.SsafyAuthClient;
-import com.ssafy.a107.auth.client.SsafyUserInfo;
 import com.ssafy.a107.auth.config.SsafyOAuth2Properties;
+import com.ssafy.a107.auth.service.port.SsafyAuthClient;
+import com.ssafy.a107.auth.service.port.SsafyUserInfo;
 import com.ssafy.a107.auth.controller.response.LoginResponse;
 import com.ssafy.a107.auth.jwt.IssuedAccessToken;
 import com.ssafy.a107.auth.jwt.JwtTokenProvider;
@@ -145,13 +145,13 @@ class AuthCommandServiceTest {
 
     private static SsafyOAuth2Properties properties() {
         return new SsafyOAuth2Properties(
+                "https://project.ssafy.com",
                 "client-id",
                 "client-secret",
                 "http://localhost:5173/auth/ssafy/callback",
-                "https://project.ssafy.com/oauth/sso-check",
-                "https://project.ssafy.com/ssafy/oauth2/token",
-                "https://project.ssafy.com/ssafy/resources/userInfo",
-                Duration.ofSeconds(3),
+                "/oauth/sso-check",
+                "/ssafy/oauth2/token",
+                "/ssafy/resources/userInfo",
                 Duration.ofSeconds(5)
         );
     }

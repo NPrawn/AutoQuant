@@ -1,0 +1,20 @@
+FROM golang:1.26-bookworm AS build
+
+WORKDIR /src
+
+COPY go.mod ./
+COPY cmd cmd
+COPY internal internal
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+    go build -trimpath -ldflags='-s -w' -o /out/producer ./cmd/producer \
+    && go build -trimpath -ldflags='-s -w' -o /out/consumer ./cmd/consumer \
+    && go build -trimpath -ldflags='-s -w' -o /out/backfill ./cmd/backfill
+
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY --from=build /out /app
+
+WORKDIR /app
+
+ENTRYPOINT ["/app/producer"]

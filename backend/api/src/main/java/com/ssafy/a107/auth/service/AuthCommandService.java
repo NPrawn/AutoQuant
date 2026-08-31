@@ -1,8 +1,8 @@
 package com.ssafy.a107.auth.service;
 
-import com.ssafy.a107.auth.client.SsafyAuthClient;
-import com.ssafy.a107.auth.client.SsafyUserInfo;
 import com.ssafy.a107.auth.config.SsafyOAuth2Properties;
+import com.ssafy.a107.auth.service.port.SsafyAuthClient;
+import com.ssafy.a107.auth.service.port.SsafyUserInfo;
 import com.ssafy.a107.auth.controller.response.LoginResponse;
 import com.ssafy.a107.auth.controller.response.SsafyAuthorizeUrlResponse;
 import com.ssafy.a107.auth.jwt.IssuedAccessToken;
@@ -48,7 +48,8 @@ public class AuthCommandService {
 
     public SsafyAuthorizeUrlResponse createAuthorizeUrl() {
         // redirect_uri 의 콜론과 슬래시는 쿼리에서 합법이라 기본 인코딩으로는 남는다. 값을 직접 인코딩해서 넘긴다.
-        String authorizeUrl = UriComponentsBuilder.fromUriString(properties.authorizeUrl())
+        String authorizeUrl = UriComponentsBuilder.fromUriString(properties.baseUrl())
+                .path(properties.authorizePath())
                 .queryParam("client_id", encode(properties.clientId()))
                 .queryParam("redirect_uri", encode(properties.redirectUri()))
                 .queryParam("response_type", RESPONSE_TYPE_CODE)

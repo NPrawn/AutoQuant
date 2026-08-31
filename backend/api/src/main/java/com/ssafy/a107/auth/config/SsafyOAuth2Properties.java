@@ -1,5 +1,6 @@
 package com.ssafy.a107.auth.config;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -11,13 +12,33 @@ import java.time.Duration;
 @Validated
 @ConfigurationProperties(prefix = "ssafy.oauth2")
 public record SsafyOAuth2Properties(
-        @NotBlank String clientId,
-        @NotBlank String clientSecret,
-        @NotBlank String redirectUri,
-        @NotBlank String authorizeUrl,
-        @NotBlank String tokenUrl,
-        @NotBlank String userInfoUrl,
-        @NotNull Duration connectTimeout,
-        @NotNull Duration readTimeout
+        @NotBlank
+        String baseUrl,
+
+        @NotBlank
+        String clientId,
+
+        @NotBlank
+        String clientSecret,
+
+        @NotBlank
+        String redirectUri,
+
+        @NotBlank
+        String authorizePath,
+
+        @NotBlank
+        String tokenPath,
+
+        @NotBlank
+        String userInfoPath,
+
+        @NotNull
+        Duration timeout
 ) {
+
+    @AssertTrue(message = "SSAFY timeout은 0보다 커야 합니다.")
+    public boolean isTimeoutPositive() {
+        return timeout == null || (!timeout.isZero() && !timeout.isNegative());
+    }
 }

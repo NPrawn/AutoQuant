@@ -1,4 +1,4 @@
-package com.ssafy.a107.auth.client;
+package com.ssafy.a107.auth.service.port;
 
 /* SSAFY 인증 서버와 통신하는 유일한 통로. 구현체만 HTTP 를 안다. */
 public interface SsafyAuthClient {

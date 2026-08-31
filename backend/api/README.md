@@ -11,7 +11,7 @@ src/main/java/com/ssafy/a107/
 ├─ A107Application.java     @SpringBootApplication   :8080
 ├─ common/                  공통 엔티티 · 예외 처리
 ├─ member/                  서비스 회원 계정
-├─ asset/                   거래소의 거래 자산 기준 정보
+├─ asset/                   거래소 종목 기준 정보 · 수집 대상 등록 API
 ├─ auth/                    JWT 발급 · 검증
 ├─ candle/                  확정 분봉 도메인 · 조회
 └─ trading/                 모의투자 · 백테스팅
@@ -67,13 +67,12 @@ auth ────┘
 | `SSAFY_CLIENT_SECRET` | 없음 | 토큰 발급 시 함께 보내는 비밀값 |
 | `SSAFY_REDIRECT_URI` | 없음 | 인가 코드를 받을 URL, SSAFY 사이트에 등록한 값과 같아야 한다 |
 | `JWT_SECRET` | 없음 | 서비스 액세스 토큰 서명 키, 32바이트 이상 |
-| `SSAFY_AUTHORIZE_URL` | `https://project.ssafy.com/oauth/sso-check` | |
-| `SSAFY_TOKEN_URL` | `https://project.ssafy.com/ssafy/oauth2/token` | |
-| `SSAFY_USER_INFO_URL` | `https://project.ssafy.com/ssafy/resources/userInfo` | |
+| `SSAFY_BASE_URL` | `https://project.ssafy.com` | |
+| `SSAFY_TIMEOUT` | `5s` | |
 | `JWT_ISSUER` | `a107` | |
 | `JWT_ACCESS_TOKEN_VALIDITY` | `1h` | |
-| `SSAFY_CONNECT_TIMEOUT` | `3s` | |
-| `SSAFY_READ_TIMEOUT` | `5s` | |
+| `UPBIT_BASE_URL` | `https://api.upbit.com` | |
+| `UPBIT_TIMEOUT` | `5s` | |
 
 Client ID와 Client Secret은 SSAFY project 사이트의 [내 어플리케이션] > [서비스 설정] > [SSAFY 로그인]에서 확인하고, Redirect URI도 같은 화면에 등록한다.
 
@@ -89,10 +88,31 @@ SSAFY OAuth2 Authorization Code로 로그인하고, 서비스는 자체 JWT를 �
 
 보호된 API는 `Authorization: Bearer {accessToken}` 헤더를 받는다. 회원 식별자는 요청 본문이 아니라 인증 주체에서 꺼낸다.
 
+## 종목 등록 API
+
+```http
+POST /api/admin/assets
+```
+
+요청에는 `exchange`와 `exchangeMarketCode`만 받는다. API가 Upbit 공개 페어 목록에서 실제 거래지원 여부와 종목명을 검증한 뒤 `reference.asset`과 `ops.market_data_collection_target`을 함께 저장한다.
+
+`collectionStatus=ENABLED`는 수집 대상으로 등록됐다는 뜻이며 실제 Go Producer의 WebSocket 구독 완료 상태는 아니다. Go Producer 연동 전까지 이 테이블은 API가 기록하는 희망 상태만 표현한다.
+
+## API 문서
+
+Controller 테스트는 `RestAssuredMockMvc`로 실행하고 REST Docs 리소스 스니펫을 생성한다. 성공·오류 응답은 각각 문서화하며 `openapi3` 작업이 동일 API의 응답들을 하나의 OpenAPI 3 YAML로 합친다.
+
+```bash
+./gradlew openapi3
+```
+
+산출물은 `build/api-spec/openapi.yaml`이며 Swagger Editor와 Swagger UI에서 바로 읽을 수 있다. stale snippet이 남지 않도록 최종 문서는 `./gradlew clean openapi3`으로 생성하며 `build/` 생성물은 커밋하지 않는다.
+
 ## 명령
 
 ```bash
 ./gradlew build      # 컴파일 + 테스트
+./gradlew openapi3   # 테스트 기반 OpenAPI 3 YAML 생성
 ./gradlew bootRun    # :8080
 ./gradlew dependencies --configuration compileClasspath
 ```
