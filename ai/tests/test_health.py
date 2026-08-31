@@ -46,8 +46,12 @@ def test_request_id_header_is_generated_when_absent(monkeypatch):
     assert UUID(response.headers["X-Request-ID"])
 
 
-def test_ready_reports_unavailable_before_prompt_files_exist(monkeypatch):
-    response = create_client(monkeypatch).get("/health/ready")
+def test_ready_reports_unavailable_before_prompt_files_exist(monkeypatch, tmp_path):
+    client = create_client(monkeypatch)
+    health = importlib.import_module("app.api.v1.health")
+    monkeypatch.setattr(health, "PROMPTS_DIRECTORY", tmp_path)
+
+    response = client.get("/health/ready")
 
     assert response.status_code == 503
 

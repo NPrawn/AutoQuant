@@ -1,0 +1,7 @@
+Update the current strategy according to the user's request. Preserve information that the request does not change, and record newly chosen values in assumptions when details are missing.
+
+Current strategy:
+{{current_strategy}}
+
+User request:
+{{user_input}}
