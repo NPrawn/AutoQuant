@@ -14,13 +14,15 @@ DSL 스키마(`app/core/schema.py`), 프롬프트 본문, LLM 호출은 **이 �
 
 작업 디렉토리는 저장소 `S15P21A107`의 `ai/`다. 지금은 플레이스홀더 README 하나뿐이다.
 
+**브랜치는 Jira 자동화가 만든다.** 스토리 티켓을 만들면 `develop`에서 `feat/<이슈번호>` 브랜치가 함께 생긴다 (예: 스토리 `S15P21A107-3` → `feat/3`). 손으로 만들지 말고 그것을 받아 쓴다.
+
 ```bash
-git checkout develop
-git pull
-git checkout -b feat/ai-server/A-1
+git fetch
+git checkout feat/3
 ```
 
-- 브랜치는 `feat/ai-server/<작업ID>` 형식. `develop`에서 분기한다
+- **하위 작업마다 브랜치를 파지 않는다.** 스토리 하나에 브랜치 하나, 하위 작업은 커밋 하나씩이다. 하위 작업은 대개 같은 파일을 순서대로 고쳐서, 쪼개면 리베이스 비용만 는다
+- 자동 생성이 안 됐으면 같은 형식으로 직접 만든다. 마디를 더 늘리지 않는다
 - `main`/`master`/`develop`에 직접 푸시하지 않는다
 - 완료 보고에 커밋 SHA를 포함한다. SHA 없는 보고는 반려한다
 
