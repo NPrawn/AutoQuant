@@ -1,0 +1,7 @@
+.git
+*.log
+producer
+consumer
+backfill
+*.exe
+*.test

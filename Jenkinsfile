@@ -12,6 +12,7 @@ pipeline {
         IMAGE_PREFIX = 'lab.ssafy.com:5050/s15-fintech-finance-sub1/s15p21a107'
         REGISTRY_CREDENTIALS = 'gitlab-registry'
         PRODUCTION_COMPOSE = 'infra/docker-compose.prod.yml'
+        PRODUCTION_ENV_FILE = '/etc/a107/.env.production'
     }
 
     stages {
@@ -177,13 +178,19 @@ pipeline {
                             echo "Required deployment file is missing: $PRODUCTION_COMPOSE"
                             exit 1
                         fi
+                        if [ ! -f "$PRODUCTION_ENV_FILE" ]; then
+                            echo "Required production environment file is missing: $PRODUCTION_ENV_FILE"
+                            exit 1
+                        fi
 
                         printf '%s' "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" \
                           --username "$REGISTRY_USERNAME" --password-stdin
 
                         export IMAGE_TAG
-                        docker compose -f "$PRODUCTION_COMPOSE" pull
-                        docker compose -f "$PRODUCTION_COMPOSE" up -d --remove-orphans
+                        docker compose --env-file "$PRODUCTION_ENV_FILE" \
+                          -f "$PRODUCTION_COMPOSE" pull
+                        docker compose --env-file "$PRODUCTION_ENV_FILE" \
+                          -f "$PRODUCTION_COMPOSE" up -d --remove-orphans
                     '''
                 }
             }
