@@ -1,7 +1,7 @@
 # ingest
 
 > Upbit 데이터 수집 · 적재 파이프라인. Go 모듈 하나에서 바이너리 3개를 만든다.
-> 실행 파이프라인은 아직 구현 전이며, 공통 도메인과 오류 처리 기반만 있는 상태다.
+> 현재 Producer는 DB 수집 대상을 감지해 Upbit 체결 스트림을 수신한다. Kafka 발행은 아직 구현하지 않았다.
 
 JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리의 존재를 모른다 (Gradle 프로젝트는 형제 디렉토리 `../api` 에 있음). 결합은 런타임에만 존재하며, 그 접점은 두 개다 — Redis 키/값 포맷과 DB 스키마.
 
@@ -9,7 +9,7 @@ JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리�
 
 | 바이너리 | 역할 | 실행 형태 |
 |---|---|---|
-| `cmd/producer` | Upbit WebSocket 구독 → Kafka 발행 | 상시 실행 |
+| `cmd/producer` | DB 수집 대상 감지 → Upbit WebSocket 체결 수신 | 상시 실행 |
 | `cmd/consumer` | Kafka 소비 → Redis 진행 봉 갱신 + PostgreSQL 확정 분봉 적재 | 상시 실행 |
 | `cmd/backfill` | Upbit REST 조회 → Kafka 누락 이벤트 발행 | 주기 실행 · 일회성 |
 
@@ -26,12 +26,16 @@ ingest/
 ├─ internal/             모듈 외부에서 import 불가 (Go 툴체인이 강제)
 │  ├─ common/domain/        공통 생성·수정 시각
 │  ├─ common/exception/     오류 코드·원인 보존·재시도 정책
+│  ├─ asset/domain/         시장 데이터 수집 대상
 │  ├─ candle/domain/        확정 MinuteCandle
+│  ├─ trade/domain/         실시간 MarketTrade
+│  ├─ producer/             수집 대상 변경 감지
 │  ├─ upbit/               WebSocket · REST 클라이언트, 재연결, 페이로드 파싱
 │  ├─ kafka/               토픽 상수, 메시지 구조체, 프로듀서 · 컨슈머 래퍼
 │  ├─ redis/               캐시 키 규칙, 쓰기          ← Go↔JVM 계약의 원본
-│  ├─ store/               PostgreSQL 확정 분봉 UPSERT ← DB 스키마 계약
+│  ├─ store/               PostgreSQL 수집 대상 조회·확정 분봉 UPSERT
 │  └─ config/              환경변수 로드
+├─ tests/                기능별 외부 패키지 테스트와 testdata
 └─ go.mod
 ```
 
@@ -65,6 +69,8 @@ ingest/
 5. **확정 분봉은 `reference.asset.asset_id` UUID를 문자열로 전달한다.** 거래소 마켓 코드를 DB 내부 식별자로 직접 사용하지 않는다.
 
 ## 명령
+
+Producer 실행에는 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`가 필요하다. `UPBIT_WEBSOCKET_URL`과 `COLLECTION_TARGET_REFRESH_INTERVAL`은 선택 설정이며 기본값은 각각 Upbit 공식 WebSocket 주소와 `5s`다.
 
 ```bash
 go build ./...            # 3개 바이너리 컴파일 확인

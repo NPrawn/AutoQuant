@@ -1,0 +1,10 @@
+{
+  "type": "trade",
+  "code": "KRW-BTC",
+  "trade_price": 159324000.00000000,
+  "trade_volume": 0.00012345,
+  "ask_bid": "BID",
+  "trade_timestamp": 1788134400123,
+  "sequential_id": 1788134400123000,
+  "stream_type": "REALTIME"
+}
