@@ -1,0 +1,4 @@
+Create a new strategy from the user's request. Do not reject an incomplete request; choose needed values and state those choices in assumptions.
+
+User request:
+{{user_input}}

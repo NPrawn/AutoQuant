@@ -22,7 +22,9 @@ git은 하위 디렉토리에서도 `.git`을 위로 찾으므로 브랜치·커
 
 | 파일 | 언제 |
 |---|---|
-| [docs/HANDOFF-A.md](docs/HANDOFF-A.md) | 지금 티켓을 잡았을 때 |
+| [docs/HANDOFF-B.md](docs/HANDOFF-B.md) | 지금 티켓을 잡았을 때 |
+| [docs/HANDOFF-A.md](docs/HANDOFF-A.md) | 기반·오류·로깅이 왜 이렇게 생겼는지 (완료 구간) |
+| [../docs/git-convention.md](../docs/git-convention.md) | 브랜치·커밋·MR·티켓 형식. **Git 작업 전에** |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | "왜 A가 아니라 B인가" |
 | [docs/TASKS.md](docs/TASKS.md) | 무엇을 어느 순서로 |
 | [docs/PLAN.md](docs/PLAN.md) | 전체 구조가 왜 이런지 |
@@ -148,16 +150,23 @@ uvicorn app.main:app --reload
 
 ## 브랜치와 커밋
 
-저장소 공통 정본인 [`../docs/git-convention.md`](../docs/git-convention.md)를 따른다. AI 모듈만의 별도 브랜치·커밋 형식을 만들지 않는다.
+저장소 공통 정본인 [`../docs/git-convention.md`](../docs/git-convention.md)를 따른다. **Git 작업 전에 그 문서를 읽는다.** AI 모듈만의 별도 브랜치·커밋 형식을 만들지 않고, 정본의 규칙을 이 파일에 복제하지도 않는다.
 
-- 완료 보고에 커밋 SHA를 포함한다. SHA 없는 보고는 반려한다.
-- 각 티켓의 완료 조건에 적힌 명령이 실제로 통과해야 완료다.
+AI 파트에만 해당하는 것 셋.
+
+- 영역 태그는 `AI`다. 티켓 제목과 MR 제목에 쓴다.
+- 스토리 티켓을 만들면 Jira 자동화가 브랜치를 함께 만든다. 손으로 만들지 말고 `git fetch` 후 받아 쓴다.
+- **하위 작업마다 브랜치를 만들지 않는다.** 스토리 하나에 브랜치 하나, 하위 작업은 커밋 하나씩이다. Epic A+C를 티켓 8건·브랜치 하나·커밋 9개로 처리해 잘 돌아갔고, 하위 작업들은 대개 같은 파일을 순서대로 고쳐서 쪼개면 리베이스 비용만 는다.
+
+완료 보고에 커밋 SHA를 포함한다. SHA 없는 보고는 반려한다. 각 티켓의 완료 조건에 적힌 명령이 실제로 통과해야 완료다.
 
 ## Jira
 
 프로젝트 `S15P21A107`, 에픽 [S15P21A107-12](https://ssafy.atlassian.net/browse/S15P21A107-12).
 
-하위 작업 요약은 `docs/TASKS.md`의 작업 ID로 시작한다 (예: `A-1 프로젝트 초기화`). 보드와 문서가 갈라지지 않게 하려는 것이다.
+티켓 제목과 설명 구조는 [`../docs/git-convention.md`](../docs/git-convention.md) 1절을 따른다. 제목은 `[AI] 대상과 작업 내용`이고 Jira 키를 제목에 쓰지 않는다. 설명은 `## 목적` / `## 작업 내용` / `## 완료 조건`이 최소 구조다.
+
+**`docs/TASKS.md`의 작업 ID(`E-1` 등)는 제목이 아니라 설명 본문에 적는다.** 정본 형식이 제목 앞자리를 영역 태그에 쓰기 때문이다. 보드와 문서는 본문에서 이 ID로 연결한다.
 
 **에픽 `S15P21A107-12` 밖의 티켓은 읽기만 한다.** 수정·삭제·상태 변경·담당자 변경 금지. 담당자가 비어 있어도 마찬가지다.
 

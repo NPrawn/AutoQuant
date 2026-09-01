@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+from contextlib import asynccontextmanager
 from time import perf_counter
 from uuid import uuid4
 
@@ -14,10 +15,17 @@ from app.core.logging import (
     reset_request_id,
     set_request_id,
 )
+from app.services.prompt_builder import load_prompt_templates
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    load_prompt_templates()
+    yield
 
 
 configure_logging(settings.log_level)
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 register_exception_handlers(app)
 app.include_router(health_router)
 

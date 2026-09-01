@@ -1,0 +1,7 @@
+Revise the previous output so it satisfies the validation errors. Keep the result within the supplied schema and record newly chosen values in assumptions.
+
+Previous output:
+{{previous_output}}
+
+Validation errors:
+{{validation_errors}}

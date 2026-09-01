@@ -4,6 +4,7 @@ import sys
 from uuid import UUID
 
 from fastapi.testclient import TestClient
+import pytest
 
 
 def create_client(monkeypatch):
@@ -45,17 +46,46 @@ def test_request_id_header_is_generated_when_absent(monkeypatch):
     assert UUID(response.headers["X-Request-ID"])
 
 
-def test_ready_reports_unavailable_before_prompt_files_exist(monkeypatch):
-    response = create_client(monkeypatch).get("/health/ready")
+def test_ready_reports_unavailable_before_prompt_loader_initializes(monkeypatch):
+    client = create_client(monkeypatch)
+    health = importlib.import_module("app.api.v1.health")
+    monkeypatch.setattr(health, "prompts_loaded", lambda: False)
+
+    response = client.get("/health/ready")
 
     assert response.status_code == 503
 
 
-def test_ready_reports_available_when_prompt_files_exist(monkeypatch, tmp_path):
+def test_ready_reports_available_after_prompt_loader_initializes(monkeypatch):
     client = create_client(monkeypatch)
-    monkeypatch.setattr("app.api.v1.health.PROMPTS_DIRECTORY", tmp_path)
-    (tmp_path / "system.txt").write_text("system prompt", encoding="utf-8")
+    health = importlib.import_module("app.api.v1.health")
+    monkeypatch.setattr(health, "prompts_loaded", lambda: True)
 
     response = client.get("/health/ready")
 
     assert response.status_code == 200
+
+
+def test_startup_fails_when_prompt_files_are_missing(monkeypatch, tmp_path):
+    for module_name in (
+        "app.main",
+        "app.api.v1.health",
+        "app.core.config",
+        "app.services.prompt_builder",
+    ):
+        sys.modules.pop(module_name, None)
+    for name, value in {
+        "LLM_BASE_URL": "https://gms.ssafy.io/gmsapi/api.openai.com/v1",
+        "LLM_API_KEY": "test-secret-key",
+        "LLM_MODEL": "gpt-5.4-mini",
+        "APP_ENV": "test",
+    }.items():
+        monkeypatch.setenv(name, value)
+
+    app = importlib.import_module("app.main").app
+    prompt_builder = importlib.import_module("app.services.prompt_builder")
+    monkeypatch.setattr(prompt_builder, "PROMPTS_DIRECTORY", tmp_path)
+
+    with pytest.raises(FileNotFoundError, match="No prompt files found"):
+        with TestClient(app):
+            pass
