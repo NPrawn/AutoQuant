@@ -7,7 +7,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 
 from app.api.error_handlers import register_exception_handlers
-from app.api.v1.health import load_prompt_templates, router as health_router
+from app.api.v1.health import router as health_router
 from app.core.config import settings
 from app.core.logging import (
     configure_logging,
@@ -15,6 +15,7 @@ from app.core.logging import (
     reset_request_id,
     set_request_id,
 )
+from app.services.prompt_builder import load_prompt_templates
 
 
 @asynccontextmanager

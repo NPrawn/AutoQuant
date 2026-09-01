@@ -46,20 +46,20 @@ def test_request_id_header_is_generated_when_absent(monkeypatch):
     assert UUID(response.headers["X-Request-ID"])
 
 
-def test_ready_reports_unavailable_before_prompt_files_exist(monkeypatch, tmp_path):
+def test_ready_reports_unavailable_before_prompt_loader_initializes(monkeypatch):
     client = create_client(monkeypatch)
     health = importlib.import_module("app.api.v1.health")
-    monkeypatch.setattr(health, "PROMPTS_DIRECTORY", tmp_path)
+    monkeypatch.setattr(health, "prompts_loaded", lambda: False)
 
     response = client.get("/health/ready")
 
     assert response.status_code == 503
 
 
-def test_ready_reports_available_when_prompt_files_exist(monkeypatch, tmp_path):
+def test_ready_reports_available_after_prompt_loader_initializes(monkeypatch):
     client = create_client(monkeypatch)
-    monkeypatch.setattr("app.api.v1.health.PROMPTS_DIRECTORY", tmp_path)
-    (tmp_path / "system.txt").write_text("system prompt", encoding="utf-8")
+    health = importlib.import_module("app.api.v1.health")
+    monkeypatch.setattr(health, "prompts_loaded", lambda: True)
 
     response = client.get("/health/ready")
 
@@ -83,7 +83,8 @@ def test_startup_fails_when_prompt_files_are_missing(monkeypatch, tmp_path):
         monkeypatch.setenv(name, value)
 
     app = importlib.import_module("app.main").app
-    monkeypatch.setattr("app.api.v1.health.PROMPTS_DIRECTORY", tmp_path)
+    prompt_builder = importlib.import_module("app.services.prompt_builder")
+    monkeypatch.setattr(prompt_builder, "PROMPTS_DIRECTORY", tmp_path)
 
     with pytest.raises(FileNotFoundError, match="No prompt files found"):
         with TestClient(app):

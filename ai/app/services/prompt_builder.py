@@ -6,6 +6,8 @@ import re
 
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{\{[^{}]+\}\}")
+PROMPTS_DIRECTORY = Path(__file__).parents[1] / "prompts"
+prompt_loader: "PromptLoader | None" = None
 
 
 class PromptLoader:
@@ -29,6 +31,24 @@ class PromptLoader:
     def get(self, name: str) -> str:
         """Return a cached template by its filename without extension."""
         return self._templates[name]
+
+
+def load_prompt_templates() -> None:
+    """Load the application prompt cache before accepting requests."""
+    global prompt_loader
+    prompt_loader = PromptLoader(PROMPTS_DIRECTORY)
+
+
+def prompts_loaded() -> bool:
+    """Return whether the application prompt cache is ready for use."""
+    return prompt_loader is not None
+
+
+def get_prompt_template(name: str) -> str:
+    """Return a template from the application prompt cache."""
+    if prompt_loader is None:
+        raise RuntimeError("Prompt templates have not been loaded")
+    return prompt_loader.get(name)
 
 
 def render_template(template: str, replacements: Mapping[str, str]) -> str:

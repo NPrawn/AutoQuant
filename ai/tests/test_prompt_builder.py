@@ -36,6 +36,22 @@ def test_loader_fails_when_no_prompt_file_exists(tmp_path):
         PromptLoader(tmp_path)
 
 
+def test_prompt_loader_state_is_owned_by_the_service(monkeypatch, tmp_path):
+    prompts_directory = tmp_path / "prompts"
+    prompts_directory.mkdir()
+    (prompts_directory / "system.txt").write_text("system prompt", encoding="utf-8")
+
+    from app.services import prompt_builder
+
+    monkeypatch.setattr(prompt_builder, "PROMPTS_DIRECTORY", prompts_directory)
+    monkeypatch.setattr(prompt_builder, "prompt_loader", None)
+
+    prompt_builder.load_prompt_templates()
+
+    assert prompt_builder.prompts_loaded() is True
+    assert prompt_builder.get_prompt_template("system") == "system prompt"
+
+
 def test_render_template_replaces_double_brace_placeholders():
     from app.services.prompt_builder import render_template
 
