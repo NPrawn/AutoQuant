@@ -1,6 +1,7 @@
 """Strategy DSL models and shared validation limits."""
 
 from enum import Enum
+import json
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -132,3 +133,8 @@ class Strategy(StrictModel):
         if any(period > max_period for period in periods):
             raise ValueError(f"Period must not exceed {max_period} for {self.timeframe.value}")
         return self
+
+
+def strategy_json_schema() -> str:
+    """Return the Strategy JSON Schema for structured LLM output."""
+    return json.dumps(Strategy.model_json_schema(), ensure_ascii=False)

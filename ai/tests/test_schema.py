@@ -1,4 +1,5 @@
 import pytest
+import json
 from pydantic import ValidationError
 
 
@@ -43,3 +44,11 @@ def test_period_uses_timeframe_specific_bounds(period):
     else:
         with pytest.raises(ValidationError):
             Strategy.model_validate(payload)
+
+
+def test_strategy_json_schema_includes_candle_period_description():
+    from app.core.schema import strategy_json_schema
+
+    schema = json.loads(strategy_json_schema())
+
+    assert "candles" in json.dumps(schema).lower()
