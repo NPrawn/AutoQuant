@@ -12,6 +12,7 @@ MAX_CONDITIONS = 5
 MAX_GROUP_CHILDREN = 5
 MAX_PERIOD_1H = 720
 MAX_PERIOD_4H = 540
+MAX_PERIOD_1D = 365
 MAX_TOP_N = 30
 
 
@@ -22,6 +23,7 @@ class StrictModel(BaseModel):
 class Timeframe(str, Enum):
     HOUR_1 = "1H"
     HOUR_4 = "4H"
+    DAY_1 = "1D"
 
 
 class FactorType(str, Enum):
@@ -110,7 +112,12 @@ class Strategy(StrictModel):
 
     @model_validator(mode="after")
     def validate_limits(self) -> "Strategy":
-        max_period = MAX_PERIOD_1H if self.timeframe is Timeframe.HOUR_1 else MAX_PERIOD_4H
+        max_periods = {
+            Timeframe.HOUR_1: MAX_PERIOD_1H,
+            Timeframe.HOUR_4: MAX_PERIOD_4H,
+            Timeframe.DAY_1: MAX_PERIOD_1D,
+        }
+        max_period = max_periods[self.timeframe]
         periods = [self.ranking.period]
         conditions = 0
 
