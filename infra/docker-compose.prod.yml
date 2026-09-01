@@ -15,6 +15,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -27,6 +28,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+    restart: unless-stopped
 
   kafka:
     image: apache/kafka:3.9.0
@@ -55,6 +57,7 @@ services:
       timeout: 10s
       retries: 12
       start_period: 30s
+    restart: unless-stopped
 
   backend-api:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/backend-api:${IMAGE_TAG:?IMAGE_TAG is required}
