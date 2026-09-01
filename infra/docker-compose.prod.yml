@@ -70,6 +70,12 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       AI_BASE_URL: http://ai:8000
+      SSAFY_BASE_URL: ${SSAFY_BASE_URL:-https://project.ssafy.com}
+      SSAFY_CLIENT_ID: ${SSAFY_CLIENT_ID:?SSAFY_CLIENT_ID is required}
+      SSAFY_CLIENT_SECRET: ${SSAFY_CLIENT_SECRET:?SSAFY_CLIENT_SECRET is required}
+      SSAFY_REDIRECT_URI: ${SSAFY_REDIRECT_URI:?SSAFY_REDIRECT_URI is required}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?FRONTEND_BASE_URL is required}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
     ports:
       - "127.0.0.1:18080:8080"
     depends_on:
