@@ -52,3 +52,13 @@ def test_strategy_json_schema_includes_candle_period_description():
     schema = json.loads(strategy_json_schema())
 
     assert "candles" in json.dumps(schema).lower()
+
+
+def test_translate_models_use_camel_case_contract_fields():
+    from app.core.schema import Strategy, TranslateMeta, TranslateRequest, TranslateResponse
+
+    request = TranslateRequest(userInput="RSI 전략")
+    response = TranslateResponse(strategy=Strategy.model_validate(valid_strategy()), meta=TranslateMeta(assumptions=["period=20"], changes=[]))
+
+    assert request.model_dump() == {"userInput": "RSI 전략", "currentStrategy": None}
+    assert response.meta.assumptions == ["period=20"]

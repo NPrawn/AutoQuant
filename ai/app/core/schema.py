@@ -138,3 +138,24 @@ class Strategy(StrictModel):
 def strategy_json_schema() -> str:
     """Return the Strategy JSON Schema for structured LLM output."""
     return json.dumps(Strategy.model_json_schema(), ensure_ascii=False)
+
+
+class TranslateRequest(StrictModel):
+    userInput: str = Field(min_length=1)
+    currentStrategy: Strategy | None = None
+
+
+class TranslateMeta(StrictModel):
+    assumptions: list[str]
+    changes: list[str]
+
+
+class TranslateResponse(StrictModel):
+    strategy: Strategy
+    meta: TranslateMeta
+
+
+class ErrorResponse(StrictModel):
+    code: str
+    message: str
+    detail: dict[str, object] | None = None
