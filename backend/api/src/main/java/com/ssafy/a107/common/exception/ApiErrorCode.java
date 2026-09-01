@@ -25,6 +25,9 @@ public enum ApiErrorCode {
     MEMBER_INVALID_PROFILE(HttpStatus.BAD_REQUEST, "MEMBER-400-002", "회원 프로필 정보가 올바르지 않습니다."),
     MEMBER_INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "MEMBER-409-001", "현재 회원 상태에서는 요청한 상태로 변경할 수 없습니다."),
 
+    // 전략
+    STRATEGY_NOT_FOUND(HttpStatus.NOT_FOUND, "STRATEGY-404-001", "요청한 전략을 찾을 수 없습니다."),
+
     // 자산
     ASSET_INVALID_MARKET_INFORMATION(HttpStatus.BAD_REQUEST, "ASSET-400-001", "거래 자산의 마켓 정보가 올바르지 않습니다."),
     ASSET_INVALID_TRADING_PERIOD(HttpStatus.BAD_REQUEST, "ASSET-400-002", "거래지원 기간이 올바르지 않습니다."),
