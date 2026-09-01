@@ -154,6 +154,64 @@ pipeline {
                 '''
             }
         }
+
+        stage('Smoke Test') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                sh '''
+                    set -eu
+
+                    for attempt in $(seq 1 12); do
+                        frontend_status=$(curl -sS -o /dev/null -w '%{http_code}' \
+                          --max-time 5 http://127.0.0.1:3000 || true)
+                        backend_status=$(curl -sS -o /dev/null -w '%{http_code}' \
+                          --max-time 5 http://127.0.0.1:18080 || true)
+
+                        if [ "$frontend_status" = "200" ] \
+                            && { [ "$backend_status" = "200" ] || [ "$backend_status" = "401" ]; }; then
+                            break
+                        fi
+
+                        if [ "$attempt" = "12" ]; then
+                            echo "Smoke test failed: frontend=$frontend_status backend=$backend_status"
+                            exit 1
+                        fi
+
+                        sleep 5
+                    done
+
+                    for container in \
+                        a107-postgres \
+                        a107-redis \
+                        a107-kafka \
+                        a107-backend-api \
+                        a107-ai \
+                        a107-frontend \
+                        a107-ingest-producer \
+                        a107-ingest-consumer; do
+                        state=$(docker inspect --format '{{.State.Status}}' "$container")
+
+                        if [ "$state" != "running" ]; then
+                            echo "$container is not running: $state"
+                            exit 1
+                        fi
+                    done
+
+                    for container in a107-postgres a107-redis a107-kafka; do
+                        health=$(docker inspect --format '{{.State.Health.Status}}' "$container")
+
+                        if [ "$health" != "healthy" ]; then
+                            echo "$container is not healthy: $health"
+                            exit 1
+                        fi
+                    done
+
+                    echo 'Smoke test passed.'
+                '''
+            }
+        }
     }
 
     post {
