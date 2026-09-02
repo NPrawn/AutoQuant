@@ -80,7 +80,7 @@ def _format_location(location: Any) -> str:
                 parts[-1] += f"[{item}]"
             else:
                 parts.append(f"[{item}]")
-        else:
+        elif not (isinstance(item, str) and item.isupper()):
             parts.append(str(item))
     return ".".join(parts)
 
