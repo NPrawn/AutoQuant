@@ -6,14 +6,16 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.Arrays;
 
 public enum Timeframe {
-    ONE_HOUR("1H"),
-    FOUR_HOURS("4H"),
-    ONE_DAY("1D");
+    ONE_HOUR("1H", 60),
+    FOUR_HOURS("4H", 240),
+    ONE_DAY("1D", 1_440);
 
     private final String value;
+    private final int intervalMinutes;
 
-    Timeframe(String value) {
+    Timeframe(String value, int intervalMinutes) {
         this.value = value;
+        this.intervalMinutes = intervalMinutes;
     }
 
     @JsonCreator
@@ -27,5 +29,9 @@ public enum Timeframe {
     @JsonValue
     public String getValue() {
         return value;
+    }
+
+    public int getIntervalMinutes() {
+        return intervalMinutes;
     }
 }
