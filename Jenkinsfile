@@ -212,6 +212,18 @@ pipeline {
                 '''
             }
         }
+
+        stage('Cleanup Docker Images') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                sh '''
+                    set -eu
+                    bash infra/cleanup-images.sh --keep 3 --apply
+                '''
+            }
+        }
     }
 
     post {
