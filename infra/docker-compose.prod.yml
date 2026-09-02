@@ -1,9 +1,16 @@
 name: a107
 
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
     image: postgres:16-alpine
     container_name: a107-postgres
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${DB_NAME:?DB_NAME is required}
       POSTGRES_USER: ${DB_USER:?DB_USER is required}
@@ -20,6 +27,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: a107-redis
+    logging: *default-logging
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
@@ -33,6 +41,7 @@ services:
   kafka:
     image: apache/kafka:3.9.0
     container_name: a107-kafka
+    logging: *default-logging
     hostname: kafka
     environment:
       KAFKA_NODE_ID: 1
@@ -62,6 +71,7 @@ services:
   backend-api:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/backend-api:${IMAGE_TAG:?IMAGE_TAG is required}
     container_name: a107-backend-api
+    logging: *default-logging
     environment:
       SERVER_PORT: 8080
       DB_HOST: postgres
@@ -93,6 +103,7 @@ services:
   ai:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/ai:${IMAGE_TAG:?IMAGE_TAG is required}
     container_name: a107-ai
+    logging: *default-logging
     environment:
       LLM_BASE_URL: ${LLM_BASE_URL:?LLM_BASE_URL is required}
       LLM_API_KEY: ${LLM_API_KEY:?LLM_API_KEY is required}
@@ -108,6 +119,7 @@ services:
   frontend:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/frontend:${IMAGE_TAG:?IMAGE_TAG is required}
     container_name: a107-frontend
+    logging: *default-logging
     ports:
       - "127.0.0.1:3000:80"
     depends_on:
@@ -118,6 +130,7 @@ services:
   ingest-producer:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/ingest:${IMAGE_TAG:?IMAGE_TAG is required}
     container_name: a107-ingest-producer
+    logging: *default-logging
     command: ["/app/producer"]
     environment:
       DB_HOST: postgres
@@ -133,6 +146,7 @@ services:
   ingest-consumer:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/ingest:${IMAGE_TAG:?IMAGE_TAG is required}
     container_name: a107-ingest-consumer
+    logging: *default-logging
     command: ["/app/consumer"]
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
@@ -155,6 +169,7 @@ services:
   ingest-backfill:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/ingest:${IMAGE_TAG:?IMAGE_TAG is required}
     container_name: a107-ingest-backfill
+    logging: *default-logging
     command: ["/app/backfill"]
     profiles: ["backfill"]
     environment:

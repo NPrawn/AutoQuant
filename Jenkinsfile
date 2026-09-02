@@ -229,6 +229,7 @@ pipeline {
     post {
         always {
             sh 'docker image prune -f || true'
+            sh 'docker builder prune -f --filter "until=168h" || true'
         }
         success {
             echo 'Pipeline completed successfully.'
