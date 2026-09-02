@@ -4,3 +4,7 @@ DSL schema:
 {{dsl_schema}}
 
 Return one JSON object that follows the supplied schema. If the request is not a strategy description or lacks details, still create a strategy and record every value you chose in assumptions as a short line.
+Output exactly one JSON object.
+Do not use a code fence.
+Do not add text before or after the JSON object.
+Do not add fields that are absent from the schema.

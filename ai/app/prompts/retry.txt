@@ -1,5 +1,8 @@
 Revise the previous output so it satisfies the validation errors. Keep the result within the supplied schema and record newly chosen values in assumptions.
 
+Original user request:
+{{user_input}}
+
 Previous output:
 {{previous_output}}
 
