@@ -1,4 +1,14 @@
+import json
+
 import pytest
+
+from app.core.schema import Strategy
+from tests.fixtures.llm_responses import (
+    EMPTY_RESPONSE,
+    JSON_ARRAY,
+    JSON_STRING,
+    UNCLOSED_OBJECT,
+)
 
 
 @pytest.mark.parametrize(
@@ -23,3 +33,89 @@ def test_extract_json_body_does_not_raise_for_empty_or_unclosed_input(response_t
     from app.services.validator import extract_json_body
 
     assert extract_json_body(response_text) == response_text
+
+
+def test_validate_llm_response_returns_strategy_for_cleaned_json(valid_strategy_payload):
+    from app.services.validator import validate_llm_response
+
+    result = validate_llm_response(
+        f"```json\n{Strategy.model_validate(valid_strategy_payload).model_dump_json()}\n```",
+        Strategy,
+    )
+
+    assert result.value == Strategy.model_validate(valid_strategy_payload)
+    assert result.errors == []
+
+
+@pytest.mark.parametrize(
+    "response_text", [EMPTY_RESPONSE, UNCLOSED_OBJECT, JSON_ARRAY, JSON_STRING]
+)
+def test_validate_llm_response_returns_errors_without_raising(response_text):
+    from app.services.validator import validate_llm_response
+
+    result = validate_llm_response(response_text, Strategy)
+
+    assert result.value is None
+    assert result.errors
+
+
+def test_format_retry_errors_includes_path_and_allowed_values():
+    from app.services.validator import format_retry_errors
+
+    message = format_retry_errors(
+        [
+            {
+                "loc": ("ranking", "factor"),
+                "msg": "Input should be 'RETURN' or 'RSI'",
+                "ctx": {"expected": "'RETURN' or 'RSI'"},
+            }
+        ]
+    )
+
+    assert "ranking.factor" in message
+    assert "RETURN" in message
+    assert "RSI" in message
+
+
+def test_format_user_errors_uses_korean_summary_without_raw_validation_text():
+    from app.services.validator import format_user_errors
+
+    message = format_user_errors(
+        [{"loc": ("ranking", "factor"), "msg": "Input should be 'RETURN'"}]
+    )
+
+    assert "전략" in message
+    assert "Input should" not in message
+
+
+def test_retry_error_path_keeps_nested_filter_location(valid_strategy_payload):
+    from app.services.validator import format_retry_errors, validate_llm_response
+
+    nested = valid_strategy_payload["filters"]["children"][0].copy()
+    nested["left"] = nested["left"].copy()
+    nested["left"]["period"] = 0
+    valid_strategy_payload["filters"]["children"].append(
+        {"type": "GROUP", "logic": "AND", "children": [nested]}
+    )
+
+    result = validate_llm_response(str(valid_strategy_payload).replace("'", '"'), Strategy)
+
+    assert "filters.children[1].children[0].left.period" in format_retry_errors(
+        result.errors
+    )
+
+
+def test_validate_llm_response_rejects_unknown_enum_value(valid_strategy_payload):
+    from app.services.validator import validate_llm_response
+
+    valid_strategy_payload["ranking"]["factor"] = "UNSUPPORTED"
+
+    assert validate_llm_response(json.dumps(valid_strategy_payload), Strategy).errors
+
+
+def test_validate_llm_response_rejects_schema_extra_field(valid_strategy_payload):
+    from app.services.validator import validate_llm_response
+
+    valid_strategy_payload["unexpected"] = True
+
+    assert validate_llm_response(json.dumps(valid_strategy_payload), Strategy).errors
