@@ -53,6 +53,38 @@ def validate_llm_response(
         return ValidationResult(value=None, errors=error.errors())
 
 
+def format_retry_errors(errors: list[dict[str, Any]]) -> str:
+    """Format validation details so a retry prompt can correct exact fields."""
+    messages = []
+    for error in errors:
+        message = f"{_format_location(error.get('loc', ()))}: {error.get('msg', '')}"
+        expected = error.get("ctx", {}).get("expected")
+        if expected:
+            message += f". Allowed values: {expected}"
+        messages.append(message)
+    return "\n".join(messages)
+
+
+def format_user_errors(errors: list[dict[str, Any]]) -> str:
+    """Return a concise Korean validation summary without internal details."""
+    if not errors:
+        return "전략 형식이 올바르지 않습니다."
+    return f"전략 형식이 올바르지 않습니다. {len(errors)}개 항목을 확인해 주세요."
+
+
+def _format_location(location: Any) -> str:
+    parts: list[str] = []
+    for item in location:
+        if isinstance(item, int):
+            if parts:
+                parts[-1] += f"[{item}]"
+            else:
+                parts.append(f"[{item}]")
+        else:
+            parts.append(str(item))
+    return ".".join(parts)
+
+
 def _remove_outer_code_fence(response_text: str) -> str:
     stripped = response_text.strip()
     if not stripped.startswith("```"):

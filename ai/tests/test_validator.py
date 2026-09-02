@@ -47,3 +47,32 @@ def test_validate_llm_response_returns_errors_without_raising(response_text):
 
     assert result.value is None
     assert result.errors
+
+
+def test_format_retry_errors_includes_path_and_allowed_values():
+    from app.services.validator import format_retry_errors
+
+    message = format_retry_errors(
+        [
+            {
+                "loc": ("ranking", "factor"),
+                "msg": "Input should be 'RETURN' or 'RSI'",
+                "ctx": {"expected": "'RETURN' or 'RSI'"},
+            }
+        ]
+    )
+
+    assert "ranking.factor" in message
+    assert "RETURN" in message
+    assert "RSI" in message
+
+
+def test_format_user_errors_uses_korean_summary_without_raw_validation_text():
+    from app.services.validator import format_user_errors
+
+    message = format_user_errors(
+        [{"loc": ("ranking", "factor"), "msg": "Input should be 'RETURN'"}]
+    )
+
+    assert "전략" in message
+    assert "Input should" not in message
