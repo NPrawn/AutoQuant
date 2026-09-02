@@ -153,7 +153,26 @@ def test_translate_models_use_camel_case_contract_fields(valid_strategy_payload)
     from app.core.schema import Strategy, TranslateMeta, TranslateRequest, TranslateResponse
 
     request = TranslateRequest(userInput="RSI 전략")
-    response = TranslateResponse(strategy=Strategy.model_validate(valid_strategy_payload), meta=TranslateMeta(assumptions=["period=20"], changes=[]))
+    response = TranslateResponse(
+        strategy=Strategy.model_validate(valid_strategy_payload),
+        meta=TranslateMeta(
+            attempts=1,
+            model="gpt-test",
+            elapsedMs=120,
+            warnings=[],
+            assumptions=["period=20"],
+            changes=[],
+        ),
+    )
 
     assert request.model_dump() == {"userInput": "RSI 전략", "currentStrategy": None}
     assert response.meta.assumptions == ["period=20"]
+    assert response.meta.elapsedMs == 120
+
+
+def test_translate_request_limits_user_input_to_500_characters():
+    from app.core.schema import TranslateRequest
+
+    assert TranslateRequest(userInput="가" * 500).userInput == "가" * 500
+    with pytest.raises(ValidationError):
+        TranslateRequest(userInput="가" * 501)

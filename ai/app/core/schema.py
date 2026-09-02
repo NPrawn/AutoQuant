@@ -14,6 +14,7 @@ MAX_PERIOD_1H = 720
 MAX_PERIOD_4H = 540
 MAX_PERIOD_1D = 365
 MAX_TOP_N = 30
+MAX_USER_INPUT_LENGTH = 500
 
 
 class StrictModel(BaseModel):
@@ -148,11 +149,15 @@ def strategy_json_schema() -> str:
 
 
 class TranslateRequest(StrictModel):
-    userInput: str = Field(min_length=1)
+    userInput: str = Field(min_length=1, max_length=MAX_USER_INPUT_LENGTH)
     currentStrategy: Strategy | None = None
 
 
 class TranslateMeta(StrictModel):
+    attempts: int = Field(ge=1)
+    model: str = Field(min_length=1)
+    elapsedMs: int = Field(ge=0)
+    warnings: list[str]
     assumptions: list[str]
     changes: list[str]
 
