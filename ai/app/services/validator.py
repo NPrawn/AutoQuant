@@ -1,4 +1,19 @@
-"""Minimal cleanup for raw LLM responses before validation."""
+"""Cleanup, parse, and schema-validate raw LLM responses."""
+
+import json
+from dataclasses import dataclass
+from typing import Any, Generic, TypeVar
+
+from pydantic import BaseModel, ValidationError
+
+
+ModelT = TypeVar("ModelT", bound=BaseModel)
+
+
+@dataclass(frozen=True)
+class ValidationResult(Generic[ModelT]):
+    value: ModelT | None
+    errors: list[dict[str, Any]]
 
 
 def extract_json_body(response_text: str) -> str:
@@ -12,6 +27,30 @@ def extract_json_body(response_text: str) -> str:
     if closing_brace < opening_brace:
         return cleaned[opening_brace:]
     return cleaned[opening_brace : closing_brace + 1]
+
+
+def validate_llm_response(
+    response_text: str, schema_type: type[ModelT]
+) -> ValidationResult[ModelT]:
+    """Return either a validated model or recoverable parsing/validation errors."""
+    try:
+        payload = json.loads(extract_json_body(response_text))
+    except json.JSONDecodeError as error:
+        return ValidationResult(
+            value=None,
+            errors=[
+                {
+                    "loc": ["response"],
+                    "msg": error.msg,
+                    "type": "json_invalid",
+                }
+            ],
+        )
+
+    try:
+        return ValidationResult(value=schema_type.model_validate(payload), errors=[])
+    except ValidationError as error:
+        return ValidationResult(value=None, errors=error.errors())
 
 
 def _remove_outer_code_fence(response_text: str) -> str:
