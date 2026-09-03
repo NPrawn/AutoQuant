@@ -289,11 +289,11 @@ flowchart TB
 |---|---|---|
 | 패키지 골격, 설정, 헬스 | A | 있음 |
 | 예외 계층, 핸들러, 요청 ID 로깅 | C | 있음 |
-| `schema.py` | B′ | 없음 |
-| `validator.py` | D | 없음 |
-| 프롬프트, `prompt_builder.py` | E | 없음 (`/health/ready` 503의 원인) |
-| `llm_client.py` | F | 없음 |
-| `translator.py` | G | 없음 |
+| `schema.py` | B′ → K-1 | 있음. 전략팀 명세로 교체 완료 |
+| `validator.py` | D | 있음 |
+| 프롬프트, `prompt_builder.py` | E | 있음 (`/health/ready` 200). 도메인 규칙은 골격뿐 |
+| `llm_client.py` | F | 있음 |
+| `translator.py` | G | 있음. `meta.warnings`는 아직 빈 목록 |
 | `strategy.py`, `deps.py` | H | 없음 |
 
 진행 상태의 정본은 Jira다. 이 표는 다이어그램의 어느 부분이 아직 그림인지 표시하는 용도다.
