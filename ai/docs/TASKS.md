@@ -150,7 +150,7 @@
 
 | 모델 | 필드 |
 |---|---|
-| `TranslateRequest` | `userInput`(str, 1~2000자), `currentStrategy`(`Strategy` 또는 null) |
+| `TranslateRequest` | `userInput`(str, 1~500자), `currentStrategy`(`Strategy` 또는 null) |
 | `TranslateResponse` | `strategy`(`Strategy`), `meta`(`TranslateMeta`) |
 | `TranslateMeta` | `attempts`(int), `model`(str), `elapsedMs`(int), `warnings`(문자열 목록), `changes`(문자열 목록) |
 | `ErrorResponse` | `code`(str), `message`(str), `detail`(object 또는 null) |
