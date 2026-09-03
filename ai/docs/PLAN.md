@@ -174,7 +174,7 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
 | 모델 | 필드 |
 |---|---|
 | `TranslateRequest` | `userInput`(str, 1~500자), `currentStrategy`(`Strategy` 또는 null — 있으면 수정, 없으면 신규) |
-| `TranslateResponse` | `strategy`(`Strategy`), `meta`(`TranslateMeta`) |
+| `TranslateResponse` | `strategy`(`Strategy` 또는 null — 짧은 경로에서 null), `meta`(`TranslateMeta`) |
 | `TranslateMeta` | `attempts`(int), `model`(str), `elapsedMs`(int), `warnings`(str 목록), `assumptions`(str 목록), `changes`(str 목록) |
 | `ErrorResponse` | `code`(str), `message`(str), `detail`(object 또는 null) |
 
@@ -221,6 +221,24 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
   }
 }
 ```
+
+짧은 경로 응답 `200 OK` — 인사말이나 아주 짧은 입력이라 LLM을 부르지 않은 경우 ([DECISIONS.md](DECISIONS.md) 결정 5 보충):
+
+```json
+{
+  "strategy": null,
+  "meta": {
+    "attempts": 0,
+    "model": "gpt-5.4-mini",
+    "elapsedMs": 0,
+    "warnings": [],
+    "assumptions": ["입력이 짧아 전략을 만들지 않았습니다. 어떤 코인을 어떤 기준으로 사고 싶은지 말해 주세요."],
+    "changes": []
+  }
+}
+```
+
+오류가 아니라 200이다. `attempts`가 0인 것이 LLM을 부르지 않았다는 표시다.
 
 실패 응답 `422 Unprocessable Entity` — 재시도 2회를 모두 쓰고도 검증을 통과하지 못한 경우:
 
