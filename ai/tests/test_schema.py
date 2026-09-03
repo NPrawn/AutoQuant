@@ -149,6 +149,14 @@ def test_strategy_json_schema_includes_candle_period_description():
     assert "candles" in json.dumps(schema).lower()
 
 
+def test_strategy_envelope_schema_requires_strategy_and_assumptions(valid_strategy_payload):
+    from app.core.schema import StrategyEnvelope
+
+    envelope = StrategyEnvelope(strategy=valid_strategy_payload, assumptions=["RSI period=14"])
+
+    assert envelope.assumptions == ["RSI period=14"]
+
+
 def test_translate_models_use_camel_case_contract_fields(valid_strategy_payload):
     from app.core.schema import Strategy, TranslateMeta, TranslateRequest, TranslateResponse
 

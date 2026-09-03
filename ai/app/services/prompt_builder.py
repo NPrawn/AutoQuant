@@ -6,7 +6,7 @@ import re
 
 from pydantic import BaseModel
 
-from app.core.schema import strategy_json_schema
+from app.core.schema import strategy_envelope_json_schema
 from app.services.validator import extract_json_body, format_retry_errors
 
 
@@ -72,7 +72,7 @@ def build_messages(
 ) -> list[dict[str, str]]:
     """Build a fresh create or edit request with the current DSL schema."""
     system_prompt = render_template(
-        get_prompt_template("system"), {"dsl_schema": strategy_json_schema()}
+        get_prompt_template("system"), {"dsl_schema": strategy_envelope_json_schema()}
     )
     template_name = "edit" if current_strategy is not None else "create"
     replacements = {"user_input": user_input}
@@ -97,7 +97,7 @@ def build_retry_messages(
         else extract_json_body(previous_output)
     )
     system_prompt = render_template(
-        get_prompt_template("system"), {"dsl_schema": strategy_json_schema()}
+        get_prompt_template("system"), {"dsl_schema": strategy_envelope_json_schema()}
     )
     retry_prompt = render_template(
         get_prompt_template("retry"),

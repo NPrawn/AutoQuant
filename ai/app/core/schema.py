@@ -148,6 +148,16 @@ def strategy_json_schema() -> str:
     return json.dumps(Strategy.model_json_schema(), ensure_ascii=False)
 
 
+class StrategyEnvelope(StrictModel):
+    strategy: Strategy
+    assumptions: list[str]
+
+
+def strategy_envelope_json_schema() -> str:
+    """Return the LLM output envelope JSON Schema."""
+    return json.dumps(StrategyEnvelope.model_json_schema(), ensure_ascii=False)
+
+
 class TranslateRequest(StrictModel):
     userInput: str = Field(min_length=1, max_length=MAX_USER_INPUT_LENGTH)
     currentStrategy: Strategy | None = None
