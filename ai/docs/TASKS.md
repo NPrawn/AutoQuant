@@ -150,9 +150,9 @@
 
 | 모델 | 필드 |
 |---|---|
-| `TranslateRequest` | `text`(str, 1~2000자), `current_strategy`(`Strategy` 또는 null) |
-| `TranslateResponse` | `strategy`(`Strategy`), `changes`(문자열 목록), `meta`(`TranslateMeta`) |
-| `TranslateMeta` | `attempts`(int), `model`(str), `elapsed_ms`(int), `warnings`(문자열 목록) |
+| `TranslateRequest` | `userInput`(str, 1~2000자), `currentStrategy`(`Strategy` 또는 null) |
+| `TranslateResponse` | `strategy`(`Strategy`), `meta`(`TranslateMeta`) |
+| `TranslateMeta` | `attempts`(int), `model`(str), `elapsedMs`(int), `warnings`(문자열 목록), `changes`(문자열 목록) |
 | `ErrorResponse` | `code`(str), `message`(str), `detail`(object 또는 null) |
 
 `TranslateMeta`에 `assumptions`(문자열 목록)를 넣는다. 결정 5가 "무조건 전략 생성"으로 확정돼([DECISIONS.md](DECISIONS.md)) 입력이 부실해도 서버가 기본값으로 채우기 때문에, **무엇을 임의로 정했는지 알리는 유일한 통로가 이 필드다.** 비워 두면 사용자는 자기가 말하지 않은 값이 들어간 줄 모른다.
