@@ -60,3 +60,13 @@ def test_translate_does_not_retry_upstream_errors(monkeypatch, error_name):
     with pytest.raises(getattr(errors, error_name)):
         translator.translate("전략 생성")
     assert calls == 1
+
+
+def test_describe_changes_reports_filter_change(valid_strategy_payload):
+    from app.services.translator import describe_changes
+
+    previous = StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).strategy
+    changed = previous.model_copy(deep=True)
+    changed.selection.topN = 3
+
+    assert any("selection" in item for item in describe_changes(previous, changed))
