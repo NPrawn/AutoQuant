@@ -7,7 +7,7 @@ from app.core.schema import Strategy, StrategyEnvelope, TranslateMeta
 from app.core.errors import DSLValidationError
 from app.services.llm_client import complete
 from app.services.prompt_builder import build_messages, build_retry_messages
-from app.services.validator import ValidationResult, validate_llm_response
+from app.services.validator import format_user_errors, validate_llm_response
 
 
 @dataclass(frozen=True)
@@ -47,7 +47,7 @@ def translate(
         if attempt <= settings.max_retries:
             messages = build_retry_messages(user_input, response_text, result.errors)
     assert result is not None
-    raise DSLValidationError(str(result.errors))
+    raise DSLValidationError(format_user_errors(result.errors))
 
 
 def describe_changes(previous: Strategy | None, current: Strategy) -> list[str]:
