@@ -110,3 +110,11 @@ def test_translate_passes_current_strategy_to_message_builder(monkeypatch, valid
     monkeypatch.setattr(translator, "complete", lambda **_: (StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).model_dump_json(), None))
     translator.translate("수정", current)
     assert seen[0][1] == current
+
+
+@pytest.mark.parametrize("field", ["timeframe", "ranking", "rebalance"])
+def test_describe_changes_keeps_unchanged_strategy_empty(valid_strategy_payload, field):
+    from app.services.translator import describe_changes
+
+    strategy = StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).strategy
+    assert describe_changes(strategy, strategy) == []
