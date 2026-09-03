@@ -1,4 +1,5 @@
 from app.core.schema import StrategyEnvelope
+import pytest
 
 
 def test_translate_returns_validated_envelope(monkeypatch, valid_strategy_payload):
@@ -36,3 +37,26 @@ def test_describe_changes_marks_new_strategy(valid_strategy_payload):
     from app.services.translator import describe_changes
 
     assert describe_changes(None, StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).strategy)
+
+
+@pytest.mark.parametrize("error_name", ["LLMTimeoutError", "LLMUpstreamError"])
+def test_translate_does_not_retry_upstream_errors(monkeypatch, error_name):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test")
+    monkeypatch.setenv("LLM_API_KEY", "test")
+    monkeypatch.setenv("LLM_MODEL", "test")
+    monkeypatch.setenv("APP_ENV", "test")
+    from app.core import errors
+    from app.services import translator
+
+    calls = 0
+    def fail(**_):
+        nonlocal calls
+        calls += 1
+        raise getattr(errors, error_name)()
+
+    monkeypatch.setattr(translator, "build_messages", lambda *_: [])
+    monkeypatch.setattr(translator, "complete", fail)
+
+    with pytest.raises(getattr(errors, error_name)):
+        translator.translate("전략 생성")
+    assert calls == 1
