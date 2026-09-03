@@ -70,3 +70,26 @@ def test_describe_changes_reports_filter_change(valid_strategy_payload):
     changed.selection.topN = 3
 
     assert any("selection" in item for item in describe_changes(previous, changed))
+
+
+def test_translate_returns_last_errors_after_retry_exhaustion(monkeypatch):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test")
+    monkeypatch.setenv("LLM_API_KEY", "test")
+    monkeypatch.setenv("LLM_MODEL", "test")
+    monkeypatch.setenv("APP_ENV", "test")
+    from app.services import translator
+
+    calls = 0
+    def invalid(**_):
+        nonlocal calls
+        calls += 1
+        return "{}", None
+
+    monkeypatch.setattr(translator, "build_messages", lambda *_: [])
+    monkeypatch.setattr(translator, "build_retry_messages", lambda *_: [])
+    monkeypatch.setattr(translator, "complete", invalid)
+
+    result = translator.translate("전략 생성")
+    assert result.value is None
+    assert result.errors
+    assert calls == 3
