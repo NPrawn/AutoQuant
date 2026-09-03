@@ -7,13 +7,8 @@ from typing import Annotated, Literal, Union
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-MAX_FILTER_DEPTH = 2
-MAX_CONDITIONS = 5
-MAX_GROUP_CHILDREN = 5
-MAX_PERIOD_1H = 720
-MAX_PERIOD_4H = 540
-MAX_PERIOD_1D = 365
-MAX_TOP_N = 30
+# Parser defense limit, not a strategy-domain rule.
+MAX_FILTER_DEPTH = 5
 MAX_USER_INPUT_LENGTH = 500
 
 
@@ -83,7 +78,7 @@ class Condition(StrictModel):
 class FilterGroup(StrictModel):
     type: Literal["GROUP"]
     logic: Logic
-    children: list["FilterNode"] = Field(min_length=1, max_length=MAX_GROUP_CHILDREN)
+    children: list["FilterNode"] = Field(min_length=1)
 
 
 FilterNode = Annotated[Union[FilterGroup, Condition], Field(discriminator="type")]
@@ -97,7 +92,7 @@ class Ranking(StrictModel):
 
 
 class Selection(StrictModel):
-    topN: int = Field(gt=0, le=MAX_TOP_N)
+    topN: int = Field(gt=0)
 
 
 class Rebalance(StrictModel):
@@ -113,22 +108,8 @@ class Strategy(StrictModel):
 
     @model_validator(mode="after")
     def validate_limits(self) -> "Strategy":
-        max_periods = {
-            Timeframe.HOUR_1: MAX_PERIOD_1H,
-            Timeframe.HOUR_4: MAX_PERIOD_4H,
-            Timeframe.DAY_1: MAX_PERIOD_1D,
-        }
-        max_period = max_periods[self.timeframe]
-        periods = [self.ranking.period]
-        conditions = 0
-
         def visit(node: FilterNode, depth: int) -> None:
-            nonlocal conditions
             if isinstance(node, Condition):
-                conditions += 1
-                for operand in (node.left, node.right):
-                    if isinstance(operand, FactorOperand):
-                        periods.append(operand.period)
                 return
             if depth > MAX_FILTER_DEPTH:
                 raise ValueError(f"Filter depth must not exceed {MAX_FILTER_DEPTH}")
@@ -136,10 +117,6 @@ class Strategy(StrictModel):
                 visit(child, depth + 1)
 
         visit(self.filters, 1)
-        if conditions > MAX_CONDITIONS:
-            raise ValueError(f"Condition count must not exceed {MAX_CONDITIONS}")
-        if any(period > max_period for period in periods):
-            raise ValueError(f"Period must not exceed {max_period} for {self.timeframe.value}")
         return self
 
 
