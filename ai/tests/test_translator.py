@@ -95,3 +95,18 @@ def test_translate_returns_last_errors_after_retry_exhaustion(monkeypatch):
     assert result.value is None
     assert result.errors
     assert calls == 3
+
+
+def test_translate_passes_current_strategy_to_message_builder(monkeypatch, valid_strategy_payload):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test")
+    monkeypatch.setenv("LLM_API_KEY", "test")
+    monkeypatch.setenv("LLM_MODEL", "test")
+    monkeypatch.setenv("APP_ENV", "test")
+    from app.services import translator
+
+    current = StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).strategy
+    seen = []
+    monkeypatch.setattr(translator, "build_messages", lambda *args: seen.append(args) or [])
+    monkeypatch.setattr(translator, "complete", lambda **_: (StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).model_dump_json(), None))
+    translator.translate("수정", current)
+    assert seen[0][1] == current
