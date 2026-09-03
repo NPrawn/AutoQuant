@@ -38,7 +38,7 @@ def test_translate_retries_only_validation_failures(monkeypatch, valid_strategy_
 def test_describe_changes_marks_new_strategy(valid_strategy_payload):
     from app.services.translator import describe_changes
 
-    assert describe_changes(None, StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).strategy)
+    assert describe_changes(None, StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).strategy) == []
 
 
 @pytest.mark.parametrize("error_name", ["LLMTimeoutError", "LLMUpstreamError"])
@@ -91,9 +91,9 @@ def test_translate_returns_last_errors_after_retry_exhaustion(monkeypatch):
     monkeypatch.setattr(translator, "build_retry_messages", lambda *_: [])
     monkeypatch.setattr(translator, "complete", invalid)
 
-    result = translator.translate("전략 생성")
-    assert result.value is None
-    assert result.errors
+    from app.core.errors import DSLValidationError
+    with pytest.raises(DSLValidationError):
+        translator.translate("전략 생성")
     assert calls == 3
 
 

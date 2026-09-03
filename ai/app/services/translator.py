@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from time import perf_counter
 
 from app.core.schema import Strategy, StrategyEnvelope, TranslateMeta
+from app.core.errors import DSLValidationError
 from app.services.llm_client import complete
 from app.services.prompt_builder import build_messages, build_retry_messages
 from app.services.validator import ValidationResult, validate_llm_response
@@ -19,7 +20,7 @@ class TranslationResult:
 def translate(
     user_input: str, current_strategy: Strategy | None = None
 ) -> TranslationResult:
-    """Run one translation attempt; retry policy is added separately."""
+    """Translate with validation retries and return a validated strategy result."""
     from app.core.config import settings
 
     started_at = perf_counter()
@@ -46,15 +47,17 @@ def translate(
         if attempt <= settings.max_retries:
             messages = build_retry_messages(user_input, response_text, result.errors)
     assert result is not None
-    return TranslationResult(value=None, meta=None, errors=result.errors)
+    raise DSLValidationError(str(result.errors))
 
 
 def describe_changes(previous: Strategy | None, current: Strategy) -> list[str]:
     """Summarize changed top-level strategy fields without recursive diffing."""
     if previous is None:
-        return ["전략을 새로 생성했습니다."]
+        return []
     changes = []
-    for field in ("timeframe", "ranking", "selection", "rebalance"):
+    for field in Strategy.model_fields:
+        if field == "filters":
+            continue
         if getattr(previous, field) != getattr(current, field):
             changes.append(f"{field} 값이 바뀌었습니다.")
     if previous.filters != current.filters:
