@@ -2,6 +2,8 @@ import builtins
 
 import pytest
 
+from app.core.schema import FactorType, Strategy
+
 
 def test_loader_caches_templates_after_startup_read(tmp_path, monkeypatch):
     prompts_directory = tmp_path / "prompts"
@@ -68,3 +70,47 @@ def test_render_template_fails_when_a_placeholder_remains():
 
     with pytest.raises(ValueError, match="Unreplaced prompt placeholder"):
         render_template("Schema: {{dsl_schema}}\nInput: {{user_input}}", {"dsl_schema": "{}"})
+
+
+def test_build_messages_injects_schema_and_uses_create_template(monkeypatch):
+    from app.services import prompt_builder
+
+    monkeypatch.setattr(
+        prompt_builder,
+        "get_prompt_template",
+        lambda name: {"system": "Schema: {{dsl_schema}}", "create": "Input: {{user_input}}"}[name],
+    )
+
+    messages = prompt_builder.build_messages(user_input="RSI 전략")
+
+    assert messages[0]["role"] == "system"
+    assert FactorType.RSI.value in messages[0]["content"]
+    assert messages[1]["content"] == "Input: RSI 전략"
+
+
+def test_build_messages_uses_edit_template_when_current_strategy_exists(monkeypatch, valid_strategy_payload):
+    from app.services import prompt_builder
+
+    monkeypatch.setattr(
+        prompt_builder,
+        "get_prompt_template",
+        lambda name: {"system": "{{dsl_schema}}", "edit": "{{current_strategy}} {{user_input}}"}[name],
+    )
+
+    messages = prompt_builder.build_messages("기간 변경", Strategy.model_validate(valid_strategy_payload))
+
+    assert messages[1]["content"].endswith("기간 변경")
+
+
+def test_build_retry_messages_uses_raw_text_only_for_json_format_errors(monkeypatch):
+    from app.services import prompt_builder
+
+    monkeypatch.setattr(
+        prompt_builder,
+        "get_prompt_template",
+        lambda name: {"system": "{{dsl_schema}}", "retry": "{{previous_output}}|{{validation_errors}}"}[name],
+    )
+
+    messages = prompt_builder.build_retry_messages("x", "설명 {", [{"type": "json_invalid", "loc": ["response"], "msg": "bad"}])
+
+    assert "설명 {" in messages[1]["content"]

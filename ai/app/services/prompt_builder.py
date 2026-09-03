@@ -4,6 +4,11 @@ from collections.abc import Mapping
 from pathlib import Path
 import re
 
+from pydantic import BaseModel
+
+from app.core.schema import strategy_json_schema
+from app.services.validator import extract_json_body, format_retry_errors
+
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{\{[^{}]+\}\}")
 PROMPTS_DIRECTORY = Path(__file__).parents[1] / "prompts"
@@ -60,3 +65,49 @@ def render_template(template: str, replacements: Mapping[str, str]) -> str:
     if placeholder := _PLACEHOLDER_PATTERN.search(rendered):
         raise ValueError(f"Unreplaced prompt placeholder: {placeholder.group()}")
     return rendered
+
+
+def build_messages(
+    user_input: str, current_strategy: BaseModel | None = None
+) -> list[dict[str, str]]:
+    """Build a fresh create or edit request with the current DSL schema."""
+    system_prompt = render_template(
+        get_prompt_template("system"), {"dsl_schema": strategy_json_schema()}
+    )
+    template_name = "edit" if current_strategy is not None else "create"
+    replacements = {"user_input": user_input}
+    if current_strategy is not None:
+        replacements["current_strategy"] = current_strategy.model_dump_json()
+    return [
+        {"role": "system", "content": system_prompt},
+        {
+            "role": "user",
+            "content": render_template(get_prompt_template(template_name), replacements),
+        },
+    ]
+
+
+def build_retry_messages(
+    user_input: str, previous_output: str, errors: list[dict[str, object]]
+) -> list[dict[str, str]]:
+    """Build a fresh retry request without retaining earlier conversations."""
+    previous_for_retry = (
+        previous_output
+        if any(error.get("type") == "json_invalid" for error in errors)
+        else extract_json_body(previous_output)
+    )
+    system_prompt = render_template(
+        get_prompt_template("system"), {"dsl_schema": strategy_json_schema()}
+    )
+    retry_prompt = render_template(
+        get_prompt_template("retry"),
+        {
+            "user_input": user_input,
+            "previous_output": previous_for_retry,
+            "validation_errors": format_retry_errors(errors),
+        },
+    )
+    return [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": retry_prompt},
+    ]
