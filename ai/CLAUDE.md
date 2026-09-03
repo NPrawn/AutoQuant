@@ -22,7 +22,8 @@ git은 하위 디렉토리에서도 `.git`을 위로 찾으므로 브랜치·커
 
 | 파일 | 언제 |
 |---|---|
-| [docs/HANDOFF-B.md](docs/HANDOFF-B.md) | 지금 티켓을 잡았을 때 |
+| [docs/HANDOFF-C.md](docs/HANDOFF-C.md) | 지금 티켓을 잡았을 때 |
+| [docs/HANDOFF-B.md](docs/HANDOFF-B.md) | 프롬프트 로더·정제가 왜 이렇게 생겼는지 (완료 구간) |
 | [docs/HANDOFF-A.md](docs/HANDOFF-A.md) | 기반·오류·로깅이 왜 이렇게 생겼는지 (완료 구간) |
 | [../docs/git-convention.md](../docs/git-convention.md) | 브랜치·커밋·MR·티켓 형식. **Git 작업 전에** |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | "왜 A가 아니라 B인가" |
