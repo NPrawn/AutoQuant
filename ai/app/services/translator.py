@@ -1,17 +1,28 @@
 """Compose prompt, LLM completion, and envelope validation."""
 
-from app.core.schema import Strategy, StrategyEnvelope
+from dataclasses import dataclass
+from time import perf_counter
+
+from app.core.schema import Strategy, StrategyEnvelope, TranslateMeta
 from app.services.llm_client import complete
 from app.services.prompt_builder import build_messages, build_retry_messages
 from app.services.validator import ValidationResult, validate_llm_response
 
 
+@dataclass(frozen=True)
+class TranslationResult:
+    value: Strategy | None
+    meta: TranslateMeta | None
+    errors: list[dict[str, object]]
+
+
 def translate(
     user_input: str, current_strategy: Strategy | None = None
-) -> ValidationResult[StrategyEnvelope]:
+) -> TranslationResult:
     """Run one translation attempt; retry policy is added separately."""
     from app.core.config import settings
 
+    started_at = perf_counter()
     messages = build_messages(user_input, current_strategy)
     result: ValidationResult[StrategyEnvelope] | None = None
     for attempt in range(1, settings.max_retries + 2):
@@ -20,11 +31,22 @@ def translate(
         )
         result = validate_llm_response(response_text, StrategyEnvelope)
         if result.value is not None:
-            return result
+            return TranslationResult(
+                value=result.value.strategy,
+                meta=TranslateMeta(
+                    attempts=attempt,
+                    model=settings.llm_model,
+                    elapsedMs=int((perf_counter() - started_at) * 1000),
+                    warnings=[],
+                    assumptions=result.value.assumptions,
+                    changes=describe_changes(current_strategy, result.value.strategy),
+                ),
+                errors=[],
+            )
         if attempt <= settings.max_retries:
             messages = build_retry_messages(user_input, response_text, result.errors)
     assert result is not None
-    return result
+    return TranslationResult(value=None, meta=None, errors=result.errors)
 
 
 def describe_changes(previous: Strategy | None, current: Strategy) -> list[str]:

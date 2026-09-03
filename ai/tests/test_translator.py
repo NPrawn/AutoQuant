@@ -13,7 +13,8 @@ def test_translate_returns_validated_envelope(monkeypatch, valid_strategy_payloa
     result = translator.translate("전략 생성")
 
     assert result.value is not None
-    assert result.value.strategy.timeframe.value == "4H"
+    assert result.value.timeframe.value == "4H"
+    assert result.meta.attempts == 1
 
 
 def test_translate_retries_only_validation_failures(monkeypatch, valid_strategy_payload):
