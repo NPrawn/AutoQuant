@@ -7,7 +7,11 @@ from app.core.schema import Strategy, StrategyEnvelope, TranslateMeta
 from app.core.errors import DSLValidationError
 from app.services.llm_client import complete
 from app.services.prompt_builder import build_messages, build_retry_messages
-from app.services.validator import format_user_errors, validate_llm_response
+from app.services.validator import (
+    ValidationResult,
+    format_user_errors,
+    validate_llm_response,
+)
 
 
 @dataclass(frozen=True)
