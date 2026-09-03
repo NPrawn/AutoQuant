@@ -11,6 +11,7 @@ from app.core.errors import (
     DSLValidationError,
     LLMTimeoutError,
     LLMUpstreamError,
+    LLMCreditLimitError,
     PromptTooLongError,
 )
 
@@ -36,6 +37,7 @@ def create_app(monkeypatch):
         (LLMUpstreamError, 502, "LLM_UPSTREAM_ERROR"),
         (DSLValidationError, 422, "DSL_VALIDATION_FAILED"),
         (PromptTooLongError, 400, "INVALID_REQUEST"),
+        (LLMCreditLimitError, 429, "LLM_CREDIT_LIMIT_EXCEEDED"),
     ],
 )
 def test_domain_errors_follow_the_spring_error_contract(
@@ -53,7 +55,9 @@ def test_domain_errors_follow_the_spring_error_contract(
     assert response.status_code == status_code
     assert response.json() == {
         "code": code,
-        "message": "request failed",
+        "message": error_type.default_message
+        if error_type in (LLMTimeoutError, LLMUpstreamError)
+        else "request failed",
         "detail": None,
     }
 
@@ -75,6 +79,27 @@ def test_unexpected_errors_return_a_fixed_safe_response(monkeypatch):
         "detail": None,
     }
     assert UUID(response.headers["X-Request-ID"])
+
+
+def test_dsl_validation_error_returns_safe_retry_context(monkeypatch):
+    path = "/__test/dsl-validation-detail"
+    app = create_app(monkeypatch)
+
+    def raise_domain_error():
+        raise DSLValidationError(
+            "전략 형식이 올바르지 않습니다.",
+            attempts=3,
+            last_errors=["전략 형식이 올바르지 않습니다. 2개 항목을 확인해 주세요."],
+        )
+
+    app.add_api_route(path, raise_domain_error)
+    response = TestClient(app, raise_server_exceptions=False).get(path)
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "attempts": 3,
+        "lastErrors": ["전략 형식이 올바르지 않습니다. 2개 항목을 확인해 주세요."],
+    }
 
 
 @pytest.mark.parametrize(

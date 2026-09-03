@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.core.errors import DomainError
+from app.core.errors import DSLValidationError, DomainError, LLMTimeoutError, LLMUpstreamError
 
 
 logger = logging.getLogger(__name__)
@@ -27,10 +27,17 @@ def error_response(
 
 
 async def handle_domain_error(_: Request, error: DomainError) -> JSONResponse:
+    detail = None
+    message = str(error)
+    if isinstance(error, (LLMTimeoutError, LLMUpstreamError)):
+        message = error.default_message
+    if isinstance(error, DSLValidationError) and error.attempts is not None:
+        detail = {"attempts": error.attempts, "lastErrors": error.last_errors}
     return error_response(
         status_code=error.status_code,
         code=error.code,
-        message=str(error),
+        message=message,
+        detail=detail,
     )
 
 

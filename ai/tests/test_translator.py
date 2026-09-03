@@ -35,6 +35,66 @@ def test_translate_retries_only_validation_failures(monkeypatch, valid_strategy_
     assert translator.translate("전략 생성").value is not None
 
 
+def test_translate_short_circuits_greeting_without_calling_llm(monkeypatch):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test")
+    monkeypatch.setenv("LLM_API_KEY", "test")
+    monkeypatch.setenv("LLM_MODEL", "test")
+    monkeypatch.setenv("APP_ENV", "test")
+    from app.services import translator
+
+    monkeypatch.setattr(translator, "complete", lambda **_: pytest.fail("LLM must not be called"))
+    result = translator.translate("안녕하세요")
+
+    assert result.value is None
+    assert result.meta.attempts == 0
+    assert result.meta.assumptions
+
+
+def test_translate_sends_ambiguous_strategy_request_to_llm(monkeypatch, valid_strategy_payload):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test")
+    monkeypatch.setenv("LLM_API_KEY", "test")
+    monkeypatch.setenv("LLM_MODEL", "test")
+    monkeypatch.setenv("APP_ENV", "test")
+    from app.services import translator
+
+    calls = 0
+
+    def complete_once(**_):
+        nonlocal calls
+        calls += 1
+        return StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).model_dump_json(), None
+
+    monkeypatch.setattr(translator, "build_messages", lambda *_: [])
+    monkeypatch.setattr(translator, "complete", complete_once)
+    translator.translate("돈 많이 버는 전략")
+
+    assert calls == 1
+
+
+def test_translate_blocks_llm_calls_after_per_minute_limit(monkeypatch, valid_strategy_payload):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test")
+    monkeypatch.setenv("LLM_API_KEY", "test")
+    monkeypatch.setenv("LLM_MODEL", "test")
+    monkeypatch.setenv("APP_ENV", "test")
+    from app.core.errors import LLMCreditLimitError
+    from app.services import translator
+
+    translator._llm_call_times.clear()
+    monkeypatch.setattr(translator, "build_messages", lambda *_: [])
+    monkeypatch.setattr(
+        translator,
+        "complete",
+        lambda **_: (StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).model_dump_json(), None),
+    )
+    try:
+        for _ in range(translator.MAX_LLM_CALLS_PER_MINUTE):
+            translator.translate("모멘텀 전략")
+        with pytest.raises(LLMCreditLimitError):
+            translator.translate("모멘텀 전략")
+    finally:
+        translator._llm_call_times.clear()
+
+
 def test_describe_changes_marks_new_strategy(valid_strategy_payload):
     from app.services.translator import describe_changes
 
@@ -92,9 +152,11 @@ def test_translate_returns_last_errors_after_retry_exhaustion(monkeypatch):
     monkeypatch.setattr(translator, "complete", invalid)
 
     from app.core.errors import DSLValidationError
-    with pytest.raises(DSLValidationError):
+    with pytest.raises(DSLValidationError) as raised:
         translator.translate("전략 생성")
     assert calls == 3
+    assert raised.value.attempts == 3
+    assert raised.value.last_errors == ["전략 형식이 올바르지 않습니다. 2개 항목을 확인해 주세요."]
 
 
 def test_translate_passes_current_strategy_to_message_builder(monkeypatch, valid_strategy_payload):

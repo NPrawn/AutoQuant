@@ -7,10 +7,6 @@ from app.core.schema import (
     ComparisonOperator,
     FactorType,
     Logic,
-    MAX_PERIOD_1D,
-    MAX_PERIOD_1H,
-    MAX_PERIOD_4H,
-    Timeframe,
 )
 
 
@@ -40,104 +36,80 @@ def test_strategy_rejects_unknown_fields(valid_strategy_payload):
         Strategy.model_validate(payload)
 
 
-@pytest.mark.parametrize(
-    ("timeframe", "max_period"),
-    [
-        pytest.param(Timeframe.HOUR_1.value, MAX_PERIOD_1H, id=Timeframe.HOUR_1.value),
-        pytest.param(Timeframe.HOUR_4.value, MAX_PERIOD_4H, id=Timeframe.HOUR_4.value),
-        pytest.param(Timeframe.DAY_1.value, MAX_PERIOD_1D, id=Timeframe.DAY_1.value),
-    ],
-)
-@pytest.mark.parametrize("period_offset", [-1, 0, 1])
-def test_period_uses_timeframe_specific_upper_bounds(
-    valid_strategy_payload, timeframe, max_period, period_offset
-):
-    from app.core.schema import Strategy
-
-    payload = valid_strategy_payload
-    payload["timeframe"] = timeframe
-    period = max_period + period_offset
-    payload["ranking"]["period"] = period
-    if period <= max_period:
-        assert Strategy.model_validate(payload).ranking.period == period
-    else:
-        with pytest.raises(ValidationError):
-            Strategy.model_validate(payload)
-
-
-@pytest.mark.parametrize("period", [0, 1])
-def test_period_rejects_zero_and_accepts_one(valid_strategy_payload, period):
+@pytest.mark.parametrize("period", [1, 10_000])
+def test_ranking_period_accepts_any_positive_value(valid_strategy_payload, period):
     from app.core.schema import Strategy
 
     payload = valid_strategy_payload
     payload["ranking"]["period"] = period
-    if period == 1:
-        assert Strategy.model_validate(payload).ranking.period == period
-    else:
-        with pytest.raises(ValidationError):
-            Strategy.model_validate(payload)
+    assert Strategy.model_validate(payload).ranking.period == period
 
 
-@pytest.mark.parametrize("children_count", [0, 1, 5, 6])
-def test_group_children_boundaries(valid_strategy_payload, children_count):
+@pytest.mark.parametrize("period", [0, -1])
+def test_ranking_period_rejects_non_positive_value(valid_strategy_payload, period):
+    from app.core.schema import Strategy
+
+    payload = valid_strategy_payload
+    payload["ranking"]["period"] = period
+    with pytest.raises(ValidationError):
+        Strategy.model_validate(payload)
+
+
+@pytest.mark.parametrize("period", [0, -1])
+def test_factor_period_rejects_non_positive_value(period):
+    from app.core.schema import FactorOperand
+
+    with pytest.raises(ValidationError):
+        FactorOperand(type="FACTOR", factor=FactorType.RSI, period=period)
+
+
+@pytest.mark.parametrize("children_count", [0, 1, 6])
+def test_group_children_require_at_least_one_child(valid_strategy_payload, children_count):
     from app.core.schema import Strategy
 
     payload = valid_strategy_payload
     payload["filters"]["children"] = [condition() for _ in range(children_count)]
-    if 1 <= children_count <= 5:
+    if children_count >= 1:
         assert len(Strategy.model_validate(payload).filters.children) == children_count
     else:
         with pytest.raises(ValidationError):
             Strategy.model_validate(payload)
 
 
-@pytest.mark.parametrize("top_n", [0, 1, 30, 31])
-def test_top_n_boundaries(valid_strategy_payload, top_n):
+@pytest.mark.parametrize("top_n", [-1, 0, 1, 100])
+def test_top_n_requires_positive_value(valid_strategy_payload, top_n):
     from app.core.schema import Strategy
 
     payload = valid_strategy_payload
     payload["selection"]["topN"] = top_n
-    if 1 <= top_n <= 30:
+    if top_n > 0:
         assert Strategy.model_validate(payload).selection.topN == top_n
     else:
         with pytest.raises(ValidationError):
             Strategy.model_validate(payload)
 
 
-def test_strategy_rejects_third_group_level(valid_strategy_payload):
+def nested_group(depth: int) -> dict:
+    node = condition()
+    for _ in range(depth):
+        node = {"type": "GROUP", "logic": "AND", "children": [node]}
+    return node
+
+
+def test_strategy_accepts_five_group_levels(valid_strategy_payload):
     from app.core.schema import Strategy
 
     payload = valid_strategy_payload
-    payload["filters"] = {
-        "type": "GROUP",
-        "logic": "AND",
-        "children": [
-            {
-                "type": "GROUP",
-                "logic": "AND",
-                "children": [
-                    {"type": "GROUP", "logic": "AND", "children": [condition()]}
-                ],
-            }
-        ],
-    }
+    payload["filters"] = nested_group(5)
+    assert Strategy.model_validate(payload).filters.type == "GROUP"
+
+
+def test_strategy_rejects_six_group_levels(valid_strategy_payload):
+    from app.core.schema import Strategy
+
+    payload = valid_strategy_payload
+    payload["filters"] = nested_group(6)
     with pytest.raises(ValidationError, match="Filter depth"):
-        Strategy.model_validate(payload)
-
-
-def test_strategy_rejects_six_conditions(valid_strategy_payload):
-    from app.core.schema import Strategy
-
-    payload = valid_strategy_payload
-    payload["filters"]["children"] = [
-        *[condition() for _ in range(4)],
-        {
-            "type": "GROUP",
-            "logic": "AND",
-            "children": [condition(), condition()],
-        },
-    ]
-    with pytest.raises(ValidationError, match="Condition count"):
         Strategy.model_validate(payload)
 
 
