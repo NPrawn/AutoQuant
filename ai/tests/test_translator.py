@@ -16,6 +16,8 @@ def test_translate_returns_validated_envelope(monkeypatch, valid_strategy_payloa
     assert result.value is not None
     assert result.value.timeframe.value == "4H"
     assert result.meta.attempts == 1
+    assert result.meta.elapsedMs >= 0
+    assert result.meta.warnings == []
 
 
 def test_translate_retries_only_validation_failures(monkeypatch, valid_strategy_payload):
