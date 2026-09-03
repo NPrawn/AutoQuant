@@ -88,26 +88,25 @@ def build_messages(
 
 
 def build_retry_messages(
-    user_input: str, previous_output: str, errors: list[dict[str, object]]
+    user_input: str,
+    previous_output: str,
+    errors: list[dict[str, object]],
+    current_strategy: BaseModel | None = None,
 ) -> list[dict[str, str]]:
-    """Build a fresh retry request without retaining earlier conversations."""
+    """Repeat the original create or edit request and append the failed attempt."""
     previous_for_retry = (
         previous_output
         if any(error.get("type") == "json_invalid" for error in errors)
         else extract_json_body(previous_output)
     )
-    system_prompt = render_template(
-        get_prompt_template("system"), {"dsl_schema": strategy_envelope_json_schema()}
-    )
     retry_prompt = render_template(
         get_prompt_template("retry"),
         {
-            "user_input": user_input,
             "previous_output": previous_for_retry,
             "validation_errors": format_retry_errors(errors),
         },
     )
     return [
-        {"role": "system", "content": system_prompt},
+        *build_messages(user_input, current_strategy),
         {"role": "user", "content": retry_prompt},
     ]

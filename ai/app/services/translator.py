@@ -49,7 +49,9 @@ def translate(
                 errors=[],
             )
         if attempt <= settings.max_retries:
-            messages = build_retry_messages(user_input, response_text, result.errors)
+            messages = build_retry_messages(
+                user_input, response_text, result.errors, current_strategy
+            )
     assert result is not None
     raise DSLValidationError(format_user_errors(result.errors))
 

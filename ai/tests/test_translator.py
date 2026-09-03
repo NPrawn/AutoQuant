@@ -118,3 +118,27 @@ def test_describe_changes_keeps_unchanged_strategy_empty(valid_strategy_payload,
 
     strategy = StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).strategy
     assert describe_changes(strategy, strategy) == []
+
+
+def test_translate_keeps_the_current_strategy_across_retries(monkeypatch, valid_strategy_payload):
+    monkeypatch.setenv("LLM_BASE_URL", "https://example.test")
+    monkeypatch.setenv("LLM_API_KEY", "test")
+    monkeypatch.setenv("LLM_MODEL", "test")
+    monkeypatch.setenv("APP_ENV", "test")
+    from app.core.schema import Strategy
+    from app.services import translator
+
+    current_strategy = Strategy.model_validate(valid_strategy_payload)
+    responses = iter(["{}", StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).model_dump_json()])
+    retry_arguments = []
+    monkeypatch.setattr(translator, "build_messages", lambda *_: [{"role": "user", "content": "x"}])
+    monkeypatch.setattr(
+        translator,
+        "build_retry_messages",
+        lambda *arguments: retry_arguments.append(arguments) or [{"role": "user", "content": "retry"}],
+    )
+    monkeypatch.setattr(translator, "complete", lambda **_: (next(responses), None))
+
+    translator.translate("기간 변경", current_strategy)
+
+    assert retry_arguments[0][-1] == current_strategy
