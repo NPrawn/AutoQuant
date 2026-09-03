@@ -25,3 +25,16 @@ def translate(
             messages = build_retry_messages(user_input, response_text, result.errors)
     assert result is not None
     return result
+
+
+def describe_changes(previous: Strategy | None, current: Strategy) -> list[str]:
+    """Summarize changed top-level strategy fields without recursive diffing."""
+    if previous is None:
+        return ["전략을 새로 생성했습니다."]
+    changes = []
+    for field in ("timeframe", "ranking", "selection", "rebalance"):
+        if getattr(previous, field) != getattr(current, field):
+            changes.append(f"{field} 값이 바뀌었습니다.")
+    if previous.filters != current.filters:
+        changes.append("필터 조건이 바뀌었습니다.")
+    return changes

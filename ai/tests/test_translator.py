@@ -29,3 +29,9 @@ def test_translate_retries_only_validation_failures(monkeypatch, valid_strategy_
     monkeypatch.setattr(translator, "complete", lambda **_: (next(responses), None))
 
     assert translator.translate("전략 생성").value is not None
+
+
+def test_describe_changes_marks_new_strategy(valid_strategy_payload):
+    from app.services.translator import describe_changes
+
+    assert describe_changes(None, StrategyEnvelope(strategy=valid_strategy_payload, assumptions=[]).strategy)
