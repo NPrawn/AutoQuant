@@ -88,6 +88,24 @@ def test_build_messages_injects_schema_and_uses_create_template(monkeypatch):
     assert messages[1]["content"] == "Input: RSI 전략"
 
 
+def test_system_prompt_includes_factor_scales_defaults_and_no_timeframe_conversion(monkeypatch):
+    from app.services import prompt_builder
+
+    monkeypatch.setattr(
+        prompt_builder,
+        "prompt_loader",
+        prompt_builder.PromptLoader(prompt_builder.PROMPTS_DIRECTORY),
+    )
+    system_prompt = prompt_builder.build_messages("20% 넘게 빠진 코인 제외")[0]["content"]
+
+    assert "DRAWDOWN" in system_prompt
+    assert "-20" in system_prompt
+    assert "VOLUME_RATIO" in system_prompt
+    assert "1.5" in system_prompt
+    assert "RSI 14" in system_prompt
+    assert "timeframe conversion" not in system_prompt.lower()
+
+
 def test_build_messages_uses_edit_template_when_current_strategy_exists(monkeypatch, valid_strategy_payload):
     from app.services import prompt_builder
 
