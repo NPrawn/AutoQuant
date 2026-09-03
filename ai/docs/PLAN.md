@@ -173,9 +173,9 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
 
 | 모델 | 필드 |
 |---|---|
-| `TranslateRequest` | `text`(str, 1~2000자), `current_strategy`(`Strategy` 또는 null — 있으면 수정, 없으면 신규) |
+| `TranslateRequest` | `userInput`(str, 1~2000자), `currentStrategy`(`Strategy` 또는 null — 있으면 수정, 없으면 신규) |
 | `TranslateResponse` | `strategy`(`Strategy`), `meta`(`TranslateMeta`) |
-| `TranslateMeta` | `attempts`(int), `model`(str), `elapsed_ms`(int), `warnings`(str 목록), `assumptions`(str 목록), `changes`(str 목록) |
+| `TranslateMeta` | `attempts`(int), `model`(str), `elapsedMs`(int), `warnings`(str 목록), `assumptions`(str 목록), `changes`(str 목록) |
 | `ErrorResponse` | `code`(str), `message`(str), `detail`(object 또는 null) |
 
 ---
@@ -188,11 +188,11 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
 
 ```json
 {
-  "text": "거래대금 상위 20개 코인 중에서 최근 20일 수익률이 가장 높은 5개를 골라 동일비중으로 주간 리밸런싱하고, 손절은 -10%로 걸어줘"
+  "userInput": "거래대금 상위 20개 코인 중에서 최근 20일 수익률이 가장 높은 5개를 골라 동일비중으로 주간 리밸런싱하고, 손절은 -10%로 걸어줘"
 }
 ```
 
-성공 응답 `200 OK`:
+성공 응답 `200 OK` — **아래 `strategy` 본문은 임시 DSL 시절 예시다.** 정본은 [Strategy 도메인 명세서](../../docs/Strategy%20도메인%20명세서.md)와 `app/core/schema.py`고, 실제 예시는 L-3에서 코드로 뽑는다:
 
 ```json
 {
@@ -214,7 +214,7 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
   "meta": {
     "attempts": 1,
     "model": "gpt-5.4-mini",
-    "elapsed_ms": 2140,
+    "elapsedMs": 2140,
     "warnings": [],
     "assumptions": [],
     "changes": []

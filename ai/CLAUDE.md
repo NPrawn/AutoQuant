@@ -118,7 +118,7 @@ uvicorn app.main:app --reload
 
 포트 8000. 팀이 8080(api-market), 8081(api-trading)을 쓰고 있어 겹치지 않는다.
 
-`GET /health`는 프로세스 생존, `GET /health/ready`는 설정과 프롬프트 파일 존재를 본다. **프롬프트 파일이 없는 지금은 `/health/ready`가 503인 게 정상이다.** 503이 뜬다고 통과시키려고 검사를 무르게 만들지 않는다.
+`GET /health`는 프로세스 생존, `GET /health/ready`는 설정과 프롬프트 파일 존재를 본다. 프롬프트 파일이 들어와 `/health/ready`는 200이다. 503이 뜨면 프롬프트 로딩이 깨진 것이니, 통과시키려고 검사를 무르게 만들지 않는다.
 
 ## 팀 컨벤션
 

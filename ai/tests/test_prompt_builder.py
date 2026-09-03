@@ -102,15 +102,34 @@ def test_build_messages_uses_edit_template_when_current_strategy_exists(monkeypa
     assert messages[1]["content"].endswith("기간 변경")
 
 
+RETRY_TEMPLATES = {
+    "system": "{{dsl_schema}}",
+    "create": "{{user_input}}",
+    "edit": "{{current_strategy}}|{{user_input}}",
+    "retry": "{{previous_output}}|{{validation_errors}}",
+}
+
+
 def test_build_retry_messages_uses_raw_text_only_for_json_format_errors(monkeypatch):
     from app.services import prompt_builder
 
-    monkeypatch.setattr(
-        prompt_builder,
-        "get_prompt_template",
-        lambda name: {"system": "{{dsl_schema}}", "retry": "{{previous_output}}|{{validation_errors}}"}[name],
-    )
+    monkeypatch.setattr(prompt_builder, "get_prompt_template", lambda name: RETRY_TEMPLATES[name])
 
     messages = prompt_builder.build_retry_messages("x", "설명 {", [{"type": "json_invalid", "loc": ["response"], "msg": "bad"}])
 
-    assert "설명 {" in messages[1]["content"]
+    assert "설명 {" in messages[-1]["content"]
+
+
+def test_build_retry_messages_keeps_the_current_strategy_on_the_edit_path(monkeypatch, valid_strategy_payload):
+    from app.core.schema import Strategy
+    from app.services import prompt_builder
+
+    monkeypatch.setattr(prompt_builder, "get_prompt_template", lambda name: RETRY_TEMPLATES[name])
+    current_strategy = Strategy.model_validate(valid_strategy_payload)
+
+    messages = prompt_builder.build_retry_messages(
+        "기간 변경", "{}", [{"type": "missing", "loc": ["ranking"], "msg": "bad"}], current_strategy
+    )
+
+    assert current_strategy.model_dump_json() in messages[1]["content"]
+    assert "기간 변경" in messages[1]["content"]

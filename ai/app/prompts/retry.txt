@@ -1,7 +1,4 @@
-Revise the previous output so it satisfies the validation errors. Keep the result within the supplied schema and record newly chosen values in assumptions.
-
-Original user request:
-{{user_input}}
+Your previous output failed validation. Revise it so it satisfies the errors below. Keep the result within the supplied schema and record newly chosen values in assumptions.
 
 Previous output:
 {{previous_output}}
