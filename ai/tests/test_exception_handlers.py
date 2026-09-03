@@ -55,7 +55,9 @@ def test_domain_errors_follow_the_spring_error_contract(
     assert response.status_code == status_code
     assert response.json() == {
         "code": code,
-        "message": "request failed",
+        "message": error_type.default_message
+        if error_type in (LLMTimeoutError, LLMUpstreamError)
+        else "request failed",
         "detail": None,
     }
 
