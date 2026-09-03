@@ -173,7 +173,7 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
 
 | 모델 | 필드 |
 |---|---|
-| `TranslateRequest` | `userInput`(str, 1~2000자), `currentStrategy`(`Strategy` 또는 null — 있으면 수정, 없으면 신규) |
+| `TranslateRequest` | `userInput`(str, 1~500자), `currentStrategy`(`Strategy` 또는 null — 있으면 수정, 없으면 신규) |
 | `TranslateResponse` | `strategy`(`Strategy`), `meta`(`TranslateMeta`) |
 | `TranslateMeta` | `attempts`(int), `model`(str), `elapsedMs`(int), `warnings`(str 목록), `assumptions`(str 목록), `changes`(str 목록) |
 | `ErrorResponse` | `code`(str), `message`(str), `detail`(object 또는 null) |
@@ -230,9 +230,9 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
   "message": "생성된 전략이 DSL 스펙을 만족하지 못했습니다.",
   "detail": {
     "attempts": 3,
-    "last_errors": [
-      "signal.select_top: 값 40은 허용 범위(1~30)를 벗어납니다.",
-      "execution.timeframe: '1H'는 허용값이 아닙니다. (4H, 1D)"
+    "lastErrors": [
+      "strategy.selection.topN: 값은 0보다 커야 합니다.",
+      "strategy.timeframe: '2H'는 허용값이 아닙니다."
     ]
   }
 }
@@ -252,7 +252,7 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
 | 상황 | 상태 | `code` |
 |---|---|---|
 | 정상 | 200 | — |
-| 요청 본문이 스키마 위반(빈 문자열, 2000자 초과 등) | 400 | `INVALID_REQUEST` |
+| 요청 본문이 스키마 위반(빈 문자열, 500자 초과 등) | 400 | `INVALID_REQUEST` |
 | 재시도 소진, DSL 검증 실패 | 422 | `DSL_VALIDATION_FAILED` |
 | LLM 타임아웃 | 504 | `LLM_TIMEOUT` |
 | LLM 공급자 오류(5xx, rate limit) | 502 | `LLM_UPSTREAM_ERROR` |
