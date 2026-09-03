@@ -92,9 +92,11 @@ def test_translate_returns_last_errors_after_retry_exhaustion(monkeypatch):
     monkeypatch.setattr(translator, "complete", invalid)
 
     from app.core.errors import DSLValidationError
-    with pytest.raises(DSLValidationError):
+    with pytest.raises(DSLValidationError) as raised:
         translator.translate("전략 생성")
     assert calls == 3
+    assert raised.value.attempts == 3
+    assert raised.value.last_errors == ["전략 형식이 올바르지 않습니다. 2개 항목을 확인해 주세요."]
 
 
 def test_translate_passes_current_strategy_to_message_builder(monkeypatch, valid_strategy_payload):

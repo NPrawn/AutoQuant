@@ -77,6 +77,27 @@ def test_unexpected_errors_return_a_fixed_safe_response(monkeypatch):
     assert UUID(response.headers["X-Request-ID"])
 
 
+def test_dsl_validation_error_returns_safe_retry_context(monkeypatch):
+    path = "/__test/dsl-validation-detail"
+    app = create_app(monkeypatch)
+
+    def raise_domain_error():
+        raise DSLValidationError(
+            "전략 형식이 올바르지 않습니다.",
+            attempts=3,
+            last_errors=["전략 형식이 올바르지 않습니다. 2개 항목을 확인해 주세요."],
+        )
+
+    app.add_api_route(path, raise_domain_error)
+    response = TestClient(app, raise_server_exceptions=False).get(path)
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "attempts": 3,
+        "lastErrors": ["전략 형식이 올바르지 않습니다. 2개 항목을 확인해 주세요."],
+    }
+
+
 @pytest.mark.parametrize(
     "text",
     [pytest.param("", id="empty"), pytest.param("x" * 2001, id="too-long")],

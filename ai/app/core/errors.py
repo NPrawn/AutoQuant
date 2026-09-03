@@ -29,6 +29,17 @@ class DSLValidationError(DomainError):
     code = "DSL_VALIDATION_FAILED"
     default_message = "DSL validation failed"
 
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        attempts: int | None = None,
+        last_errors: list[str] | None = None,
+    ) -> None:
+        super().__init__(message or self.default_message)
+        self.attempts = attempts
+        self.last_errors = last_errors or []
+
 
 class PromptTooLongError(DomainError):
     status_code = 400

@@ -35,3 +35,14 @@ def test_domain_errors_use_their_default_message_when_raised_without_arguments(
     error = error_type()
 
     assert str(error) == error.default_message
+
+
+def test_dsl_validation_error_keeps_safe_retry_context():
+    error = DSLValidationError(
+        "전략 형식이 올바르지 않습니다.",
+        attempts=3,
+        last_errors=["전략 형식이 올바르지 않습니다. 2개 항목을 확인해 주세요."],
+    )
+
+    assert error.attempts == 3
+    assert error.last_errors == ["전략 형식이 올바르지 않습니다. 2개 항목을 확인해 주세요."]

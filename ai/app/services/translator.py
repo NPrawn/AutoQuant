@@ -53,7 +53,12 @@ def translate(
                 user_input, response_text, result.errors, current_strategy
             )
     assert result is not None
-    raise DSLValidationError(format_user_errors(result.errors))
+    error_message = format_user_errors(result.errors)
+    raise DSLValidationError(
+        error_message,
+        attempts=settings.max_retries + 1,
+        last_errors=[error_message],
+    )
 
 
 def describe_changes(previous: Strategy | None, current: Strategy) -> list[str]:
