@@ -230,9 +230,9 @@ LLM이 뱉은 원문 텍스트를 JSON으로 파싱하고 `Strategy` 모델로 �
   "message": "생성된 전략이 DSL 스펙을 만족하지 못했습니다.",
   "detail": {
     "attempts": 3,
-    "last_errors": [
-      "signal.select_top: 값 40은 허용 범위(1~30)를 벗어납니다.",
-      "execution.timeframe: '1H'는 허용값이 아닙니다. (4H, 1D)"
+    "lastErrors": [
+      "strategy.selection.topN: 값은 0보다 커야 합니다.",
+      "strategy.timeframe: '2H'는 허용값이 아닙니다."
     ]
   }
 }
