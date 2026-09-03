@@ -11,6 +11,7 @@ from app.core.errors import (
     DSLValidationError,
     LLMTimeoutError,
     LLMUpstreamError,
+    LLMCreditLimitError,
     PromptTooLongError,
 )
 
@@ -36,6 +37,7 @@ def create_app(monkeypatch):
         (LLMUpstreamError, 502, "LLM_UPSTREAM_ERROR"),
         (DSLValidationError, 422, "DSL_VALIDATION_FAILED"),
         (PromptTooLongError, 400, "INVALID_REQUEST"),
+        (LLMCreditLimitError, 429, "LLM_CREDIT_LIMIT_EXCEEDED"),
     ],
 )
 def test_domain_errors_follow_the_spring_error_contract(

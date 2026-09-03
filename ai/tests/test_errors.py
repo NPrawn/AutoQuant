@@ -4,6 +4,7 @@ from app.core.errors import (
     DSLValidationError,
     LLMTimeoutError,
     LLMUpstreamError,
+    LLMCreditLimitError,
     PromptTooLongError,
 )
 
@@ -15,6 +16,7 @@ from app.core.errors import (
         (LLMUpstreamError, 502, "LLM_UPSTREAM_ERROR"),
         (DSLValidationError, 422, "DSL_VALIDATION_FAILED"),
         (PromptTooLongError, 400, "INVALID_REQUEST"),
+        (LLMCreditLimitError, 429, "LLM_CREDIT_LIMIT_EXCEEDED"),
     ],
 )
 def test_domain_errors_expose_stable_http_contract(error_type, status_code, code):
@@ -27,7 +29,7 @@ def test_domain_errors_expose_stable_http_contract(error_type, status_code, code
 
 @pytest.mark.parametrize(
     "error_type",
-    [LLMTimeoutError, LLMUpstreamError, DSLValidationError, PromptTooLongError],
+    [LLMTimeoutError, LLMUpstreamError, DSLValidationError, PromptTooLongError, LLMCreditLimitError],
 )
 def test_domain_errors_use_their_default_message_when_raised_without_arguments(
     error_type,

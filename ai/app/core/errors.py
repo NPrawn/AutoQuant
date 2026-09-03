@@ -24,6 +24,12 @@ class LLMUpstreamError(DomainError):
     default_message = "LLM upstream service failed"
 
 
+class LLMCreditLimitError(DomainError):
+    status_code = 429
+    code = "LLM_CREDIT_LIMIT_EXCEEDED"
+    default_message = "LLM request limit exceeded"
+
+
 class DSLValidationError(DomainError):
     status_code = 422
     code = "DSL_VALIDATION_FAILED"
