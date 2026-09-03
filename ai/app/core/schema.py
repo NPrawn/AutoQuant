@@ -120,28 +120,6 @@ class Strategy(StrictModel):
         return self
 
 
-def default_strategy() -> Strategy:
-    """Return the conservative strategy used for non-strategy short inputs."""
-    return Strategy(
-        timeframe=Timeframe.DAY_1,
-        filters=FilterGroup(
-            type="GROUP",
-            logic=Logic.AND,
-            children=[
-                Condition(
-                    type="CONDITION",
-                    left=FactorOperand(type="FACTOR", factor=FactorType.RSI, period=14),
-                    operator=ComparisonOperator.LT,
-                    right=ValueOperand(type="VALUE", value=30),
-                )
-            ],
-        ),
-        ranking=Ranking(factor=FactorType.RETURN, period=20, direction=RankingDirection.DESC),
-        selection=Selection(topN=5),
-        rebalance=Rebalance(period=RebalancePeriod.WEEKLY),
-    )
-
-
 def strategy_json_schema() -> str:
     """Return the Strategy JSON Schema for structured LLM output."""
     return json.dumps(Strategy.model_json_schema(), ensure_ascii=False)
@@ -172,7 +150,7 @@ class TranslateMeta(StrictModel):
 
 
 class TranslateResponse(StrictModel):
-    strategy: Strategy
+    strategy: Strategy | None
     meta: TranslateMeta
 
 

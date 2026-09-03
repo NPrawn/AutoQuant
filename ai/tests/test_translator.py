@@ -45,7 +45,7 @@ def test_translate_short_circuits_greeting_without_calling_llm(monkeypatch):
     monkeypatch.setattr(translator, "complete", lambda **_: pytest.fail("LLM must not be called"))
     result = translator.translate("안녕하세요")
 
-    assert result.value is not None
+    assert result.value is None
     assert result.meta.attempts == 0
     assert result.meta.assumptions
 

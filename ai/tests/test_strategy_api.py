@@ -184,7 +184,9 @@ def test_translate_endpoint_short_circuits_without_llm_call(monkeypatch):
     )
 
     assert response.status_code == 200
+    assert response.json()["strategy"] is None
     assert response.json()["meta"]["attempts"] == 0
+    assert response.json()["meta"]["assumptions"]
     assert calls == 0
 
 

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from time import perf_counter
 
-from app.core.schema import Strategy, StrategyEnvelope, TranslateMeta, default_strategy
+from app.core.schema import Strategy, StrategyEnvelope, TranslateMeta
 from app.core.errors import DSLValidationError, LLMCreditLimitError
 from app.services.llm_client import complete
 from app.services.prompt_builder import build_messages, build_retry_messages
@@ -36,13 +36,13 @@ def translate(
     started_at = perf_counter()
     if current_strategy is None and _is_short_circuit_input(user_input):
         return TranslationResult(
-            value=default_strategy(),
+            value=None,
             meta=TranslateMeta(
                 attempts=0,
                 model=settings.llm_model,
                 elapsedMs=int((perf_counter() - started_at) * 1000),
                 warnings=[],
-                assumptions=["짧은 입력에 기본 RSI 반등 전략을 적용했습니다."],
+                assumptions=["입력이 짧아 전략을 만들지 않았습니다. 어떤 코인을 어떤 기준으로 사고 싶은지 말해 주세요."],
                 changes=[],
             ),
             errors=[],
