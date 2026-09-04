@@ -5,3 +5,7 @@ requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "live: calls the configured external LLM and consumes shared credits",
+]
+addopts = "-m 'not live'"
