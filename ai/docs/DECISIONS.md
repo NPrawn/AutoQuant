@@ -687,6 +687,12 @@ class StrategyEnvelope(StrictModel):
 
 사용자가 값을 생략하면 `timeframe`은 `1D`, `selection.topN`은 5, `rebalance.period`는 `WEEKLY`로 둔다. 일 단위가 일반적인 지표 표현과 맞고, 상위 5개·주간 리밸런싱은 과도한 집중과 매매 빈도를 피하는 보수적 기준이다. 지표 period는 RSI 14, RETURN·SMA_DISPARITY·VOLATILITY·VOLUME_RATIO 20, DRAWDOWN 60을 쓴다. **DRAWDOWN 60은 단기 변동이 아닌 최근 약 세 달의 고점 대비 하락을 보려는 창**이다. LLM이 이 값을 골랐으면 모두 `assumptions`에 남긴다.
 
+**결정 8 — 골든 케이스 비교 방식 (2026-09-04)**
+
+골든 케이스는 절충 비교를 쓴다. 사용자가 명시한 factor·period·연산자·임계값·랭킹·선택 수는 `corePaths`로 정확히 비교한다. `timeframe`, `topN`, `rebalance`처럼 입력이 생략한 기본값은 전략 DSL 유효성과 필드 존재만 확인한다. 완전 일치는 모델이 적법하게 고른 기본값까지 오답으로 만들고, 핵심 필드만 보면 말하지 않은 필드가 깨진 결과를 놓친다. 이 방식은 두 위험을 함께 막는다.
+
+진입과 청산의 시간 순서·자산 간 조건·볼린저밴드 자체는 현재 DSL이 직접 표현하지 못한다. 해당 문장은 현재 상태를 보는 가장 가까운 factor 조건으로 고정하고, live 러너에서는 그 근사 선택이 `assumptions`에 설명됐는지도 확인한다. `U-16`, `U-31`, `U-32`는 각각 청산 신호 또는 단일 ranking으로 표현할 수 없는 다축 최적화라 정확도 분모에서 제외한다.
+
 ### 아직 미결
 
 | 항목 | 상태 |
