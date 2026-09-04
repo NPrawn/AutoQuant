@@ -10,6 +10,7 @@ import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -29,6 +30,8 @@ public class BacktestRunCommandService {
     }
 
     public BacktestRun createBacktestRun(UUID memberId, CreateBacktestRunCommand command) {
+        validate(command);
+
         Strategy strategy = strategyRepository
                 .findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(command.strategyId(), memberId)
                 .orElseThrow(() -> new ApiException(ApiErrorCode.STRATEGY_NOT_FOUND));
@@ -50,5 +53,22 @@ public class BacktestRunCommandService {
                 Instant.now()
         );
         return backtestRunRepository.save(backtestRun);
+    }
+
+    private void validate(CreateBacktestRunCommand command) {
+        if (command == null || command.periodStart() == null || command.periodEnd() == null
+                || !command.periodStart().isBefore(command.periodEnd())) {
+            throw new ApiException(ApiErrorCode.BACKTEST_INVALID_PERIOD);
+        }
+        if (command.quoteCurrency() == null || !"KRW".equalsIgnoreCase(command.quoteCurrency().trim())) {
+            throw new ApiException(ApiErrorCode.BACKTEST_UNSUPPORTED_QUOTE_CURRENCY);
+        }
+        if (command.initialCapital() == null || command.initialCapital().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ApiException(ApiErrorCode.BACKTEST_INVALID_INITIAL_CAPITAL);
+        }
+        if (command.feeRate() == null || command.slippageBps() == null
+                || command.feeRate().signum() < 0 || command.slippageBps().signum() < 0) {
+            throw new ApiException(ApiErrorCode.BACKTEST_INVALID_COST);
+        }
     }
 }

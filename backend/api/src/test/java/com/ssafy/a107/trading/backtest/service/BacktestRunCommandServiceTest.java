@@ -15,6 +15,7 @@ import com.ssafy.a107.strategy.domain.dsl.Rebalance;
 import com.ssafy.a107.strategy.domain.dsl.RebalancePeriod;
 import com.ssafy.a107.strategy.domain.dsl.Selection;
 import com.ssafy.a107.strategy.domain.dsl.StrategyDsl;
+import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import com.ssafy.a107.strategy.domain.dsl.ValueOperand;
 import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
@@ -106,8 +107,87 @@ class BacktestRunCommandServiceTest {
         then(backtestRunRepository).shouldHaveNoInteractions();
     }
 
+    @DisplayName("기간이 역전된 백테스트 요청은 공통 오류로 거절한다")
+    @Test
+    void rejectReversedPeriod() {
+        BacktestRunCommandService service = createService();
+
+        assertThatThrownBy(() -> service.createBacktestRun(MEMBER_ID, validCommand(
+                Instant.parse("2026-02-01T00:00:00Z"),
+                Instant.parse("2026-01-01T00:00:00Z"),
+                "KRW",
+                BigDecimal.valueOf(1_000_000),
+                BigDecimal.valueOf(0.0005),
+                BigDecimal.valueOf(5)
+        ))).isInstanceOfSatisfying(ApiException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.BACKTEST_INVALID_PERIOD)
+        );
+
+        then(strategyRepository).shouldHaveNoInteractions();
+    }
+
+    @DisplayName("지원하지 않는 기준 통화는 공통 오류로 거절한다")
+    @Test
+    void rejectUnsupportedQuoteCurrency() {
+        BacktestRunCommandService service = createService();
+
+        assertThatThrownBy(() -> service.createBacktestRun(MEMBER_ID, validCommand(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Instant.parse("2026-02-01T00:00:00Z"),
+                "USD",
+                BigDecimal.valueOf(1_000_000),
+                BigDecimal.valueOf(0.0005),
+                BigDecimal.valueOf(5)
+        ))).isInstanceOfSatisfying(ApiException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.BACKTEST_UNSUPPORTED_QUOTE_CURRENCY)
+        );
+
+        then(strategyRepository).shouldHaveNoInteractions();
+    }
+
+    @DisplayName("음수 비용은 공통 오류로 거절한다")
+    @Test
+    void rejectNegativeCost() {
+        BacktestRunCommandService service = createService();
+
+        assertThatThrownBy(() -> service.createBacktestRun(MEMBER_ID, validCommand(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Instant.parse("2026-02-01T00:00:00Z"),
+                "KRW",
+                BigDecimal.valueOf(1_000_000),
+                BigDecimal.valueOf(-0.0005),
+                BigDecimal.valueOf(5)
+        ))).isInstanceOfSatisfying(ApiException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.BACKTEST_INVALID_COST)
+        );
+
+        then(strategyRepository).shouldHaveNoInteractions();
+    }
+
     private BacktestRunCommandService createService() {
         return new BacktestRunCommandService(backtestRunRepository, strategyRepository);
+    }
+
+    private CreateBacktestRunCommand validCommand(
+            Instant periodStart,
+            Instant periodEnd,
+            String quoteCurrency,
+            BigDecimal initialCapital,
+            BigDecimal feeRate,
+            BigDecimal slippageBps
+    ) {
+        return new CreateBacktestRunCommand(
+                STRATEGY_ID,
+                periodStart,
+                periodEnd,
+                quoteCurrency,
+                initialCapital,
+                feeRate,
+                slippageBps,
+                ExecutionPriceRule.NEXT_CANDLE_OPEN,
+                "engine-v1",
+                "market-v1"
+        );
     }
 
     private Strategy strategy() {
