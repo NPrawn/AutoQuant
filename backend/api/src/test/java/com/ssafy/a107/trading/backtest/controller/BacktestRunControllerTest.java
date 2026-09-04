@@ -88,8 +88,12 @@ class BacktestRunControllerTest {
     @Test
     @DisplayName("유효한 백테스트 요청은 ID와 QUEUED 상태를 즉시 반환한다")
     void createBacktestRun() {
+        BacktestRun expected = mock(BacktestRun.class);
+        given(expected.getBacktestId()).willReturn(BACKTEST_ID);
+        given(expected.getStatus()).willReturn(BacktestRunStatus.QUEUED);
+        given(expected.getQueuedAt()).willReturn(Instant.parse("2026-01-01T00:00:00Z"));
         given(backtestRunCommandService.createBacktestRun(eq(MEMBER_ID), any(CreateBacktestRunCommand.class)))
-                .willReturn(backtestRun());
+                .willReturn(expected);
 
         given()
                 .contentType(ContentType.JSON)
@@ -105,7 +109,8 @@ class BacktestRunControllerTest {
     @Test
     @DisplayName("백테스트 실행 단건 조회는 인증 회원의 실행만 조회한다")
     void getBacktestRun() {
-        given(backtestRunReadService.getBacktestRun(MEMBER_ID, BACKTEST_ID)).willReturn(backtestRun());
+        BacktestRun expected = backtestRun();
+        given(backtestRunReadService.getBacktestRun(MEMBER_ID, BACKTEST_ID)).willReturn(expected);
 
         given()
                 .when()
