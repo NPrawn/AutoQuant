@@ -10,6 +10,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -60,6 +61,17 @@ class BacktestRunPersistenceMappingTest {
         assertColumn("feeRate", "fee_rate", 12, 8);
         assertColumn("slippageBps", "slippage_bps", 12, 4);
         assertColumn("queuedAt", "queued_at", 0, 0);
+    }
+
+    @DisplayName("BacktestRun은 Worker 중복 갱신을 감지하는 버전 필드를 사용한다")
+    @Test
+    void mapOptimisticLockVersion() throws NoSuchFieldException {
+        Field versionField = BacktestRun.class.getDeclaredField("version");
+        Column column = versionField.getAnnotation(Column.class);
+
+        assertThat(versionField.getAnnotation(Version.class)).isNotNull();
+        assertThat(column.name()).isEqualTo("version");
+        assertThat(column.nullable()).isFalse();
     }
 
     private void assertManyToOne(Field field, String columnName, String foreignKeyName) {

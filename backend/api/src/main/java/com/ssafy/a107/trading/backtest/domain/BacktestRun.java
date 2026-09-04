@@ -18,6 +18,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -37,6 +38,10 @@ public class BacktestRun extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "backtest_id", nullable = false, updatable = false)
     private UUID backtestId;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(
