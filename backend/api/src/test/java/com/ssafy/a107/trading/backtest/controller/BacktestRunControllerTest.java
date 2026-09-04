@@ -1,5 +1,7 @@
 package com.ssafy.a107.trading.backtest.controller;
 
+import com.epages.restdocs.apispec.EnumFields;
+import com.epages.restdocs.apispec.ResourceSnippetParameters;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -26,6 +28,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.restdocs.RestDocumentationContextProvider;
+import org.springframework.restdocs.RestDocumentationExtension;
+import org.springframework.restdocs.payload.FieldDescriptor;
+import org.springframework.restdocs.payload.JsonFieldType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
@@ -37,6 +43,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
+import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
+import static com.epages.restdocs.apispec.Schema.schema;
 import static io.restassured.module.mockmvc.RestAssuredMockMvc.given;
 import static org.hamcrest.Matchers.equalTo;
 import static org.mockito.ArgumentMatchers.any;
@@ -44,8 +53,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
+import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, RestDocumentationExtension.class})
 class BacktestRunControllerTest {
 
     private static final UUID MEMBER_ID = UUID.fromString("b7ced58c-00e9-4617-9658-4f576ea2f6fe");
@@ -58,7 +69,7 @@ class BacktestRunControllerTest {
     private BacktestRunReadService backtestRunReadService;
 
     @BeforeEach
-    void setUp() {
+    void setUp(RestDocumentationContextProvider restDocumentation) {
         BacktestRunController controller = new BacktestRunController(
                 backtestRunCommandService,
                 backtestRunReadService
@@ -70,6 +81,7 @@ class BacktestRunControllerTest {
                 .setControllerAdvice(new ApiExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                .apply(documentationConfiguration(restDocumentation))
                 .build();
         io.restassured.module.mockmvc.RestAssuredMockMvc.mockMvc(mockMvc);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
@@ -101,6 +113,18 @@ class BacktestRunControllerTest {
                 .when()
                 .post("/backtests")
                 .then()
+                .apply(document(
+                        "backtests-create",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("백테스트")
+                                .summary("백테스트 실행 생성")
+                                .description("인증된 사용자의 전략으로 백테스트 실행을 생성하고 QUEUED 상태를 반환합니다.")
+                                .requestSchema(schema("CreateBacktestRunRequest"))
+                                .responseSchema(schema("BacktestRunCreatedResponse"))
+                                .requestFields(createRequestFields())
+                                .responseFields(createdResponseFields())
+                                .build())
+                ))
                 .statusCode(HttpStatus.ACCEPTED.value())
                 .body("backtestId", equalTo(BACKTEST_ID.toString()))
                 .body("status", equalTo("QUEUED"));
@@ -116,6 +140,16 @@ class BacktestRunControllerTest {
                 .when()
                 .get("/backtests/{backtestId}", BACKTEST_ID)
                 .then()
+                .apply(document(
+                        "backtests-get",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("백테스트")
+                                .summary("백테스트 실행 단건 조회")
+                                .description("인증된 사용자가 생성한 백테스트 실행의 상태와 실행 설정을 조회합니다.")
+                                .responseSchema(schema("BacktestRunResponse"))
+                                .responseFields(backtestResponseFields())
+                                .build())
+                ))
                 .statusCode(HttpStatus.OK.value())
                 .body("backtestId", equalTo(BACKTEST_ID.toString()))
                 .body("strategyId", equalTo(1))
@@ -136,6 +170,16 @@ class BacktestRunControllerTest {
                 .when()
                 .get("/backtests?page=0&size=20")
                 .then()
+                .apply(document(
+                        "backtests-list",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("백테스트")
+                                .summary("백테스트 실행 목록 조회")
+                                .description("인증된 사용자의 백테스트 실행 목록을 페이지 단위로 조회합니다.")
+                                .responseSchema(schema("BacktestRunPageResponse"))
+                                .responseFields(pageResponseFields())
+                                .build())
+                ))
                 .statusCode(HttpStatus.OK.value())
                 .body("content.size()", equalTo(1))
                 .body("page", equalTo(0))
@@ -151,6 +195,17 @@ class BacktestRunControllerTest {
                 .when()
                 .post("/backtests")
                 .then()
+                .apply(document(
+                        "backtests-create-invalid-request",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("백테스트")
+                                .summary("백테스트 실행 생성")
+                                .description("필수 입력이 누락되면 공통 요청 오류를 반환합니다.")
+                                .requestSchema(schema("CreateBacktestRunRequest"))
+                                .responseSchema(schema("ApiErrorResponse"))
+                                .responseFields(errorResponseFields())
+                                .build())
+                ))
                 .statusCode(HttpStatus.BAD_REQUEST.value())
                 .body("code", equalTo(ApiErrorCode.INVALID_REQUEST.getCode()));
 
@@ -180,6 +235,16 @@ class BacktestRunControllerTest {
                 .when()
                 .get("/backtests/{backtestId}", BACKTEST_ID)
                 .then()
+                .apply(document(
+                        "backtests-get-not-found",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("백테스트")
+                                .summary("백테스트 실행 단건 조회")
+                                .description("다른 사용자의 백테스트 실행은 조회할 수 없습니다.")
+                                .responseSchema(schema("ApiErrorResponse"))
+                                .responseFields(errorResponseFields())
+                                .build())
+                ))
                 .statusCode(HttpStatus.NOT_FOUND.value())
                 .body("code", equalTo(ApiErrorCode.BACKTEST_NOT_FOUND.getCode()));
     }
@@ -204,6 +269,97 @@ class BacktestRunControllerTest {
         given(backtestRun.getMarketDataVersion()).willReturn("market-v1");
         given(backtestRun.getQueuedAt()).willReturn(Instant.parse("2026-01-01T00:00:00Z"));
         return backtestRun;
+    }
+
+    private FieldDescriptor[] createRequestFields() {
+        EnumFields executionPriceRuleFields = new EnumFields(ExecutionPriceRule.class);
+        return new FieldDescriptor[]{
+                fieldWithPath("strategyId").type(JsonFieldType.NUMBER).description("실행할 전략 ID"),
+                fieldWithPath("periodStart").type(JsonFieldType.STRING).description("백테스트 시작 시각(UTC)"),
+                fieldWithPath("periodEnd").type(JsonFieldType.STRING).description("백테스트 종료 시각(UTC)"),
+                fieldWithPath("quoteCurrency").type(JsonFieldType.STRING).description("기준 통화(MVP: KRW)"),
+                fieldWithPath("initialCapital").type(JsonFieldType.NUMBER).description("초기 자본"),
+                fieldWithPath("feeRate").type(JsonFieldType.NUMBER).description("수수료율"),
+                fieldWithPath("slippageBps").type(JsonFieldType.NUMBER).description("슬리피지(bps)"),
+                executionPriceRuleFields.withPath("executionPriceRule").description("체결 가격 규칙"),
+                fieldWithPath("engineVersion").type(JsonFieldType.STRING).description("백테스트 엔진 버전"),
+                fieldWithPath("marketDataVersion").type(JsonFieldType.STRING).description("시장 데이터 버전")
+        };
+    }
+
+    private FieldDescriptor[] createdResponseFields() {
+        EnumFields statusFields = new EnumFields(BacktestRunStatus.class);
+        return new FieldDescriptor[]{
+                fieldWithPath("backtestId").type(JsonFieldType.STRING).description("백테스트 실행 ID"),
+                statusFields.withPath("status").description("실행 상태"),
+                fieldWithPath("queuedAt").type(JsonFieldType.STRING).description("대기 등록 시각")
+        };
+    }
+
+    private FieldDescriptor[] backtestResponseFields() {
+        EnumFields statusFields = new EnumFields(BacktestRunStatus.class);
+        EnumFields timeframeFields = new EnumFields(Timeframe.class);
+        EnumFields rebalanceFields = new EnumFields(RebalancePeriod.class);
+        EnumFields executionPriceRuleFields = new EnumFields(ExecutionPriceRule.class);
+        return new FieldDescriptor[]{
+                fieldWithPath("backtestId").type(JsonFieldType.STRING).description("백테스트 실행 ID"),
+                fieldWithPath("strategyId").type(JsonFieldType.NUMBER).description("실행한 전략 ID"),
+                statusFields.withPath("status").description("실행 상태"),
+                fieldWithPath("periodStart").type(JsonFieldType.STRING).description("백테스트 시작 시각"),
+                fieldWithPath("periodEnd").type(JsonFieldType.STRING).description("백테스트 종료 시각"),
+                timeframeFields.withPath("timeframe").description("전략 봉 주기"),
+                fieldWithPath("quoteCurrency").type(JsonFieldType.STRING).description("기준 통화"),
+                fieldWithPath("initialCapital").type(JsonFieldType.NUMBER).description("초기 자본"),
+                fieldWithPath("feeRate").type(JsonFieldType.NUMBER).description("수수료율"),
+                fieldWithPath("slippageBps").type(JsonFieldType.NUMBER).description("슬리피지(bps)"),
+                rebalanceFields.withPath("rebalanceInterval").description("리밸런싱 주기"),
+                executionPriceRuleFields.withPath("executionPriceRule").description("체결 가격 규칙"),
+                fieldWithPath("engineVersion").type(JsonFieldType.STRING).description("백테스트 엔진 버전"),
+                fieldWithPath("marketDataVersion").type(JsonFieldType.STRING).description("시장 데이터 버전"),
+                fieldWithPath("queuedAt").type(JsonFieldType.STRING).description("대기 등록 시각"),
+                fieldWithPath("startedAt").type(JsonFieldType.STRING).description("실행 시작 시각").optional(),
+                fieldWithPath("completedAt").type(JsonFieldType.STRING).description("실행 완료 시각").optional()
+        };
+    }
+
+    private FieldDescriptor[] pageResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("content").type(JsonFieldType.ARRAY).description("백테스트 실행 목록"),
+                fieldWithPath("content[].backtestId").type(JsonFieldType.STRING).description("백테스트 실행 ID"),
+                fieldWithPath("content[].strategyId").type(JsonFieldType.NUMBER).description("실행한 전략 ID"),
+                fieldWithPath("content[].status").type(JsonFieldType.STRING).description("실행 상태"),
+                fieldWithPath("content[].periodStart").type(JsonFieldType.STRING).description("백테스트 시작 시각"),
+                fieldWithPath("content[].periodEnd").type(JsonFieldType.STRING).description("백테스트 종료 시각"),
+                fieldWithPath("content[].timeframe").type(JsonFieldType.STRING).description("전략 봉 주기"),
+                fieldWithPath("content[].quoteCurrency").type(JsonFieldType.STRING).description("기준 통화"),
+                fieldWithPath("content[].initialCapital").type(JsonFieldType.NUMBER).description("초기 자본"),
+                fieldWithPath("content[].feeRate").type(JsonFieldType.NUMBER).description("수수료율"),
+                fieldWithPath("content[].slippageBps").type(JsonFieldType.NUMBER).description("슬리피지(bps)"),
+                fieldWithPath("content[].rebalanceInterval").type(JsonFieldType.STRING).description("리밸런싱 주기"),
+                fieldWithPath("content[].executionPriceRule").type(JsonFieldType.STRING).description("체결 가격 규칙"),
+                fieldWithPath("content[].engineVersion").type(JsonFieldType.STRING).description("백테스트 엔진 버전"),
+                fieldWithPath("content[].marketDataVersion").type(JsonFieldType.STRING).description("시장 데이터 버전"),
+                fieldWithPath("content[].queuedAt").type(JsonFieldType.STRING).description("대기 등록 시각"),
+                fieldWithPath("content[].startedAt").type(JsonFieldType.STRING).description("실행 시작 시각").optional(),
+                fieldWithPath("content[].completedAt").type(JsonFieldType.STRING).description("실행 완료 시각").optional(),
+                fieldWithPath("page").type(JsonFieldType.NUMBER).description("현재 페이지 번호"),
+                fieldWithPath("size").type(JsonFieldType.NUMBER).description("페이지 크기"),
+                fieldWithPath("totalElements").type(JsonFieldType.NUMBER).description("전체 실행 수"),
+                fieldWithPath("totalPages").type(JsonFieldType.NUMBER).description("전체 페이지 수")
+        };
+    }
+
+    private FieldDescriptor[] errorResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("timestamp").type(JsonFieldType.STRING).description("오류 발생 시각"),
+                fieldWithPath("status").type(JsonFieldType.NUMBER).description("HTTP 상태 코드"),
+                fieldWithPath("code").type(JsonFieldType.STRING).description("API 오류 코드"),
+                fieldWithPath("message").type(JsonFieldType.STRING).description("오류 메시지"),
+                fieldWithPath("path").type(JsonFieldType.STRING).description("오류 요청 경로"),
+                fieldWithPath("validationErrors").type(JsonFieldType.ARRAY).description("요청 검증 오류 목록"),
+                fieldWithPath("validationErrors[].field").type(JsonFieldType.STRING).description("검증에 실패한 필드").optional(),
+                fieldWithPath("validationErrors[].reason").type(JsonFieldType.STRING).description("필드 검증 실패 사유").optional()
+        };
     }
 
     private String validRequest() {
