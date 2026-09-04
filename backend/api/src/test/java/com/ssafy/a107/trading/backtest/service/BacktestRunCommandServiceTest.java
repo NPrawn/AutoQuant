@@ -15,7 +15,6 @@ import com.ssafy.a107.strategy.domain.dsl.Rebalance;
 import com.ssafy.a107.strategy.domain.dsl.RebalancePeriod;
 import com.ssafy.a107.strategy.domain.dsl.Selection;
 import com.ssafy.a107.strategy.domain.dsl.StrategyDsl;
-import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import com.ssafy.a107.strategy.domain.dsl.ValueOperand;
 import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
@@ -61,24 +60,23 @@ class BacktestRunCommandServiceTest {
         given(backtestRunRepository.save(any(BacktestRun.class)))
                 .willAnswer(invocation -> invocation.getArgument(0));
 
-        BacktestRun backtestRun = service.createBacktestRun(
-                MEMBER_ID,
+        BacktestRun backtestRun = service.createBacktestRun(MEMBER_ID, new CreateBacktestRunCommand(
                 STRATEGY_ID,
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Instant.parse("2026-02-01T00:00:00Z"),
-                Timeframe.ONE_HOUR,
                 "KRW",
                 BigDecimal.valueOf(1_000_000),
                 BigDecimal.valueOf(0.0005),
                 BigDecimal.valueOf(5),
-                RebalancePeriod.DAILY,
                 ExecutionPriceRule.NEXT_CANDLE_OPEN,
                 "engine-v1",
                 "market-v1"
-        );
+        ));
 
         assertThat(backtestRun.getStatus()).isEqualTo(BacktestRunStatus.QUEUED);
         assertThat(backtestRun.getStrategy()).isSameAs(strategy);
+        assertThat(backtestRun.getTimeframe()).isEqualTo(strategy.getStrategyDsl().timeframe());
+        assertThat(backtestRun.getRebalanceInterval()).isEqualTo(strategy.getStrategyDsl().rebalance().period());
         assertThat(backtestRun.getQueuedAt()).isNotNull();
         then(backtestRunRepository).should().save(any(BacktestRun.class));
     }
@@ -90,21 +88,18 @@ class BacktestRunCommandServiceTest {
         given(strategyRepository.findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(STRATEGY_ID, MEMBER_ID))
                 .willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.createBacktestRun(
-                MEMBER_ID,
+        assertThatThrownBy(() -> service.createBacktestRun(MEMBER_ID, new CreateBacktestRunCommand(
                 STRATEGY_ID,
                 Instant.parse("2026-01-01T00:00:00Z"),
                 Instant.parse("2026-02-01T00:00:00Z"),
-                Timeframe.ONE_HOUR,
                 "KRW",
                 BigDecimal.valueOf(1_000_000),
                 BigDecimal.valueOf(0.0005),
                 BigDecimal.valueOf(5),
-                RebalancePeriod.DAILY,
                 ExecutionPriceRule.NEXT_CANDLE_OPEN,
                 "engine-v1",
                 "market-v1"
-        )).isInstanceOfSatisfying(ApiException.class, exception ->
+        ))).isInstanceOfSatisfying(ApiException.class, exception ->
                 assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.STRATEGY_NOT_FOUND)
         );
 
