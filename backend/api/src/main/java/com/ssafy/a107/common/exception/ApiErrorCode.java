@@ -41,7 +41,15 @@ public enum ApiErrorCode {
 
     // 캔들
     CANDLE_INVALID_INTERVAL(HttpStatus.BAD_REQUEST, "CANDLE-400-001", "분봉 간격은 1 이상 32767 이하여야 합니다."),
-    CANDLE_NOT_FOUND(HttpStatus.NOT_FOUND, "CANDLE-404-001", "요청한 분봉을 찾을 수 없습니다.");
+    CANDLE_NOT_FOUND(HttpStatus.NOT_FOUND, "CANDLE-404-001", "요청한 분봉을 찾을 수 없습니다."),
+
+    // 백테스트
+    BACKTEST_INVALID_PERIOD(HttpStatus.BAD_REQUEST, "BACKTEST-400-001", "백테스트 기간이 올바르지 않습니다."),
+    BACKTEST_UNSUPPORTED_QUOTE_CURRENCY(HttpStatus.BAD_REQUEST, "BACKTEST-400-002", "현재 지원하지 않는 기준 통화입니다."),
+    BACKTEST_INVALID_INITIAL_CAPITAL(HttpStatus.BAD_REQUEST, "BACKTEST-400-003", "초기 자본은 0보다 커야 합니다."),
+    BACKTEST_INVALID_COST(HttpStatus.BAD_REQUEST, "BACKTEST-400-004", "수수료와 슬리피지는 음수일 수 없습니다."),
+    BACKTEST_INVALID_CONFIGURATION(HttpStatus.BAD_REQUEST, "BACKTEST-400-005", "백테스트 실행 설정이 올바르지 않습니다."),
+    BACKTEST_NOT_FOUND(HttpStatus.NOT_FOUND, "BACKTEST-404-001", "요청한 백테스트 실행을 찾을 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

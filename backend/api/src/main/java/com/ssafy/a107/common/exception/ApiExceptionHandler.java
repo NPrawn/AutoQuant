@@ -1,6 +1,7 @@
 package com.ssafy.a107.common.exception;
 
 import com.ssafy.a107.common.exception.response.ApiErrorResponse;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +48,8 @@ public class ApiExceptionHandler {
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class,
-            MissingServletRequestParameterException.class
+            MissingServletRequestParameterException.class,
+            ConstraintViolationException.class
     })
     public ResponseEntity<ApiErrorResponse> handleInvalidRequest(
             Exception exception,
