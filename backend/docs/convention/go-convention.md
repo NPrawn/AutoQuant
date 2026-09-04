@@ -4,7 +4,7 @@ Go 1.26, `backend/ingest` 파이프라인(Upbit 수집 → Kafka 발행 → 소�
 
 ## 공통 원칙
 
-- 지정되지 않은 라이브러리는 도입 전에 확인한다. 확정 의존성: `twmb/franz-go`, `redis/go-redis/v9`, `jackc/pgx/v5`, `gorilla/websocket`.
+- 지정되지 않은 라이브러리는 도입 전에 확인한다. 확정 의존성: `twmb/franz-go`, `redis/go-redis/v9`, `jackc/pgx/v5`, `gorilla/websocket`, `shopspring/decimal`.
 - 표준 라이브러리로 충분한 일에 외부 의존성을 추가하지 않는다.
 - 변경 후 `go build ./...`와 `go vet ./...`, 관련 테스트를 실행한다.
 

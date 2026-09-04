@@ -4,6 +4,9 @@ import (
 	"time"
 
 	commondomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/common/domain"
+	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/common/exception"
+
+	"github.com/shopspring/decimal"
 )
 
 // MinuteCandle is a finalized minute candle persisted by the ingest pipeline.
@@ -15,12 +18,24 @@ type MinuteCandle struct {
 	IntervalMinutes int16
 	OpenTime        time.Time
 
-	OpenPrice   string
-	HighPrice   string
-	LowPrice    string
-	ClosePrice  string
-	TradeVolume string
-	TradeAmount string
+	OpenPrice   decimal.Decimal
+	HighPrice   decimal.Decimal
+	LowPrice    decimal.Decimal
+	ClosePrice  decimal.Decimal
+	TradeVolume decimal.Decimal
+	TradeAmount decimal.Decimal
 
 	LastEventTime time.Time
+}
+
+// ParseAmount converts a contract string into a decimal amount.
+// Contract boundaries such as Kafka messages and Redis values carry amounts as
+// strings to avoid precision loss, so callers convert them at the domain edge.
+func ParseAmount(value string) (decimal.Decimal, error) {
+	parsed, err := decimal.NewFromString(value)
+	if err != nil {
+		return decimal.Decimal{}, exception.Wrap(exception.CodeCandleInvalidPayload, err)
+	}
+
+	return parsed, nil
 }
