@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.lang.reflect.Method;
 import java.util.Optional;
@@ -23,6 +24,8 @@ class BacktestRunRepositoryTest {
         );
 
         assertThat(method.getReturnType()).isEqualTo(Optional.class);
+        assertThat(method.getAnnotation(EntityGraph.class).attributePaths())
+                .containsExactly("strategy");
     }
 
     @DisplayName("회원별 백테스트 실행 목록을 최신 대기 시각순으로 페이지 조회한다")
@@ -35,5 +38,7 @@ class BacktestRunRepositoryTest {
         );
 
         assertThat(method.getReturnType()).isEqualTo(Page.class);
+        assertThat(method.getAnnotation(EntityGraph.class).attributePaths())
+                .containsExactly("strategy");
     }
 }
