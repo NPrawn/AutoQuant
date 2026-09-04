@@ -1,6 +1,8 @@
 package com.ssafy.a107.trading.backtest.controller;
 
 import com.ssafy.a107.auth.jwt.MemberPrincipal;
+import com.ssafy.a107.common.exception.ApiErrorCode;
+import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.trading.backtest.controller.request.CreateBacktestRunRequest;
 import com.ssafy.a107.trading.backtest.controller.response.BacktestRunCreatedResponse;
 import com.ssafy.a107.trading.backtest.controller.response.BacktestRunPageResponse;
@@ -61,6 +63,9 @@ public class BacktestRunController {
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) @Min(1) @Max(MAX_PAGE_SIZE) int size
     ) {
+        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
+            throw new ApiException(ApiErrorCode.INVALID_REQUEST);
+        }
         return BacktestRunPageResponse.from(
                 backtestRunReadService.getBacktestRuns(principal.memberId(), PageRequest.of(page, size))
         );

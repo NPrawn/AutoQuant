@@ -158,6 +158,19 @@ class BacktestRunControllerTest {
     }
 
     @Test
+    @DisplayName("백테스트 목록 페이지 크기 제한을 넘으면 400으로 응답한다")
+    void rejectInvalidPageSize() {
+        given()
+                .when()
+                .get("/backtests?page=0&size=101")
+                .then()
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .body("code", equalTo(ApiErrorCode.INVALID_REQUEST.getCode()));
+
+        then(backtestRunReadService).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("다른 회원의 백테스트 실행은 찾을 수 없는 것으로 응답한다")
     void rejectBacktestRunOutsideMemberOwnership() {
         given(backtestRunReadService.getBacktestRun(MEMBER_ID, BACKTEST_ID))
