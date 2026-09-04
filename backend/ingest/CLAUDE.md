@@ -24,6 +24,7 @@ internal/
 ├── common/domain       BaseEntity
 ├── common/exception    ErrorCode, Error, 재시도 정책
 ├── asset/domain        시장 데이터 수집 대상
+├── candle              체결을 1분봉으로 집계
 ├── candle/domain       MinuteCandle
 ├── trade/domain        실시간 MarketTrade
 ├── producer            수집 대상 변경 감지
