@@ -2,7 +2,6 @@ package com.ssafy.a107.trading.backtest.controller.request;
 
 import com.ssafy.a107.trading.backtest.domain.ExecutionPriceRule;
 import com.ssafy.a107.trading.backtest.service.CreateBacktestRunCommand;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -29,17 +28,14 @@ public record CreateBacktestRunRequest(
         String quoteCurrency,
 
         @NotNull(message = "초기 자본은 필수입니다.")
-        @DecimalMin(value = "0.00000001", message = "초기 자본은 0보다 커야 합니다.")
         @Digits(integer = 16, fraction = 8, message = "초기 자본의 정밀도가 올바르지 않습니다.")
         BigDecimal initialCapital,
 
         @NotNull(message = "수수료율은 필수입니다.")
-        @DecimalMin(value = "0", message = "수수료율은 음수일 수 없습니다.")
         @Digits(integer = 4, fraction = 8, message = "수수료율의 정밀도가 올바르지 않습니다.")
         BigDecimal feeRate,
 
         @NotNull(message = "슬리피지는 필수입니다.")
-        @DecimalMin(value = "0", message = "슬리피지는 음수일 수 없습니다.")
         @Digits(integer = 8, fraction = 4, message = "슬리피지의 정밀도가 올바르지 않습니다.")
         BigDecimal slippageBps,
 

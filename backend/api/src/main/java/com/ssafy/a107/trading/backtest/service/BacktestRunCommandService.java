@@ -5,7 +5,6 @@ import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.strategy.domain.Strategy;
 import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
-import com.ssafy.a107.trading.backtest.domain.ExecutionPriceRule;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +59,12 @@ public class BacktestRunCommandService {
                 || !command.periodStart().isBefore(command.periodEnd())) {
             throw new ApiException(ApiErrorCode.BACKTEST_INVALID_PERIOD);
         }
+        if (command.strategyId() == null || command.strategyId() <= 0
+                || command.executionPriceRule() == null
+                || isInvalidVersion(command.engineVersion())
+                || isInvalidVersion(command.marketDataVersion())) {
+            throw new ApiException(ApiErrorCode.BACKTEST_INVALID_CONFIGURATION);
+        }
         if (command.quoteCurrency() == null || !"KRW".equalsIgnoreCase(command.quoteCurrency().trim())) {
             throw new ApiException(ApiErrorCode.BACKTEST_UNSUPPORTED_QUOTE_CURRENCY);
         }
@@ -70,5 +75,9 @@ public class BacktestRunCommandService {
                 || command.feeRate().signum() < 0 || command.slippageBps().signum() < 0) {
             throw new ApiException(ApiErrorCode.BACKTEST_INVALID_COST);
         }
+    }
+
+    private boolean isInvalidVersion(String version) {
+        return version == null || version.isBlank() || version.trim().length() > 50;
     }
 }
