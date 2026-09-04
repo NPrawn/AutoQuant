@@ -10,7 +10,7 @@ import pytest
 from app.core.errors import DSLValidationError, LLMCreditLimitError, LLMTimeoutError, LLMUpstreamError
 from app.services.prompt_builder import load_prompt_templates
 from app.services.translator import translate
-from tests.golden_runner import evaluate_case, load_cases_and_inputs
+from tests.golden_runner import evaluate_case_details, load_cases_and_inputs
 
 
 MIN_CALL_INTERVAL_SECONDS = 2.1
@@ -44,7 +44,7 @@ def test_live_golden_cases_write_measurement_report():
 
         strategy = result.value.model_dump(mode="json") if result.value is not None else None
         assumptions = result.meta.assumptions if result.meta is not None else []
-        passed, failure_reason = evaluate_case(case, strategy, assumptions)
+        passed, failure_reason, mismatch = evaluate_case_details(case, strategy, assumptions)
         results.append(
             {
                 "id": case["id"],
@@ -55,6 +55,7 @@ def test_live_golden_cases_write_measurement_report():
                 "failureReason": failure_reason,
                 "attempts": result.meta.attempts if result.meta is not None else None,
                 "elapsedMs": result.meta.elapsedMs if result.meta is not None else None,
+                "mismatch": mismatch,
             }
         )
 
@@ -77,6 +78,7 @@ def _error_result(case: dict, failure_reason: str, attempts: int | None) -> dict
         "failureReason": failure_reason,
         "attempts": attempts,
         "elapsedMs": None,
+        "mismatch": None,
     }
 
 
@@ -95,6 +97,9 @@ def _build_report(results: list[dict]) -> dict:
         },
         "byCategory": _group_counts(eligible, "category"),
         "bySource": _group_counts(eligible, "source"),
+        "bySourceExact": _group_counts(
+            [result for result in eligible if result["comparison"] == "exact"], "source"
+        ),
         "failureReasons": _group_counts([result for result in eligible if not result["passed"]], "failureReason"),
         "outOfScope": [result["id"] for result in results if result["comparison"] == "out-of-scope"],
         "results": results,

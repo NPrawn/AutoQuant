@@ -26,11 +26,19 @@ def evaluate_case(
     case: Mapping[str, Any], strategy: Mapping[str, Any] | None, assumptions: list[str]
 ) -> tuple[bool, str | None]:
     """Return whether one live result meets its fixture contract."""
+    passed, failure_reason, _ = evaluate_case_details(case, strategy, assumptions)
+    return passed, failure_reason
+
+
+def evaluate_case_details(
+    case: Mapping[str, Any], strategy: Mapping[str, Any] | None, assumptions: list[str]
+) -> tuple[bool, str | None, dict[str, Any] | None]:
+    """Return the fixture decision and a compact mismatch for later diagnosis."""
     comparison = case["comparison"]
     if comparison == "short-circuit":
-        return strategy is None, None if strategy is None else "value"
+        return strategy is None, None if strategy is None else "value", None
     if strategy is None:
-        return False, "format"
+        return False, "format", {"path": "strategy", "expected": "strategy", "actual": None}
     if comparison == "exact":
         expected = case["expectedStrategy"]
         for path in case["corePaths"]:
@@ -38,12 +46,16 @@ def evaluate_case(
             try:
                 actual_value = _path_value(strategy, path)
             except (IndexError, KeyError, TypeError):
-                return False, "format"
+                return False, "format", {"path": path, "expected": expected_value, "actual": None}
             if actual_value != expected_value:
-                return False, _mismatch_type(expected_value, actual_value)
-        return True, None
+                return False, _mismatch_type(expected_value, actual_value), {
+                    "path": path,
+                    "expected": expected_value,
+                    "actual": actual_value,
+                }
+        return True, None, None
     if comparison in {"valid-with-assumptions", "out-of-scope"}:
-        return (True, None) if assumptions else (False, "value")
+        return (True, None, None) if assumptions else (False, "value", {"path": "assumptions", "expected": "non-empty", "actual": []})
     raise ValueError(f"Unsupported comparison: {comparison}")
 
 
@@ -56,7 +68,8 @@ def _path_value(value: Any, path: str) -> Any:
 
 def _mismatch_type(expected: Any, actual: Any) -> str:
     if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
-        if expected and abs(abs(actual / expected) - 0.01) < 0.001:
+        ratio = abs(actual / expected) if expected else None
+        if ratio is not None and (abs(ratio - 0.01) < 0.001 or abs(ratio - 100) < 0.1):
             return "scale"
         return "value"
     return "format" if type(expected) is not type(actual) else "value"
