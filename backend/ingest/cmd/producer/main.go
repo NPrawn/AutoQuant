@@ -13,8 +13,6 @@ import (
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/store"
 	tradedomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/trade/domain"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/upbit"
-
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func main() {
@@ -33,7 +31,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := pgxpool.New(ctx, settings.DatabaseURL)
+	pool, err := store.NewPool(ctx, settings.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("create database pool: %w", err)
 	}

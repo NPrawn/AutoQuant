@@ -41,7 +41,7 @@ internal/
 - 패키지명은 `market`이 아니라 `candle`이다.
 - `MinuteCandle`은 확정 분봉만 표현한다.
 - 내부 `asset_id` UUID는 문자열, 분봉 간격은 `int16`, 시각은 `time.Time`을 사용한다.
-- decimal 라이브러리가 확정되기 전까지 가격·거래량 문자열을 그대로 유지한다.
+- 가격·거래량·거래대금은 `shopspring/decimal`로 다루고, Kafka 메시지와 Redis 값 같은 계약 경계에서는 문자열을 유지한다.
 - Upbit DTO, Kafka 메시지, Candle 도메인, DB 저장 파라미터를 하나의 구조체로 재사용하지 않고 경계에서 변환한다.
 - Go에서 DDL을 실행하지 않는다. DB 변경은 `backend/api` Flyway에 추가한다.
 
