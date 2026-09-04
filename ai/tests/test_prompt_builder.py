@@ -103,6 +103,9 @@ def test_system_prompt_includes_factor_scales_defaults_and_no_timeframe_conversi
     assert "VOLUME_RATIO" in system_prompt
     assert "1.5" in system_prompt
     assert "RSI 14" in system_prompt
+    assert "timeframe 1D" in system_prompt
+    assert "topN 5" in system_prompt
+    assert "WEEKLY" in system_prompt
     assert "timeframe conversion" not in system_prompt.lower()
 
 

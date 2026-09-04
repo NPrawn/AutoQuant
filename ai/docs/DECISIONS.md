@@ -683,6 +683,10 @@ class StrategyEnvelope(StrictModel):
 
 `changes` 결정 때문에 `TASKS.md` G-6 케이스 1의 "신규 생성 표시" 요구를 내렸다. 코드와 테스트가 이미 빈 목록으로 맞아 있어 코드는 손대지 않는다.
 
+**결정 7 — 프롬프트 기본값과 period 관행값 (2026-09-04)**
+
+사용자가 값을 생략하면 `timeframe`은 `1D`, `selection.topN`은 5, `rebalance.period`는 `WEEKLY`로 둔다. 일 단위가 일반적인 지표 표현과 맞고, 상위 5개·주간 리밸런싱은 과도한 집중과 매매 빈도를 피하는 보수적 기준이다. 지표 period는 RSI 14, RETURN·SMA_DISPARITY·VOLATILITY·VOLUME_RATIO 20, DRAWDOWN 60을 쓴다. **DRAWDOWN 60은 단기 변동이 아닌 최근 약 세 달의 고점 대비 하락을 보려는 창**이다. LLM이 이 값을 골랐으면 모두 `assumptions`에 남긴다.
+
 ### 아직 미결
 
 | 항목 | 상태 |
