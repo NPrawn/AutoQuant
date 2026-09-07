@@ -165,3 +165,10 @@ func sleep(ctx context.Context, duration time.Duration) bool {
 		return true
 	}
 }
+
+// Skip lets the offsets move past a record the pipeline can never apply.
+func (r *Recorder) Skip(_ context.Context, record ingestkafka.Record) error {
+	r.trackerFor(record.Partition).Advance(record.Offset)
+
+	return nil
+}
