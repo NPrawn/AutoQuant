@@ -2,7 +2,7 @@
 
 > Upbit 데이터 수집 · 적재 파이프라인. Go 모듈 하나에서 바이너리 3개를 만든다.
 > 현재 Producer는 Kafka Consumer Group에서 Collector 샤드를 할당받고, DB 수집 대상 중 담당 종목만 Upbit WebSocket으로 구독한다. 수신한 체결은 Kafka `tick-raw`와 Redis Pub/Sub에 서로 독립적으로 발행한다.
-> Consumer는 `tick-raw`를 파티션별로 집계하고 진행 봉을 Redis에 체크포인트로 저장한다. 확정 봉은 PostgreSQL에 UPSERT하며, 필수 저장과 Kafka offset 커밋이 성공한 뒤 최신 진행 봉을 Redis Pub/Sub으로 발행한다.
+> Consumer는 `tick-raw`를 파티션별로 집계하고 진행 봉을 Redis에 체크포인트로 저장한다. 확정 봉은 PostgreSQL에 UPSERT하며, offset 커밋 후 최근 확정 분봉 캐시와 최신 진행 봉 Pub/Sub을 갱신한다.
 
 JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리의 존재를 모른다 (Gradle 프로젝트는 형제 디렉토리 `../api` 에 있음). 결합은 런타임에만 존재하며, 그 접점은 두 개다 — Redis 키/값 포맷과 DB 스키마.
 
@@ -34,7 +34,7 @@ ingest/
 │  ├─ consumer/             체결 메시지 검증 · partition별 1분봉 집계
 │  ├─ upbit/               WebSocket · REST 클라이언트, 재연결, 페이로드 파싱
 │  ├─ kafka/               토픽 상수, 메시지 구조체, Consumer Group · 프로듀서 · 컨슈머 래퍼
-│  ├─ redis/               진행 봉 체크포인트 저장·복구, 실시간 채널 발행 ← Go↔JVM 계약의 원본
+│  ├─ redis/               진행 봉 체크포인트, 최근 확정 봉 캐시, 실시간 채널 ← Go↔JVM 계약의 원본
 │  ├─ store/               PostgreSQL 수집 대상 조회·확정 분봉 UPSERT
 │  └─ config/              환경변수 로드
 ├─ tests/                기능별 외부 패키지 테스트와 testdata
@@ -74,7 +74,7 @@ ingest/
 
 Producer 실행에는 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `REDIS_HOST`, `REDIS_PORT`가 필요하다. Kafka 브로커가 여러 개면 쉼표로 구분한다. Producer는 `collector-shards` 토픽과 `upbit-trade-collectors` 그룹으로 담당 종목을 결정하고, 수신한 체결을 마켓 코드 key로 `tick-raw`에 전송하는 동시에 `trade:realtime:updates` 채널에도 JSON으로 발행한다. Redis 발행은 크기 2,048의 비동기 큐와 전용 worker가 담당하므로 Redis 응답이 Kafka 전송을 지연시키지 않는다. 큐가 가득 차면 가장 오래된 실시간 알림을 제거하고 최신 체결을 유지한다. `UPBIT_WEBSOCKET_URL`과 `COLLECTION_TARGET_REFRESH_INTERVAL`은 선택 설정이며 기본값은 각각 Upbit 공식 WebSocket 주소와 `5s`다.
 
-Consumer 실행에는 동일한 DB·Kafka·Redis 설정이 필요하다. Consumer는 Poll 배치에서 변경된 종목별 마지막 진행 봉만 모아 `candle:1m:progress:{partition}` Hash에 한 번의 `HSET`으로 저장한 뒤 Kafka offset을 커밋한다. 각 필드에는 진행 봉, 마지막 체결 순번, Kafka source offset을 함께 저장한다. 커밋 성공 후 종목별 최신 진행 봉 한 건을 `candle:1m:live:updates` 채널에 JSON으로 발행하며 내부 복구 값인 `source_offset`은 제외한다. Pub/Sub 실패는 저장·커밋 결과를 되돌리지 않는다. 최근 1,000개 확정 봉 캐시는 아직 구현하지 않는다.
+Consumer 실행에는 동일한 DB·Kafka·Redis 설정이 필요하다. Consumer는 Poll 배치에서 변경된 종목별 마지막 진행 봉만 모아 `candle:1m:progress:{partition}` Hash에 한 번의 `HSET`으로 저장한 뒤 Kafka offset을 커밋한다. 각 필드에는 진행 봉, 마지막 체결 순번, Kafka source offset을 함께 저장한다. 커밋 성공 후 확정 봉을 `candle:1m:recent:{assetId}` Sorted Set에 저장하고 score가 같은 기존 봉을 교체한 뒤 최신 1,000개만 유지한다. 이어서 종목별 최신 진행 봉 한 건을 `candle:1m:live:updates` 채널에 JSON으로 발행한다. 최근 캐시와 Pub/Sub 실패는 필수 저장·커밋 결과를 되돌리지 않으며, 초기 캐시 miss는 향후 Spring 조회 API가 PostgreSQL에서 복구한다.
 
 ```bash
 go build ./...            # 3개 바이너리 컴파일 확인

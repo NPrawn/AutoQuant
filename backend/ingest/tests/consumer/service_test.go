@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle"
+	candledomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle/domain"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/consumer"
 	ingestkafka "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/kafka"
 )
@@ -99,6 +100,26 @@ type recordingLiveCandlePublisher struct {
 	mutex   sync.Mutex
 }
 
+type recordingRecentCandleCache struct {
+	batches [][]candledomain.MinuteCandle
+	err     error
+	events  *[]string
+	mutex   sync.Mutex
+}
+
+func (c *recordingRecentCandleCache) SaveBatch(
+	_ context.Context,
+	candles []candledomain.MinuteCandle,
+) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.batches = append(c.batches, append([]candledomain.MinuteCandle(nil), candles...))
+	if c.events != nil {
+		*c.events = append(*c.events, "cache")
+	}
+	return c.err
+}
+
 func (p *recordingLiveCandlePublisher) PublishBatch(
 	_ context.Context,
 	checkpoints []candle.Checkpoint,
@@ -159,7 +180,13 @@ func TestServiceCommitsAfterPersistingBatch(t *testing.T) {
 	}
 	handler := &recordingResultHandler{events: &events}
 	publisher := &recordingLiveCandlePublisher{events: &events}
-	service := consumer.NewService(kafkaConsumer, checkpoints, handler, publisher)
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		handler,
+		&recordingRecentCandleCache{events: &events},
+		publisher,
+	)
 
 	if err := service.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -183,6 +210,7 @@ func TestServiceCommitsAfterPersistingBatch(t *testing.T) {
 
 func TestServiceCoalescesLatestCheckpointAndKeepsEveryClosedCandle(t *testing.T) {
 	tradedAt := time.Date(2026, time.September, 7, 12, 34, 10, 0, time.UTC)
+	events := make([]string, 0, 5)
 	records := []ingestkafka.Record{
 		tradeRecord(t, 0, "KRW-BTC", "100", "1", "BID", tradedAt, 1),
 		tradeRecord(t, 0, "KRW-ETH", "200", "1", "BID", tradedAt, 1),
@@ -196,6 +224,7 @@ func TestServiceCoalescesLatestCheckpointAndKeepsEveryClosedCandle(t *testing.T)
 	ctx, cancel := context.WithCancel(context.Background())
 	kafkaConsumer := &batchConsumer{
 		batches:     [][]ingestkafka.Record{records},
+		events:      &events,
 		cancel:      cancel,
 		cancelAfter: 1,
 	}
@@ -203,9 +232,10 @@ func TestServiceCoalescesLatestCheckpointAndKeepsEveryClosedCandle(t *testing.T)
 		checkpoints: make(map[int32][]candle.Checkpoint),
 		loadCount:   make(map[int32]int),
 	}
-	handler := &recordingResultHandler{}
-	publisher := &recordingLiveCandlePublisher{}
-	service := consumer.NewService(kafkaConsumer, checkpoints, handler, publisher)
+	handler := &recordingResultHandler{events: &events}
+	recentCache := &recordingRecentCandleCache{events: &events}
+	publisher := &recordingLiveCandlePublisher{events: &events}
+	service := consumer.NewService(kafkaConsumer, checkpoints, handler, recentCache, publisher)
 
 	if err := service.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -232,6 +262,15 @@ func TestServiceCoalescesLatestCheckpointAndKeepsEveryClosedCandle(t *testing.T)
 	if len(publisher.batches) != 1 || len(publisher.batches[0]) != 2 {
 		t.Fatalf("published checkpoints = %#v, want latest state for 2 markets", publisher.batches)
 	}
+	if len(recentCache.batches) != 1 || len(recentCache.batches[0]) != 2 {
+		t.Fatalf("cached candles = %#v, want every closed candle", recentCache.batches)
+	}
+	wantEvents := []string{"store", "commit", "cache", "publish", "allow"}
+	for index := range wantEvents {
+		if len(events) != len(wantEvents) || events[index] != wantEvents[index] {
+			t.Fatalf("events = %v, want %v", events, wantEvents)
+		}
+	}
 }
 
 func TestServiceDoesNotCommitWhenPersistenceFails(t *testing.T) {
@@ -246,8 +285,9 @@ func TestServiceDoesNotCommitWhenPersistenceFails(t *testing.T) {
 		loadCount:   make(map[int32]int),
 	}
 	handler := &recordingResultHandler{err: wantErr}
+	recentCache := &recordingRecentCandleCache{}
 	publisher := &recordingLiveCandlePublisher{}
-	service := consumer.NewService(kafkaConsumer, checkpoints, handler, publisher)
+	service := consumer.NewService(kafkaConsumer, checkpoints, handler, recentCache, publisher)
 
 	err := service.Run(context.Background())
 	if !errors.Is(err, wantErr) {
@@ -269,6 +309,9 @@ func TestServiceDoesNotCommitWhenPersistenceFails(t *testing.T) {
 	if len(publisher.batches) != 0 {
 		t.Fatalf("published batch count = %d, want 0", len(publisher.batches))
 	}
+	if len(recentCache.batches) != 0 {
+		t.Fatalf("cached batch count = %d, want 0", len(recentCache.batches))
+	}
 }
 
 func TestServiceDoesNotPublishWhenCommitFails(t *testing.T) {
@@ -277,6 +320,7 @@ func TestServiceDoesNotPublishWhenCommitFails(t *testing.T) {
 	kafkaConsumer := &batchConsumer{
 		batches: [][]ingestkafka.Record{{
 			tradeRecord(t, 0, "KRW-BTC", "100", "1", "BID", tradedAt, 1),
+			tradeRecord(t, 0, "KRW-BTC", "110", "1", "BID", tradedAt.Add(time.Minute), 2),
 		}},
 		commitErr: wantErr,
 	}
@@ -285,10 +329,12 @@ func TestServiceDoesNotPublishWhenCommitFails(t *testing.T) {
 		loadCount:   make(map[int32]int),
 	}
 	publisher := &recordingLiveCandlePublisher{}
+	recentCache := &recordingRecentCandleCache{}
 	service := consumer.NewService(
 		kafkaConsumer,
 		checkpoints,
 		&recordingResultHandler{},
+		recentCache,
 		publisher,
 	)
 
@@ -298,6 +344,48 @@ func TestServiceDoesNotPublishWhenCommitFails(t *testing.T) {
 	}
 	if len(publisher.batches) != 0 {
 		t.Fatalf("published batch count = %d, want 0", len(publisher.batches))
+	}
+	if len(recentCache.batches) != 0 {
+		t.Fatalf("cached batch count = %d, want 0", len(recentCache.batches))
+	}
+}
+
+func TestServiceIgnoresRecentCandleCacheError(t *testing.T) {
+	tradedAt := time.Date(2026, time.September, 7, 12, 34, 10, 0, time.UTC)
+	ctx, cancel := context.WithCancel(context.Background())
+	kafkaConsumer := &batchConsumer{
+		batches: [][]ingestkafka.Record{{
+			tradeRecord(t, 0, "KRW-BTC", "100", "1", "BID", tradedAt, 1),
+			tradeRecord(t, 0, "KRW-BTC", "110", "1", "BID", tradedAt.Add(time.Minute), 2),
+		}},
+		cancel:      cancel,
+		cancelAfter: 1,
+	}
+	checkpoints := &checkpointStore{
+		checkpoints: make(map[int32][]candle.Checkpoint),
+		loadCount:   make(map[int32]int),
+	}
+	recentCache := &recordingRecentCandleCache{err: errors.New("redis unavailable")}
+	publisher := &recordingLiveCandlePublisher{}
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		&recordingResultHandler{},
+		recentCache,
+		publisher,
+	)
+
+	if err := service.Run(ctx); err != nil {
+		t.Fatalf("Run() error = %v, want recent cache error ignored", err)
+	}
+	if len(kafkaConsumer.committed) != 1 || len(recentCache.batches) != 1 ||
+		len(publisher.batches) != 1 {
+		t.Fatalf(
+			"committed/cached/published counts = %d/%d/%d, want 1/1/1",
+			len(kafkaConsumer.committed),
+			len(recentCache.batches),
+			len(publisher.batches),
+		)
 	}
 }
 
@@ -320,6 +408,7 @@ func TestServiceIgnoresLiveCandlePublishError(t *testing.T) {
 		kafkaConsumer,
 		checkpoints,
 		&recordingResultHandler{},
+		&recordingRecentCandleCache{},
 		publisher,
 	)
 
@@ -358,6 +447,7 @@ func TestServiceCommitsInvalidRecordWithoutPersistence(t *testing.T) {
 		kafkaConsumer,
 		checkpoints,
 		handler,
+		&recordingRecentCandleCache{},
 		&recordingLiveCandlePublisher{},
 	)
 
@@ -390,6 +480,7 @@ func TestServiceRestoresPartitionOnlyOnce(t *testing.T) {
 		kafkaConsumer,
 		checkpoints,
 		handler,
+		&recordingRecentCandleCache{},
 		&recordingLiveCandlePublisher{},
 	)
 
@@ -421,6 +512,7 @@ func TestServiceRestoresRevokedPartitionAgain(t *testing.T) {
 		kafkaConsumer,
 		checkpoints,
 		&recordingResultHandler{},
+		&recordingRecentCandleCache{},
 		&recordingLiveCandlePublisher{},
 	)
 
@@ -456,6 +548,7 @@ func TestServiceProcessesDifferentPartitionsConcurrently(t *testing.T) {
 		kafkaConsumer,
 		checkpoints,
 		handler,
+		&recordingRecentCandleCache{},
 		&recordingLiveCandlePublisher{},
 	)
 	errChannel := make(chan error, 1)
