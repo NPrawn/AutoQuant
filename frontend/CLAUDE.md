@@ -6,7 +6,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 
 - 화면 목업의 디자인 시스템은 `src/styles`로 옮겨져 있고 실제 서비스 화면은 구현 전이다.
 - 화면 기획과 목업은 `../docs/기획/박민규/화면 설계/v1/README.md`를 참고한다.
-- 라우터는 `react-router`를 쓴다. 상태관리, 차트 라이브러리, 테스트 프레임워크는 아직 확정되지 않았다. 사용자 확인 없이 추가하지 않는다.
+- 라우터는 `react-router`, 서버 상태는 `@tanstack/react-query`를 쓴다. 전역 상태 라이브러리는 두지 않는다. 차트 라이브러리와 테스트 프레임워크는 아직 확정되지 않았다. 사용자 확인 없이 추가하지 않는다.
 
 ## 디자인 시스템
 
@@ -29,6 +29,15 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 모달은 네이티브 `dialog`를 `showModal()`로 열고 겉모습만 목업의 `.mbd`·`.modal`을 쓴다. 포커스 트랩, Esc 닫기, 바깥 요소 비활성화는 브라우저에 맡기고 직접 구현하지 않는다.
 - 드롭다운 메뉴는 열렸을 때만 렌더링하고 바깥 `pointerdown`과 Esc 로 닫으며, 닫힐 때 여는 버튼으로 포커스를 되돌린다.
 - 정의되지 않은 경로는 `NotFoundPage`가 받는다.
+
+## API 호출과 인증 상태
+
+- 모든 API 호출은 `src/api/client.ts`의 `request`를 지난다. 컴포넌트가 `fetch`를 직접 부르지 않는다.
+- 실패는 `ApiError` 하나로 던진다. 응답 본문은 backend/api 의 `ApiErrorResponse`와 같다.
+- 서버 데이터는 TanStack Query 훅으로 읽는다. 훅은 `src/{feature}/queries.ts`에 두고 쿼리 키는 그 파일에서만 정한다.
+- 토큰은 `httpOnly` 쿠키라 프론트가 읽거나 저장하지 않는다. 로그인 여부의 유일한 근거는 `useCurrentMember`(`GET /members/me`) 결과다.
+- 인증이 필요한 화면은 `RequireAuth` 아래에, 로그인 화면은 `GuestOnly` 아래에 둔다.
+- API 응답 타입(`XxxResponse`)과 화면 모델은 `src/{feature}/types.ts`에서 분리하고 변환 함수를 거친다.
 
 ## 경계
 
