@@ -40,7 +40,7 @@ src/
 │   ├── router.tsx        라우트 정의, handle.title 이 상단바 제목
 │   ├── routes.ts         경로 상수와 링크 생성 함수
 │   ├── navigation.tsx    사이드바 항목
-│   └── layout/           AppShell, Sidebar, Topbar
+│   └── layout/           AppShell, Sidebar, Topbar, AccountMenu, LogoutConfirmModal
 ├── auth/                 로그인 오류 문구, 인증 연동
 ├── pages/                화면, 목업 번호와 1:1
 ├── styles/               디자인 시스템
@@ -70,7 +70,7 @@ src/
 | `/contests/:id/result` | 대회 결과 | 32, 33, 35 |
 | `/notifications` | 알림 | 37 |
 
-계정 메뉴(28)와 로그아웃 확인(29)은 경로가 아니라 상단바에서 여는 오버레이다.
+계정 메뉴(28)와 로그아웃 확인(29)은 경로가 아니라 상단바 `AccountMenu`가 여는 오버레이다. 로그아웃 확인은 네이티브 `dialog`라 포커스 트랩과 Esc 를 브라우저가 처리한다.
 
 ## 백엔드 호출
 
