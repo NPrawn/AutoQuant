@@ -103,15 +103,31 @@ def test_a_factor_compared_against_another_factor_is_skipped():
 
 
 def test_a_response_without_a_strategy_fails_the_schema_check_only():
-    result = evaluate_holdout_case(None, ["전략을 만들지 않았습니다."])
+    result = evaluate_holdout_case(None, ["전략을 만들지 않았습니다."], attempts=3)
 
+    assert result["shortCircuit"] is False
     assert result["schemaOk"] is False
     assert result["assumptionsOk"] is True
     assert result["scaleOk"] is True
 
 
+def test_the_short_circuit_path_is_counted_apart_from_schema_failures():
+    """짧은 경로는 LLM을 안 부르고 사유만 돌려주는 정상 동작이다. 실패로 세면 안 된다."""
+    result = evaluate_holdout_case(None, ["입력이 짧아 전략을 만들지 않았습니다."], attempts=0)
+
+    assert result["shortCircuit"] is True
+    assert result["assumptionsOk"] is True
+
+
+def test_a_strategy_with_zero_attempts_is_not_a_short_circuit():
+    result = evaluate_holdout_case(strategy_with("RETURN", 5), ["설명"], attempts=0)
+
+    assert result["shortCircuit"] is False
+    assert result["schemaOk"] is True
+
+
 def test_a_strategy_with_empty_assumptions_is_flagged():
-    result = evaluate_holdout_case(strategy_with("RETURN", 5), [])
+    result = evaluate_holdout_case(strategy_with("RETURN", 5), [], attempts=1)
 
     assert result["schemaOk"] is True
     assert result["assumptionsOk"] is False

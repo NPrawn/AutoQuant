@@ -58,7 +58,7 @@ def test_live_holdout_cases_write_measurement_report():
             "assumptions": assumptions,
             "failureReason": None,
             "strategy": strategy,
-            **evaluate_holdout_case(strategy, assumptions),
+            **evaluate_holdout_case(strategy, assumptions, result.meta.attempts if result.meta is not None else None),
         })
 
     report = _build_report(results)
@@ -80,6 +80,7 @@ def _error_result(case: dict, failure_reason: str, attempts: int | None) -> dict
         "assumptions": [],
         "failureReason": failure_reason,
         "strategy": None,
+        "shortCircuit": False,
         "schemaOk": False,
         "assumptionsOk": False,
         "scaleErrors": [],
@@ -115,14 +116,18 @@ def _build_report(results: list[dict]) -> dict:
 
 
 def _counts(results: list[dict]) -> dict:
-    total = len(results)
+    # 짧은 경로는 LLM을 부르지 않고 사유만 돌려주는 정상 동작이라 스키마 분모에서 뺀다.
+    eligible = [result for result in results if not result["shortCircuit"]]
     elapsed = sorted(result["elapsedMs"] for result in results if result["elapsedMs"] is not None)
+    schema_ok = sum(result["schemaOk"] for result in eligible)
     return {
-        "total": total,
-        "schemaOk": sum(result["schemaOk"] for result in results),
+        "total": len(results),
+        "shortCircuit": sum(result["shortCircuit"] for result in results),
+        "eligible": len(eligible),
+        "schemaOk": schema_ok,
         "assumptionsOk": sum(result["assumptionsOk"] for result in results),
         "scaleOk": sum(result["scaleOk"] for result in results),
-        "schemaOkRate": (sum(result["schemaOk"] for result in results) / total) if total else 0,
+        "schemaOkRate": (schema_ok / len(eligible)) if eligible else 0,
         "medianElapsedMs": elapsed[round((len(elapsed) - 1) * 0.5)] if elapsed else None,
     }
 
