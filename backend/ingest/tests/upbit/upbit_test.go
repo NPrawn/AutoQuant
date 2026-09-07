@@ -60,6 +60,105 @@ func TestDecodeTrade(t *testing.T) {
 	}
 }
 
+func TestCandleClientLoadsMinuteCandles(t *testing.T) {
+	payload, err := os.ReadFile("testdata/minute_candles.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	requests := make(chan *http.Request, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		requests <- request.Clone(request.Context())
+		writer.Header().Set("Content-Type", "application/json")
+		if _, err := writer.Write(payload); err != nil {
+			t.Errorf("Write() error = %v", err)
+		}
+	}))
+	defer server.Close()
+
+	client, err := upbit.NewCandleClient(server.URL, time.Second, 0)
+	if err != nil {
+		t.Fatalf("NewCandleClient() error = %v", err)
+	}
+	to := time.Date(2026, 9, 7, 3, 9, 0, 0, time.UTC)
+	candles, err := client.ListMinuteCandles(context.Background(), "KRW-BTC", to, 200)
+	if err != nil {
+		t.Fatalf("ListMinuteCandles() error = %v", err)
+	}
+
+	request := <-requests
+	if request.URL.Path != "/v1/candles/minutes/1" {
+		t.Fatalf("request path = %q, want /v1/candles/minutes/1", request.URL.Path)
+	}
+	if request.URL.Query().Get("market") != "KRW-BTC" || request.URL.Query().Get("count") != "200" {
+		t.Fatalf("request query = %v, want market and count", request.URL.Query())
+	}
+	if len(candles) != 2 {
+		t.Fatalf("candle count = %d, want 2", len(candles))
+	}
+	if candles[0].OpenPrice.String() != "150000000.12345678" {
+		t.Fatalf("OpenPrice = %s, want exact decimal", candles[0].OpenPrice)
+	}
+	if !candles[0].OpenTime.Equal(time.Date(2026, 9, 7, 3, 8, 0, 0, time.UTC)) {
+		t.Fatalf("OpenTime = %v, want UTC candle time", candles[0].OpenTime)
+	}
+}
+
+func TestCandleClientRetriesTemporaryFailure(t *testing.T) {
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		if requestCount.Add(1) == 1 {
+			writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		if _, err := writer.Write([]byte("[]")); err != nil {
+			t.Errorf("Write() error = %v", err)
+		}
+	}))
+	defer server.Close()
+
+	client, err := upbit.NewCandleClient(server.URL, time.Second, 0)
+	if err != nil {
+		t.Fatalf("NewCandleClient() error = %v", err)
+	}
+	_, err = client.ListMinuteCandles(
+		context.Background(),
+		"KRW-BTC",
+		time.Date(2026, 9, 7, 3, 9, 0, 0, time.UTC),
+		200,
+	)
+	if err != nil {
+		t.Fatalf("ListMinuteCandles() error = %v", err)
+	}
+	if got := requestCount.Load(); got != 2 {
+		t.Fatalf("request count = %d, want 2", got)
+	}
+}
+
+func TestCandleClientRejectsInvalidCandle(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		if _, err := writer.Write([]byte(`[{"market":"KRW-ETH","unit":1}]`)); err != nil {
+			t.Errorf("Write() error = %v", err)
+		}
+	}))
+	defer server.Close()
+
+	client, err := upbit.NewCandleClient(server.URL, time.Second, 0)
+	if err != nil {
+		t.Fatalf("NewCandleClient() error = %v", err)
+	}
+	_, err = client.ListMinuteCandles(
+		context.Background(),
+		"KRW-BTC",
+		time.Date(2026, 9, 7, 3, 9, 0, 0, time.UTC),
+		200,
+	)
+	if !exception.HasCode(err, exception.CodeUpbitInvalidResponse) {
+		t.Fatalf("error = %v, want code %s", err, exception.CodeUpbitInvalidResponse)
+	}
+}
+
 func TestClientReceivesTradeAndUpdatesSubscription(t *testing.T) {
 	payload := readTradeFixture(t)
 	subscriptions := make(chan []subscriptionItem, 2)
