@@ -190,7 +190,8 @@ pipeline {
                         a107-ai \
                         a107-frontend \
                         a107-ingest-producer \
-                        a107-ingest-consumer; do
+                        a107-ingest-consumer \
+                        a107-ingest-backfill; do
                         state=$(docker inspect --format '{{.State.Status}}' "$container")
 
                         if [ "$state" != "running" ]; then
