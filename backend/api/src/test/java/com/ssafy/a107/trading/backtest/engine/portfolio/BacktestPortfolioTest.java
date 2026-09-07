@@ -69,6 +69,7 @@ class BacktestPortfolioTest {
         assertThat(portfolio.getCashBalance()).isEqualByComparingTo("799900.00000000");
         assertThat(position.quantity()).isEqualByComparingTo("2");
         assertThat(position.averageEntryPrice()).isEqualByComparingTo("100000.00000000");
+        assertThat(position.costBasis()).isEqualByComparingTo("200100.00000000");
     }
 
     @DisplayName("추가 매수 체결은 수량 가중 평균 진입가를 계산한다")
@@ -99,6 +100,7 @@ class BacktestPortfolioTest {
         assertThat(portfolio.getCashBalance()).isEqualByComparingTo("679840.00000000");
         assertThat(position.quantity()).isEqualByComparingTo("3");
         assertThat(position.averageEntryPrice()).isEqualByComparingTo("106666.66666667");
+        assertThat(position.costBasis()).isEqualByComparingTo("320160.00000000");
     }
 
     @DisplayName("현금이 부족한 매수 체결은 포트폴리오를 변경하지 않는다")
