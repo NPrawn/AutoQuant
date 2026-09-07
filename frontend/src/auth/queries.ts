@@ -3,16 +3,21 @@ import { useNavigate } from 'react-router'
 
 import { routes } from '../app/routes'
 import { fetchAuthorizeUrl, fetchCurrentMember, requestLogout } from './api'
-import { toMember } from './types'
+import { toCurrentMember, type CurrentMemberResponse } from './types'
 
 /* 로그인 여부의 유일한 근거. 쿠키는 읽을 수 없으니 이 쿼리 결과가 곧 인증 상태다. */
 export const currentMemberQueryKey = ['auth', 'me'] as const
+
+/* 로그아웃이나 401 감지처럼 코드가 직접 "로그인 안 됨"으로 바꿀 때 쓰는 값. */
+export function signedOut(unauthorizedCode: string | null = null): CurrentMemberResponse {
+  return { member: null, unauthorizedCode }
+}
 
 export function useCurrentMember() {
   return useQuery({
     queryKey: currentMemberQueryKey,
     queryFn: fetchCurrentMember,
-    select: (response) => (response ? toMember(response) : null),
+    select: toCurrentMember,
     staleTime: 5 * 60 * 1000,
   })
 }
@@ -39,7 +44,7 @@ export function useLogout() {
     mutationFn: requestLogout,
     onSuccess: () => {
       queryClient.clear()
-      queryClient.setQueryData(currentMemberQueryKey, null)
+      queryClient.setQueryData(currentMemberQueryKey, signedOut())
       navigate(routes.login, { replace: true })
     },
   })

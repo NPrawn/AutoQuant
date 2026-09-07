@@ -43,7 +43,8 @@ src/
 │   ├── navigation.tsx    사이드바 항목
 │   └── layout/           AppShell, Sidebar, Topbar, AccountMenu, LogoutConfirmModal
 ├── api/                  request 함수, ApiError
-├── auth/                 인증 API, 회원 모델, useCurrentMember, RequireAuth, GuestOnly
+├── auth/                 인증 API, 회원 모델, useCurrentMember, RequireAuth, GuestOnly, 세션 만료 처리
+├── components/           LoadingState, EmptyState, ErrorState
 ├── pages/                화면, 목업 번호와 1:1
 ├── styles/               디자인 시스템
 └── mocks/                API 연동 전 표시용 더미
@@ -81,11 +82,12 @@ src/
 SSAFY → GET :8080/auth/ssafy/callback?code= → access_token 쿠키 심고 302 → /
 RequireAuth → GET /api/members/me → 200 이면 셸 렌더, 401 이면 /login
 로그아웃 → POST /api/auth/logout (쿠키 만료) → 캐시 비우고 /login
+어떤 API 든 401 → 회원 쿼리를 "로그인 안 됨"으로 → RequireAuth → /login?error=AUTH-401-003
 ```
 
 토큰은 `httpOnly` 쿠키라 JS 가 읽지 못한다. 그래서 `/members/me` 응답이 로그인 상태의 유일한 근거이고, 프론트에 토큰 저장 코드가 없다. 쿠키는 `localhost:8080`이 심지만 브라우저 쿠키는 포트를 구분하지 않아 `localhost:5173` 요청에도 실린다.
 
-콜백이 실패하면 백엔드가 `/login?error={코드}`로 보내고, 코드별 문구는 `src/auth/loginErrorMessage.ts`에 있다.
+콜백이 실패하면 백엔드가, 세션이 끊기면 `RequireAuth`가 `/login?error={코드}`로 보낸다. 코드 상수는 `src/api/errorCodes.ts`, 코드별 문구는 `src/auth/loginErrorMessage.ts`에 있다. 처음부터 로그인이 없던 방문은 안내 없이 로그인 화면만 보인다.
 
 ## 백엔드 호출
 
