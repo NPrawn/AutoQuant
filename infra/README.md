@@ -23,3 +23,9 @@ docker compose -f infra/docker-compose.yml down -v    # 볼륨까지 삭제
 `kafka-init`이 Collector 소유권 조정용 `collector-shards`와 원본 체결용 `tick-raw` 토픽을 각각 파티션 6개로 생성하고 검증한 뒤 종료한다. 단일 브로커 개발 환경이라 Kafka 복제 계수는 모두 1이다. 두 토픽은 자동 생성에 의존하지 않는다.
 
 접속 정보는 `.env.example` 참조. `.env` 는 커밋되지 않는다.
+
+## 운영 분봉 동기화
+
+운영 Compose를 기동하면 `ingest-backfill`도 별도 상시 컨테이너로 함께 시작된다. 시작 직후 한 번 동기화하고 `CANDLE_SYNC_INTERVAL` 간격으로 반복하며 기본값은 `5m`이다. 호스트의 cron이나 systemd 등록은 필요하지 않다.
+
+Backfill은 한 컨테이너 안에서 작업을 순차 실행하고, 여러 서버에서 컨테이너가 함께 기동되더라도 PostgreSQL advisory lock이 한 실행만 허용한다.
