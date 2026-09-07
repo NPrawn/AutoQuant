@@ -7,6 +7,7 @@ from app.core.schema import Strategy, StrategyEnvelope, TranslateMeta
 from app.core.errors import DSLValidationError, LLMCreditLimitError
 from app.services.llm_client import complete
 from app.services.prompt_builder import build_messages, build_retry_messages
+from app.services.strategy_warnings import inspect_strategy
 from app.services.validator import (
     ValidationResult,
     format_user_errors,
@@ -62,7 +63,7 @@ def translate(
                     attempts=attempt,
                     model=settings.llm_model,
                     elapsedMs=int((perf_counter() - started_at) * 1000),
-                    warnings=[],
+                    warnings=inspect_strategy(result.value.strategy),
                     assumptions=result.value.assumptions,
                     changes=describe_changes(current_strategy, result.value.strategy),
                 ),
