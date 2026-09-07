@@ -92,6 +92,26 @@ type recordingResultHandler struct {
 	mutex   sync.Mutex
 }
 
+type recordingLiveCandlePublisher struct {
+	batches [][]candle.Checkpoint
+	err     error
+	events  *[]string
+	mutex   sync.Mutex
+}
+
+func (p *recordingLiveCandlePublisher) PublishBatch(
+	_ context.Context,
+	checkpoints []candle.Checkpoint,
+) error {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+	p.batches = append(p.batches, append([]candle.Checkpoint(nil), checkpoints...))
+	if p.events != nil {
+		*p.events = append(*p.events, "publish")
+	}
+	return p.err
+}
+
 type blockingResultHandler struct {
 	started chan string
 	release chan struct{}
@@ -138,7 +158,8 @@ func TestServiceCommitsAfterPersistingBatch(t *testing.T) {
 		loadCount:   make(map[int32]int),
 	}
 	handler := &recordingResultHandler{events: &events}
-	service := consumer.NewService(kafkaConsumer, checkpoints, handler)
+	publisher := &recordingLiveCandlePublisher{events: &events}
+	service := consumer.NewService(kafkaConsumer, checkpoints, handler, publisher)
 
 	if err := service.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -149,7 +170,7 @@ func TestServiceCommitsAfterPersistingBatch(t *testing.T) {
 	if got := kafkaConsumer.committed[0][0].Offset; got != record.Offset {
 		t.Fatalf("committed offset = %d, want %d", got, record.Offset)
 	}
-	wantEvents := []string{"store", "commit", "allow"}
+	wantEvents := []string{"store", "commit", "publish", "allow"}
 	if len(events) != len(wantEvents) {
 		t.Fatalf("events = %v, want %v", events, wantEvents)
 	}
@@ -183,7 +204,8 @@ func TestServiceCoalescesLatestCheckpointAndKeepsEveryClosedCandle(t *testing.T)
 		loadCount:   make(map[int32]int),
 	}
 	handler := &recordingResultHandler{}
-	service := consumer.NewService(kafkaConsumer, checkpoints, handler)
+	publisher := &recordingLiveCandlePublisher{}
+	service := consumer.NewService(kafkaConsumer, checkpoints, handler, publisher)
 
 	if err := service.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -207,6 +229,9 @@ func TestServiceCoalescesLatestCheckpointAndKeepsEveryClosedCandle(t *testing.T)
 		got.LastSequenceID != 1 || got.SourceOffset != 11 {
 		t.Fatalf("ETH checkpoint = %#v, want sequence 1 at offset 11", got)
 	}
+	if len(publisher.batches) != 1 || len(publisher.batches[0]) != 2 {
+		t.Fatalf("published checkpoints = %#v, want latest state for 2 markets", publisher.batches)
+	}
 }
 
 func TestServiceDoesNotCommitWhenPersistenceFails(t *testing.T) {
@@ -221,7 +246,8 @@ func TestServiceDoesNotCommitWhenPersistenceFails(t *testing.T) {
 		loadCount:   make(map[int32]int),
 	}
 	handler := &recordingResultHandler{err: wantErr}
-	service := consumer.NewService(kafkaConsumer, checkpoints, handler)
+	publisher := &recordingLiveCandlePublisher{}
+	service := consumer.NewService(kafkaConsumer, checkpoints, handler, publisher)
 
 	err := service.Run(context.Background())
 	if !errors.Is(err, wantErr) {
@@ -239,6 +265,73 @@ func TestServiceDoesNotCommitWhenPersistenceFails(t *testing.T) {
 	if len(handler.batches[0].Checkpoints) != 1 ||
 		handler.batches[0].Checkpoints[0].LastSequenceID != 2 {
 		t.Fatalf("checkpoints = %#v, want latest sequence 2 only", handler.batches[0].Checkpoints)
+	}
+	if len(publisher.batches) != 0 {
+		t.Fatalf("published batch count = %d, want 0", len(publisher.batches))
+	}
+}
+
+func TestServiceDoesNotPublishWhenCommitFails(t *testing.T) {
+	wantErr := errors.New("commit unavailable")
+	tradedAt := time.Date(2026, time.September, 7, 12, 34, 10, 0, time.UTC)
+	kafkaConsumer := &batchConsumer{
+		batches: [][]ingestkafka.Record{{
+			tradeRecord(t, 0, "KRW-BTC", "100", "1", "BID", tradedAt, 1),
+		}},
+		commitErr: wantErr,
+	}
+	checkpoints := &checkpointStore{
+		checkpoints: make(map[int32][]candle.Checkpoint),
+		loadCount:   make(map[int32]int),
+	}
+	publisher := &recordingLiveCandlePublisher{}
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		&recordingResultHandler{},
+		publisher,
+	)
+
+	err := service.Run(context.Background())
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("Run() error = %v, want %v", err, wantErr)
+	}
+	if len(publisher.batches) != 0 {
+		t.Fatalf("published batch count = %d, want 0", len(publisher.batches))
+	}
+}
+
+func TestServiceIgnoresLiveCandlePublishError(t *testing.T) {
+	tradedAt := time.Date(2026, time.September, 7, 12, 34, 10, 0, time.UTC)
+	ctx, cancel := context.WithCancel(context.Background())
+	kafkaConsumer := &batchConsumer{
+		batches: [][]ingestkafka.Record{{
+			tradeRecord(t, 0, "KRW-BTC", "100", "1", "BID", tradedAt, 1),
+		}},
+		cancel:      cancel,
+		cancelAfter: 1,
+	}
+	checkpoints := &checkpointStore{
+		checkpoints: make(map[int32][]candle.Checkpoint),
+		loadCount:   make(map[int32]int),
+	}
+	publisher := &recordingLiveCandlePublisher{err: errors.New("redis unavailable")}
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		&recordingResultHandler{},
+		publisher,
+	)
+
+	if err := service.Run(ctx); err != nil {
+		t.Fatalf("Run() error = %v, want Redis publish error ignored", err)
+	}
+	if len(kafkaConsumer.committed) != 1 || len(publisher.batches) != 1 {
+		t.Fatalf(
+			"committed/published batch counts = %d/%d, want 1/1",
+			len(kafkaConsumer.committed),
+			len(publisher.batches),
+		)
 	}
 }
 
@@ -261,7 +354,12 @@ func TestServiceCommitsInvalidRecordWithoutPersistence(t *testing.T) {
 		loadCount:   make(map[int32]int),
 	}
 	handler := &recordingResultHandler{}
-	service := consumer.NewService(kafkaConsumer, checkpoints, handler)
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		handler,
+		&recordingLiveCandlePublisher{},
+	)
 
 	if err := service.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -288,7 +386,12 @@ func TestServiceRestoresPartitionOnlyOnce(t *testing.T) {
 		loadCount:   make(map[int32]int),
 	}
 	handler := &recordingResultHandler{}
-	service := consumer.NewService(kafkaConsumer, checkpoints, handler)
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		handler,
+		&recordingLiveCandlePublisher{},
+	)
 
 	if err := service.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -314,7 +417,12 @@ func TestServiceRestoresRevokedPartitionAgain(t *testing.T) {
 		checkpoints: make(map[int32][]candle.Checkpoint),
 		loadCount:   make(map[int32]int),
 	}
-	service := consumer.NewService(kafkaConsumer, checkpoints, &recordingResultHandler{})
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		&recordingResultHandler{},
+		&recordingLiveCandlePublisher{},
+	)
 
 	if err := service.Run(ctx); err != nil {
 		t.Fatalf("Run() error = %v", err)
@@ -344,7 +452,12 @@ func TestServiceProcessesDifferentPartitionsConcurrently(t *testing.T) {
 		started: make(chan string, 2),
 		release: make(chan struct{}),
 	}
-	service := consumer.NewService(kafkaConsumer, checkpoints, handler)
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		handler,
+		&recordingLiveCandlePublisher{},
+	)
 	errChannel := make(chan error, 1)
 	go func() {
 		errChannel <- service.Run(ctx)

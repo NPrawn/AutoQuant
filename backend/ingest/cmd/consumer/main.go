@@ -62,7 +62,13 @@ func run() error {
 	progressRepository := ingestredis.NewProgressRepository(redisClient)
 	minuteCandleRepository := store.NewMinuteCandleRepository(pool)
 	handler := consumer.NewPersistenceHandler(progressRepository, minuteCandleRepository)
-	service := consumer.NewService(kafkaConsumer, progressRepository, handler)
+	liveCandlePublisher := ingestredis.NewLiveMinuteCandlePublisher(redisClient)
+	service := consumer.NewService(
+		kafkaConsumer,
+		progressRepository,
+		handler,
+		liveCandlePublisher,
+	)
 
 	slog.Info("ingest consumer started")
 	if err := service.Run(ctx); err != nil {

@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle"
@@ -26,20 +27,31 @@ type ResultHandler interface {
 	Handle(context.Context, ProcessedBatch) error
 }
 
+type LiveCandlePublisher interface {
+	PublishBatch(context.Context, []candle.Checkpoint) error
+}
+
 // Service processes partitions concurrently while preserving record order
 // within each partition.
 type Service struct {
 	consumer    RecordConsumer
 	checkpoints CheckpointStore
 	handler     ResultHandler
+	publisher   LiveCandlePublisher
 	workers     map[int32]*partitionWorker
 }
 
-func NewService(consumer RecordConsumer, checkpoints CheckpointStore, handler ResultHandler) *Service {
+func NewService(
+	consumer RecordConsumer,
+	checkpoints CheckpointStore,
+	handler ResultHandler,
+	publisher LiveCandlePublisher,
+) *Service {
 	return &Service{
 		consumer:    consumer,
 		checkpoints: checkpoints,
 		handler:     handler,
+		publisher:   publisher,
 		workers:     make(map[int32]*partitionWorker),
 	}
 }
@@ -73,7 +85,8 @@ func (s *Service) processAndCommit(ctx context.Context, records []ingestkafka.Re
 	}
 
 	lastRecords := make([]ingestkafka.Record, 0, len(partitionRecords))
-	var lastRecordsMutex sync.Mutex
+	checkpoints := make([]candle.Checkpoint, 0)
+	var resultsMutex sync.Mutex
 	group, groupContext := errgroup.WithContext(ctx)
 	for partition, recordsForPartition := range partitionRecords {
 		worker, exists := s.workers[partition]
@@ -83,14 +96,15 @@ func (s *Service) processAndCommit(ctx context.Context, records []ingestkafka.Re
 		}
 
 		group.Go(func() error {
-			lastRecord, err := worker.Process(groupContext, recordsForPartition)
+			batch, lastRecord, err := worker.Process(groupContext, recordsForPartition)
 			if err != nil {
 				return err
 			}
 
-			lastRecordsMutex.Lock()
+			resultsMutex.Lock()
 			lastRecords = append(lastRecords, lastRecord)
-			lastRecordsMutex.Unlock()
+			checkpoints = append(checkpoints, batch.Checkpoints...)
+			resultsMutex.Unlock()
 			return nil
 		})
 	}
@@ -99,5 +113,19 @@ func (s *Service) processAndCommit(ctx context.Context, records []ingestkafka.Re
 		return err
 	}
 
-	return s.consumer.Commit(ctx, lastRecords)
+	if err := s.consumer.Commit(ctx, lastRecords); err != nil {
+		return err
+	}
+	if len(checkpoints) == 0 {
+		return nil
+	}
+	if err := s.publisher.PublishBatch(ctx, checkpoints); err != nil {
+		slog.Warn(
+			"failed to publish live candle updates",
+			"error", err,
+			"market_count", len(checkpoints),
+		)
+	}
+
+	return nil
 }
