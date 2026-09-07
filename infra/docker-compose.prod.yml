@@ -68,6 +68,28 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  kafka-init:
+    image: apache/kafka:3.9.0
+    container_name: a107-kafka-init
+    logging: *default-logging
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-ec"]
+    command:
+      - |
+        /opt/kafka/bin/kafka-topics.sh \
+          --bootstrap-server kafka:9092 \
+          --create \
+          --if-not-exists \
+          --topic collector-shards \
+          --partitions 6 \
+          --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh \
+          --bootstrap-server kafka:9092 \
+          --describe \
+          --topic collector-shards | grep 'PartitionCount: 6'
+
   backend-api:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/backend-api:${IMAGE_TAG:?IMAGE_TAG is required}
     container_name: a107-backend-api
@@ -138,9 +160,12 @@ services:
       DB_NAME: ${DB_NAME:?DB_NAME is required}
       DB_USER: ${DB_USER:?DB_USER is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
       postgres:
         condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   ingest-consumer:
