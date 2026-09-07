@@ -66,6 +66,23 @@ func (r *ProgressRepository) SaveBatch(
 	return nil
 }
 
+// DeleteBatch removes finalized markets from one partition's progress hash.
+func (r *ProgressRepository) DeleteBatch(
+	ctx context.Context,
+	partition int32,
+	marketCodes []string,
+) error {
+	if len(marketCodes) == 0 {
+		return nil
+	}
+
+	if err := r.client.HDel(ctx, ProgressKey(partition), marketCodes...).Err(); err != nil {
+		return exception.Wrap(exception.CodeRedisWriteFailed, err)
+	}
+
+	return nil
+}
+
 func (r *ProgressRepository) Load(ctx context.Context, partition int32) ([]candle.Checkpoint, error) {
 	values, err := r.client.HGetAll(ctx, ProgressKey(partition)).Result()
 	if err != nil {

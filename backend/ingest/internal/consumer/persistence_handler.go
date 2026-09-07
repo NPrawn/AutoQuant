@@ -9,6 +9,7 @@ import (
 
 type ProgressWriter interface {
 	SaveBatch(context.Context, int32, []candle.Checkpoint) error
+	DeleteBatch(context.Context, int32, []string) error
 }
 
 type FinalCandleWriter interface {
@@ -35,6 +36,15 @@ func NewPersistenceHandler(
 func (h *PersistenceHandler) Handle(ctx context.Context, batch ProcessedBatch) error {
 	for _, closed := range batch.ClosedCandles {
 		if err := h.finalWriter.Upsert(ctx, closed); err != nil {
+			return err
+		}
+	}
+	if len(batch.RemovedMarketCodes) > 0 {
+		if err := h.progressWriter.DeleteBatch(
+			ctx,
+			batch.Partition,
+			batch.RemovedMarketCodes,
+		); err != nil {
 			return err
 		}
 	}

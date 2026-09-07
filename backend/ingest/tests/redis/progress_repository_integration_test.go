@@ -34,7 +34,7 @@ func redisAddress() string {
 	return "localhost:6379"
 }
 
-func TestProgressRepositoryStoresAndLoadsCheckpoint(t *testing.T) {
+func TestProgressRepositoryStoresLoadsAndDeletesCheckpoint(t *testing.T) {
 	ctx := context.Background()
 	client := ingestredis.NewClient(redisAddress())
 	if err := client.Ping(ctx).Err(); err != nil {
@@ -83,6 +83,17 @@ func TestProgressRepositoryStoresAndLoadsCheckpoint(t *testing.T) {
 	}
 	if !strings.Contains(encoded, `"source_offset":321`) {
 		t.Fatalf("stored value = %s, want source_offset 321", encoded)
+	}
+
+	if err := repository.DeleteBatch(ctx, testPartition, []string{testMarketCode}); err != nil {
+		t.Fatalf("DeleteBatch() error = %v", err)
+	}
+	remaining, err := repository.Load(ctx, testPartition)
+	if err != nil {
+		t.Fatalf("Load() after DeleteBatch error = %v", err)
+	}
+	if len(remaining) != 1 || !reflect.DeepEqual(remaining[0], secondWant) {
+		t.Fatalf("remaining checkpoints = %#v, want second checkpoint only", remaining)
 	}
 }
 
