@@ -43,22 +43,6 @@ func run() error {
 		return fmt.Errorf("connect database: %w", err)
 	}
 
-	lock, acquired, err := store.TryAcquireCandleSyncLock(ctx, pool)
-	if err != nil {
-		return fmt.Errorf("acquire candle sync lock: %w", err)
-	}
-	if !acquired {
-		slog.Info("minute candle sync skipped because another run is active")
-		return nil
-	}
-	defer func() {
-		releaseContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if releaseErr := lock.Release(releaseContext); releaseErr != nil {
-			slog.Error("release candle sync lock", "error", releaseErr)
-		}
-	}()
-
 	redisClient := ingestredis.NewClient(settings.RedisAddress)
 	defer func() {
 		if closeErr := redisClient.Close(); closeErr != nil {
@@ -87,6 +71,42 @@ func run() error {
 		settings.HistoryRequestBudget,
 	)
 
-	slog.Info("minute candle sync started")
-	return service.Run(ctx, time.Now())
+	synchronize := func() error {
+		lock, acquired, err := store.TryAcquireCandleSyncLock(ctx, pool)
+		if err != nil {
+			return fmt.Errorf("acquire candle sync lock: %w", err)
+		}
+		if !acquired {
+			slog.Info("minute candle sync skipped because another run is active")
+			return nil
+		}
+		defer func() {
+			releaseContext, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if releaseErr := lock.Release(releaseContext); releaseErr != nil {
+				slog.Error("release candle sync lock", "error", releaseErr)
+			}
+		}()
+
+		slog.Info("minute candle sync started")
+		return service.Run(ctx, time.Now())
+	}
+
+	slog.Info("minute candle sync scheduler started", "interval", settings.SyncInterval)
+	ticker := time.NewTicker(settings.SyncInterval)
+	defer ticker.Stop()
+	for {
+		if err := synchronize(); err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
+			slog.Error("minute candle sync run failed", "error", err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+		}
+	}
 }
