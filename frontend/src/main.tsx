@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router'
 import './styles/tokens.css'
 import './styles/base.css'
 import './styles/overrides.css'
+import './styles/extensions.css'
 import { router } from './app/router'
 
 createRoot(document.getElementById('root')!).render(
