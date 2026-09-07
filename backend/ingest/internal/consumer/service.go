@@ -2,57 +2,102 @@ package consumer
 
 import (
 	"context"
+	"sync"
 
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle"
 	ingestkafka "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/kafka"
+
+	"golang.org/x/sync/errgroup"
 )
 
-type RecordPoller interface {
+type RecordConsumer interface {
 	Poll(context.Context) ([]ingestkafka.Record, error)
+	Commit(context.Context, []ingestkafka.Record) error
+	AllowRebalance()
+	TakeRevokedPartitions() []int32
 }
 
-// ResultHandler receives an aggregation result and its source record metadata.
+type CheckpointStore interface {
+	Load(context.Context, int32) ([]candle.Checkpoint, error)
+}
+
+// ResultHandler persists one partition batch before its offset is committed.
 type ResultHandler interface {
-	Handle(context.Context, ingestkafka.Record, candle.Result) error
+	Handle(context.Context, ProcessedBatch) error
 }
 
-// Service polls and processes records synchronously without committing offsets.
+// Service processes partitions concurrently while preserving record order
+// within each partition.
 type Service struct {
-	poller    RecordPoller
-	processor *Processor
-	handler   ResultHandler
+	consumer    RecordConsumer
+	checkpoints CheckpointStore
+	handler     ResultHandler
+	workers     map[int32]*partitionWorker
 }
 
-func NewService(poller RecordPoller, processor *Processor, handler ResultHandler) *Service {
+func NewService(consumer RecordConsumer, checkpoints CheckpointStore, handler ResultHandler) *Service {
 	return &Service{
-		poller:    poller,
-		processor: processor,
-		handler:   handler,
+		consumer:    consumer,
+		checkpoints: checkpoints,
+		handler:     handler,
+		workers:     make(map[int32]*partitionWorker),
 	}
 }
 
 func (s *Service) Run(ctx context.Context) error {
 	for ctx.Err() == nil {
-		records, err := s.poller.Poll(ctx)
+		records, err := s.consumer.Poll(ctx)
 		if err != nil {
 			return err
 		}
-		if ctx.Err() != nil {
+		if ctx.Err() != nil || len(records) == 0 {
 			return nil
 		}
+		for _, partition := range s.consumer.TakeRevokedPartitions() {
+			delete(s.workers, partition)
+		}
 
-		for _, record := range records {
-			if ctx.Err() != nil {
-				return nil
-			}
-			result, err := s.processor.Process(record)
-			if err != nil {
-				return err
-			}
-			if err := s.handler.Handle(ctx, record, result); err != nil {
-				return err
-			}
+		if err := s.processAndCommit(ctx, records); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func (s *Service) processAndCommit(ctx context.Context, records []ingestkafka.Record) error {
+	defer s.consumer.AllowRebalance()
+
+	partitionRecords := make(map[int32][]ingestkafka.Record)
+	for _, record := range records {
+		partitionRecords[record.Partition] = append(partitionRecords[record.Partition], record)
+	}
+
+	lastRecords := make([]ingestkafka.Record, 0, len(partitionRecords))
+	var lastRecordsMutex sync.Mutex
+	group, groupContext := errgroup.WithContext(ctx)
+	for partition, recordsForPartition := range partitionRecords {
+		worker, exists := s.workers[partition]
+		if !exists {
+			worker = newPartitionWorker(partition, s.checkpoints, s.handler)
+			s.workers[partition] = worker
+		}
+
+		group.Go(func() error {
+			lastRecord, err := worker.Process(groupContext, recordsForPartition)
+			if err != nil {
+				return err
+			}
+
+			lastRecordsMutex.Lock()
+			lastRecords = append(lastRecords, lastRecord)
+			lastRecordsMutex.Unlock()
+			return nil
+		})
+	}
+
+	if err := group.Wait(); err != nil {
+		return err
+	}
+
+	return s.consumer.Commit(ctx, lastRecords)
 }
