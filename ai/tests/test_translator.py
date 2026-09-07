@@ -17,7 +17,10 @@ def test_translate_returns_validated_envelope(monkeypatch, valid_strategy_payloa
     assert result.value.timeframe.value == "4H"
     assert result.meta.attempts == 1
     assert result.meta.elapsedMs >= 0
-    assert result.meta.warnings == []
+    # 4H 캔들 20개(약 3.3일)로 순위를 매기고 WEEKLY 로 담는 전략이라 경고가 하나 붙는다.
+    assert result.meta.warnings == [
+        "순위를 20개 4H 캔들로 매기는데 WEEKLY 주기로 담습니다. 관찰 구간이 보유 기간보다 짧습니다."
+    ]
 
 
 def test_translate_retries_only_validation_failures(monkeypatch, valid_strategy_payload):

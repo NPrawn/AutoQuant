@@ -120,6 +120,30 @@ class Strategy(StrictModel):
         return self
 
 
+# 팩터가 가질 수 있는 값의 범위. (하한, 상한) 이고 None 은 열려 있다는 뜻이다.
+# 경고 층이 "항상 참이라 아무것도 거르지 않는 조건"을 여기서 판단한다.
+FACTOR_BOUNDS: dict[FactorType, tuple[float | None, float | None]] = {
+    FactorType.RETURN: (None, None),
+    FactorType.RSI: (0, 100),
+    FactorType.SMA_DISPARITY: (None, None),
+    FactorType.VOLATILITY: (0, None),
+    FactorType.VOLUME_RATIO: (0, None),
+    FactorType.DRAWDOWN: (None, 0),
+}
+
+TIMEFRAME_MINUTES: dict[Timeframe, int] = {
+    Timeframe.HOUR_1: 60,
+    Timeframe.HOUR_4: 240,
+    Timeframe.DAY_1: 1_440,
+}
+
+REBALANCE_MINUTES: dict[RebalancePeriod, int] = {
+    RebalancePeriod.DAILY: 1_440,
+    RebalancePeriod.WEEKLY: 10_080,
+    RebalancePeriod.MONTHLY: 43_200,
+}
+
+
 def strategy_json_schema() -> str:
     """Return the Strategy JSON Schema for structured LLM output."""
     return json.dumps(Strategy.model_json_schema(), ensure_ascii=False)
