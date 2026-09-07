@@ -93,7 +93,7 @@ public class BacktestPortfolio {
                 .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
-    public void applySell(VirtualFill fill) {
+    public RealizedTradeResult applySell(VirtualFill fill) {
         Objects.requireNonNull(fill);
 
         if (fill.order().side() != TradeSide.SELL) {
@@ -135,23 +135,44 @@ public class BacktestPortfolio {
 
         BigDecimal updatedQuantity = currentPosition.quantity()
                 .subtract(fill.quantity());
+        BigDecimal allocatedCostBasis;
 
         if (updatedQuantity.signum() == 0) {
+            allocatedCostBasis = currentPosition.costBasis();
             positions.remove(assetId);
         } else {
+            BigDecimal remainingCostBasis = currentPosition.costBasis()
+                    .multiply(updatedQuantity)
+                    .divide(
+                            currentPosition.quantity(),
+                            MathContext.DECIMAL128
+                    )
+                    .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+            allocatedCostBasis = currentPosition.costBasis()
+                    .subtract(remainingCostBasis)
+                    .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+
             positions.put(
                     assetId,
                     new BacktestPosition(
                             assetId,
                             PositionSide.LONG,
                             updatedQuantity,
-                            currentPosition.averageEntryPrice()
+                            currentPosition.averageEntryPrice(),
+                            remainingCostBasis
                     )
             );
         }
 
         cashBalance = cashBalance.add(proceeds)
                 .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+
+        return new RealizedTradeResult(
+                assetId,
+                fill.quantity(),
+                proceeds,
+                allocatedCostBasis
+        );
     }
 
     public BigDecimal getCashBalance() {
