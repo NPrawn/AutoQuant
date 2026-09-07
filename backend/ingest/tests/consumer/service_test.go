@@ -15,6 +15,7 @@ import (
 
 type batchConsumer struct {
 	batches     [][]ingestkafka.Record
+	assignments [][]int32
 	revocations [][]int32
 	committed   [][]ingestkafka.Record
 	allowCount  int
@@ -23,6 +24,7 @@ type batchConsumer struct {
 	cancel      context.CancelFunc
 	cancelAfter int
 	revoked     []int32
+	assigned    []int32
 	mutex       sync.Mutex
 }
 
@@ -33,6 +35,12 @@ func (c *batchConsumer) Poll(ctx context.Context) ([]ingestkafka.Record, error) 
 	}
 	records := c.batches[0]
 	c.batches = c.batches[1:]
+	if len(c.assignments) > 0 {
+		c.mutex.Lock()
+		c.assigned = c.assignments[0]
+		c.mutex.Unlock()
+		c.assignments = c.assignments[1:]
+	}
 	if len(c.revocations) > 0 {
 		c.mutex.Lock()
 		c.revoked = c.revocations[0]
@@ -40,6 +48,14 @@ func (c *batchConsumer) Poll(ctx context.Context) ([]ingestkafka.Record, error) 
 		c.revocations = c.revocations[1:]
 	}
 	return records, nil
+}
+
+func (c *batchConsumer) TakeAssignedPartitions() []int32 {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	partitions := c.assigned
+	c.assigned = nil
+	return partitions
 }
 
 func (c *batchConsumer) Commit(_ context.Context, records []ingestkafka.Record) error {
@@ -87,10 +103,11 @@ func (s *checkpointStore) Load(_ context.Context, partition int32) ([]candle.Che
 }
 
 type recordingResultHandler struct {
-	batches []consumer.ProcessedBatch
-	err     error
-	events  *[]string
-	mutex   sync.Mutex
+	batches         []consumer.ProcessedBatch
+	err             error
+	events          *[]string
+	cancelOnRemoval context.CancelFunc
+	mutex           sync.Mutex
 }
 
 type recordingLiveCandlePublisher struct {
@@ -159,7 +176,11 @@ func (h *recordingResultHandler) Handle(_ context.Context, batch consumer.Proces
 	if h.events != nil {
 		*h.events = append(*h.events, "store")
 	}
+	shouldCancel := h.cancelOnRemoval != nil && len(batch.RemovedMarketCodes) > 0
 	h.mutex.Unlock()
+	if shouldCancel {
+		h.cancelOnRemoval()
+	}
 	return h.err
 }
 
@@ -521,6 +542,126 @@ func TestServiceRestoresRevokedPartitionAgain(t *testing.T) {
 	}
 	if got := checkpoints.loadCount[0]; got != 2 {
 		t.Fatalf("checkpoint Load count = %d, want 2", got)
+	}
+}
+
+func TestServiceSweepsExpiredCandleWithoutNextTrade(t *testing.T) {
+	tradedAt := time.Now().UTC().Add(-2 * time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	kafkaConsumer := &batchConsumer{batches: [][]ingestkafka.Record{{
+		tradeRecord(t, 0, "KRW-BTC", "100", "1", "BID", tradedAt, 1),
+	}}}
+	checkpoints := &checkpointStore{
+		checkpoints: make(map[int32][]candle.Checkpoint),
+		loadCount:   make(map[int32]int),
+	}
+	handler := &recordingResultHandler{cancelOnRemoval: cancel}
+	recentCache := &recordingRecentCandleCache{}
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		handler,
+		recentCache,
+		&recordingLiveCandlePublisher{},
+	)
+
+	if err := service.Run(ctx); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if len(kafkaConsumer.committed) != 1 {
+		t.Fatalf("committed batch count = %d, want 1", len(kafkaConsumer.committed))
+	}
+	if len(handler.batches) != 2 {
+		t.Fatalf("handled batch count = %d, want progress and sweep", len(handler.batches))
+	}
+	swept := handler.batches[1]
+	if len(swept.ClosedCandles) != 1 ||
+		len(swept.RemovedMarketCodes) != 1 ||
+		swept.RemovedMarketCodes[0] != "KRW-BTC" {
+		t.Fatalf("swept batch = %#v, want finalized KRW-BTC", swept)
+	}
+	if len(recentCache.batches) != 1 || len(recentCache.batches[0]) != 1 {
+		t.Fatalf("cached swept candles = %#v, want one candle", recentCache.batches)
+	}
+}
+
+func TestServiceSweepsExpiredCheckpointImmediatelyAfterAssignment(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	checkpoint := testCheckpoint("KRW-BTC", 1)
+	checkpoint.InProgress.OpenTime = time.Now().UTC().Add(-2 * time.Minute).Truncate(time.Minute)
+	checkpoint.InProgress.LastEventTime = checkpoint.InProgress.OpenTime.Add(30 * time.Second)
+	kafkaConsumer := &batchConsumer{
+		batches:     [][]ingestkafka.Record{nil},
+		assignments: [][]int32{{2}},
+	}
+	checkpoints := &checkpointStore{
+		checkpoints: map[int32][]candle.Checkpoint{2: {checkpoint}},
+		loadCount:   make(map[int32]int),
+	}
+	handler := &recordingResultHandler{cancelOnRemoval: cancel}
+	recentCache := &recordingRecentCandleCache{}
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		handler,
+		recentCache,
+		&recordingLiveCandlePublisher{},
+	)
+
+	if err := service.Run(ctx); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if got := checkpoints.loadCount[2]; got != 1 {
+		t.Fatalf("checkpoint Load count = %d, want 1", got)
+	}
+	if len(kafkaConsumer.committed) != 0 {
+		t.Fatalf("committed batch count = %d, want 0", len(kafkaConsumer.committed))
+	}
+	if len(handler.batches) != 1 ||
+		len(handler.batches[0].RemovedMarketCodes) != 1 ||
+		handler.batches[0].RemovedMarketCodes[0] != checkpoint.MarketCode {
+		t.Fatalf("handled batches = %#v, want restored checkpoint sweep", handler.batches)
+	}
+	if len(recentCache.batches) != 1 || len(recentCache.batches[0]) != 1 {
+		t.Fatalf("cached swept candles = %#v, want restored candle", recentCache.batches)
+	}
+}
+
+func TestServiceDoesNotSweepRevokedPartition(t *testing.T) {
+	tradedAt := time.Now().UTC().Add(-2 * time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+	kafkaConsumer := &batchConsumer{
+		batches: [][]ingestkafka.Record{
+			{tradeRecord(t, 0, "KRW-BTC", "100", "1", "BID", tradedAt, 1)},
+			nil,
+		},
+		revocations: [][]int32{nil, {0}},
+	}
+	checkpoints := &checkpointStore{
+		checkpoints: make(map[int32][]candle.Checkpoint),
+		loadCount:   make(map[int32]int),
+	}
+	handler := &recordingResultHandler{}
+	recentCache := &recordingRecentCandleCache{}
+	service := consumer.NewService(
+		kafkaConsumer,
+		checkpoints,
+		handler,
+		recentCache,
+		&recordingLiveCandlePublisher{},
+	)
+
+	if err := service.Run(ctx); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if len(handler.batches) != 1 {
+		t.Fatalf("handled batch count = %d, want progress only", len(handler.batches))
+	}
+	if len(recentCache.batches) != 0 {
+		t.Fatalf("cached swept batch count = %d, want 0", len(recentCache.batches))
 	}
 }
 

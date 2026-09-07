@@ -144,7 +144,7 @@ func TestApplyDoesNotInflateCandleOnRepeatedSequence(t *testing.T) {
 	if len(closed) != 1 {
 		t.Fatalf("len(Sweep()) = %d, want 1", len(closed))
 	}
-	if got := closed[0].TradeVolume.String(); got != "0.5" {
+	if got := closed[0].Candle.TradeVolume.String(); got != "0.5" {
 		t.Fatalf("TradeVolume = %s, want 0.5", got)
 	}
 }
@@ -177,8 +177,8 @@ func TestApplyKeepsMarketsIndependent(t *testing.T) {
 	}
 
 	volumes := map[string]string{}
-	for _, candle := range closed {
-		volumes[candle.AssetID] = candle.TradeVolume.String()
+	for _, finalized := range closed {
+		volumes[finalized.Candle.AssetID] = finalized.Candle.TradeVolume.String()
 	}
 	if got := volumes["asset-KRW-BTC"]; got != "0.5" {
 		t.Fatalf("BTC TradeVolume = %s, want 0.5", got)
@@ -245,5 +245,17 @@ func TestSweepClosesCandleOnlyOnce(t *testing.T) {
 	}
 	if got := len(aggregator.Sweep(at(6, 0))); got != 0 {
 		t.Fatalf("두 번째 Sweep len = %d, want 0", got)
+	}
+}
+
+func TestSweepReturnsFinalizedMarketCode(t *testing.T) {
+	aggregator := candle.New()
+	applyAll(t, aggregator, []tradedomain.MarketTrade{
+		trade("KRW-BTC", 1, at(3, 30), "108800", "0.5"),
+	})
+
+	closed := aggregator.Sweep(at(5, 0))
+	if len(closed) != 1 || closed[0].MarketCode != "KRW-BTC" {
+		t.Fatalf("Sweep() = %#v, want KRW-BTC", closed)
 	}
 }

@@ -1,6 +1,8 @@
 package consumer
 
 import (
+	"time"
+
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle"
 	ingestkafka "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/kafka"
 )
@@ -9,6 +11,11 @@ import (
 // worker uses it synchronously, so no shared concurrent map is required.
 type Processor struct {
 	aggregator *candle.Aggregator
+}
+
+// Sweep finalizes candles whose close delay has elapsed.
+func (p *Processor) Sweep(now time.Time) []candle.FinalizedCandle {
+	return p.aggregator.Sweep(now)
 }
 
 func NewProcessor() *Processor {

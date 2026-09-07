@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/common/exception"
@@ -14,13 +15,17 @@ const maxPollRecords = 100
 
 // Consumer polls raw trade records without committing offsets.
 type Consumer struct {
-	client  *kgo.Client
-	revoked map[int32]struct{}
-	mutex   sync.Mutex
+	client   *kgo.Client
+	assigned map[int32]struct{}
+	revoked  map[int32]struct{}
+	mutex    sync.Mutex
 }
 
 func NewConsumer(brokers []string, groupID string) (*Consumer, error) {
-	consumer := &Consumer{revoked: make(map[int32]struct{})}
+	consumer := &Consumer{
+		assigned: make(map[int32]struct{}),
+		revoked:  make(map[int32]struct{}),
+	}
 	client, err := kgo.NewClient(
 		kgo.SeedBrokers(brokers...),
 		kgo.ConsumerGroup(groupID),
@@ -29,6 +34,7 @@ func NewConsumer(brokers []string, groupID string) (*Consumer, error) {
 		kgo.Balancers(kgo.CooperativeStickyBalancer()),
 		kgo.DisableAutoCommit(),
 		kgo.BlockRebalanceOnPoll(),
+		kgo.OnPartitionsAssigned(consumer.onPartitionsAssigned),
 		kgo.OnPartitionsRevoked(consumer.onPartitionsRevoked),
 		kgo.OnPartitionsLost(consumer.onPartitionsRevoked),
 	)
@@ -39,10 +45,26 @@ func NewConsumer(brokers []string, groupID string) (*Consumer, error) {
 	return consumer, nil
 }
 
+// TakeAssignedPartitions returns and clears partitions newly assigned since
+// the previous call.
+func (c *Consumer) TakeAssignedPartitions() []int32 {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	partitions := make([]int32, 0, len(c.assigned))
+	for partition := range c.assigned {
+		partitions = append(partitions, partition)
+	}
+	clear(c.assigned)
+	sort.Slice(partitions, func(i, j int) bool { return partitions[i] < partitions[j] })
+
+	return partitions
+}
+
 // Poll returns the next fetched records while preserving order within each partition.
 func (c *Consumer) Poll(ctx context.Context) ([]Record, error) {
 	fetches := c.client.PollRecords(ctx, maxPollRecords)
-	if ctx.Err() != nil || fetches.IsClientClosed() {
+	if fetches.IsClientClosed() || (ctx.Err() != nil && fetches.NumRecords() == 0) {
 		return nil, nil
 	}
 
@@ -103,8 +125,25 @@ func (c *Consumer) TakeRevokedPartitions() []int32 {
 		partitions = append(partitions, partition)
 	}
 	clear(c.revoked)
+	sort.Slice(partitions, func(i, j int) bool { return partitions[i] < partitions[j] })
 
 	return partitions
+}
+
+func (c *Consumer) onPartitionsAssigned(
+	_ context.Context,
+	_ *kgo.Client,
+	partitions map[string][]int32,
+) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	for _, topicPartitions := range partitions {
+		for _, partition := range topicPartitions {
+			c.assigned[partition] = struct{}{}
+			delete(c.revoked, partition)
+		}
+	}
 }
 
 func (c *Consumer) onPartitionsRevoked(
@@ -118,6 +157,7 @@ func (c *Consumer) onPartitionsRevoked(
 	for _, topicPartitions := range partitions {
 		for _, partition := range topicPartitions {
 			c.revoked[partition] = struct{}{}
+			delete(c.assigned, partition)
 		}
 	}
 }
