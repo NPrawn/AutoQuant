@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 class EquityTrackerTest {
 
@@ -95,6 +96,79 @@ class EquityTrackerTest {
         );
 
         assertThat(snapshot.drawdownRate()).isEqualByComparingTo("0.10000000");
+    }
+
+    @DisplayName("같은 평가 시각을 중복 기록할 수 없다")
+    @Test
+    void rejectDuplicateValuationTime() {
+        EquityTracker tracker = tracker();
+        tracker.record(
+                FIRST_VALUATION_AT,
+                BigDecimal.valueOf(1_000_000),
+                BigDecimal.valueOf(100_000)
+        );
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> tracker.record(
+                        FIRST_VALUATION_AT,
+                        BigDecimal.valueOf(1_000_000),
+                        BigDecimal.valueOf(100_000)
+                ));
+    }
+
+    @DisplayName("이전 평가 시각보다 과거인 시각을 기록할 수 없다")
+    @Test
+    void rejectEarlierValuationTime() {
+        EquityTracker tracker = tracker();
+        tracker.record(
+                FIRST_VALUATION_AT,
+                BigDecimal.valueOf(1_000_000),
+                BigDecimal.valueOf(100_000)
+        );
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> tracker.record(
+                        FIRST_VALUATION_AT.minusSeconds(3_600),
+                        BigDecimal.valueOf(1_000_000),
+                        BigDecimal.valueOf(100_000)
+                ));
+    }
+
+    @DisplayName("실패한 평가는 마지막 시각과 고점 상태를 변경하지 않는다")
+    @Test
+    void preserveStateWhenRecordingFails() {
+        EquityTracker tracker = tracker();
+        tracker.record(
+                FIRST_VALUATION_AT,
+                BigDecimal.valueOf(1_200_000),
+                BigDecimal.valueOf(100_000)
+        );
+        Instant secondValuationAt = FIRST_VALUATION_AT.plusSeconds(3_600);
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> tracker.record(
+                        secondValuationAt,
+                        BigDecimal.valueOf(1_300_000),
+                        BigDecimal.valueOf(1_400_000)
+                ));
+
+        EquitySnapshot snapshot = tracker.record(
+                secondValuationAt,
+                BigDecimal.valueOf(1_100_000),
+                BigDecimal.valueOf(100_000)
+        );
+        assertThat(snapshot.drawdownRate()).isEqualByComparingTo("0.08333333");
+    }
+
+    @DisplayName("초기 자산은 0보다 커야 한다")
+    @Test
+    void rejectZeroInitialAssetValue() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new EquityTracker(
+                        BigDecimal.ZERO,
+                        new CumulativeReturnCalculator(),
+                        new DrawdownRateCalculator()
+                ));
     }
 
     private EquityTracker tracker() {
