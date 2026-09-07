@@ -36,7 +36,7 @@ internal/
 └── config              환경변수 설정
 ```
 
-Consumer는 Redis 진행 봉 복구와 PostgreSQL 확정 봉 저장이 연결되기 전까지 offset을 커밋하거나 `cmd/consumer`에서 실행하지 않는다.
+Consumer는 파티션별로 순차 집계하고, 서로 다른 파티션만 병렬 처리한다. 한 Poll에서 같은 종목이 여러 번 변경되어도 마지막 진행 봉만 모아 파티션별 한 번의 Redis `HSET`으로 저장한다. PostgreSQL 확정 봉과 Redis 진행 봉 저장이 모두 성공한 Poll 배치만 offset을 커밋한다. 리밸런싱으로 회수된 파티션의 인메모리 상태는 폐기하고 재할당 시 Redis에서 다시 복구한다.
 
 일반 Go 컨벤션은 `common` 패키지를 금지하지만, 이 프로젝트의 `internal/common/domain`과 `internal/common/exception`은 Java 구조와의 일관성을 위해 팀이 명시적으로 허용했다. 다른 범용 `util`, `helper`, `common` 패키지를 추가로 만들지는 않는다.
 
