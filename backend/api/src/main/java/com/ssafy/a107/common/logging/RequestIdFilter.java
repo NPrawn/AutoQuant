@@ -12,6 +12,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * 요청 하나를 Spring 로그와 AI 서버 로그 양쪽에서 같은 값으로 찾게 한다.
@@ -26,6 +27,9 @@ public class RequestIdFilter extends OncePerRequestFilter {
 
     public static final String HEADER_NAME = "X-Request-ID";
     public static final String MDC_KEY = "requestId";
+
+    /* UUID 가 36자라 64면 충분하다. 로그 한 줄에 들어가도 되는 문자만 받는다. */
+    private static final Pattern SAFE_REQUEST_ID = Pattern.compile("[A-Za-z0-9._-]{1,64}");
 
     /** 현재 요청의 식별자. 요청 스레드 밖에서는 비어 있다. */
     public static String current() {
@@ -50,8 +54,14 @@ public class RequestIdFilter extends OncePerRequestFilter {
         }
     }
 
+    /*
+     * 클라이언트가 보낸 헤더는 신뢰 경계 밖이다. 이 값은 우리 서버 두 대의 모든 로그 줄에
+     * 식별자 자리로 찍히고 AI 서버까지 건너간다. 형식을 안 맞추면 탭이나 대괄호 같은
+     * 문자와 무제한 길이가 그 자리에 앉아 로그 파싱이 흔들린다. 어긋난 값은 이어받지 않는다.
+     */
     private String resolveRequestId(HttpServletRequest request) {
         String incoming = request.getHeader(HEADER_NAME);
-        return (incoming == null || incoming.isBlank()) ? UUID.randomUUID().toString() : incoming;
+        boolean acceptable = incoming != null && SAFE_REQUEST_ID.matcher(incoming).matches();
+        return acceptable ? incoming : UUID.randomUUID().toString();
     }
 }

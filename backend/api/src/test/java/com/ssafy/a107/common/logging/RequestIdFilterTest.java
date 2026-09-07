@@ -4,6 +4,8 @@ import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.MDC;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -53,14 +55,45 @@ class RequestIdFilterTest {
     @DisplayName("빈 헤더는 값이 없는 것으로 보고 새로 만든다")
     @Test
     void treatBlankHeaderAsMissing() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader(RequestIdFilter.HEADER_NAME, "   ");
-        AtomicReference<String> seenInsideChain = new AtomicReference<>();
+        String generated = requestIdFor("   ");
 
-        filter.doFilter(request, new MockHttpServletResponse(), captureRequestId(seenInsideChain));
+        assertThat(generated).isNotBlank();
+        assertThat(generated).isNotEqualTo("   ");
+    }
 
-        assertThat(seenInsideChain.get()).isNotBlank();
-        assertThat(seenInsideChain.get()).isNotEqualTo("   ");
+    @DisplayName("형식에 맞지 않는 값은 이어받지 않고 새로 만든다")
+    @ValueSource(strings = {
+            "inj	FAKE-LINE-INJECTED",
+            "req 1234",
+            "[req]",
+            "req\"1234",
+            "req,1234",
+    })
+    @ParameterizedTest
+    void rejectRequestIdWithUnsafeCharacters(String incoming) throws Exception {
+        String used = requestIdFor(incoming);
+
+        assertThat(used).isNotEqualTo(incoming);
+        assertThat(UUID.fromString(used)).isNotNull();
+    }
+
+    @DisplayName("64자를 넘는 값은 이어받지 않고 새로 만든다")
+    @Test
+    void rejectRequestIdOverTheLengthLimit() throws Exception {
+        String tooLong = "a".repeat(65);
+
+        String used = requestIdFor(tooLong);
+
+        assertThat(used).isNotEqualTo(tooLong);
+        assertThat(UUID.fromString(used)).isNotNull();
+    }
+
+    @DisplayName("64자까지는 그대로 이어받는다")
+    @Test
+    void acceptRequestIdAtTheLengthLimit() throws Exception {
+        String atLimit = "a".repeat(64);
+
+        assertThat(requestIdFor(atLimit)).isEqualTo(atLimit);
     }
 
     @DisplayName("요청이 끝나면 MDC를 비워 다음 요청에 값이 새지 않는다")
@@ -84,6 +117,16 @@ class RequestIdFilterTest {
         )).isInstanceOf(IllegalStateException.class);
 
         assertThat(RequestIdFilter.current()).isNull();
+    }
+
+    private String requestIdFor(String incomingHeader) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader(RequestIdFilter.HEADER_NAME, incomingHeader);
+        AtomicReference<String> seenInsideChain = new AtomicReference<>();
+
+        filter.doFilter(request, new MockHttpServletResponse(), captureRequestId(seenInsideChain));
+
+        return seenInsideChain.get();
     }
 
     private FilterChain captureRequestId(AtomicReference<String> holder) {
