@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -15,9 +16,10 @@ const (
 
 // Config contains the settings required by the ingest producer.
 type Config struct {
-	DatabaseURL       string
-	UpbitWebSocketURL string
-	RefreshInterval   time.Duration
+	DatabaseURL           string
+	KafkaBootstrapServers []string
+	UpbitWebSocketURL     string
+	RefreshInterval       time.Duration
 }
 
 // Load reads and validates producer settings from environment variables.
@@ -39,6 +41,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	password, err := requiredEnvironment("DB_PASSWORD")
+	if err != nil {
+		return Config{}, err
+	}
+	kafkaBootstrapServers, err := requiredEnvironmentList("KAFKA_BOOTSTRAP_SERVERS")
 	if err != nil {
 		return Config{}, err
 	}
@@ -71,9 +77,10 @@ func Load() (Config, error) {
 	databaseURL.RawQuery = databaseQuery.Encode()
 
 	return Config{
-		DatabaseURL:       databaseURL.String(),
-		UpbitWebSocketURL: parsedWebSocketURL.String(),
-		RefreshInterval:   refreshInterval,
+		DatabaseURL:           databaseURL.String(),
+		KafkaBootstrapServers: kafkaBootstrapServers,
+		UpbitWebSocketURL:     parsedWebSocketURL.String(),
+		RefreshInterval:       refreshInterval,
 	}, nil
 }
 
@@ -83,4 +90,20 @@ func requiredEnvironment(name string) (string, error) {
 		return "", fmt.Errorf("%s is required", name)
 	}
 	return value, nil
+}
+
+func requiredEnvironmentList(name string) ([]string, error) {
+	value, err := requiredEnvironment(name)
+	if err != nil {
+		return nil, err
+	}
+
+	values := strings.Split(value, ",")
+	for index := range values {
+		values[index] = strings.TrimSpace(values[index])
+		if values[index] == "" {
+			return nil, fmt.Errorf("%s contains an empty value", name)
+		}
+	}
+	return values, nil
 }

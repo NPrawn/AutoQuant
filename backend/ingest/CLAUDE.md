@@ -27,9 +27,9 @@ internal/
 ├── candle              체결을 1분봉으로 집계
 ├── candle/domain       MinuteCandle
 ├── trade/domain        실시간 MarketTrade
-├── producer            수집 대상 변경 감지
+├── producer            수집 대상 변경 감지·Collector 샤드 소유권
 ├── upbit               외부 API와 응답 DTO
-├── kafka               토픽·메시지·Producer/Consumer 래퍼
+├── kafka               토픽·메시지·Consumer Group·Producer/Consumer 래퍼
 ├── redis               최신 상태 쓰기
 ├── store               PostgreSQL 조회·INSERT·UPSERT
 └── config              환경변수 설정

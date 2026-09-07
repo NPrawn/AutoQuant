@@ -13,6 +13,8 @@ import (
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/store"
 	tradedomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/trade/domain"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/upbit"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -44,20 +46,30 @@ func run() error {
 	watcher := producer.NewTargetWatcher(repository)
 	client := upbit.NewClient(settings.UpbitWebSocketURL)
 	service := producer.NewService(watcher, client, settings.RefreshInterval)
+	coordinator, err := producer.NewShardCoordinator(settings.KafkaBootstrapServers)
+	if err != nil {
+		return fmt.Errorf("create shard coordinator: %w", err)
+	}
+	defer coordinator.Close()
 
 	trades := make(chan tradedomain.MarketTrade, 1024)
-	errors := make(chan error, 1)
-	go func() {
-		errors <- service.Run(ctx, trades)
-	}()
-
 	slog.Info("ingest producer started")
 	receivedTrades := uint64(0)
-	for range trades {
-		receivedTrades++
-	}
+	group, groupContext := errgroup.WithContext(ctx)
+	group.Go(func() error {
+		return coordinator.Run(groupContext)
+	})
+	group.Go(func() error {
+		return service.Run(groupContext, trades)
+	})
+	group.Go(func() error {
+		for range trades {
+			receivedTrades++
+		}
+		return nil
+	})
 
-	if err := <-errors; err != nil {
+	if err := group.Wait(); err != nil {
 		return err
 	}
 	slog.Info("ingest producer stopped", "received_trades", receivedTrades)
