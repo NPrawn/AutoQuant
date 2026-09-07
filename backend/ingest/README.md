@@ -1,7 +1,7 @@
 # ingest
 
 > Upbit 데이터 수집 · 적재 파이프라인. Go 모듈 하나에서 바이너리 3개를 만든다.
-> 현재 Producer는 Kafka Consumer Group에서 Collector 샤드를 할당받고, DB 수집 대상 중 담당 종목만 Upbit WebSocket으로 구독한다. Kafka 체결 발행은 아직 구현하지 않았다.
+> 현재 Producer는 Kafka Consumer Group에서 Collector 샤드를 할당받고, DB 수집 대상 중 담당 종목만 Upbit WebSocket으로 구독해 `tick-raw` 토픽에 발행한다.
 
 JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리의 존재를 모른다 (Gradle 프로젝트는 형제 디렉토리 `../api` 에 있음). 결합은 런타임에만 존재하며, 그 접점은 두 개다 — Redis 키/값 포맷과 DB 스키마.
 
@@ -70,7 +70,7 @@ ingest/
 
 ## 명령
 
-Producer 실행에는 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`가 필요하다. Kafka 브로커가 여러 개면 쉼표로 구분한다. Producer는 고정 토픽 `collector-shards`와 그룹 `upbit-trade-collectors`를 사용하며, `FNV-1a(marketCode) % 6`으로 담당 종목을 결정한다. `UPBIT_WEBSOCKET_URL`과 `COLLECTION_TARGET_REFRESH_INTERVAL`은 선택 설정이며 기본값은 각각 Upbit 공식 WebSocket 주소와 `5s`다.
+Producer 실행에는 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`가 필요하다. Kafka 브로커가 여러 개면 쉼표로 구분한다. Producer는 `collector-shards` 토픽과 `upbit-trade-collectors` 그룹으로 담당 종목을 결정하고, 체결 데이터는 마켓 코드를 key로 사용해 `tick-raw` 토픽에 발행한다. `UPBIT_WEBSOCKET_URL`과 `COLLECTION_TARGET_REFRESH_INTERVAL`은 선택 설정이며 기본값은 각각 Upbit 공식 WebSocket 주소와 `5s`다.
 
 ```bash
 go build ./...            # 3개 바이너리 컴파일 확인

@@ -89,6 +89,17 @@ services:
           --bootstrap-server kafka:9092 \
           --describe \
           --topic collector-shards | grep 'PartitionCount: 6'
+        /opt/kafka/bin/kafka-topics.sh \
+          --bootstrap-server kafka:9092 \
+          --create \
+          --if-not-exists \
+          --topic tick-raw \
+          --partitions 6 \
+          --replication-factor 1
+        /opt/kafka/bin/kafka-topics.sh \
+          --bootstrap-server kafka:9092 \
+          --describe \
+          --topic tick-raw | grep 'PartitionCount: 6'
 
   backend-api:
     image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/backend-api:${IMAGE_TAG:?IMAGE_TAG is required}
