@@ -1,0 +1,107 @@
+package producer_test
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"reflect"
+	"testing"
+	"time"
+
+	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/common/exception"
+	ingestkafka "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/kafka"
+	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/producer"
+	tradedomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/trade/domain"
+)
+
+type recordingRecordProducer struct {
+	records    []ingestkafka.Record
+	produceErr error
+	flushErr   error
+	flushed    bool
+}
+
+func (p *recordingRecordProducer) Produce(
+	_ context.Context,
+	record ingestkafka.Record,
+	complete func(error),
+) {
+	p.records = append(p.records, ingestkafka.Record{
+		Topic: record.Topic,
+		Key:   append([]byte(nil), record.Key...),
+		Value: append([]byte(nil), record.Value...),
+	})
+	complete(p.produceErr)
+}
+
+func (p *recordingRecordProducer) Flush(context.Context) error {
+	p.flushed = true
+	return p.flushErr
+}
+
+func TestTradePublisherPublishesMarketTrade(t *testing.T) {
+	tradedAt := time.Date(2026, time.September, 7, 12, 34, 56, 789000000, time.UTC)
+	trade := tradedomain.MarketTrade{
+		AssetID:    "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+		MarketCode: "KRW-BTC",
+		Price:      "159324000.00000000",
+		Volume:     "0.00123456",
+		Side:       tradedomain.SideBid,
+		TradedAt:   tradedAt,
+		SequenceID: 123456789,
+	}
+	recordProducer := &recordingRecordProducer{}
+	publisher := producer.NewTradePublisher(recordProducer)
+	trades := make(chan tradedomain.MarketTrade, 1)
+	trades <- trade
+	close(trades)
+
+	if err := publisher.Run(context.Background(), trades); err != nil {
+		t.Fatalf("Run() error = %v", err)
+	}
+	if len(recordProducer.records) != 1 {
+		t.Fatalf("published record count = %d, want 1", len(recordProducer.records))
+	}
+
+	record := recordProducer.records[0]
+	if record.Topic != ingestkafka.RawTradeTopic || string(record.Key) != trade.MarketCode {
+		t.Fatalf("record topic/key = %q/%q, want %q/%q", record.Topic, record.Key, ingestkafka.RawTradeTopic, trade.MarketCode)
+	}
+	var message ingestkafka.TradeMessage
+	if err := json.Unmarshal(record.Value, &message); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	want := ingestkafka.TradeMessage{
+		AssetID:           trade.AssetID,
+		MarketCode:        trade.MarketCode,
+		Price:             trade.Price,
+		Volume:            trade.Volume,
+		Side:              string(trade.Side),
+		TradedAtUnixMilli: tradedAt.UnixMilli(),
+		SequenceID:        trade.SequenceID,
+	}
+	if !reflect.DeepEqual(message, want) {
+		t.Fatalf("message = %#v, want %#v", message, want)
+	}
+	if !recordProducer.flushed {
+		t.Fatal("producer was not flushed")
+	}
+}
+
+func TestTradePublisherReturnsPublishError(t *testing.T) {
+	wantCause := errors.New("broker unavailable")
+	recordProducer := &recordingRecordProducer{
+		produceErr: exception.Wrap(exception.CodeKafkaPublishFailed, wantCause),
+	}
+	publisher := producer.NewTradePublisher(recordProducer)
+	trades := make(chan tradedomain.MarketTrade, 1)
+	trades <- tradedomain.MarketTrade{MarketCode: "KRW-BTC"}
+
+	err := publisher.Run(context.Background(), trades)
+	if !exception.HasCode(err, exception.CodeKafkaPublishFailed) || !errors.Is(err, wantCause) {
+		t.Fatalf("Run() error = %v, want Kafka publish error wrapping %v", err, wantCause)
+	}
+	if !recordProducer.flushed {
+		t.Fatal("producer was not flushed")
+	}
+}

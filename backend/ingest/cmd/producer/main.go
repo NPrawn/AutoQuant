@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/config"
+	ingestkafka "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/kafka"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/producer"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/store"
 	tradedomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/trade/domain"
@@ -51,10 +52,15 @@ func run() error {
 		return fmt.Errorf("create shard coordinator: %w", err)
 	}
 	defer coordinator.Close()
+	kafkaProducer, err := ingestkafka.NewProducer(settings.KafkaBootstrapServers)
+	if err != nil {
+		return fmt.Errorf("create Kafka producer: %w", err)
+	}
+	defer kafkaProducer.Close()
+	tradePublisher := producer.NewTradePublisher(kafkaProducer)
 
 	trades := make(chan tradedomain.MarketTrade, 1024)
 	slog.Info("ingest producer started")
-	receivedTrades := uint64(0)
 	group, groupContext := errgroup.WithContext(ctx)
 	group.Go(func() error {
 		return coordinator.Run(groupContext)
@@ -63,15 +69,12 @@ func run() error {
 		return service.Run(groupContext, coordinator.AssignmentChanges(), trades)
 	})
 	group.Go(func() error {
-		for range trades {
-			receivedTrades++
-		}
-		return nil
+		return tradePublisher.Run(groupContext, trades)
 	})
 
 	if err := group.Wait(); err != nil {
 		return err
 	}
-	slog.Info("ingest producer stopped", "received_trades", receivedTrades)
+	slog.Info("ingest producer stopped")
 	return nil
 }
