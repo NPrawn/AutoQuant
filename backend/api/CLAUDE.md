@@ -10,6 +10,7 @@ com.ssafy.a107
 ├── common/exception    ApiErrorCode, ApiException, ApiExceptionHandler
 ├── common/exception/response
 │                       ApiErrorResponse
+├── common/logging      RequestIdFilter (요청 식별자 MDC 전파)
 ├── member/domain       서비스 회원 계정
 ├── asset/controller    관리자용 종목 등록 API
 ├── asset/service       외부 검증 조율과 종목 등록 트랜잭션
@@ -32,6 +33,7 @@ com.ssafy.a107
 - `candle`과 `trading`은 서로 직접 참조하지 않는다.
 - `ai`는 `strategy/domain/dsl`을 그대로 쓴다. 전략 DSL 타입을 `ai` 안에 다시 만들지 않는다.
 - AI 서버의 오류 형식(`code`·`message`·`detail`)은 밖으로 흘리지 않고 `ApiErrorCode`로 옮긴다.
+- 외부 서버를 부를 때 `X-Request-ID`를 같이 보낸다. 값은 `RequestIdFilter.current()`가 들고 있다.
 - 확정 분봉은 Go Consumer가 쓰고 Spring은 `@Immutable` 엔티티로 읽는다.
 - `AssetTradingStatus`는 거래소 거래지원 상태이고 `MarketDataCollectionStatus`는 우리 서비스의 수집 희망 상태다. 두 상태를 합치지 않는다.
 - 종목 등록 API의 `ENABLED`는 실제 Go WebSocket 구독 완료를 의미하지 않는다.

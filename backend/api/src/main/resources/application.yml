@@ -26,6 +26,12 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+# 요청 식별자를 모든 로그 줄에 찍는다. RequestIdFilter 가 MDC 에 넣고, 같은 값이
+# X-Request-ID 헤더로 AI 서버까지 간다. 값이 없는 스레드에서는 빈칸이다.
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:-},%X{requestId:-}]"
+
 # ai/ FastAPI 전략 추론 서비스. timeout 은 AI 서버 실측 p95 4.6초에 재시도 여유를 더한 값이다.
 ai:
   base-url: ${AI_BASE_URL:http://localhost:8000}

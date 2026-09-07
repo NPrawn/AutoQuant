@@ -3,6 +3,7 @@ package com.ssafy.a107.ai.infrastructure;
 import com.ssafy.a107.ai.service.port.AiStrategyTranslation;
 import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
+import com.ssafy.a107.common.logging.RequestIdFilter;
 import com.ssafy.a107.strategy.domain.dsl.ComparisonOperator;
 import com.ssafy.a107.strategy.domain.dsl.ConditionFilterNode;
 import com.ssafy.a107.strategy.domain.dsl.GroupFilterNode;
@@ -10,6 +11,7 @@ import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
+import org.slf4j.MDC;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -60,6 +62,7 @@ class AiStrategyTranslateWebClientTest {
             """;
 
     private final AtomicReference<String> requestBody = new AtomicReference<>();
+    private final AtomicReference<String> requestIdHeader = new AtomicReference<>();
     private HttpServer httpServer;
 
     @AfterEach
@@ -67,6 +70,7 @@ class AiStrategyTranslateWebClientTest {
         if (httpServer != null) {
             httpServer.stop(0);
         }
+        MDC.clear();
     }
 
     @DisplayName("AI 서버가 돌려준 전략과 메타를 그대로 옮긴다")
@@ -109,6 +113,27 @@ class AiStrategyTranslateWebClientTest {
         assertThat(translation.strategy()).isNull();
         assertThat(translation.attempts()).isZero();
         assertThat(translation.assumptions()).hasSize(1);
+    }
+
+    @DisplayName("요청 식별자를 X-Request-ID 헤더로 AI 서버에 넘긴다")
+    @Test
+    void sendRequestIdHeader() throws IOException {
+        AiStrategyTranslateWebClient client = createClient(HttpStatus.OK, TRANSLATED_BODY);
+        MDC.put(RequestIdFilter.MDC_KEY, "req-1234");
+
+        client.translate("5% 이상 오른 코인 사줘", null);
+
+        assertThat(requestIdHeader.get()).isEqualTo("req-1234");
+    }
+
+    @DisplayName("요청 식별자가 없으면 헤더를 붙이지 않고 AI 서버가 만들게 둔다")
+    @Test
+    void omitRequestIdHeaderOutsideARequest() throws IOException {
+        AiStrategyTranslateWebClient client = createClient(HttpStatus.OK, TRANSLATED_BODY);
+
+        client.translate("5% 이상 오른 코인 사줘", null);
+
+        assertThat(requestIdHeader.get()).isNull();
     }
 
     @DisplayName("검증에 실패한 422는 전략 변환 실패로 옮긴다")
@@ -215,6 +240,7 @@ class AiStrategyTranslateWebClientTest {
     private void respond(HttpExchange exchange, HttpStatus status, String body, Duration serverDelay)
             throws IOException {
         requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+        requestIdHeader.set(exchange.getRequestHeaders().getFirst(RequestIdFilter.HEADER_NAME));
         if (!serverDelay.isZero()) {
             try {
                 Thread.sleep(serverDelay.toMillis());
