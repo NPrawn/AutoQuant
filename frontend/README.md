@@ -24,11 +24,28 @@ React 19 + TypeScript + Vite.
 |---|---|
 | `src/styles/tokens.css` | 색·반경·그림자 CSS 변수, 다크·라이트 두 팔레트 |
 | `src/styles/base.css` | 리셋, 공통 클래스, 화면별 컴포넌트 스타일 |
+| `src/styles/overrides.css` | 목업(button)과 React 마크업(a) 차이 보정 |
 | `src/styles/theme.ts` | `data-theme` 속성 전환과 선택 저장 |
 
 **색에 의미가 배정돼 있다.** 한국 시장 관례를 따라 빨강(`--up`)이 상승이므로 오류에는 주황(`--crit`)을 쓴다. 파랑(`--down`)은 하락, 초록(`--good`)은 정상, 보라(`--dd`)는 낙폭이다. 흰색은 선택·포커스 같은 UI 상태를 뜻하고 금융 의미를 담지 않는다.
 
 테마는 문서 루트의 `data-theme` 속성으로만 바뀐다. 첫 페인트에서 다크 화면이 번쩍이지 않도록 `index.html`의 인라인 스크립트가 마운트 전에 복원한다.
+
+## 구조
+
+```text
+src/
+├── app/
+│   ├── router.tsx        라우트 정의, handle.title 이 상단바 제목
+│   ├── routes.ts         경로 상수와 링크 생성 함수
+│   ├── navigation.tsx    사이드바 항목
+│   └── layout/           AppShell, Sidebar, Topbar
+├── pages/                화면, 목업 번호와 1:1
+├── styles/               디자인 시스템
+└── mocks/                API 연동 전 표시용 더미
+```
+
+로그인은 사이드바가 없어 `AppShell` 바깥에 있고, 나머지 화면은 셸 안의 `<Outlet />`에 그려진다. 960px 이하에서 사이드바가 접히는 규칙은 목업 CSS 가 그대로 담당한다.
 
 ## 라우팅
 
