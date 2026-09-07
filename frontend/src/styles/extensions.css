@@ -11,3 +11,13 @@
 .callout.crit svg {
   stroke: var(--crit);
 }
+
+/* 아직 화면이 없는 계정 메뉴 항목. 목업엔 비활성 상태가 없다. */
+.acct-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.acct-item:disabled:hover {
+  background: none;
+  color: inherit;
+}
