@@ -18,6 +18,7 @@ const (
 type Config struct {
 	DatabaseURL           string
 	KafkaBootstrapServers []string
+	RedisAddress          string
 	UpbitWebSocketURL     string
 	RefreshInterval       time.Duration
 }
@@ -36,6 +37,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	kafkaBootstrapServers, err := requiredEnvironmentList("KAFKA_BOOTSTRAP_SERVERS")
+	if err != nil {
+		return Config{}, err
+	}
+	redisAddress, err := loadRedisAddress()
 	if err != nil {
 		return Config{}, err
 	}
@@ -60,6 +65,7 @@ func Load() (Config, error) {
 	return Config{
 		DatabaseURL:           databaseURL,
 		KafkaBootstrapServers: kafkaBootstrapServers,
+		RedisAddress:          redisAddress,
 		UpbitWebSocketURL:     parsedWebSocketURL.String(),
 		RefreshInterval:       refreshInterval,
 	}, nil
@@ -76,11 +82,7 @@ func LoadConsumer() (ConsumerConfig, error) {
 	if err != nil {
 		return ConsumerConfig{}, err
 	}
-	redisHost, err := requiredEnvironment("REDIS_HOST")
-	if err != nil {
-		return ConsumerConfig{}, err
-	}
-	redisPort, err := requiredEnvironment("REDIS_PORT")
+	redisAddress, err := loadRedisAddress()
 	if err != nil {
 		return ConsumerConfig{}, err
 	}
@@ -88,8 +90,21 @@ func LoadConsumer() (ConsumerConfig, error) {
 	return ConsumerConfig{
 		DatabaseURL:           databaseURL,
 		KafkaBootstrapServers: kafkaBootstrapServers,
-		RedisAddress:          net.JoinHostPort(redisHost, redisPort),
+		RedisAddress:          redisAddress,
 	}, nil
+}
+
+func loadRedisAddress() (string, error) {
+	host, err := requiredEnvironment("REDIS_HOST")
+	if err != nil {
+		return "", err
+	}
+	port, err := requiredEnvironment("REDIS_PORT")
+	if err != nil {
+		return "", err
+	}
+
+	return net.JoinHostPort(host, port), nil
 }
 
 func loadDatabaseURL() (string, error) {

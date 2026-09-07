@@ -21,6 +21,19 @@ type recordingRecordProducer struct {
 	flushed    bool
 }
 
+type recordingRealtimeTradePublisher struct {
+	trades []tradedomain.MarketTrade
+	err    error
+}
+
+func (p *recordingRealtimeTradePublisher) Publish(
+	_ context.Context,
+	trade tradedomain.MarketTrade,
+) error {
+	p.trades = append(p.trades, trade)
+	return p.err
+}
+
 func (p *recordingRecordProducer) Produce(
 	_ context.Context,
 	record ingestkafka.Record,
@@ -51,7 +64,8 @@ func TestTradePublisherPublishesMarketTrade(t *testing.T) {
 		SequenceID: 123456789,
 	}
 	recordProducer := &recordingRecordProducer{}
-	publisher := producer.NewTradePublisher(recordProducer)
+	realtimePublisher := &recordingRealtimeTradePublisher{}
+	publisher := producer.NewTradePublisher(recordProducer, realtimePublisher)
 	trades := make(chan tradedomain.MarketTrade, 1)
 	trades <- trade
 	close(trades)
@@ -86,22 +100,54 @@ func TestTradePublisherPublishesMarketTrade(t *testing.T) {
 	if !recordProducer.flushed {
 		t.Fatal("producer was not flushed")
 	}
+	if len(realtimePublisher.trades) != 1 ||
+		!reflect.DeepEqual(realtimePublisher.trades[0], trade) {
+		t.Fatalf("realtime trades = %#v, want published trade", realtimePublisher.trades)
+	}
 }
 
-func TestTradePublisherReturnsPublishError(t *testing.T) {
-	wantCause := errors.New("broker unavailable")
+func TestTradePublisherContinuesRealtimeTradesWhenKafkaFails(t *testing.T) {
 	recordProducer := &recordingRecordProducer{
-		produceErr: exception.Wrap(exception.CodeKafkaPublishFailed, wantCause),
+		produceErr: exception.Wrap(exception.CodeKafkaPublishFailed, errors.New("broker unavailable")),
 	}
-	publisher := producer.NewTradePublisher(recordProducer)
-	trades := make(chan tradedomain.MarketTrade, 1)
-	trades <- tradedomain.MarketTrade{MarketCode: "KRW-BTC"}
+	realtimePublisher := &recordingRealtimeTradePublisher{}
+	publisher := producer.NewTradePublisher(recordProducer, realtimePublisher)
+	trades := make(chan tradedomain.MarketTrade, 2)
+	trades <- tradedomain.MarketTrade{MarketCode: "KRW-BTC", SequenceID: 1}
+	trades <- tradedomain.MarketTrade{MarketCode: "KRW-ETH", SequenceID: 2}
+	close(trades)
 
-	err := publisher.Run(context.Background(), trades)
-	if !exception.HasCode(err, exception.CodeKafkaPublishFailed) || !errors.Is(err, wantCause) {
-		t.Fatalf("Run() error = %v, want Kafka publish error wrapping %v", err, wantCause)
+	if err := publisher.Run(context.Background(), trades); err != nil {
+		t.Fatalf("Run() error = %v, want Kafka delivery errors isolated", err)
 	}
 	if !recordProducer.flushed {
 		t.Fatal("producer was not flushed")
+	}
+	if len(recordProducer.records) != 2 || len(realtimePublisher.trades) != 2 {
+		t.Fatalf(
+			"Kafka/Redis publish counts = %d/%d, want 2/2",
+			len(recordProducer.records),
+			len(realtimePublisher.trades),
+		)
+	}
+}
+
+func TestTradePublisherIgnoresRealtimePublishError(t *testing.T) {
+	recordProducer := &recordingRecordProducer{}
+	realtimePublisher := &recordingRealtimeTradePublisher{err: errors.New("redis unavailable")}
+	publisher := producer.NewTradePublisher(recordProducer, realtimePublisher)
+	trades := make(chan tradedomain.MarketTrade, 1)
+	trades <- tradedomain.MarketTrade{MarketCode: "KRW-BTC", SequenceID: 1}
+	close(trades)
+
+	if err := publisher.Run(context.Background(), trades); err != nil {
+		t.Fatalf("Run() error = %v, want Redis publish error ignored", err)
+	}
+	if len(recordProducer.records) != 1 || len(realtimePublisher.trades) != 1 {
+		t.Fatalf(
+			"Kafka/Redis publish counts = %d/%d, want 1/1",
+			len(recordProducer.records),
+			len(realtimePublisher.trades),
+		)
 	}
 }
