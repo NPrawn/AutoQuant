@@ -2,6 +2,7 @@ import { Link, useMatches } from 'react-router'
 
 import { ThemeToggle } from '../../styles/ThemeToggle'
 import { routes } from '../routes'
+import { AccountMenu } from './AccountMenu'
 
 /* 라우트 정의의 handle.title 을 상단바 제목으로 쓴다. 가장 깊은 매치가 이긴다. */
 type RouteHandle = { title?: string }
@@ -18,10 +19,12 @@ function useCurrentTitle(): string | undefined {
 }
 
 type TopbarProps = {
-  memberName: string
+  member: { displayName: string; emailAddress: string }
+  session: { runningSimulations: number; hasUnsavedEdits: boolean }
+  onLogout?: () => void
 }
 
-export function Topbar({ memberName }: TopbarProps) {
+export function Topbar({ member, session, onLogout }: TopbarProps) {
   const title = useCurrentTitle()
 
   return (
@@ -38,12 +41,13 @@ export function Topbar({ memberName }: TopbarProps) {
           </svg>
         </Link>
         <span className="tag">데모 데이터</span>
-        <div className="acct">
-          {/* 드롭다운 메뉴는 계정 메뉴 작업에서 붙인다. */}
-          <button className="avatar" type="button" aria-label="계정 메뉴">
-            {memberName}
-          </button>
-        </div>
+        <AccountMenu
+          displayName={member.displayName}
+          emailAddress={member.emailAddress}
+          runningSimulations={session.runningSimulations}
+          hasUnsavedEdits={session.hasUnsavedEdits}
+          onLogout={onLogout}
+        />
       </div>
     </header>
   )

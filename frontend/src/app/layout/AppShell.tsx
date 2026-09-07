@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router'
 
-import { demoMember } from '../../mocks/member'
+import { demoMember, demoSession } from '../../mocks/member'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
@@ -13,7 +13,7 @@ export function AppShell() {
     <div className="shell">
       <Sidebar />
       <div className="col">
-        <Topbar memberName={demoMember.displayName} />
+        <Topbar member={demoMember} session={demoSession} />
         <main className="wrap">
           <Outlet />
         </main>
