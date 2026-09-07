@@ -59,6 +59,7 @@ public class BacktestPortfolio {
         BigDecimal updatedQuantity = fill.quantity();
         BigDecimal updatedAverageEntryPrice = fill.executedPrice()
                 .setScale(PRICE_SCALE, RoundingMode.HALF_UP);
+        BigDecimal updatedCostBasis = requiredCash;
 
         if (currentPosition != null) {
             updatedQuantity = currentPosition.quantity()
@@ -72,6 +73,9 @@ public class BacktestPortfolio {
             updatedAverageEntryPrice = currentCost.add(addedCost)
                     .divide(updatedQuantity, MathContext.DECIMAL128)
                     .setScale(PRICE_SCALE, RoundingMode.HALF_UP);
+            updatedCostBasis = currentPosition.costBasis()
+                    .add(requiredCash)
+                    .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
         }
 
         positions.put(
@@ -80,7 +84,8 @@ public class BacktestPortfolio {
                         assetId,
                         PositionSide.LONG,
                         updatedQuantity,
-                        updatedAverageEntryPrice
+                        updatedAverageEntryPrice,
+                        updatedCostBasis
                 )
         );
 
