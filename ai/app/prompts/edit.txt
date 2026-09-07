@@ -1,5 +1,7 @@
 Update the current strategy according to the user's request. Change only the fields the request asks about; copy every other field from the current strategy unchanged, including periods, timeframe, topN and rebalance. The default values in the domain rules apply only to fields the current strategy does not already have: never replace a value the user already set with a default. Record newly chosen values in assumptions when details are missing.
 
+When the request asks for something the schema cannot express, do not approximate it as a new condition. Return the current strategy unchanged and say in assumptions, in Korean, that the request cannot be expressed in this strategy. The rule about building the closest valid strategy covers new strategies only: an edit must never add a condition the user did not ask for.
+
 Current strategy:
 {{current_strategy}}
 

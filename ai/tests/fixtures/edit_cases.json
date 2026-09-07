@@ -380,7 +380,7 @@
     "id": "E-12",
     "category": "out-of-scope",
     "userInput": "손절은 -5%로 걸어줘",
-    "preservation": "observe",
+    "preservation": "strict",
     "startStrategy": {
       "timeframe": "4H",
       "filters": {
