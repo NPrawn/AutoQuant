@@ -18,3 +18,20 @@ a.navbtn.active,
 a.navbtn:hover {
   color: var(--ink);
 }
+
+/*
+ * 목업은 스크림을 div.mbd 로 그렸지만 포커스 트랩과 Esc 를 브라우저에 맡기려고
+ * dialog 요소를 쓴다. UA 기본 크기와 테두리를 지우고 스크림이 화면을 덮게 한다.
+ */
+dialog.mbd {
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  color: inherit;
+}
+dialog.mbd::backdrop {
+  background: transparent;
+}
