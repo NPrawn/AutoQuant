@@ -60,6 +60,20 @@ class AuthControllerTest {
         assertThat(response.getHeaders().getFirst(HttpHeaders.SET_COOKIE)).isNull();
     }
 
+    @DisplayName("로그아웃하면 로그인 때와 같은 속성으로 토큰 쿠키를 즉시 만료시킨다")
+    @Test
+    void expireCookieOnLogout() {
+        ResponseEntity<Void> response = controller().logout();
+
+        assertThat(response.getStatusCode().value()).isEqualTo(204);
+        assertThat(response.getHeaders().getFirst(HttpHeaders.SET_COOKIE))
+                .contains("access_token=")
+                .contains("Max-Age=0")
+                .contains("HttpOnly")
+                .contains("SameSite=Lax")
+                .contains("Path=/");
+    }
+
     private AuthController controller() {
         return new AuthController(
                 authCommandService,

@@ -86,6 +86,7 @@ SSAFY OAuth2 Authorization Code로 로그인한다. `client_secret`을 가진 �
 |---|---|---|---|
 | GET | `/auth/ssafy/authorize-url` | 불필요 | SSAFY 로그인 화면으로 보낼 인가 URL |
 | GET | `/auth/ssafy/callback` | 불필요 | SSAFY가 인가 코드를 보내는 콜백, 쿠키를 심고 프론트로 리다이렉트 |
+| POST | `/auth/logout` | 불필요 | 토큰 쿠키를 만료시킨다, 로그인 제공자와 무관하다 |
 | GET | `/members/me` | 필요 | 인증 주체로 본인 정보 조회 |
 
 보호된 API는 토큰 쿠키 또는 `Authorization: Bearer {accessToken}` 헤더를 받는다. 브라우저는 쿠키가 자동으로 실리므로 프론트가 토큰을 저장할 필요가 없다. 회원 식별자는 요청 본문이 아니라 인증 주체에서 꺼낸다.
