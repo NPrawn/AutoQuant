@@ -37,6 +37,9 @@ func TestLoad(t *testing.T) {
 				wantKafkaBootstrapServers,
 			)
 		}
+		if got.RedisAddress != "redis:6379" {
+			t.Fatalf("RedisAddress = %q, want %q", got.RedisAddress, "redis:6379")
+		}
 	})
 
 	t.Run("필수 설정이 없으면 오류를 반환한다", func(t *testing.T) {
@@ -66,6 +69,14 @@ func TestLoad(t *testing.T) {
 	t.Run("빈 카프카 접속 주소를 거부한다", func(t *testing.T) {
 		setRequiredEnvironment(t)
 		t.Setenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092,")
+		if _, err := config.Load(); err == nil {
+			t.Fatal("Load() error = nil, want error")
+		}
+	})
+
+	t.Run("Redis 접속 주소가 없으면 오류를 반환한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("REDIS_HOST", "")
 		if _, err := config.Load(); err == nil {
 			t.Fatal("Load() error = nil, want error")
 		}
@@ -108,4 +119,6 @@ func setRequiredEnvironment(t *testing.T) {
 	t.Setenv("COLLECTION_TARGET_REFRESH_INTERVAL", "")
 	t.Setenv("UPBIT_WEBSOCKET_URL", "")
 	t.Setenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
+	t.Setenv("REDIS_HOST", "redis")
+	t.Setenv("REDIS_PORT", "6379")
 }

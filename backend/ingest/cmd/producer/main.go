@@ -11,6 +11,7 @@ import (
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/config"
 	ingestkafka "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/kafka"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/producer"
+	ingestredis "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/redis"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/store"
 	tradedomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/trade/domain"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/upbit"
@@ -42,6 +43,12 @@ func run() error {
 	if err := pool.Ping(ctx); err != nil {
 		return fmt.Errorf("connect database: %w", err)
 	}
+	redisClient := ingestredis.NewClient(settings.RedisAddress)
+	defer func() {
+		if closeErr := redisClient.Close(); closeErr != nil {
+			slog.Error("close Redis client", "error", closeErr)
+		}
+	}()
 
 	repository := store.NewCollectionTargetRepository(pool)
 	watcher := producer.NewTargetWatcher(repository)
@@ -57,7 +64,9 @@ func run() error {
 		return fmt.Errorf("create Kafka producer: %w", err)
 	}
 	defer kafkaProducer.Close()
-	tradePublisher := producer.NewTradePublisher(kafkaProducer)
+	realtimePublisher := ingestredis.NewRealtimeTradePublisher(redisClient)
+	realtimeDispatcher := producer.NewRealtimeTradeDispatcher(realtimePublisher)
+	tradePublisher := producer.NewTradePublisher(kafkaProducer, realtimeDispatcher)
 
 	trades := make(chan tradedomain.MarketTrade, 1024)
 	slog.Info("ingest producer started")
@@ -70,6 +79,10 @@ func run() error {
 	})
 	group.Go(func() error {
 		return tradePublisher.Run(groupContext, trades)
+	})
+	group.Go(func() error {
+		realtimeDispatcher.Run(groupContext)
+		return nil
 	})
 
 	if err := group.Wait(); err != nil {

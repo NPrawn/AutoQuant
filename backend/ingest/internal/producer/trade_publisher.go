@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/common/exception"
@@ -18,44 +19,63 @@ type RecordProducer interface {
 	Flush(context.Context) error
 }
 
-// TradePublisher converts normalized trades and publishes them to Kafka.
-type TradePublisher struct {
-	producer RecordProducer
+type RealtimeTradeSink interface {
+	TryPublish(tradedomain.MarketTrade) bool
+	Close()
 }
 
-func NewTradePublisher(producer RecordProducer) *TradePublisher {
-	return &TradePublisher{producer: producer}
+// TradePublisher converts normalized trades and publishes them to Kafka.
+type TradePublisher struct {
+	producer     RecordProducer
+	realtimeSink RealtimeTradeSink
+}
+
+func NewTradePublisher(
+	producer RecordProducer,
+	realtimeSink RealtimeTradeSink,
+) *TradePublisher {
+	return &TradePublisher{
+		producer:     producer,
+		realtimeSink: realtimeSink,
+	}
 }
 
 func (p *TradePublisher) Run(ctx context.Context, trades <-chan tradedomain.MarketTrade) error {
-	publishErrors := make(chan error, 1)
+	defer p.realtimeSink.Close()
 
 	for {
 		select {
-		case err := <-publishErrors:
-			return p.finish(err, publishErrors)
 		case trade, open := <-trades:
 			if !open {
-				return p.finish(nil, publishErrors)
+				return p.finish(nil)
 			}
 
 			record, err := newTradeRecord(trade)
 			if err != nil {
-				return p.finish(err, publishErrors)
+				return p.finish(err)
 			}
 			p.producer.Produce(ctx, record, func(err error) {
 				if err == nil {
 					return
 				}
-				select {
-				case publishErrors <- err:
-				default:
-				}
+				slog.Error(
+					"failed to publish trade to Kafka",
+					"error", err,
+					"market_code", trade.MarketCode,
+					"sequence_id", trade.SequenceID,
+				)
 			})
+			if !p.realtimeSink.TryPublish(trade) {
+				slog.Warn(
+					"dropped oldest realtime trade update",
+					"market_code", trade.MarketCode,
+					"sequence_id", trade.SequenceID,
+				)
+			}
 		case <-ctx.Done():
 			for range trades {
 			}
-			return p.finish(nil, publishErrors)
+			return p.finish(nil)
 		}
 	}
 }
@@ -81,17 +101,11 @@ func newTradeRecord(trade tradedomain.MarketTrade) (ingestkafka.Record, error) {
 	}, nil
 }
 
-func (p *TradePublisher) finish(runErr error, publishErrors <-chan error) error {
+func (p *TradePublisher) finish(runErr error) error {
 	flushContext, cancel := context.WithTimeout(context.Background(), publishFlushTimeout)
 	defer cancel()
 	flushErr := p.producer.Flush(flushContext)
 
-	if runErr == nil {
-		select {
-		case runErr = <-publishErrors:
-		default:
-		}
-	}
 	if runErr == nil {
 		return flushErr
 	}

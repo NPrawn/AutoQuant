@@ -44,9 +44,9 @@ func newPartitionWorker(
 func (w *partitionWorker) Process(
 	ctx context.Context,
 	records []ingestkafka.Record,
-) (ingestkafka.Record, error) {
+) (ProcessedBatch, ingestkafka.Record, error) {
 	if err := w.restore(ctx); err != nil {
-		return ingestkafka.Record{}, err
+		return ProcessedBatch{}, ingestkafka.Record{}, err
 	}
 
 	var lastRecord ingestkafka.Record
@@ -54,7 +54,7 @@ func (w *partitionWorker) Process(
 	latestCheckpoints := make(map[string]candle.Checkpoint)
 	for _, record := range records {
 		if err := ctx.Err(); err != nil {
-			return ingestkafka.Record{}, err
+			return ProcessedBatch{}, ingestkafka.Record{}, err
 		}
 
 		processed, err := w.processor.Process(record)
@@ -72,7 +72,7 @@ func (w *partitionWorker) Process(
 				lastRecord = record
 				continue
 			}
-			return ingestkafka.Record{}, err
+			return ProcessedBatch{}, ingestkafka.Record{}, err
 		}
 		if processed.Result.Closed != nil {
 			closedCandles = append(closedCandles, *processed.Result.Closed)
@@ -93,17 +93,18 @@ func (w *partitionWorker) Process(
 		checkpoints = append(checkpoints, latestCheckpoints[marketCode])
 	}
 
+	batch := ProcessedBatch{
+		Partition:     w.partition,
+		ClosedCandles: closedCandles,
+		Checkpoints:   checkpoints,
+	}
 	if len(closedCandles) > 0 || len(checkpoints) > 0 {
-		if err := w.handler.Handle(ctx, ProcessedBatch{
-			Partition:     w.partition,
-			ClosedCandles: closedCandles,
-			Checkpoints:   checkpoints,
-		}); err != nil {
-			return ingestkafka.Record{}, err
+		if err := w.handler.Handle(ctx, batch); err != nil {
+			return ProcessedBatch{}, ingestkafka.Record{}, err
 		}
 	}
 
-	return lastRecord, nil
+	return batch, lastRecord, nil
 }
 
 func invalidRecord(err error) bool {
