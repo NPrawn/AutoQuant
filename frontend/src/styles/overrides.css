@@ -1,0 +1,20 @@
+/*
+ * 목업과 React 마크업의 차이를 메우는 규칙만 둔다. 목업은 내비게이션을 button 으로
+ * 그렸지만 화면 이동은 링크여야 주소 이동, 새 탭 열기, 키보드 탐색이 자연스러워서
+ * a 태그로 옮겼다. base.css 는 원본과 대조할 수 있게 그대로 두고 여기서만 보정한다.
+ */
+a.navbtn,
+a.brandmark,
+a.icon-btn {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.navbtn {
+  color: var(--ink-2);
+}
+
+a.navbtn.active,
+a.navbtn:hover {
+  color: var(--ink);
+}
