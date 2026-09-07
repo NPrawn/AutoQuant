@@ -8,13 +8,6 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-// Record contains the transport values required to publish one Kafka record.
-type Record struct {
-	Topic string
-	Key   []byte
-	Value []byte
-}
-
 // Producer is a thin franz-go producer adapter.
 type Producer struct {
 	client *kgo.Client
