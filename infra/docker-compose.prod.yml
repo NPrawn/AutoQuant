@@ -211,14 +211,21 @@ services:
     command: ["/app/backfill"]
     profiles: ["backfill"]
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:?DB_NAME is required}
       DB_USER: ${DB_USER:?DB_USER is required}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CANDLE_HISTORY_FROM: ${CANDLE_HISTORY_FROM:?CANDLE_HISTORY_FROM is required}
+      CANDLE_HISTORY_REQUEST_BUDGET: ${CANDLE_HISTORY_REQUEST_BUDGET:-240}
+      UPBIT_REST_BASE_URL: ${UPBIT_REST_BASE_URL:-https://api.upbit.com}
+      UPBIT_REST_TIMEOUT: ${UPBIT_REST_TIMEOUT:-5s}
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
 volumes:
