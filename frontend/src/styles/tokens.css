@@ -1,0 +1,128 @@
+/*
+ * AutoQuant 디자인 토큰. 화면 목업의 :root 변수를 그대로 옮겼다.
+ *
+ * 색 의미 계약
+ *   --up    상승, 매수 체결 (한국 시장 관례의 빨강). 오류에 쓰지 않는다
+ *   --down  하락, 매도 체결
+ *   --good  정상, 통과
+ *   --warn  주의
+ *   --crit  오류, 차단 (빨강이 상승에 쓰여서 주황을 쓴다)
+ *   --dd    낙폭. 방향이 아니라 고점 대비 깊이라서 독립 색을 쓴다
+ *   흰색    선택, 포커스 같은 UI 상태. 금융 의미를 담지 않는다
+ */
+
+/* ===== dark-committed palette ===== */
+  :root{
+    color-scheme: dark;
+    --bg:#0B0D10;
+    --panel:#111419;
+    --panel-2:#161A20;
+    --panel-3:#1C2129;
+    --line:rgba(255,255,255,0.075);
+    --line-2:rgba(255,255,255,0.14);
+    --ink:#F3F5F7;
+    --ink-2:#AAB2BE;
+    --ink-3:#8B95A3;      /* small-text safe (was #747E8B, ~4:1) */
+    --ink-4:#6B7480;      /* rules, dots, dividers — NEVER text (3.8:1) */
+    --accent:#F3F5F7;
+    --accent-2:#FFFFFF;
+    --accent-tint:rgba(255,255,255,0.075);
+    --accent-ink:#0B0D10;
+    /* ---- semantic colour contract ----
+       red   = 상승 / 매수 체결 (KR market convention) — NEVER used for errors
+       blue  = 하락 / 매도 체결 / 낙폭
+       green = 정상·통과·신뢰 높음
+       amber = 주의 (경고)
+       orange= 오류·차단 (red is taken by 상승)
+       white = UI 상태 (선택·포커스·primary) — carries no financial meaning */
+    --up:#E64C5C;   --up-soft:rgba(230,76,92,0.14);
+    --down:#4C8DF6; --down-soft:rgba(76,141,246,0.14);
+    --good:#199E70; --good-soft:rgba(25,158,112,0.15);
+    --warn:#C98500; --warn-soft:rgba(201,133,0,0.15);
+    --crit:#E0873A; --crit-soft:rgba(224,135,58,0.16);
+    /* drawdown is depth-from-peak, not direction — its own hue so it never
+       reads as 하락(파랑) or 오류(주황) */
+    --dd:#9B84D6; --dd-soft:rgba(155,132,214,0.16);
+    --ma5:#C98500; --ma20:#199E70; --ma60:#8B72C9;
+    --bb:#46607F;
+    --grid:#18202B;
+    --axis:#2A3646;
+    /* strategy-block category hues — category, not severity */
+    --cat-signal:#76B7F2; --cat-alloc:#8BC7A4; --cat-risk:#E38B8B; --cat-exec:#A99BE3; --cat-neutral:#8EA0B7;
+    --section:var(--cat-neutral);
+    --r-s:8px; --r-m:8px; --r-l:12px;
+    --shadow:0 18px 48px -28px rgba(0,0,0,0.85);
+    /* three surfaces, three elevations — the only way to build hierarchy in a dark UI */
+    --surface-lead:#13171C;
+    --surface-sticky:#171B21;      /* sticky own-row / pinned strip */
+    --rail-bg:#0E1115;
+    --surface-modal:#111514;
+    /* code stays dark in BOTH themes — a light code block reads as a form field */
+    --code-bg:#090C0F; --code-ink:#D5DBE4; --code-gutter:#3D4753;
+    --code-str:#7FBF9E; --code-num:#8B72C9;
+    --good-ink:#2FC98F; --warn-ink:#E0A94A;
+    --scroll-thumb:#37455A;
+    --field-a:#0D1014; --field-b:#090B0E;   /* login + hero backdrop */
+    --field-dot:rgba(255,255,255,.22);
+    --field-glow:rgba(158,170,188,.09);
+    --ink-max:#FFFFFF;                 /* headline-only: one step past --ink */
+    --bg-blur:rgba(11,13,16,.9);       /* sticky chrome over scrolling content */
+    --scrim:rgba(5,7,10,.72);
+    --shadow-1:0 1px 2px rgba(0,0,0,.45);
+    --shadow-2:0 12px 32px -18px rgba(0,0,0,.72);
+    --shadow-3:0 28px 70px -30px rgba(0,0,0,.78);
+  }
+
+  /* ========================================================================
+     LIGHT THEME — same semantic contract, re-grounded on paper.
+     붉은상승 / 파랑하락 stay; every hue is darkened so it clears 4.5:1 on
+     white, where the dark-theme values would be far too light.
+     Code surfaces deliberately stay dark in both themes.
+     ======================================================================== */
+  :root[data-theme=light]{
+    color-scheme: light;
+    /* Cool porcelain: near-white ground with a faint blue-grey cast — the tone of
+       Linear/Figma-style tool UIs. No yellow anywhere; depth comes from cool
+       shadows and a strong near-black ink. */
+    --bg:#F0F1F4;
+    --panel:#FAFBFC;
+    --panel-2:#EEF0F3;
+    --panel-3:#E2E5EA;
+    --line:rgba(20,27,38,0.10);
+    --line-2:rgba(20,27,38,0.19);
+    --ink:#151A22;
+    --ink-2:#48505C;
+    --ink-3:#6C7582;
+    --ink-4:#98A0AC;
+    --accent:#20505F;
+    --accent-2:#173D49;
+    --accent-tint:rgba(32,80,95,0.08);
+    --accent-ink:#F4FAFB;
+    --up:#CE2C3C;   --up-soft:rgba(206,44,60,0.10);
+    --down:#1B5FD0; --down-soft:rgba(27,95,208,0.10);
+    --good:#0E7A54; --good-soft:rgba(14,122,84,0.11);
+    --warn:#8E5E00; --warn-soft:rgba(142,94,0,0.12);
+    --crit:#B65C10; --crit-soft:rgba(182,92,16,0.12);
+    --dd:#6748B3; --dd-soft:rgba(103,72,179,0.12);
+    --ma5:#8E5E00; --ma20:#0E7A54; --ma60:#6748B3;
+    --bb:#6E8399;
+    --grid:#E4E7EB;
+    --axis:#B9C0CA;
+    --cat-signal:#1F6FBF; --cat-alloc:#1E7A55; --cat-risk:#C0453F; --cat-exec:#6349A8; --cat-neutral:#5B6878;
+    --surface-lead:#FFFFFF;
+    --surface-sticky:#FAFBFC;
+    --rail-bg:#F5F6F8;
+    --surface-modal:#FCFDFE;
+    --good-ink:#0E7A54; --warn-ink:#8E5E00;
+    --scroll-thumb:#B7BEC8;
+    --field-a:#FCFDFE; --field-b:#EBEDF1;
+    --field-dot:rgba(20,27,38,.13);
+    --field-glow:rgba(70,95,130,.09);
+    --shadow:0 18px 48px -30px rgba(16,22,32,.22);
+    --shadow-1:0 1px 2px rgba(16,22,32,.06),0 0 0 1px rgba(20,27,38,.03);
+    --shadow-2:0 12px 32px -18px rgba(16,22,32,.15);
+    --shadow-3:0 28px 70px -34px rgba(16,22,32,.25);
+    --ink-max:#000000;
+    --bg-blur:rgba(240,241,244,.9);
+    --scrim:rgba(20,27,38,.32);
+  }
