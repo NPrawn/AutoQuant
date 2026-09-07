@@ -90,6 +90,9 @@ func TestConsumerPollsRawTradeAndAggregates(t *testing.T) {
 				processed.Result.InProgress.ClosePrice.String() != message.Price {
 				t.Fatalf("InProgress = %#v, want consumed trade candle", processed.Result.InProgress)
 			}
+			if !containsPartition(tradeConsumer.TakeAssignedPartitions(), record.Partition) {
+				t.Fatalf("assigned partitions do not contain consumed partition %d", record.Partition)
+			}
 			if err := tradeConsumer.Commit(testContext, []ingestkafka.Record{record}); err != nil {
 				t.Fatalf("Commit() error = %v", err)
 			}
@@ -98,4 +101,13 @@ func TestConsumerPollsRawTradeAndAggregates(t *testing.T) {
 		}
 	}
 	t.Fatalf("raw trade was not consumed: %v", testContext.Err())
+}
+
+func containsPartition(partitions []int32, want int32) bool {
+	for _, partition := range partitions {
+		if partition == want {
+			return true
+		}
+	}
+	return false
 }

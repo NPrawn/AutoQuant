@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"sort"
+	"time"
 
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle"
 	candledomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle/domain"
@@ -15,9 +16,42 @@ import (
 // partition in a Kafka Poll. Checkpoints contains only the latest state for
 // each changed market.
 type ProcessedBatch struct {
-	Partition     int32
-	ClosedCandles []candledomain.MinuteCandle
-	Checkpoints   []candle.Checkpoint
+	Partition          int32
+	ClosedCandles      []candledomain.MinuteCandle
+	Checkpoints        []candle.Checkpoint
+	RemovedMarketCodes []string
+}
+
+func (w *partitionWorker) Sweep(
+	ctx context.Context,
+	now time.Time,
+) ([]candledomain.MinuteCandle, error) {
+	if err := w.restore(ctx); err != nil {
+		return nil, err
+	}
+
+	finalized := w.processor.Sweep(now)
+	if len(finalized) == 0 {
+		return nil, nil
+	}
+
+	closedCandles := make([]candledomain.MinuteCandle, 0, len(finalized))
+	removedMarketCodes := make([]string, 0, len(finalized))
+	for _, closed := range finalized {
+		closedCandles = append(closedCandles, closed.Candle)
+		removedMarketCodes = append(removedMarketCodes, closed.MarketCode)
+	}
+
+	batch := ProcessedBatch{
+		Partition:          w.partition,
+		ClosedCandles:      closedCandles,
+		RemovedMarketCodes: removedMarketCodes,
+	}
+	if err := w.handler.Handle(ctx, batch); err != nil {
+		return nil, err
+	}
+
+	return closedCandles, nil
 }
 
 type partitionWorker struct {
