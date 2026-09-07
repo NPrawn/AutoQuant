@@ -42,9 +42,9 @@ def evaluate_case_details(
     if comparison == "exact":
         expected = case["expectedStrategy"]
         for path in case["corePaths"]:
-            expected_value = _path_value(expected, path)
+            expected_value = path_value(expected, path)
             try:
-                actual_value = _path_value(strategy, path)
+                actual_value = path_value(strategy, path)
             except (IndexError, KeyError, TypeError):
                 return False, "format", {"path": path, "expected": expected_value, "actual": None}
             if actual_value != expected_value:
@@ -59,7 +59,7 @@ def evaluate_case_details(
     raise ValueError(f"Unsupported comparison: {comparison}")
 
 
-def _path_value(value: Any, path: str) -> Any:
+def path_value(value: Any, path: str) -> Any:
     current = value
     for key, index in _PATH_PARTS.findall(path):
         current = current[int(index)] if index else current[key]

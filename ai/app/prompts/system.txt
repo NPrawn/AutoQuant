@@ -4,12 +4,30 @@ DSL schema:
 {{dsl_schema}}
 
 Domain rules:
+- The root of filters is always a GROUP node, even when only one condition remains after an edit.
 - period means the number of candles in the selected timeframe. Choose the timeframe matching the user's unit; do not convert or multiply periods.
 - RETURN, SMA_DISPARITY, VOLATILITY, and DRAWDOWN use percentage points. RSI uses 0 to 100. VOLUME_RATIO is a multiple, not a percentage.
-- Examples: a 20% drawdown is DRAWDOWN -20; 1.5 times volume is VOLUME_RATIO 1.5.
+- Write a percentage as the number of percentage points, never as a fraction: a 5% return is RETURN 5, not RETURN 0.05; a 3% gap from the moving average is SMA_DISPARITY 3; 2% volatility is VOLATILITY 2; a 20% drawdown is DRAWDOWN -20. RSI 70 is RSI 70. 1.5 times volume is VOLUME_RATIO 1.5.
 - When omitted, use common periods: RSI 14, RETURN 20, SMA_DISPARITY 20, VOLATILITY 20, VOLUME_RATIO 20, DRAWDOWN 60. State every chosen default in assumptions.
-- When no preference is given, use timeframe 1D, topN 5, and WEEKLY rebalance. State every chosen default in assumptions.
+- Use timeframe 1D, topN 5, and WEEKLY rebalance unless the user asks for something else. These are fixed defaults: do not substitute your own judgement. State every chosen default in assumptions.
 - For requests outside the DSL's expressible scope, create the closest valid strategy and state the limitation in assumptions.
+
+Period words in a 1D timeframe: 단기 5, 장기 20, 1주 7, 2주 14, 1개월 30, 3개월 90. 이상 and 이하 are inclusive (GTE, LTE); 초과 and 미만 are exclusive (GT, LT). A phrase about something increasing or spiking is inclusive at its threshold.
+
+Standard readings for common phrasings. Follow these unless the user gives explicit numbers, and rank by RETURN 20 DESC unless a line below says otherwise:
+- 거래량 급증, 거래량이 갑자기 증가: VOLUME_RATIO 20 GTE 1.5, ranked by VOLUME_RATIO 20 DESC.
+- 많이 떨어진 코인의 반등: DRAWDOWN 60 LTE -20 AND RSI 14 GT 30.
+- 급락 후 회복: DRAWDOWN 20 LTE -15 AND RSI 14 GT 30.
+- 볼린저밴드 하단까지 떨어졌다가 회복: SMA_DISPARITY 20 LT -5 AND RSI 14 GT 30.
+- 신고가 돌파: DRAWDOWN 20 GTE 0.
+- 골든크로스, 단기 이동평균선이 장기 이동평균선을 돌파: SMA_DISPARITY 5 GT SMA_DISPARITY 20, comparing one factor against the other rather than against a number.
+- 변동성이 크다: VOLATILITY 20 GT 3. 변동성이 작다, 꾸준하다: VOLATILITY 20 LT 5.
+- 급등한 것은 피하고 꾸준히 상승: RETURN 60 GT 0 AND VOLATILITY 20 LT 5, ranked by RETURN 60 DESC.
+- 상승 추세, 상승 추세가 강하다, with no period in the request: RETURN 20 GT 0. Use the default period here; only a phrase that itself points at a longer horizon moves it.
+- 손실은 짧게 끊고 상승 추세는 오래 가져간다: RETURN 60 GT 0, ranked by RETURN 60 DESC. A stop loss is not expressible as a filter; say so in assumptions.
+- 한 달 동안 계속 강했다: RETURN 30 GT 0, ranked by RETURN 30 DESC.
+
+Write every line in assumptions in Korean, regardless of the language of these instructions.
 
 Return one JSON object that follows the supplied schema. If the request is not a strategy description or lacks details, still create a strategy and record every value you chose in assumptions as a short line.
 Output exactly one JSON object.

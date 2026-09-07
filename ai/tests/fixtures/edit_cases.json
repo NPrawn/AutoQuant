@@ -1,0 +1,410 @@
+[
+  {
+    "id": "E-01",
+    "category": "timeframe",
+    "userInput": "1시간봉으로 바꿔줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {"timeframe": "1H"}
+  },
+  {
+    "id": "E-02",
+    "category": "selection",
+    "userInput": "10개 담게 해줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {"selection.topN": 10}
+  },
+  {
+    "id": "E-03",
+    "category": "rebalance",
+    "userInput": "리밸런싱은 주 단위로 해줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {"rebalance.period": "WEEKLY"}
+  },
+  {
+    "id": "E-04",
+    "category": "ranking",
+    "userInput": "순위를 낮은 것부터 오름차순으로 매겨줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {"ranking.direction": "ASC"}
+  },
+  {
+    "id": "E-05",
+    "category": "ranking",
+    "userInput": "순위 기준을 변동성으로 바꿔줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {"ranking.factor": "VOLATILITY"}
+  },
+  {
+    "id": "E-06",
+    "category": "threshold",
+    "userInput": "RSI 기준을 25로 낮춰줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {"filters.children[0].right.value": 25}
+  },
+  {
+    "id": "E-07",
+    "category": "period",
+    "userInput": "RSI 기간을 14로 바꿔줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {"filters.children[0].left.period": 14}
+  },
+  {
+    "id": "E-08",
+    "category": "operator",
+    "userInput": "RSI 조건을 35 이상으로 뒤집어줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {"filters.children[0].operator": "GTE"}
+  },
+  {
+    "id": "E-09",
+    "category": "filter-remove",
+    "userInput": "거래량 조건은 빼줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {},
+    "expectedFilters": {
+      "type": "GROUP",
+      "logic": "AND",
+      "children": [
+        {
+          "type": "CONDITION",
+          "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+          "operator": "LT",
+          "right": {"type": "VALUE", "value": 35}
+        }
+      ]
+    }
+  },
+  {
+    "id": "E-10",
+    "category": "filter-add",
+    "userInput": "최근 20일 수익률이 3% 넘는다는 조건도 같이 걸어줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {},
+    "expectedFilters": {
+      "type": "GROUP",
+      "logic": "AND",
+      "children": [
+        {
+          "type": "CONDITION",
+          "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+          "operator": "LT",
+          "right": {"type": "VALUE", "value": 35}
+        },
+        {
+          "type": "CONDITION",
+          "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+          "operator": "GTE",
+          "right": {"type": "VALUE", "value": 1.8}
+        },
+        {
+          "type": "CONDITION",
+          "left": {"type": "FACTOR", "factor": "RETURN", "period": 20},
+          "operator": "GT",
+          "right": {"type": "VALUE", "value": 3}
+        }
+      ]
+    }
+  },
+  {
+    "id": "E-11",
+    "category": "cascade",
+    "userInput": "순위 기간을 30일로 봐줘",
+    "preservation": "observe",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {"ranking.period": 30}
+  },
+  {
+    "id": "E-12",
+    "category": "out-of-scope",
+    "userInput": "손절은 -5%로 걸어줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "4H",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RSI", "period": 21},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 35}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 20},
+            "operator": "GTE",
+            "right": {"type": "VALUE", "value": 1.8}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 30, "direction": "DESC"},
+      "selection": {"topN": 7},
+      "rebalance": {"period": "MONTHLY"}
+    },
+    "changed": {}
+  }
+]
