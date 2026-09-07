@@ -62,11 +62,13 @@ func run() error {
 	progressRepository := ingestredis.NewProgressRepository(redisClient)
 	minuteCandleRepository := store.NewMinuteCandleRepository(pool)
 	handler := consumer.NewPersistenceHandler(progressRepository, minuteCandleRepository)
+	recentCandleRepository := ingestredis.NewRecentMinuteCandleRepository(redisClient)
 	liveCandlePublisher := ingestredis.NewLiveMinuteCandlePublisher(redisClient)
 	service := consumer.NewService(
 		kafkaConsumer,
 		progressRepository,
 		handler,
+		recentCandleRepository,
 		liveCandlePublisher,
 	)
 

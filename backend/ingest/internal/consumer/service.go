@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle"
+	candledomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle/domain"
 	ingestkafka "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/kafka"
 
 	"golang.org/x/sync/errgroup"
@@ -31,12 +32,17 @@ type LiveCandlePublisher interface {
 	PublishBatch(context.Context, []candle.Checkpoint) error
 }
 
+type RecentCandleCache interface {
+	SaveBatch(context.Context, []candledomain.MinuteCandle) error
+}
+
 // Service processes partitions concurrently while preserving record order
 // within each partition.
 type Service struct {
 	consumer    RecordConsumer
 	checkpoints CheckpointStore
 	handler     ResultHandler
+	recentCache RecentCandleCache
 	publisher   LiveCandlePublisher
 	workers     map[int32]*partitionWorker
 }
@@ -45,12 +51,14 @@ func NewService(
 	consumer RecordConsumer,
 	checkpoints CheckpointStore,
 	handler ResultHandler,
+	recentCache RecentCandleCache,
 	publisher LiveCandlePublisher,
 ) *Service {
 	return &Service{
 		consumer:    consumer,
 		checkpoints: checkpoints,
 		handler:     handler,
+		recentCache: recentCache,
 		publisher:   publisher,
 		workers:     make(map[int32]*partitionWorker),
 	}
@@ -85,6 +93,7 @@ func (s *Service) processAndCommit(ctx context.Context, records []ingestkafka.Re
 	}
 
 	lastRecords := make([]ingestkafka.Record, 0, len(partitionRecords))
+	closedCandles := make([]candledomain.MinuteCandle, 0)
 	checkpoints := make([]candle.Checkpoint, 0)
 	var resultsMutex sync.Mutex
 	group, groupContext := errgroup.WithContext(ctx)
@@ -103,6 +112,7 @@ func (s *Service) processAndCommit(ctx context.Context, records []ingestkafka.Re
 
 			resultsMutex.Lock()
 			lastRecords = append(lastRecords, lastRecord)
+			closedCandles = append(closedCandles, batch.ClosedCandles...)
 			checkpoints = append(checkpoints, batch.Checkpoints...)
 			resultsMutex.Unlock()
 			return nil
@@ -115,6 +125,15 @@ func (s *Service) processAndCommit(ctx context.Context, records []ingestkafka.Re
 
 	if err := s.consumer.Commit(ctx, lastRecords); err != nil {
 		return err
+	}
+	if len(closedCandles) > 0 {
+		if err := s.recentCache.SaveBatch(ctx, closedCandles); err != nil {
+			slog.Warn(
+				"failed to cache recent minute candles",
+				"error", err,
+				"candle_count", len(closedCandles),
+			)
+		}
 	}
 	if len(checkpoints) == 0 {
 		return nil
