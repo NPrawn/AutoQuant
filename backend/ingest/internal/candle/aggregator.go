@@ -5,6 +5,7 @@ import (
 	"time"
 
 	candledomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle/domain"
+	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/common/exception"
 	tradedomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/trade/domain"
 
 	"github.com/shopspring/decimal"
@@ -36,6 +37,16 @@ type Result struct {
 
 	// Stale reports that the trade belonged to a minute that is already closed.
 	Stale bool
+}
+
+// Checkpoint is the mutable aggregation state persisted for one market.
+// LastSequenceID prevents a record replayed after a failed offset commit from
+// being folded into the candle twice.
+type Checkpoint struct {
+	MarketCode     string
+	InProgress     candledomain.MinuteCandle
+	LastSequenceID int64
+	SourceOffset   int64
 }
 
 // Skipped reports whether the trade left the aggregator unchanged.
@@ -88,6 +99,44 @@ func New() *Aggregator {
 		openCandles:  make(map[string]*openCandle),
 		lastSequence: make(map[string]int64),
 	}
+}
+
+// Restore replaces the in-memory state for one market with a persisted checkpoint.
+func (a *Aggregator) Restore(checkpoint Checkpoint) error {
+	if checkpoint.MarketCode == "" || checkpoint.InProgress.AssetID == "" ||
+		checkpoint.InProgress.IntervalMinutes != intervalMinutes || checkpoint.LastSequenceID <= 0 {
+		return exception.New(exception.CodeCandleInvalidPayload)
+	}
+
+	candle := checkpoint.InProgress
+	a.openCandles[checkpoint.MarketCode] = &openCandle{
+		assetID:       candle.AssetID,
+		openTime:      candle.OpenTime.UTC(),
+		openPrice:     candle.OpenPrice,
+		highPrice:     candle.HighPrice,
+		lowPrice:      candle.LowPrice,
+		closePrice:    candle.ClosePrice,
+		tradeVolume:   candle.TradeVolume,
+		tradeAmount:   candle.TradeAmount,
+		lastEventTime: candle.LastEventTime.UTC(),
+	}
+	a.lastSequence[checkpoint.MarketCode] = checkpoint.LastSequenceID
+
+	return nil
+}
+
+// Checkpoint returns the current mutable state for one market.
+func (a *Aggregator) Checkpoint(marketCode string) (Checkpoint, bool) {
+	current, exists := a.openCandles[marketCode]
+	if !exists {
+		return Checkpoint{}, false
+	}
+
+	return Checkpoint{
+		MarketCode:     marketCode,
+		InProgress:     current.snapshot(),
+		LastSequenceID: a.lastSequence[marketCode],
+	}, true
 }
 
 // Apply folds a trade into the candle of its market and reports the resulting
