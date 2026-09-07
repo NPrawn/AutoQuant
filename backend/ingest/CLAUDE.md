@@ -6,7 +6,9 @@ Go 1.26 기반 Upbit 수집·적재 파이프라인이다. 이 디렉토리의 �
 
 ```text
 Upbit WebSocket/REST → Producer → Kafka → Consumer
+                       └→ Redis Pub/Sub: 실시간 체결
                                           ├→ Redis: 진행 중 봉
+                                          ├→ Redis Pub/Sub: 커밋된 진행 봉
                                           └→ PostgreSQL: 확정 분봉
 ```
 
@@ -15,6 +17,8 @@ Upbit WebSocket/REST → Producer → Kafka → Consumer
 - PostgreSQL에는 확정된 `MinuteCandle`만 멱등 UPSERT한다.
 - 멱등 키는 `(asset_id, interval_minutes, open_time)`이다.
 - Kafka offset은 PostgreSQL·Redis 처리가 성공한 뒤 수동 커밋한다.
+- 진행 봉 Pub/Sub은 offset 커밋 뒤에 실행하며, 실패해도 이미 완료된 저장·커밋을 실패로 바꾸지 않는다.
+- 실시간 체결 Pub/Sub과 Kafka 발행은 독립 경로이며 한쪽 실패가 다른 쪽 발행을 막지 않는다.
 - 동일 마켓 이벤트 순서를 위해 Kafka 메시지 키는 마켓 코드를 사용한다.
 
 ## 패키지
@@ -31,12 +35,14 @@ internal/
 ├── consumer            Kafka 체결 검증·partition별 1분봉 집계 오케스트레이션
 ├── upbit               외부 API와 응답 DTO
 ├── kafka               토픽·메시지·Consumer Group·Producer/Consumer 래퍼
-├── redis               최신 상태 쓰기
+├── redis               진행 봉 체크포인트 저장·복구, Pub/Sub 직렬화·발행
 ├── store               PostgreSQL 조회·INSERT·UPSERT
 └── config              환경변수 설정
 ```
 
 Consumer는 파티션별로 순차 집계하고, 서로 다른 파티션만 병렬 처리한다. 한 Poll에서 같은 종목이 여러 번 변경되어도 마지막 진행 봉만 모아 파티션별 한 번의 Redis `HSET`으로 저장한다. PostgreSQL 확정 봉과 Redis 진행 봉 저장이 모두 성공한 Poll 배치만 offset을 커밋한다. 리밸런싱으로 회수된 파티션의 인메모리 상태는 폐기하고 재할당 시 Redis에서 다시 복구한다.
+
+Redis Pub/Sub 채널은 `internal/redis`에서만 정의한다. `trade:realtime:updates`는 Kafka 적재 결과와 무관하게 수신한 체결을 건별 발행하고, `candle:1m:live:updates`는 저장 및 offset 커밋에 성공한 Poll의 종목별 최신 진행 봉만 발행한다. Pub/Sub은 복구 저장소가 아니므로 구독자가 놓친 메시지를 재처리하는 용도로 사용하지 않는다.
 
 일반 Go 컨벤션은 `common` 패키지를 금지하지만, 이 프로젝트의 `internal/common/domain`과 `internal/common/exception`은 Java 구조와의 일관성을 위해 팀이 명시적으로 허용했다. 다른 범용 `util`, `helper`, `common` 패키지를 추가로 만들지는 않는다.
 
