@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -13,6 +14,7 @@ func TestLoad(t *testing.T) {
 		setRequiredEnvironment(t)
 		t.Setenv("COLLECTION_TARGET_REFRESH_INTERVAL", "2s")
 		t.Setenv("UPBIT_WEBSOCKET_URL", "wss://example.com/websocket")
+		t.Setenv("KAFKA_BOOTSTRAP_SERVERS", "kafka-1:9092, kafka-2:9092")
 
 		got, err := config.Load()
 		if err != nil {
@@ -26,6 +28,14 @@ func TestLoad(t *testing.T) {
 		}
 		if !strings.Contains(got.DatabaseURL, "postgres://a107:password@localhost:5432/a107") {
 			t.Fatalf("DatabaseURL = %q, want configured database address", got.DatabaseURL)
+		}
+		wantKafkaBootstrapServers := []string{"kafka-1:9092", "kafka-2:9092"}
+		if !reflect.DeepEqual(got.KafkaBootstrapServers, wantKafkaBootstrapServers) {
+			t.Fatalf(
+				"KafkaBootstrapServers = %v, want %v",
+				got.KafkaBootstrapServers,
+				wantKafkaBootstrapServers,
+			)
 		}
 	})
 
@@ -44,6 +54,22 @@ func TestLoad(t *testing.T) {
 			t.Fatal("Load() error = nil, want error")
 		}
 	})
+
+	t.Run("카프카 접속 주소가 없으면 오류를 반환한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("KAFKA_BOOTSTRAP_SERVERS", "")
+		if _, err := config.Load(); err == nil {
+			t.Fatal("Load() error = nil, want error")
+		}
+	})
+
+	t.Run("빈 카프카 접속 주소를 거부한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092,")
+		if _, err := config.Load(); err == nil {
+			t.Fatal("Load() error = nil, want error")
+		}
+	})
 }
 
 func setRequiredEnvironment(t *testing.T) {
@@ -55,4 +81,5 @@ func setRequiredEnvironment(t *testing.T) {
 	t.Setenv("DB_PASSWORD", "password")
 	t.Setenv("COLLECTION_TARGET_REFRESH_INTERVAL", "")
 	t.Setenv("UPBIT_WEBSOCKET_URL", "")
+	t.Setenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 }
