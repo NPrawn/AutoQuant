@@ -25,6 +25,7 @@ React 19 + TypeScript + Vite.
 | `src/styles/tokens.css` | 색·반경·그림자 CSS 변수, 다크·라이트 두 팔레트 |
 | `src/styles/base.css` | 리셋, 공통 클래스, 화면별 컴포넌트 스타일 |
 | `src/styles/overrides.css` | 목업(button)과 React 마크업(a) 차이 보정 |
+| `src/styles/extensions.css` | 목업에 없는 상태 변형, 예: 오류 콜아웃 `.callout.crit` |
 | `src/styles/theme.ts` | `data-theme` 속성 전환과 선택 저장 |
 
 **색에 의미가 배정돼 있다.** 한국 시장 관례를 따라 빨강(`--up`)이 상승이므로 오류에는 주황(`--crit`)을 쓴다. 파랑(`--down`)은 하락, 초록(`--good`)은 정상, 보라(`--dd`)는 낙폭이다. 흰색은 선택·포커스 같은 UI 상태를 뜻하고 금융 의미를 담지 않는다.
@@ -40,6 +41,7 @@ src/
 │   ├── routes.ts         경로 상수와 링크 생성 함수
 │   ├── navigation.tsx    사이드바 항목
 │   └── layout/           AppShell, Sidebar, Topbar
+├── auth/                 로그인 오류 문구, 인증 연동
 ├── pages/                화면, 목업 번호와 1:1
 ├── styles/               디자인 시스템
 └── mocks/                API 연동 전 표시용 더미
