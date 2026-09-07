@@ -13,8 +13,9 @@ React 19 + TypeScript + Vite.
 | Vite | 8 |
 | 린터 | oxlint (템플릿 기본) |
 | 라우터 | react-router 7 |
+| 서버 상태 | TanStack Query 5 |
 
-**차트 라이브러리 · 상태관리는 아직 넣지 않았다.** 화면을 만들 때 결정할 일이다.
+**차트 라이브러리는 아직 넣지 않았다.** 차트 화면을 만들 때 결정할 일이다.
 
 ## 디자인 시스템
 
@@ -41,7 +42,8 @@ src/
 │   ├── routes.ts         경로 상수와 링크 생성 함수
 │   ├── navigation.tsx    사이드바 항목
 │   └── layout/           AppShell, Sidebar, Topbar, AccountMenu, LogoutConfirmModal
-├── auth/                 로그인 오류 문구, 인증 연동
+├── api/                  request 함수, ApiError
+├── auth/                 인증 API, 회원 모델, useCurrentMember, RequireAuth, GuestOnly
 ├── pages/                화면, 목업 번호와 1:1
 ├── styles/               디자인 시스템
 └── mocks/                API 연동 전 표시용 더미
@@ -72,6 +74,19 @@ src/
 
 계정 메뉴(28)와 로그아웃 확인(29)은 경로가 아니라 상단바 `AccountMenu`가 여는 오버레이다. 로그아웃 확인은 네이티브 `dialog`라 포커스 트랩과 Esc 를 브라우저가 처리한다.
 
+## 인증 흐름
+
+```text
+로그인 버튼 → GET /api/auth/ssafy/authorize-url → SSAFY 로 이동
+SSAFY → GET :8080/auth/ssafy/callback?code= → access_token 쿠키 심고 302 → /
+RequireAuth → GET /api/members/me → 200 이면 셸 렌더, 401 이면 /login
+로그아웃 → POST /api/auth/logout (쿠키 만료) → 캐시 비우고 /login
+```
+
+토큰은 `httpOnly` 쿠키라 JS 가 읽지 못한다. 그래서 `/members/me` 응답이 로그인 상태의 유일한 근거이고, 프론트에 토큰 저장 코드가 없다. 쿠키는 `localhost:8080`이 심지만 브라우저 쿠키는 포트를 구분하지 않아 `localhost:5173` 요청에도 실린다.
+
+콜백이 실패하면 백엔드가 `/login?error={코드}`로 보내고, 코드별 문구는 `src/auth/loginErrorMessage.ts`에 있다.
+
 ## 백엔드 호출
 
 ```
@@ -101,5 +116,5 @@ npm run lint
 
 - [ ] 차트 라이브러리 선정 (TradingView Lightweight Charts 등)
 - [x] 라우터 도입
-- [ ] 상태관리 도입 여부 결정
-- [ ] API 클라이언트 레이어
+- [x] 상태관리 도입 (서버 상태만 TanStack Query, 전역 상태 라이브러리 없음)
+- [x] API 클라이언트 레이어

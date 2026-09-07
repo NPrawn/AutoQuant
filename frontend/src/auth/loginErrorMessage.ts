@@ -14,6 +14,9 @@ const messagesByCode: Record<string, string> = {
 
 const fallbackMessage = '로그인에 실패했습니다. 다시 시도해 주세요.'
 
+/* SSAFY 로 보내기 전, 인가 URL 조회 자체가 실패했을 때. 백엔드가 꺼져 있을 때 주로 본다. */
+export const loginStartFailedMessage = 'SSAFY 로그인 페이지로 이동할 수 없습니다. 잠시 후 다시 시도해 주세요.'
+
 export function describeLoginError(code: string | null): string | null {
   if (!code) {
     return null

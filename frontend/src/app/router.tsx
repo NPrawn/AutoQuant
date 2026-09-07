@@ -15,18 +15,27 @@ import { SimulationListPage } from '../pages/SimulationListPage'
 import { StrategyBuilderPage } from '../pages/StrategyBuilderPage'
 import { StrategyDetailPage } from '../pages/StrategyDetailPage'
 import { StrategyListPage } from '../pages/StrategyListPage'
+import { GuestOnly } from '../auth/GuestOnly'
+import { RequireAuth } from '../auth/RequireAuth'
 import { AppShell } from './layout/AppShell'
 import { routes } from './routes'
 
 /*
- * 로그인은 사이드바가 없는 화면이라 셸 바깥에 둔다. 나머지 화면은 AppShell 아래에
- * 모이고, handle.title 은 상단바가 현재 화면 제목으로 읽는다.
+ * 로그인은 사이드바가 없는 화면이라 셸 바깥에 두고, 이미 로그인했으면 홈으로 보낸다.
+ * 나머지 화면은 RequireAuth 가 로그인 여부를 확인한 뒤 AppShell 아래에 그린다.
+ * handle.title 은 상단바가 현재 화면 제목으로 읽는다.
  */
 export const router = createBrowserRouter([
-  { path: routes.login, element: <LoginPage /> },
   {
-    element: <AppShell />,
+    element: <GuestOnly />,
+    children: [{ path: routes.login, element: <LoginPage /> }],
+  },
+  {
+    element: <RequireAuth />,
     children: [
+      {
+        element: <AppShell />,
+        children: [
       { path: routes.home, element: <HomePage />, handle: { title: '전략 만들기' } },
       { path: routes.chart, element: <ChartPage />, handle: { title: '차트' } },
       { path: routes.contests, element: <ContestListPage />, handle: { title: '대회' } },
@@ -41,6 +50,8 @@ export const router = createBrowserRouter([
       { path: routes.simulations, element: <SimulationListPage />, handle: { title: '모의투자' } },
       { path: routes.simulationLive, element: <SimulationLivePage />, handle: { title: '모의투자 실시간' } },
       { path: routes.notifications, element: <NotificationsPage />, handle: { title: '알림' } },
+        ],
+      },
     ],
   },
   { path: '*', element: <NotFoundPage /> },

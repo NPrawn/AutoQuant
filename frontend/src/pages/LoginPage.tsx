@@ -1,7 +1,8 @@
 import type { CSSProperties, FormEvent } from 'react'
 import { useSearchParams } from 'react-router'
 
-import { describeLoginError } from '../auth/loginErrorMessage'
+import { describeLoginError, loginStartFailedMessage } from '../auth/loginErrorMessage'
+import { useStartLogin } from '../auth/queries'
 import { ThemeToggle } from '../styles/ThemeToggle'
 
 /* 배경 장식 막대. [x%, y%, 너비px, 높이px, 방향]. 목업 좌표를 그대로 옮겼다. */
@@ -31,19 +32,18 @@ function decorStyle([x, y, width, height, direction]: DecorBar): CSSProperties {
   } as CSSProperties
 }
 
-type LoginPageProps = {
-  /* 인가 URL 을 받아 SSAFY 로 이동하는 동안 true. 인증 연동 작업에서 값을 공급한다. */
-  pending?: boolean
-  onStart?: () => void
-}
-
-export function LoginPage({ pending = false, onStart }: LoginPageProps) {
+export function LoginPage() {
   const [searchParams] = useSearchParams()
-  const errorMessage = describeLoginError(searchParams.get('error'))
+  const startLogin = useStartLogin()
+
+  /* 콜백이 붙여 보낸 오류가 우선이고, 없으면 인가 URL 조회 실패를 보인다. */
+  const errorMessage =
+    describeLoginError(searchParams.get('error')) ?? (startLogin.isError ? loginStartFailedMessage : null)
+  const pending = startLogin.isPending || startLogin.isSuccess
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    onStart?.()
+    startLogin.mutate()
   }
 
   return (
