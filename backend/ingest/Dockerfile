@@ -19,4 +19,4 @@ COPY --from=build /out /app
 
 WORKDIR /app
 
-ENTRYPOINT ["/app/producer"]
+CMD ["/app/producer"]
