@@ -196,6 +196,96 @@ class BacktestPortfolioTest {
         assertThat(portfolio.findPosition(ASSET_ID)).isEmpty();
     }
 
+    @DisplayName("보유하지 않은 자산은 매도할 수 없다")
+    @Test
+    void rejectSellFillForMissingPosition() {
+        BacktestPortfolio portfolio = new BacktestPortfolio(
+                BigDecimal.valueOf(1_000_000)
+        );
+
+        assertThatIllegalStateException()
+                .isThrownBy(() -> portfolio.applySell(fill(
+                        PositionSide.LONG,
+                        TradeSide.SELL,
+                        BigDecimal.valueOf(100_000),
+                        BigDecimal.ONE,
+                        BigDecimal.valueOf(100_000),
+                        BigDecimal.valueOf(50)
+                )));
+        assertThat(portfolio.getCashBalance()).isEqualByComparingTo("1000000");
+        assertThat(portfolio.getPositions()).isEmpty();
+    }
+
+    @DisplayName("보유 수량을 초과해서 매도할 수 없다")
+    @Test
+    void rejectSellFillExceedingPositionQuantity() {
+        BacktestPortfolio portfolio = portfolioWithPosition();
+
+        assertThatIllegalStateException()
+                .isThrownBy(() -> portfolio.applySell(fill(
+                        PositionSide.LONG,
+                        TradeSide.SELL,
+                        BigDecimal.valueOf(100_000),
+                        BigDecimal.valueOf(3),
+                        BigDecimal.valueOf(300_000),
+                        BigDecimal.valueOf(150)
+                )));
+        assertThat(portfolio.getCashBalance()).isEqualByComparingTo("799900.00000000");
+        assertThat(portfolio.findPosition(ASSET_ID).orElseThrow().quantity())
+                .isEqualByComparingTo("2");
+    }
+
+    @DisplayName("매도 수수료가 체결 금액을 초과할 수 없다")
+    @Test
+    void rejectSellFeeExceedingNotional() {
+        BacktestPortfolio portfolio = portfolioWithPosition();
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> portfolio.applySell(fill(
+                        PositionSide.LONG,
+                        TradeSide.SELL,
+                        BigDecimal.valueOf(100),
+                        BigDecimal.ONE,
+                        BigDecimal.valueOf(100),
+                        BigDecimal.valueOf(101)
+                )));
+        assertThat(portfolio.getCashBalance()).isEqualByComparingTo("799900.00000000");
+        assertThat(portfolio.findPosition(ASSET_ID).orElseThrow().quantity())
+                .isEqualByComparingTo("2");
+    }
+
+    @DisplayName("매도 반영에는 매수 체결을 전달할 수 없다")
+    @Test
+    void rejectBuyFillFromSellApplication() {
+        BacktestPortfolio portfolio = portfolioWithPosition();
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> portfolio.applySell(fill(
+                        PositionSide.LONG,
+                        TradeSide.BUY,
+                        BigDecimal.valueOf(100_000),
+                        BigDecimal.ONE,
+                        BigDecimal.valueOf(100_000),
+                        BigDecimal.valueOf(50)
+                )));
+    }
+
+    @DisplayName("매도 반영은 롱 포지션만 지원한다")
+    @Test
+    void rejectShortPositionSellFill() {
+        BacktestPortfolio portfolio = portfolioWithPosition();
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> portfolio.applySell(fill(
+                        PositionSide.SHORT,
+                        TradeSide.SELL,
+                        BigDecimal.valueOf(100_000),
+                        BigDecimal.ONE,
+                        BigDecimal.valueOf(100_000),
+                        BigDecimal.valueOf(50)
+                )));
+    }
+
     private BacktestPortfolio portfolioWithPosition() {
         BacktestPortfolio portfolio = new BacktestPortfolio(
                 BigDecimal.valueOf(1_000_000)
