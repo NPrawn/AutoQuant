@@ -19,27 +19,30 @@ type RecordProducer interface {
 	Flush(context.Context) error
 }
 
-type RealtimeTradePublisher interface {
-	Publish(context.Context, tradedomain.MarketTrade) error
+type RealtimeTradeSink interface {
+	TryPublish(tradedomain.MarketTrade) bool
+	Close()
 }
 
 // TradePublisher converts normalized trades and publishes them to Kafka.
 type TradePublisher struct {
-	producer          RecordProducer
-	realtimePublisher RealtimeTradePublisher
+	producer     RecordProducer
+	realtimeSink RealtimeTradeSink
 }
 
 func NewTradePublisher(
 	producer RecordProducer,
-	realtimePublisher RealtimeTradePublisher,
+	realtimeSink RealtimeTradeSink,
 ) *TradePublisher {
 	return &TradePublisher{
-		producer:          producer,
-		realtimePublisher: realtimePublisher,
+		producer:     producer,
+		realtimeSink: realtimeSink,
 	}
 }
 
 func (p *TradePublisher) Run(ctx context.Context, trades <-chan tradedomain.MarketTrade) error {
+	defer p.realtimeSink.Close()
+
 	for {
 		select {
 		case trade, open := <-trades:
@@ -62,10 +65,9 @@ func (p *TradePublisher) Run(ctx context.Context, trades <-chan tradedomain.Mark
 					"sequence_id", trade.SequenceID,
 				)
 			})
-			if err := p.realtimePublisher.Publish(ctx, trade); err != nil {
+			if !p.realtimeSink.TryPublish(trade) {
 				slog.Warn(
-					"failed to publish realtime trade update",
-					"error", err,
+					"dropped oldest realtime trade update",
 					"market_code", trade.MarketCode,
 					"sequence_id", trade.SequenceID,
 				)

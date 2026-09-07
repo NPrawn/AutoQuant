@@ -65,7 +65,8 @@ func run() error {
 	}
 	defer kafkaProducer.Close()
 	realtimePublisher := ingestredis.NewRealtimeTradePublisher(redisClient)
-	tradePublisher := producer.NewTradePublisher(kafkaProducer, realtimePublisher)
+	realtimeDispatcher := producer.NewRealtimeTradeDispatcher(realtimePublisher)
+	tradePublisher := producer.NewTradePublisher(kafkaProducer, realtimeDispatcher)
 
 	trades := make(chan tradedomain.MarketTrade, 1024)
 	slog.Info("ingest producer started")
@@ -78,6 +79,10 @@ func run() error {
 	})
 	group.Go(func() error {
 		return tradePublisher.Run(groupContext, trades)
+	})
+	group.Go(func() error {
+		realtimeDispatcher.Run(groupContext)
+		return nil
 	})
 
 	if err := group.Wait(); err != nil {
