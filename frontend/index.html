@@ -4,7 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>S15P21A107</title>
+    <title>AutoQuant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!--
+      React 가 마운트되기 전에 테마를 복원한다. 이 스크립트가 없으면 라이트 모드
+      사용자가 첫 페인트에서 다크 화면을 한 번 보게 된다.
+    -->
+    <script>
+      try {
+        if (localStorage.getItem('aq-theme') === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light')
+        }
+      } catch {
+        /* 저장소를 막은 브라우저에서는 기본 테마를 쓴다 */
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
