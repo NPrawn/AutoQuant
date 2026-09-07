@@ -49,6 +49,13 @@ type Checkpoint struct {
 	SourceOffset   int64
 }
 
+// FinalizedCandle identifies the market whose in-memory candle was closed.
+// MarketCode is required to remove that market's persisted progress checkpoint.
+type FinalizedCandle struct {
+	MarketCode string
+	Candle     candledomain.MinuteCandle
+}
+
 // Skipped reports whether the trade left the aggregator unchanged.
 func (r Result) Skipped() bool {
 	return r.Duplicate || r.Stale
@@ -204,25 +211,28 @@ func (a *Aggregator) Apply(trade tradedomain.MarketTrade) (Result, error) {
 // Sweep finalizes every candle whose minute ended before the close delay elapsed.
 // Without it a market that stops trading would hold its last candle open forever,
 // because only a later trade closes a candle in Apply.
-func (a *Aggregator) Sweep(now time.Time) []candledomain.MinuteCandle {
+func (a *Aggregator) Sweep(now time.Time) []FinalizedCandle {
 	deadline := now.UTC().Add(-closeDelay)
 
-	var closed []candledomain.MinuteCandle
+	var closed []FinalizedCandle
 	for marketCode, current := range a.openCandles {
 		if current.endTime().After(deadline) {
 			continue
 		}
 
-		closed = append(closed, current.snapshot())
+		closed = append(closed, FinalizedCandle{
+			MarketCode: marketCode,
+			Candle:     current.snapshot(),
+		})
 		delete(a.openCandles, marketCode)
 	}
 
 	sort.Slice(closed, func(i, j int) bool {
-		if !closed[i].OpenTime.Equal(closed[j].OpenTime) {
-			return closed[i].OpenTime.Before(closed[j].OpenTime)
+		if !closed[i].Candle.OpenTime.Equal(closed[j].Candle.OpenTime) {
+			return closed[i].Candle.OpenTime.Before(closed[j].Candle.OpenTime)
 		}
 
-		return closed[i].AssetID < closed[j].AssetID
+		return closed[i].MarketCode < closed[j].MarketCode
 	})
 
 	return closed
