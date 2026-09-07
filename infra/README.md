@@ -20,6 +20,6 @@ docker compose -f infra/docker-compose.yml down -v    # 볼륨까지 삭제
 | Redis 7 | 6379 | Go consumer 가 쓰고 backend 의 `cache` 패키지가 읽는다 |
 | Kafka | 9092 | KRaft 모드 — ZooKeeper 불필요 |
 
-`kafka-init`이 Collector 소유권 조정용 `collector-shards` 토픽을 파티션 6개로 생성하고 검증한 뒤 종료한다. 단일 브로커 개발 환경이라 Kafka 복제 계수는 모두 1이다. 토픽 자동 생성은 켜져 있지만 `collector-shards`는 자동 생성에 의존하지 않는다.
+`kafka-init`이 Collector 소유권 조정용 `collector-shards`와 원본 체결용 `tick-raw` 토픽을 각각 파티션 6개로 생성하고 검증한 뒤 종료한다. 단일 브로커 개발 환경이라 Kafka 복제 계수는 모두 1이다. 두 토픽은 자동 생성에 의존하지 않는다.
 
 접속 정보는 `.env.example` 참조. `.env` 는 커밋되지 않는다.
