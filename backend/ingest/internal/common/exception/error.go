@@ -51,6 +51,20 @@ func (e *Error) Retryable() bool {
 	return e.code.retryable()
 }
 
+// Retryable checks an error chain for a pipeline error the caller may retry.
+// An error carrying no pipeline code is treated as permanent, because a failure of
+// unknown origin must not be retried blindly.
+func Retryable(err error) bool {
+	for current := err; current != nil; current = errors.Unwrap(current) {
+		pipelineError, ok := current.(*Error)
+		if ok {
+			return pipelineError.Retryable()
+		}
+	}
+
+	return false
+}
+
 // HasCode checks an error chain for a pipeline error with the requested code.
 func HasCode(err error, code ErrorCode) bool {
 	for current := err; current != nil; current = errors.Unwrap(current) {
