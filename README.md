@@ -8,8 +8,8 @@ Upbit 실시간 시세를 수집·적재하고, 랭킹과 전략 수립을 제�
 Upbit ──WebSocket──> Producer ──> Kafka ──> Consumer ──┬──> Redis ──┐
  (Go)                  (Go)                  (Go)      └──> DB ────┤
                                                                     │
-Upbit ──REST────────> Backfill ──> Kafka ──> Consumer ─────> DB ───┤
-                       (Go)      누락 이벤트 보충                    │
+Upbit ──REST────────> Backfill ──> DB/Redis ───────────────────────┤
+                       (Go)      과거 적재·확정 분봉 검증             │
                                                                     ↓
               [AI] FastAPI ──────────>  Backend API  ──────────> React
                 (Python)                 (Java 21)            (TradingChart)
@@ -62,7 +62,7 @@ cd frontend && npm install && npm run dev  # :5173
 cd backend/ingest
 go run ./cmd/producer                    # Upbit → Kafka
 go run ./cmd/consumer                    # Kafka → Redis + DB
-go run ./cmd/backfill                    # 1분봉 누락 보정 (일회성)
+CANDLE_HISTORY_FROM=2025-01-01T00:00:00Z go run ./cmd/backfill # 과거 적재·1분봉 검증
 ```
 
 > API 서버를 먼저 한 번 띄워 Flyway 마이그레이션을 적용해야 한다. Go 쪽은 스키마를 생성하지 않고 INSERT만 한다.

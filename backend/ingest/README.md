@@ -3,6 +3,7 @@
 > Upbit 데이터 수집 · 적재 파이프라인. Go 모듈 하나에서 바이너리 3개를 만든다.
 > 현재 Producer는 Kafka Consumer Group에서 Collector 샤드를 할당받고, DB 수집 대상 중 담당 종목만 Upbit WebSocket으로 구독한다. 수신한 체결은 Kafka `tick-raw`와 Redis Pub/Sub에 서로 독립적으로 발행한다.
 > Consumer는 `tick-raw`를 파티션별로 집계하고 진행 봉을 Redis에 체크포인트로 저장한다. 다음 체결이 없는 진행 봉도 마감 유예 후 확정하며, 확정 봉은 PostgreSQL과 최근 Redis 캐시에 저장한다.
+> Backfill은 Upbit REST를 기준으로 미검증 1분봉 구간을 PostgreSQL과 비교해 누락·불일치 봉을 보정하고 최근 Redis 캐시도 갱신한다.
 
 JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리의 존재를 모른다 (Gradle 프로젝트는 형제 디렉토리 `../api` 에 있음). 결합은 런타임에만 존재하며, 그 접점은 두 개다 — Redis 키/값 포맷과 DB 스키마.
 
@@ -12,7 +13,7 @@ JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리�
 |---|---|---|
 | `cmd/producer` | DB 수집 대상 감지 → Upbit WebSocket 체결 수신 | 상시 실행 |
 | `cmd/consumer` | Kafka 체결 소비 → Redis 진행 봉 → PostgreSQL 확정 봉 → offset 커밋 | 상시 실행 |
-| `cmd/backfill` | Upbit REST 조회 → Kafka 누락 이벤트 발행 | 주기 실행 · 일회성 |
+| `cmd/backfill` | Upbit REST 조회 → 과거 적재·확정 분봉 검증/보정 | 5분 주기 · 일회성 |
 
 세 바이너리를 **하나의 Go 모듈**에 둔 이유는 Upbit 클라이언트, Kafka 메시지 구조체, DB 모델을 전부 공유하기 때문이다. 모듈을 쪼개면 이 코드를 중복 구현해야 한다.
 
@@ -32,6 +33,7 @@ ingest/
 │  ├─ trade/domain/         실시간 MarketTrade
 │  ├─ producer/             수집 대상 변경 감지 · Collector 샤드 소유권
 │  ├─ consumer/             체결 메시지 검증 · partition별 1분봉 집계
+│  ├─ candlesync/           미검증 시간 범위 계산 · 과거 적재 · 최신 봉 검증
 │  ├─ upbit/               WebSocket · REST 클라이언트, 재연결, 페이로드 파싱
 │  ├─ kafka/               토픽 상수, 메시지 구조체, Consumer Group · 프로듀서 · 컨슈머 래퍼
 │  ├─ redis/               진행 봉 체크포인트, 최근 확정 봉 캐시, 실시간 채널 ← Go↔JVM 계약의 원본
@@ -78,10 +80,14 @@ Consumer 실행에는 동일한 DB·Kafka·Redis 설정이 필요하다. Consume
 
 Kafka Poll은 최대 1초마다 반환되어 파티션별 진행 봉의 만료를 검사한다. 분 종료 후 5초가 지난 봉은 다음 체결이 없어도 PostgreSQL에 UPSERT한 뒤 Redis 진행 Hash에서 제거하고 최근 1,000개 캐시에 반영한다. 이 확정은 이미 커밋된 체결 상태를 닫는 작업이므로 Kafka offset을 추가로 커밋하지 않는다. 리밸런싱으로 새 파티션을 받으면 Redis 체크포인트를 먼저 복구하고 이미 만료된 봉을 즉시 확정한다. 체결이 전혀 없었던 분의 빈 봉은 생성하지 않는다. 최근 캐시와 Pub/Sub 실패는 필수 저장·커밋 결과를 되돌리지 않으며, 초기 캐시 miss는 향후 Spring 조회 API가 PostgreSQL에서 복구한다.
 
+Backfill 실행에는 DB·Redis 설정과 `CANDLE_HISTORY_FROM`이 필요하다. 신규 종목은 현재 시각의 직전 1분을 제외한 시점을 빈 검증 구간으로 시작하고, 최신 미검증 구간을 먼저 처리한 뒤 과거 방향으로 최대 200분씩 확장한다. 종목별 검증 완료 범위 `[verified_from, verified_to)`는 `ops.minute_candle_sync_state`에 저장하므로 완료 구간은 다시 조회하지 않는다. 과거 수집은 `CANDLE_HISTORY_FROM`과 종목 거래지원 시작 시각 중 늦은 시점에서 멈춘다. 기본 과거 요청 예산은 실행당 240회다.
+
+Upbit 봉과 같은 `open_time`의 PostgreSQL 봉은 REST 값으로 교체하고 `verified_at`을 기록한다. Redis Sorted Set도 같은 score의 값을 교체한 뒤 최신 1,000개만 남긴다. DB에만 존재하는 봉은 자동 삭제하지 않고 해당 구간의 검증 상태를 이동하지 않는다. Redis 갱신 실패는 정본 저장을 되돌리지 않는다. 동시에 실행된 Backfill은 PostgreSQL advisory lock으로 한 개만 처리된다. 바이너리는 한 번 처리하고 종료하므로 외부 스케줄러에서 5분마다 실행한다.
+
 ```bash
 go build ./...            # 3개 바이너리 컴파일 확인
 go vet ./...
 go run ./cmd/producer
 go run ./cmd/consumer
-go run ./cmd/backfill
+CANDLE_HISTORY_FROM=2025-01-01T00:00:00Z go run ./cmd/backfill
 ```

@@ -11,6 +11,9 @@ Upbit WebSocket/REST → Producer → Kafka → Consumer
                                           ├→ Redis: 최근 확정 분봉 1,000개
                                           ├→ Redis Pub/Sub: 커밋된 진행 봉
                                           └→ PostgreSQL: 확정 분봉
+
+Upbit REST → Candle Sync → PostgreSQL: 과거 적재·확정 봉 검증
+                          └→ Redis: 보정된 최근 확정 분봉
 ```
 
 - 원본·진행 중 이벤트를 PostgreSQL Raw 테이블에 저장하지 않는다.
@@ -23,6 +26,8 @@ Upbit WebSocket/REST → Producer → Kafka → Consumer
 - 체결로 확정된 분봉 캐시는 offset 커밋 뒤에, Sweep으로 확정된 분봉 캐시는 PostgreSQL 저장과 진행 봉 삭제 뒤에 갱신한다. 캐시 실패는 원본 저장과 커밋 결과를 되돌리지 않는다.
 - 실시간 체결 Pub/Sub은 bounded 비동기 큐와 전용 worker로 Kafka 발행 경로와 분리한다. 큐가 가득 차면 가장 오래된 알림을 제거하고 최신 체결을 유지한다.
 - 동일 마켓 이벤트 순서를 위해 Kafka 메시지 키는 마켓 코드를 사용한다.
+- Candle Sync는 Upbit REST를 정합성 기준으로 미검증 시간 범위만 조회하며 Kafka를 거치지 않는다.
+- 검증 범위는 `ops.minute_candle_sync_state`에 연속 구간으로 저장하고, REST로 검증된 봉은 지연 Consumer가 다시 덮어쓰지 않는다.
 
 ## 패키지
 
@@ -36,6 +41,7 @@ internal/
 ├── trade/domain        실시간 MarketTrade
 ├── producer            수집 대상 변경 감지·Collector 샤드 소유권
 ├── consumer            Kafka 체결 검증·partition별 1분봉 집계 오케스트레이션
+├── candlesync          Upbit 1분봉 과거 적재·주기 검증 오케스트레이션
 ├── upbit               외부 API와 응답 DTO
 ├── kafka               토픽·메시지·Consumer Group·Producer/Consumer 래퍼
 ├── redis               진행 봉 체크포인트, 최근 확정 봉 Sorted Set, Pub/Sub
