@@ -28,7 +28,7 @@ internal/
 ├── candle/domain       MinuteCandle
 ├── trade/domain        실시간 MarketTrade
 ├── producer            수집 대상 변경 감지·Collector 샤드 소유권
-├── consumer            Kafka 체결 검증·partition별 1분봉 집계·확정 봉 적재·offset 커밋
+├── consumer            Kafka 체결 검증·partition별 1분봉 집계 오케스트레이션
 ├── upbit               외부 API와 응답 DTO
 ├── kafka               토픽·메시지·Consumer Group·Producer/Consumer 래퍼
 ├── redis               최신 상태 쓰기
@@ -36,7 +36,7 @@ internal/
 └── config              환경변수 설정
 ```
 
-Consumer는 확정 봉을 PostgreSQL에 적재한 뒤에만 offset을 커밋한다. 진행 중 봉 캐시는 Redis 키·값 포맷을 `backend/api`와 합의하기 전까지 값을 버리는 구현으로 대체한다.
+Consumer는 파티션별로 순차 집계하고, 서로 다른 파티션만 병렬 처리한다. 한 Poll에서 같은 종목이 여러 번 변경되어도 마지막 진행 봉만 모아 파티션별 한 번의 Redis `HSET`으로 저장한다. PostgreSQL 확정 봉과 Redis 진행 봉 저장이 모두 성공한 Poll 배치만 offset을 커밋한다. 리밸런싱으로 회수된 파티션의 인메모리 상태는 폐기하고 재할당 시 Redis에서 다시 복구한다.
 
 일반 Go 컨벤션은 `common` 패키지를 금지하지만, 이 프로젝트의 `internal/common/domain`과 `internal/common/exception`은 Java 구조와의 일관성을 위해 팀이 명시적으로 허용했다. 다른 범용 `util`, `helper`, `common` 패키지를 추가로 만들지는 않는다.
 

@@ -22,25 +22,16 @@ type Config struct {
 	RefreshInterval       time.Duration
 }
 
+// ConsumerConfig contains the settings required by the candle consumer.
+type ConsumerConfig struct {
+	DatabaseURL           string
+	KafkaBootstrapServers []string
+	RedisAddress          string
+}
+
 // Load reads and validates producer settings from environment variables.
 func Load() (Config, error) {
-	host, err := requiredEnvironment("DB_HOST")
-	if err != nil {
-		return Config{}, err
-	}
-	port, err := requiredEnvironment("DB_PORT")
-	if err != nil {
-		return Config{}, err
-	}
-	databaseName, err := requiredEnvironment("DB_NAME")
-	if err != nil {
-		return Config{}, err
-	}
-	user, err := requiredEnvironment("DB_USER")
-	if err != nil {
-		return Config{}, err
-	}
-	password, err := requiredEnvironment("DB_PASSWORD")
+	databaseURL, err := loadDatabaseURL()
 	if err != nil {
 		return Config{}, err
 	}
@@ -66,6 +57,63 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("invalid UPBIT_WEBSOCKET_URL")
 	}
 
+	return Config{
+		DatabaseURL:           databaseURL,
+		KafkaBootstrapServers: kafkaBootstrapServers,
+		UpbitWebSocketURL:     parsedWebSocketURL.String(),
+		RefreshInterval:       refreshInterval,
+	}, nil
+}
+
+// LoadConsumer reads and validates the database, Kafka, and Redis settings used
+// by cmd/consumer.
+func LoadConsumer() (ConsumerConfig, error) {
+	databaseURL, err := loadDatabaseURL()
+	if err != nil {
+		return ConsumerConfig{}, err
+	}
+	kafkaBootstrapServers, err := requiredEnvironmentList("KAFKA_BOOTSTRAP_SERVERS")
+	if err != nil {
+		return ConsumerConfig{}, err
+	}
+	redisHost, err := requiredEnvironment("REDIS_HOST")
+	if err != nil {
+		return ConsumerConfig{}, err
+	}
+	redisPort, err := requiredEnvironment("REDIS_PORT")
+	if err != nil {
+		return ConsumerConfig{}, err
+	}
+
+	return ConsumerConfig{
+		DatabaseURL:           databaseURL,
+		KafkaBootstrapServers: kafkaBootstrapServers,
+		RedisAddress:          net.JoinHostPort(redisHost, redisPort),
+	}, nil
+}
+
+func loadDatabaseURL() (string, error) {
+	host, err := requiredEnvironment("DB_HOST")
+	if err != nil {
+		return "", err
+	}
+	port, err := requiredEnvironment("DB_PORT")
+	if err != nil {
+		return "", err
+	}
+	databaseName, err := requiredEnvironment("DB_NAME")
+	if err != nil {
+		return "", err
+	}
+	user, err := requiredEnvironment("DB_USER")
+	if err != nil {
+		return "", err
+	}
+	password, err := requiredEnvironment("DB_PASSWORD")
+	if err != nil {
+		return "", err
+	}
+
 	databaseURL := &url.URL{
 		Scheme: "postgres",
 		User:   url.UserPassword(user, password),
@@ -76,12 +124,7 @@ func Load() (Config, error) {
 	databaseQuery.Set("sslmode", "disable")
 	databaseURL.RawQuery = databaseQuery.Encode()
 
-	return Config{
-		DatabaseURL:           databaseURL.String(),
-		KafkaBootstrapServers: kafkaBootstrapServers,
-		UpbitWebSocketURL:     parsedWebSocketURL.String(),
-		RefreshInterval:       refreshInterval,
-	}, nil
+	return databaseURL.String(), nil
 }
 
 func requiredEnvironment(name string) (string, error) {

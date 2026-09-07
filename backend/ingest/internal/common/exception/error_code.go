@@ -18,10 +18,13 @@ const (
 	// 카프카
 	CodeKafkaPublishFailed  ErrorCode = "KAFKA-503-001"
 	CodeKafkaConsumeFailed  ErrorCode = "KAFKA-503-002"
+	CodeKafkaCommitFailed   ErrorCode = "KAFKA-503-003"
 	CodeKafkaInvalidMessage ErrorCode = "KAFKA-400-001"
 
 	// 레디스
-	CodeRedisWriteFailed ErrorCode = "REDIS-503-001"
+	CodeRedisWriteFailed  ErrorCode = "REDIS-503-001"
+	CodeRedisReadFailed   ErrorCode = "REDIS-503-002"
+	CodeRedisInvalidValue ErrorCode = "REDIS-500-001"
 
 	// 데이터베이스
 	CodeDatabaseUnavailable         ErrorCode = "DATABASE-503-001"
@@ -41,8 +44,11 @@ var errorDefinitions = map[ErrorCode]errorDefinition{
 	CodeUpbitInvalidResponse:        {message: "Upbit returned an invalid response", retryable: false},
 	CodeKafkaPublishFailed:          {message: "failed to publish Kafka message", retryable: true},
 	CodeKafkaConsumeFailed:          {message: "failed to consume Kafka message", retryable: true},
+	CodeKafkaCommitFailed:           {message: "failed to commit Kafka offset", retryable: true},
 	CodeKafkaInvalidMessage:         {message: "invalid Kafka message", retryable: false},
 	CodeRedisWriteFailed:            {message: "failed to write Redis value", retryable: true},
+	CodeRedisReadFailed:             {message: "failed to read Redis value", retryable: true},
+	CodeRedisInvalidValue:           {message: "invalid Redis value", retryable: false},
 	CodeDatabaseUnavailable:         {message: "database is unavailable", retryable: true},
 	CodeDatabaseConstraintViolation: {message: "database constraint violation", retryable: false},
 }

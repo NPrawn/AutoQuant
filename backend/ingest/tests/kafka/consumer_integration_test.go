@@ -61,7 +61,8 @@ func TestConsumerPollsRawTradeAndAggregates(t *testing.T) {
 		t.Fatalf("Flush() error = %v", err)
 	}
 
-	tradeConsumer, err := ingestkafka.NewConsumer([]string{kafkaAddress})
+	groupID := fmt.Sprintf("%s-test-%d", ingestkafka.MinuteCandleGroupID, time.Now().UnixNano())
+	tradeConsumer, err := ingestkafka.NewConsumer([]string{kafkaAddress}, groupID)
 	if err != nil {
 		t.Fatalf("NewConsumer() error = %v", err)
 	}
@@ -81,13 +82,18 @@ func TestConsumerPollsRawTradeAndAggregates(t *testing.T) {
 				t.Fatalf("record metadata = %#v, want tick-raw partition and offset", record)
 			}
 
-			result, err := processor.Process(record)
+			processed, err := processor.Process(record)
 			if err != nil {
 				t.Fatalf("Process() error = %v", err)
 			}
-			if result.InProgress.AssetID != message.AssetID || result.InProgress.ClosePrice.String() != message.Price {
-				t.Fatalf("InProgress = %#v, want consumed trade candle", result.InProgress)
+			if processed.Result.InProgress.AssetID != message.AssetID ||
+				processed.Result.InProgress.ClosePrice.String() != message.Price {
+				t.Fatalf("InProgress = %#v, want consumed trade candle", processed.Result.InProgress)
 			}
+			if err := tradeConsumer.Commit(testContext, []ingestkafka.Record{record}); err != nil {
+				t.Fatalf("Commit() error = %v", err)
+			}
+			tradeConsumer.AllowRebalance()
 			return
 		}
 	}

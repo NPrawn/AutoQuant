@@ -72,6 +72,32 @@ func TestLoad(t *testing.T) {
 	})
 }
 
+func TestLoadConsumer(t *testing.T) {
+	t.Run("Consumer 저장소 구성을 생성한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("REDIS_HOST", "redis")
+		t.Setenv("REDIS_PORT", "6379")
+
+		got, err := config.LoadConsumer()
+		if err != nil {
+			t.Fatalf("LoadConsumer() error = %v", err)
+		}
+		if got.RedisAddress != "redis:6379" {
+			t.Fatalf("RedisAddress = %q, want %q", got.RedisAddress, "redis:6379")
+		}
+	})
+
+	t.Run("Redis 접속 주소가 없으면 오류를 반환한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("REDIS_HOST", "")
+		t.Setenv("REDIS_PORT", "6379")
+
+		if _, err := config.LoadConsumer(); err == nil {
+			t.Fatal("LoadConsumer() error = nil, want error")
+		}
+	})
+}
+
 func setRequiredEnvironment(t *testing.T) {
 	t.Helper()
 	t.Setenv("DB_HOST", "localhost")

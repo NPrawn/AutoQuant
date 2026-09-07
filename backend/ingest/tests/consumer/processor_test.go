@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/common/exception"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/consumer"
 	ingestkafka "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/kafka"
@@ -24,16 +25,16 @@ func TestProcessorAppliesTradesInPartitionOrder(t *testing.T) {
 		t.Fatalf("second Process() error = %v", err)
 	}
 
-	if !result.InProgress.OpenPrice.Equal(decimal.RequireFromString("100")) ||
-		!result.InProgress.HighPrice.Equal(decimal.RequireFromString("120")) ||
-		!result.InProgress.ClosePrice.Equal(decimal.RequireFromString("120")) ||
-		!result.InProgress.TradeVolume.Equal(decimal.RequireFromString("3")) ||
-		!result.InProgress.TradeAmount.Equal(decimal.RequireFromString("320")) {
-		t.Fatalf("InProgress = %#v, want ordered two-trade candle", result.InProgress)
+	if !result.Result.InProgress.OpenPrice.Equal(decimal.RequireFromString("100")) ||
+		!result.Result.InProgress.HighPrice.Equal(decimal.RequireFromString("120")) ||
+		!result.Result.InProgress.ClosePrice.Equal(decimal.RequireFromString("120")) ||
+		!result.Result.InProgress.TradeVolume.Equal(decimal.RequireFromString("3")) ||
+		!result.Result.InProgress.TradeAmount.Equal(decimal.RequireFromString("320")) {
+		t.Fatalf("InProgress = %#v, want ordered two-trade candle", result.Result.InProgress)
 	}
 }
 
-func TestProcessorKeepsPartitionStateIndependent(t *testing.T) {
+func TestProcessorKeepsMarketStateIndependent(t *testing.T) {
 	processor := consumer.NewProcessor()
 	tradedAt := time.Date(2026, time.September, 7, 12, 34, 10, 0, time.UTC)
 
@@ -41,13 +42,43 @@ func TestProcessorKeepsPartitionStateIndependent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("partition 0 Process() error = %v", err)
 	}
-	second, err := processor.Process(tradeRecord(t, 1, "KRW-BTC", "100", "1", "BID", tradedAt, 1))
+	second, err := processor.Process(tradeRecord(t, 0, "KRW-ETH", "200", "2", "BID", tradedAt, 1))
 	if err != nil {
-		t.Fatalf("partition 1 Process() error = %v", err)
+		t.Fatalf("second market Process() error = %v", err)
 	}
 
-	if first.Skipped() || second.Skipped() {
-		t.Fatalf("partition results = %#v, %#v, want independent applied trades", first, second)
+	if first.Result.Skipped() || second.Result.Skipped() ||
+		first.Checkpoint.MarketCode == second.Checkpoint.MarketCode {
+		t.Fatalf("market results = %#v, %#v, want independent applied trades", first, second)
+	}
+}
+
+func TestProcessorRestoresCheckpointBeforeReplay(t *testing.T) {
+	tradedAt := time.Date(2026, time.September, 7, 12, 34, 10, 0, time.UTC)
+	firstProcessor := consumer.NewProcessor()
+	first, err := firstProcessor.Process(tradeRecord(t, 0, "KRW-BTC", "100", "1", "BID", tradedAt, 10))
+	if err != nil {
+		t.Fatalf("first Process() error = %v", err)
+	}
+
+	restoredProcessor := consumer.NewProcessor()
+	if err := restoredProcessor.Restore([]candle.Checkpoint{*first.Checkpoint}); err != nil {
+		t.Fatalf("Restore() error = %v", err)
+	}
+	replayed, err := restoredProcessor.Process(tradeRecord(t, 0, "KRW-BTC", "100", "1", "BID", tradedAt, 10))
+	if err != nil {
+		t.Fatalf("replayed Process() error = %v", err)
+	}
+	if !replayed.Result.Duplicate {
+		t.Fatalf("Duplicate = false, want true")
+	}
+
+	next, err := restoredProcessor.Process(tradeRecord(t, 0, "KRW-BTC", "120", "1", "BID", tradedAt.Add(time.Second), 11))
+	if err != nil {
+		t.Fatalf("next Process() error = %v", err)
+	}
+	if got := next.Result.InProgress.TradeVolume.String(); got != "2" {
+		t.Fatalf("TradeVolume = %s, want 2", got)
 	}
 }
 

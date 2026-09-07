@@ -1,51 +1,64 @@
 package consumer
 
 import (
-	"time"
-
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle"
-	candledomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle/domain"
 	ingestkafka "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/kafka"
 )
 
-// Processor owns one candle Aggregator for each Kafka partition.
-// It is used synchronously by Service and is not safe for concurrent use.
+// Processor owns the candle Aggregator for one Kafka partition. A partition
+// worker uses it synchronously, so no shared concurrent map is required.
 type Processor struct {
-	aggregators map[int32]*candle.Aggregator
+	aggregator *candle.Aggregator
 }
 
 func NewProcessor() *Processor {
-	return &Processor{aggregators: make(map[int32]*candle.Aggregator)}
+	return &Processor{aggregator: candle.New()}
 }
 
-// Process validates one record and applies it to the owning partition's Aggregator.
-func (p *Processor) Process(record ingestkafka.Record) (candle.Result, error) {
-	trade, err := decodeTrade(record)
-	if err != nil {
-		return candle.Result{}, err
-	}
-
-	aggregator, exists := p.aggregators[record.Partition]
-	if !exists {
-		aggregator = candle.New()
-		p.aggregators[record.Partition] = aggregator
-	}
-	return aggregator.Apply(trade)
+// ProcessedRecord contains the source metadata, aggregation result, and state
+// that must be persisted before the source offset is committed.
+type ProcessedRecord struct {
+	Record     ingestkafka.Record
+	MarketCode string
+	Result     candle.Result
+	Checkpoint *candle.Checkpoint
 }
 
-// Sweep finalizes the candles whose minute has passed in every partition this
-// processor owns, and reports them per partition.
-//
-// Only a later record closes a candle in Process, so a market that stopped
-// trading would hold its last candle open forever without this.
-func (p *Processor) Sweep(now time.Time) map[int32][]candledomain.MinuteCandle {
-	swept := make(map[int32][]candledomain.MinuteCandle)
-	for partition, aggregator := range p.aggregators {
-		closed := aggregator.Sweep(now)
-		if len(closed) > 0 {
-			swept[partition] = closed
+// Restore loads persisted market state before this partition processes records.
+func (p *Processor) Restore(checkpoints []candle.Checkpoint) error {
+	for _, checkpoint := range checkpoints {
+		if err := p.aggregator.Restore(checkpoint); err != nil {
+			return err
 		}
 	}
 
-	return swept
+	return nil
+}
+
+// Process validates one record and applies it to this partition's Aggregator.
+func (p *Processor) Process(record ingestkafka.Record) (ProcessedRecord, error) {
+	trade, err := decodeTrade(record)
+	if err != nil {
+		return ProcessedRecord{}, err
+	}
+
+	result, err := p.aggregator.Apply(trade)
+	if err != nil {
+		return ProcessedRecord{}, err
+	}
+
+	processed := ProcessedRecord{
+		Record:     record,
+		MarketCode: trade.MarketCode,
+		Result:     result,
+	}
+	if !result.Duplicate {
+		checkpoint, exists := p.aggregator.Checkpoint(trade.MarketCode)
+		if exists {
+			checkpoint.SourceOffset = record.Offset
+			processed.Checkpoint = &checkpoint
+		}
+	}
+
+	return processed, nil
 }
