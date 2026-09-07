@@ -13,7 +13,7 @@ JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리�
 |---|---|---|
 | `cmd/producer` | DB 수집 대상 감지 → Upbit WebSocket 체결 수신 | 상시 실행 |
 | `cmd/consumer` | Kafka 체결 소비 → Redis 진행 봉 → PostgreSQL 확정 봉 → offset 커밋 | 상시 실행 |
-| `cmd/backfill` | Upbit REST 조회 → 과거 적재·확정 분봉 검증/보정 | 5분 주기 · 일회성 |
+| `cmd/backfill` | Upbit REST 조회 → 과거 적재·확정 분봉 검증/보정 | 상시 실행 · 기본 5분 주기 |
 
 세 바이너리를 **하나의 Go 모듈**에 둔 이유는 Upbit 클라이언트, Kafka 메시지 구조체, DB 모델을 전부 공유하기 때문이다. 모듈을 쪼개면 이 코드를 중복 구현해야 한다.
 
@@ -82,7 +82,7 @@ Kafka Poll은 최대 1초마다 반환되어 파티션별 진행 봉의 만료�
 
 Backfill 실행에는 DB·Redis 설정과 `CANDLE_HISTORY_FROM`이 필요하다. 신규 종목은 현재 시각의 직전 1분을 제외한 시점을 빈 검증 구간으로 시작하고, 최신 미검증 구간을 먼저 처리한 뒤 과거 방향으로 최대 200분씩 확장한다. 종목별 검증 완료 범위 `[verified_from, verified_to)`는 `ops.minute_candle_sync_state`에 저장하므로 완료 구간은 다시 조회하지 않는다. 과거 수집은 `CANDLE_HISTORY_FROM`과 종목 거래지원 시작 시각 중 늦은 시점에서 멈춘다. 기본 과거 요청 예산은 실행당 240회다.
 
-Upbit 봉과 같은 `open_time`의 PostgreSQL 봉은 REST 값으로 교체하고 `verified_at`을 기록한다. Redis Sorted Set도 같은 score의 값을 교체한 뒤 최신 1,000개만 남긴다. DB에만 존재하는 봉은 자동 삭제하지 않고 해당 구간의 검증 상태를 이동하지 않는다. Redis 갱신 실패는 정본 저장을 되돌리지 않는다. 동시에 실행된 Backfill은 PostgreSQL advisory lock으로 한 개만 처리된다. 바이너리는 한 번 처리하고 종료하므로 외부 스케줄러에서 5분마다 실행한다.
+Upbit 봉과 같은 `open_time`의 PostgreSQL 봉은 REST 값으로 교체하고 `verified_at`을 기록한다. Redis Sorted Set도 같은 score의 값을 교체한 뒤 최신 1,000개만 남긴다. DB에만 존재하는 봉은 자동 삭제하지 않고 해당 구간의 검증 상태를 이동하지 않는다. Redis 갱신 실패는 정본 저장을 되돌리지 않는다. 동시에 실행된 Backfill은 PostgreSQL advisory lock으로 한 개만 처리된다. 바이너리는 시작 직후 한 번 처리하고 `CANDLE_SYNC_INTERVAL`마다 반복하며 기본값은 5분이다.
 
 ```bash
 go build ./...            # 3개 바이너리 컴파일 확인

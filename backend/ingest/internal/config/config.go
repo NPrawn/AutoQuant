@@ -11,11 +11,12 @@ import (
 )
 
 const (
-	defaultUpbitWebSocketURL = "wss://api.upbit.com/websocket/v1"
-	defaultRefreshInterval   = 5 * time.Second
-	defaultUpbitRESTBaseURL  = "https://api.upbit.com"
-	defaultUpbitRESTTimeout  = 5 * time.Second
-	defaultHistoryBudget     = 240
+	defaultUpbitWebSocketURL  = "wss://api.upbit.com/websocket/v1"
+	defaultRefreshInterval    = 5 * time.Second
+	defaultUpbitRESTBaseURL   = "https://api.upbit.com"
+	defaultUpbitRESTTimeout   = 5 * time.Second
+	defaultCandleSyncInterval = 5 * time.Minute
+	defaultHistoryBudget      = 240
 )
 
 // Config contains the settings required by the ingest producer.
@@ -34,10 +35,11 @@ type ConsumerConfig struct {
 	RedisAddress          string
 }
 
-// BackfillConfig contains the settings required by the one-shot candle sync.
+// BackfillConfig contains the settings required by the scheduled candle sync.
 type BackfillConfig struct {
 	DatabaseURL          string
 	RedisAddress         string
+	SyncInterval         time.Duration
 	UpbitRESTBaseURL     string
 	UpbitRESTTimeout     time.Duration
 	HistoryFrom          time.Time
@@ -119,6 +121,14 @@ func LoadBackfill() (BackfillConfig, error) {
 		return BackfillConfig{}, err
 	}
 
+	syncInterval := defaultCandleSyncInterval
+	if value := os.Getenv("CANDLE_SYNC_INTERVAL"); value != "" {
+		syncInterval, err = time.ParseDuration(value)
+		if err != nil || syncInterval <= 0 {
+			return BackfillConfig{}, fmt.Errorf("invalid CANDLE_SYNC_INTERVAL")
+		}
+	}
+
 	historyFromValue, err := requiredEnvironment("CANDLE_HISTORY_FROM")
 	if err != nil {
 		return BackfillConfig{}, err
@@ -159,6 +169,7 @@ func LoadBackfill() (BackfillConfig, error) {
 	return BackfillConfig{
 		DatabaseURL:          databaseURL,
 		RedisAddress:         redisAddress,
+		SyncInterval:         syncInterval,
 		UpbitRESTBaseURL:     parsedRESTBaseURL.String(),
 		UpbitRESTTimeout:     restTimeout,
 		HistoryFrom:          historyFrom,
