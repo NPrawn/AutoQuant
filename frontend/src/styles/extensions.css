@@ -1,0 +1,13 @@
+/*
+ * 목업에 없지만 토큰 계약을 따라 추가한 컴포넌트 상태. 목업이 정의한 클래스의
+ * 변형만 두고 새 컴포넌트 계층을 만들지 않는다.
+ */
+
+/* 오류 콜아웃. 색 계약상 오류는 주황(--crit)이다. 빨강은 상승에 배정돼 있다. */
+.callout.crit {
+  background: var(--crit-soft);
+  border-color: rgba(224, 135, 58, 0.3);
+}
+.callout.crit svg {
+  stroke: var(--crit);
+}
