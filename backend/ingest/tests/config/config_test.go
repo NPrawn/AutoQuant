@@ -109,6 +109,53 @@ func TestLoadConsumer(t *testing.T) {
 	})
 }
 
+func TestLoadBackfill(t *testing.T) {
+	t.Run("분봉 동기화 구성을 생성한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("CANDLE_HISTORY_FROM", "2025-01-02T03:04:59+09:00")
+		t.Setenv("CANDLE_HISTORY_REQUEST_BUDGET", "120")
+		t.Setenv("UPBIT_REST_BASE_URL", "https://example.com")
+		t.Setenv("UPBIT_REST_TIMEOUT", "3s")
+
+		got, err := config.LoadBackfill()
+		if err != nil {
+			t.Fatalf("LoadBackfill() error = %v", err)
+		}
+		wantHistoryFrom := time.Date(2025, 1, 1, 18, 4, 0, 0, time.UTC)
+		if !got.HistoryFrom.Equal(wantHistoryFrom) {
+			t.Fatalf("HistoryFrom = %v, want %v", got.HistoryFrom, wantHistoryFrom)
+		}
+		if got.HistoryRequestBudget != 120 {
+			t.Fatalf("HistoryRequestBudget = %d, want 120", got.HistoryRequestBudget)
+		}
+		if got.UpbitRESTBaseURL != "https://example.com" {
+			t.Fatalf("UpbitRESTBaseURL = %q, want https://example.com", got.UpbitRESTBaseURL)
+		}
+		if got.UpbitRESTTimeout != 3*time.Second {
+			t.Fatalf("UpbitRESTTimeout = %v, want 3s", got.UpbitRESTTimeout)
+		}
+	})
+
+	t.Run("과거 시작 시각이 없으면 오류를 반환한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("CANDLE_HISTORY_FROM", "")
+
+		if _, err := config.LoadBackfill(); err == nil {
+			t.Fatal("LoadBackfill() error = nil, want error")
+		}
+	})
+
+	t.Run("잘못된 요청 예산을 거부한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("CANDLE_HISTORY_FROM", "2025-01-01T00:00:00Z")
+		t.Setenv("CANDLE_HISTORY_REQUEST_BUDGET", "0")
+
+		if _, err := config.LoadBackfill(); err == nil {
+			t.Fatal("LoadBackfill() error = nil, want error")
+		}
+	})
+}
+
 func setRequiredEnvironment(t *testing.T) {
 	t.Helper()
 	t.Setenv("DB_HOST", "localhost")
@@ -121,4 +168,8 @@ func setRequiredEnvironment(t *testing.T) {
 	t.Setenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 	t.Setenv("REDIS_HOST", "redis")
 	t.Setenv("REDIS_PORT", "6379")
+	t.Setenv("CANDLE_HISTORY_FROM", "")
+	t.Setenv("CANDLE_HISTORY_REQUEST_BUDGET", "")
+	t.Setenv("UPBIT_REST_BASE_URL", "")
+	t.Setenv("UPBIT_REST_TIMEOUT", "")
 }

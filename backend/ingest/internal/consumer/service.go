@@ -27,7 +27,7 @@ type CheckpointStore interface {
 
 // ResultHandler persists one partition batch before its offset is committed.
 type ResultHandler interface {
-	Handle(context.Context, ProcessedBatch) error
+	Handle(context.Context, *ProcessedBatch) error
 }
 
 type LiveCandlePublisher interface {

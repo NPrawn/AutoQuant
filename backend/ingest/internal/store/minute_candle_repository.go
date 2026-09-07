@@ -29,7 +29,16 @@ INSERT INTO market_data.minute_candle (
     trade_volume,
     trade_amount,
     last_event_time
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+WHERE NOT EXISTS (
+    SELECT 1
+      FROM ops.minute_candle_sync_state AS sync_state
+     WHERE sync_state.asset_id = $1
+       AND sync_state.interval_minutes = $2
+       AND $3 >= sync_state.verified_from
+       AND $3 < sync_state.verified_to
+)
 ON CONFLICT (asset_id, interval_minutes, open_time) DO UPDATE SET
     open_price      = EXCLUDED.open_price,
     high_price      = EXCLUDED.high_price,
@@ -38,7 +47,8 @@ ON CONFLICT (asset_id, interval_minutes, open_time) DO UPDATE SET
     trade_volume    = EXCLUDED.trade_volume,
     trade_amount    = EXCLUDED.trade_amount,
     last_event_time = EXCLUDED.last_event_time,
-    updated_at      = CURRENT_TIMESTAMP`
+    updated_at      = CURRENT_TIMESTAMP
+WHERE market_data.minute_candle.verified_at IS NULL`
 
 // MinuteCandleRepository stores the candles finalized by the ingest pipeline.
 type MinuteCandleRepository struct {
@@ -49,11 +59,14 @@ func NewMinuteCandleRepository(pool *pgxpool.Pool) *MinuteCandleRepository {
 	return &MinuteCandleRepository{pool: pool}
 }
 
-// Upsert writes a finalized candle, replacing the row that shares its identity.
-// Consumers redeliver records and the backfill re-reports corrected candles, so the
-// primary key (asset_id, interval_minutes, open_time) keeps repeated writes idempotent.
-func (r *MinuteCandleRepository) Upsert(ctx context.Context, candle candledomain.MinuteCandle) error {
-	_, err := r.pool.Exec(
+// Upsert writes a live-consumer candle unless the same minute has already been
+// verified against Upbit REST. A nil result means the verified range owns that
+// minute and callers must not cache the delayed aggregate.
+func (r *MinuteCandleRepository) Upsert(
+	ctx context.Context,
+	candle candledomain.MinuteCandle,
+) (*candledomain.MinuteCandle, error) {
+	commandTag, err := r.pool.Exec(
 		ctx,
 		upsertMinuteCandleStatement,
 		candle.AssetID,
@@ -68,10 +81,14 @@ func (r *MinuteCandleRepository) Upsert(ctx context.Context, candle candledomain
 		candle.LastEventTime,
 	)
 	if err != nil {
-		return wrapWriteError(err)
+		return nil, wrapWriteError(err)
+	}
+	if commandTag.RowsAffected() == 0 {
+		return nil, nil
 	}
 
-	return nil
+	stored := candle
+	return &stored, nil
 }
 
 func wrapWriteError(err error) error {

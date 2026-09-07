@@ -12,7 +12,8 @@ import (
 const enabledCollectionTargetsQuery = `
 SELECT
     asset.asset_id::text,
-    asset.exchange_market_code
+    asset.exchange_market_code,
+    asset.trading_support_started_at
 FROM ops.market_data_collection_target AS target
 JOIN reference.asset AS asset
   ON asset.asset_id = target.asset_id
@@ -42,7 +43,11 @@ func (r *CollectionTargetRepository) LoadEnabledTargets(
 	targets := make([]assetdomain.MarketDataCollectionTarget, 0)
 	for rows.Next() {
 		var target assetdomain.MarketDataCollectionTarget
-		if err := rows.Scan(&target.AssetID, &target.MarketCode); err != nil {
+		if err := rows.Scan(
+			&target.AssetID,
+			&target.MarketCode,
+			&target.TradingSupportStartedAt,
+		); err != nil {
 			return nil, exception.Wrap(exception.CodeDatabaseUnavailable, err)
 		}
 		targets = append(targets, target)

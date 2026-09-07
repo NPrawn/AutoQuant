@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -12,6 +13,9 @@ import (
 const (
 	defaultUpbitWebSocketURL = "wss://api.upbit.com/websocket/v1"
 	defaultRefreshInterval   = 5 * time.Second
+	defaultUpbitRESTBaseURL  = "https://api.upbit.com"
+	defaultUpbitRESTTimeout  = 5 * time.Second
+	defaultHistoryBudget     = 240
 )
 
 // Config contains the settings required by the ingest producer.
@@ -28,6 +32,16 @@ type ConsumerConfig struct {
 	DatabaseURL           string
 	KafkaBootstrapServers []string
 	RedisAddress          string
+}
+
+// BackfillConfig contains the settings required by the one-shot candle sync.
+type BackfillConfig struct {
+	DatabaseURL          string
+	RedisAddress         string
+	UpbitRESTBaseURL     string
+	UpbitRESTTimeout     time.Duration
+	HistoryFrom          time.Time
+	HistoryRequestBudget int
 }
 
 // Load reads and validates producer settings from environment variables.
@@ -91,6 +105,64 @@ func LoadConsumer() (ConsumerConfig, error) {
 		DatabaseURL:           databaseURL,
 		KafkaBootstrapServers: kafkaBootstrapServers,
 		RedisAddress:          redisAddress,
+	}, nil
+}
+
+// LoadBackfill reads and validates the database, Redis, and Upbit REST settings.
+func LoadBackfill() (BackfillConfig, error) {
+	databaseURL, err := loadDatabaseURL()
+	if err != nil {
+		return BackfillConfig{}, err
+	}
+	redisAddress, err := loadRedisAddress()
+	if err != nil {
+		return BackfillConfig{}, err
+	}
+
+	historyFromValue, err := requiredEnvironment("CANDLE_HISTORY_FROM")
+	if err != nil {
+		return BackfillConfig{}, err
+	}
+	historyFrom, err := time.Parse(time.RFC3339, historyFromValue)
+	if err != nil {
+		return BackfillConfig{}, fmt.Errorf("invalid CANDLE_HISTORY_FROM")
+	}
+	historyFrom = historyFrom.UTC().Truncate(time.Minute)
+
+	historyBudget := defaultHistoryBudget
+	if value := os.Getenv("CANDLE_HISTORY_REQUEST_BUDGET"); value != "" {
+		historyBudget, err = strconv.Atoi(value)
+		if err != nil || historyBudget <= 0 {
+			return BackfillConfig{}, fmt.Errorf("invalid CANDLE_HISTORY_REQUEST_BUDGET")
+		}
+	}
+
+	restTimeout := defaultUpbitRESTTimeout
+	if value := os.Getenv("UPBIT_REST_TIMEOUT"); value != "" {
+		restTimeout, err = time.ParseDuration(value)
+		if err != nil || restTimeout <= 0 {
+			return BackfillConfig{}, fmt.Errorf("invalid UPBIT_REST_TIMEOUT")
+		}
+	}
+
+	restBaseURL := os.Getenv("UPBIT_REST_BASE_URL")
+	if restBaseURL == "" {
+		restBaseURL = defaultUpbitRESTBaseURL
+	}
+	parsedRESTBaseURL, err := url.Parse(restBaseURL)
+	if err != nil ||
+		(parsedRESTBaseURL.Scheme != "http" && parsedRESTBaseURL.Scheme != "https") ||
+		parsedRESTBaseURL.Host == "" {
+		return BackfillConfig{}, fmt.Errorf("invalid UPBIT_REST_BASE_URL")
+	}
+
+	return BackfillConfig{
+		DatabaseURL:          databaseURL,
+		RedisAddress:         redisAddress,
+		UpbitRESTBaseURL:     parsedRESTBaseURL.String(),
+		UpbitRESTTimeout:     restTimeout,
+		HistoryFrom:          historyFrom,
+		HistoryRequestBudget: historyBudget,
 	}, nil
 }
 
