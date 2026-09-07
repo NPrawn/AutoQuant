@@ -7,9 +7,10 @@ import (
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/common/exception"
 
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/kmsg"
 )
 
-// Consumer polls raw trade records without committing offsets.
+// Consumer polls raw trade records and commits offsets only when the caller asks.
 type Consumer struct {
 	client *kgo.Client
 }
@@ -57,6 +58,29 @@ func (c *Consumer) Poll(ctx context.Context) ([]Record, error) {
 		})
 	}
 	return records, nil
+}
+
+// Commit stores the offset a partition resumes from. The offset is the next record
+// to read, not the last one processed, and it is committed only after the records
+// behind it are durably handled.
+func (c *Consumer) Commit(ctx context.Context, partition int32, offset int64) error {
+	offsets := map[string]map[int32]kgo.EpochOffset{
+		RawTradeTopic: {partition: {Epoch: -1, Offset: offset}},
+	}
+
+	var commitError error
+	c.client.CommitOffsetsSync(
+		ctx,
+		offsets,
+		func(_ *kgo.Client, _ *kmsg.OffsetCommitRequest, _ *kmsg.OffsetCommitResponse, err error) {
+			commitError = err
+		},
+	)
+	if commitError != nil {
+		return exception.Wrap(exception.CodeKafkaConsumeFailed, commitError)
+	}
+
+	return nil
 }
 
 func (c *Consumer) Close() {
