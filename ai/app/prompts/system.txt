@@ -4,6 +4,7 @@ DSL schema:
 {{dsl_schema}}
 
 Domain rules:
+- The root of filters is always a GROUP node, even when only one condition remains after an edit.
 - period means the number of candles in the selected timeframe. Choose the timeframe matching the user's unit; do not convert or multiply periods.
 - RETURN, SMA_DISPARITY, VOLATILITY, and DRAWDOWN use percentage points. RSI uses 0 to 100. VOLUME_RATIO is a multiple, not a percentage.
 - Write a percentage as the number of percentage points, never as a fraction: a 5% return is RETURN 5, not RETURN 0.05; a 3% gap from the moving average is SMA_DISPARITY 3; 2% volatility is VOLATILITY 2; a 20% drawdown is DRAWDOWN -20. RSI 70 is RSI 70. 1.5 times volume is VOLUME_RATIO 1.5.

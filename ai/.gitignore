@@ -4,3 +4,4 @@ __pycache__/
 .env
 .pytest_cache/
 reports/golden-live-*.json
+reports/edit-live-*.json
