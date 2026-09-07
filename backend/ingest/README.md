@@ -2,7 +2,7 @@
 
 > Upbit 데이터 수집 · 적재 파이프라인. Go 모듈 하나에서 바이너리 3개를 만든다.
 > 현재 Producer는 Kafka Consumer Group에서 Collector 샤드를 할당받고, DB 수집 대상 중 담당 종목만 Upbit WebSocket으로 구독한다. 수신한 체결은 Kafka `tick-raw`와 Redis Pub/Sub에 서로 독립적으로 발행한다.
-> Consumer는 `tick-raw`를 파티션별로 집계하고 진행 봉을 Redis에 체크포인트로 저장한다. 확정 봉은 PostgreSQL에 UPSERT하며, offset 커밋 후 최근 확정 분봉 캐시와 최신 진행 봉 Pub/Sub을 갱신한다.
+> Consumer는 `tick-raw`를 파티션별로 집계하고 진행 봉을 Redis에 체크포인트로 저장한다. 다음 체결이 없는 진행 봉도 마감 유예 후 확정하며, 확정 봉은 PostgreSQL과 최근 Redis 캐시에 저장한다.
 
 JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리의 존재를 모른다 (Gradle 프로젝트는 형제 디렉토리 `../api` 에 있음). 결합은 런타임에만 존재하며, 그 접점은 두 개다 — Redis 키/값 포맷과 DB 스키마.
 
@@ -74,7 +74,9 @@ ingest/
 
 Producer 실행에는 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `REDIS_HOST`, `REDIS_PORT`가 필요하다. Kafka 브로커가 여러 개면 쉼표로 구분한다. Producer는 `collector-shards` 토픽과 `upbit-trade-collectors` 그룹으로 담당 종목을 결정하고, 수신한 체결을 마켓 코드 key로 `tick-raw`에 전송하는 동시에 `trade:realtime:updates` 채널에도 JSON으로 발행한다. Redis 발행은 크기 2,048의 비동기 큐와 전용 worker가 담당하므로 Redis 응답이 Kafka 전송을 지연시키지 않는다. 큐가 가득 차면 가장 오래된 실시간 알림을 제거하고 최신 체결을 유지한다. `UPBIT_WEBSOCKET_URL`과 `COLLECTION_TARGET_REFRESH_INTERVAL`은 선택 설정이며 기본값은 각각 Upbit 공식 WebSocket 주소와 `5s`다.
 
-Consumer 실행에는 동일한 DB·Kafka·Redis 설정이 필요하다. Consumer는 Poll 배치에서 변경된 종목별 마지막 진행 봉만 모아 `candle:1m:progress:{partition}` Hash에 한 번의 `HSET`으로 저장한 뒤 Kafka offset을 커밋한다. 각 필드에는 진행 봉, 마지막 체결 순번, Kafka source offset을 함께 저장한다. 커밋 성공 후 확정 봉을 `candle:1m:recent:{assetId}` Sorted Set에 저장하고 score가 같은 기존 봉을 교체한 뒤 최신 1,000개만 유지한다. 이어서 종목별 최신 진행 봉 한 건을 `candle:1m:live:updates` 채널에 JSON으로 발행한다. 최근 캐시와 Pub/Sub 실패는 필수 저장·커밋 결과를 되돌리지 않으며, 초기 캐시 miss는 향후 Spring 조회 API가 PostgreSQL에서 복구한다.
+Consumer 실행에는 동일한 DB·Kafka·Redis 설정이 필요하다. Consumer는 Poll 배치에서 변경된 종목별 마지막 진행 봉만 모아 `candle:1m:progress:{partition}` Hash에 한 번의 `HSET`으로 저장한 뒤 Kafka offset을 커밋한다. 각 필드에는 진행 봉, 마지막 체결 순번, Kafka source offset을 함께 저장한다. 커밋 성공 후 확정 봉을 `candle:1m:recent:{assetId}` Sorted Set에 저장하고 score가 같은 기존 봉을 교체한 뒤 최신 1,000개만 유지한다. 이어서 종목별 최신 진행 봉 한 건을 `candle:1m:live:updates` 채널에 JSON으로 발행한다.
+
+Kafka Poll은 최대 1초마다 반환되어 파티션별 진행 봉의 만료를 검사한다. 분 종료 후 5초가 지난 봉은 다음 체결이 없어도 PostgreSQL에 UPSERT한 뒤 Redis 진행 Hash에서 제거하고 최근 1,000개 캐시에 반영한다. 이 확정은 이미 커밋된 체결 상태를 닫는 작업이므로 Kafka offset을 추가로 커밋하지 않는다. 리밸런싱으로 새 파티션을 받으면 Redis 체크포인트를 먼저 복구하고 이미 만료된 봉을 즉시 확정한다. 체결이 전혀 없었던 분의 빈 봉은 생성하지 않는다. 최근 캐시와 Pub/Sub 실패는 필수 저장·커밋 결과를 되돌리지 않으며, 초기 캐시 miss는 향후 Spring 조회 API가 PostgreSQL에서 복구한다.
 
 ```bash
 go build ./...            # 3개 바이너리 컴파일 확인
