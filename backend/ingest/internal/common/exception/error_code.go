@@ -10,6 +10,7 @@ const (
 	// 캔들
 	CodeCandleInvalidInterval ErrorCode = "CANDLE-400-001"
 	CodeCandleInvalidPayload  ErrorCode = "CANDLE-400-002"
+	CodeCandleSyncMismatch    ErrorCode = "CANDLE-409-001"
 
 	// 업비트
 	CodeUpbitUnavailable     ErrorCode = "UPBIT-503-001"
@@ -41,6 +42,7 @@ var errorDefinitions = map[ErrorCode]errorDefinition{
 	CodeInternal:                    {message: "internal pipeline error", retryable: false},
 	CodeCandleInvalidInterval:       {message: "invalid candle interval", retryable: false},
 	CodeCandleInvalidPayload:        {message: "invalid candle payload", retryable: false},
+	CodeCandleSyncMismatch:          {message: "minute candle differs from Upbit availability", retryable: false},
 	CodeUpbitUnavailable:            {message: "Upbit is unavailable", retryable: true},
 	CodeUpbitInvalidResponse:        {message: "Upbit returned an invalid response", retryable: false},
 	CodeKafkaPublishFailed:          {message: "failed to publish Kafka message", retryable: true},
