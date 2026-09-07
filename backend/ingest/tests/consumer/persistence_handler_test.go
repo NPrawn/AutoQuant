@@ -40,11 +40,18 @@ func (w *progressWriter) DeleteBatch(
 type finalCandleWriter struct {
 	events *[]string
 	err    error
+	skip   bool
 }
 
-func (w *finalCandleWriter) Upsert(_ context.Context, _ candledomain.MinuteCandle) error {
+func (w *finalCandleWriter) Upsert(
+	_ context.Context,
+	candle candledomain.MinuteCandle,
+) (*candledomain.MinuteCandle, error) {
 	*w.events = append(*w.events, "final")
-	return w.err
+	if w.err != nil || w.skip {
+		return nil, w.err
+	}
+	return &candle, nil
 }
 
 func TestPersistenceHandlerStoresEveryFinalCandleBeforeProgress(t *testing.T) {
@@ -63,7 +70,7 @@ func TestPersistenceHandlerStoresEveryFinalCandleBeforeProgress(t *testing.T) {
 		Checkpoints:   []candle.Checkpoint{checkpoint},
 	}
 
-	if err := handler.Handle(context.Background(), batch); err != nil {
+	if err := handler.Handle(context.Background(), &batch); err != nil {
 		t.Fatalf("Handle() error = %v", err)
 	}
 	want := []string{"final", "final", "progress"}
@@ -84,12 +91,13 @@ func TestPersistenceHandlerDoesNotAdvanceProgressWhenFinalWriteFails(t *testing.
 	checkpoint := testCheckpoint("KRW-BTC", 11)
 	closed := checkpoint.InProgress
 
-	err := handler.Handle(context.Background(), consumer.ProcessedBatch{
+	batch := consumer.ProcessedBatch{
 		Partition:          2,
 		ClosedCandles:      []candledomain.MinuteCandle{closed},
 		Checkpoints:        []candle.Checkpoint{checkpoint},
 		RemovedMarketCodes: []string{checkpoint.MarketCode},
-	})
+	}
+	err := handler.Handle(context.Background(), &batch)
 	if !errors.Is(err, wantErr) {
 		t.Fatalf("Handle() error = %v, want %v", err, wantErr)
 	}
@@ -106,16 +114,36 @@ func TestPersistenceHandlerDeletesFinalizedProgressAfterFinalWrite(t *testing.T)
 	)
 	checkpoint := testCheckpoint("KRW-BTC", 11)
 
-	if err := handler.Handle(context.Background(), consumer.ProcessedBatch{
+	batch := consumer.ProcessedBatch{
 		Partition:          2,
 		ClosedCandles:      []candledomain.MinuteCandle{checkpoint.InProgress},
 		RemovedMarketCodes: []string{checkpoint.MarketCode},
-	}); err != nil {
+	}
+	if err := handler.Handle(context.Background(), &batch); err != nil {
 		t.Fatalf("Handle() error = %v", err)
 	}
 	want := []string{"final", "delete-progress"}
 	if !reflect.DeepEqual(events, want) {
 		t.Fatalf("events = %v, want %v", events, want)
+	}
+}
+
+func TestPersistenceHandlerExcludesVerifiedCandleFromCacheResult(t *testing.T) {
+	events := make([]string, 0, 1)
+	handler := consumer.NewPersistenceHandler(
+		&progressWriter{events: &events},
+		&finalCandleWriter{events: &events, skip: true},
+	)
+	batch := consumer.ProcessedBatch{
+		Partition:     2,
+		ClosedCandles: []candledomain.MinuteCandle{testCheckpoint("KRW-BTC", 11).InProgress},
+	}
+
+	if err := handler.Handle(context.Background(), &batch); err != nil {
+		t.Fatalf("Handle() error = %v", err)
+	}
+	if len(batch.ClosedCandles) != 0 {
+		t.Fatalf("ClosedCandles = %#v, want empty verified result", batch.ClosedCandles)
 	}
 }
 

@@ -59,6 +59,9 @@ func prepareTestAsset(t *testing.T, pool *pgxpool.Pool) {
 		if _, err := pool.Exec(ctx, `DELETE FROM market_data.minute_candle WHERE asset_id = $1`, testAssetID); err != nil {
 			t.Fatalf("테스트 봉 정리 실패: %v", err)
 		}
+		if _, err := pool.Exec(ctx, `DELETE FROM ops.minute_candle_sync_state WHERE asset_id = $1`, testAssetID); err != nil {
+			t.Fatalf("테스트 동기화 상태 정리 실패: %v", err)
+		}
 		if _, err := pool.Exec(ctx, `DELETE FROM reference.asset WHERE asset_id = $1`, testAssetID); err != nil {
 			t.Fatalf("테스트 자산 정리 실패: %v", err)
 		}
@@ -116,10 +119,10 @@ func TestUpsertStoresCandleOnce(t *testing.T) {
 	repository := store.NewMinuteCandleRepository(pool)
 	openTime := time.Date(2026, 9, 4, 10, 3, 0, 0, time.UTC)
 
-	if err := repository.Upsert(context.Background(), testCandle("108900", openTime)); err != nil {
+	if _, err := repository.Upsert(context.Background(), testCandle("108900", openTime)); err != nil {
 		t.Fatalf("첫 Upsert returned error: %v", err)
 	}
-	if err := repository.Upsert(context.Background(), testCandle("108900", openTime)); err != nil {
+	if _, err := repository.Upsert(context.Background(), testCandle("108900", openTime)); err != nil {
 		t.Fatalf("두 번째 Upsert returned error: %v", err)
 	}
 
@@ -134,10 +137,10 @@ func TestUpsertReplacesCorrectedCandle(t *testing.T) {
 	repository := store.NewMinuteCandleRepository(pool)
 	openTime := time.Date(2026, 9, 4, 10, 4, 0, 0, time.UTC)
 
-	if err := repository.Upsert(context.Background(), testCandle("108900", openTime)); err != nil {
+	if _, err := repository.Upsert(context.Background(), testCandle("108900", openTime)); err != nil {
 		t.Fatalf("첫 Upsert returned error: %v", err)
 	}
-	if err := repository.Upsert(context.Background(), testCandle("108950", openTime)); err != nil {
+	if _, err := repository.Upsert(context.Background(), testCandle("108950", openTime)); err != nil {
 		t.Fatalf("보정 Upsert returned error: %v", err)
 	}
 
@@ -163,7 +166,7 @@ func TestUpsertKeepsAmountPrecision(t *testing.T) {
 	repository := store.NewMinuteCandleRepository(pool)
 	openTime := time.Date(2026, 9, 4, 10, 5, 0, 0, time.UTC)
 
-	if err := repository.Upsert(context.Background(), testCandle("108900", openTime)); err != nil {
+	if _, err := repository.Upsert(context.Background(), testCandle("108900", openTime)); err != nil {
 		t.Fatalf("Upsert returned error: %v", err)
 	}
 
@@ -190,7 +193,7 @@ func TestUpsertRejectsUnknownAsset(t *testing.T) {
 	candle := testCandle("108900", time.Date(2026, 9, 4, 10, 6, 0, 0, time.UTC))
 	candle.AssetID = "00000000-0000-0000-0000-0000000000ff"
 
-	err := repository.Upsert(context.Background(), candle)
+	_, err := repository.Upsert(context.Background(), candle)
 	if !exception.HasCode(err, exception.CodeDatabaseConstraintViolation) {
 		t.Fatalf("HasCode(err, %s) = false, want true (err = %v)", exception.CodeDatabaseConstraintViolation, err)
 	}

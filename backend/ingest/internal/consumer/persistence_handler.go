@@ -13,7 +13,7 @@ type ProgressWriter interface {
 }
 
 type FinalCandleWriter interface {
-	Upsert(context.Context, candledomain.MinuteCandle) error
+	Upsert(context.Context, candledomain.MinuteCandle) (*candledomain.MinuteCandle, error)
 }
 
 // PersistenceHandler stores the finalized candle before advancing the live
@@ -33,12 +33,18 @@ func NewPersistenceHandler(
 	}
 }
 
-func (h *PersistenceHandler) Handle(ctx context.Context, batch ProcessedBatch) error {
+func (h *PersistenceHandler) Handle(ctx context.Context, batch *ProcessedBatch) error {
+	storedCandles := batch.ClosedCandles[:0]
 	for _, closed := range batch.ClosedCandles {
-		if err := h.finalWriter.Upsert(ctx, closed); err != nil {
+		stored, err := h.finalWriter.Upsert(ctx, closed)
+		if err != nil {
 			return err
 		}
+		if stored != nil {
+			storedCandles = append(storedCandles, *stored)
+		}
 	}
+	batch.ClosedCandles = storedCandles
 	if len(batch.RemovedMarketCodes) > 0 {
 		if err := h.progressWriter.DeleteBatch(
 			ctx,

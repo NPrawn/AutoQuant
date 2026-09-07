@@ -155,7 +155,7 @@ type blockingResultHandler struct {
 	release chan struct{}
 }
 
-func (h *blockingResultHandler) Handle(ctx context.Context, batch consumer.ProcessedBatch) error {
+func (h *blockingResultHandler) Handle(ctx context.Context, batch *consumer.ProcessedBatch) error {
 	select {
 	case h.started <- batch.Checkpoints[0].MarketCode:
 	case <-ctx.Done():
@@ -170,9 +170,9 @@ func (h *blockingResultHandler) Handle(ctx context.Context, batch consumer.Proce
 	}
 }
 
-func (h *recordingResultHandler) Handle(_ context.Context, batch consumer.ProcessedBatch) error {
+func (h *recordingResultHandler) Handle(_ context.Context, batch *consumer.ProcessedBatch) error {
 	h.mutex.Lock()
-	h.batches = append(h.batches, batch)
+	h.batches = append(h.batches, *batch)
 	if h.events != nil {
 		*h.events = append(*h.events, "store")
 	}

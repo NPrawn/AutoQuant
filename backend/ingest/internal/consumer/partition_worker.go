@@ -47,11 +47,11 @@ func (w *partitionWorker) Sweep(
 		ClosedCandles:      closedCandles,
 		RemovedMarketCodes: removedMarketCodes,
 	}
-	if err := w.handler.Handle(ctx, batch); err != nil {
+	if err := w.handler.Handle(ctx, &batch); err != nil {
 		return nil, err
 	}
 
-	return closedCandles, nil
+	return batch.ClosedCandles, nil
 }
 
 type partitionWorker struct {
@@ -133,7 +133,7 @@ func (w *partitionWorker) Process(
 		Checkpoints:   checkpoints,
 	}
 	if len(closedCandles) > 0 || len(checkpoints) > 0 {
-		if err := w.handler.Handle(ctx, batch); err != nil {
+		if err := w.handler.Handle(ctx, &batch); err != nil {
 			return ProcessedBatch{}, ingestkafka.Record{}, err
 		}
 	}
