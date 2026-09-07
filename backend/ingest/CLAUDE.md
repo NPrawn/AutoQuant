@@ -18,7 +18,7 @@ Upbit WebSocket/REST → Producer → Kafka → Consumer
 - 멱등 키는 `(asset_id, interval_minutes, open_time)`이다.
 - Kafka offset은 PostgreSQL·Redis 처리가 성공한 뒤 수동 커밋한다.
 - 진행 봉 Pub/Sub은 offset 커밋 뒤에 실행하며, 실패해도 이미 완료된 저장·커밋을 실패로 바꾸지 않는다.
-- 실시간 체결 Pub/Sub과 Kafka 발행은 독립 경로이며 한쪽 실패가 다른 쪽 발행을 막지 않는다.
+- 실시간 체결 Pub/Sub은 bounded 비동기 큐와 전용 worker로 Kafka 발행 경로와 분리한다. 큐가 가득 차면 가장 오래된 알림을 제거하고 최신 체결을 유지한다.
 - 동일 마켓 이벤트 순서를 위해 Kafka 메시지 키는 마켓 코드를 사용한다.
 
 ## 패키지

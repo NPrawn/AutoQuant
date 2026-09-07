@@ -72,7 +72,7 @@ ingest/
 
 ## 명령
 
-Producer 실행에는 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `REDIS_HOST`, `REDIS_PORT`가 필요하다. Kafka 브로커가 여러 개면 쉼표로 구분한다. Producer는 `collector-shards` 토픽과 `upbit-trade-collectors` 그룹으로 담당 종목을 결정하고, 수신한 체결을 마켓 코드 key로 `tick-raw`에 전송하는 동시에 `trade:realtime:updates` 채널에도 JSON으로 발행한다. Kafka와 Redis 발행은 서로 독립적이므로 한쪽 실패가 다른 쪽을 취소하지 않는다. `UPBIT_WEBSOCKET_URL`과 `COLLECTION_TARGET_REFRESH_INTERVAL`은 선택 설정이며 기본값은 각각 Upbit 공식 WebSocket 주소와 `5s`다.
+Producer 실행에는 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`, `REDIS_HOST`, `REDIS_PORT`가 필요하다. Kafka 브로커가 여러 개면 쉼표로 구분한다. Producer는 `collector-shards` 토픽과 `upbit-trade-collectors` 그룹으로 담당 종목을 결정하고, 수신한 체결을 마켓 코드 key로 `tick-raw`에 전송하는 동시에 `trade:realtime:updates` 채널에도 JSON으로 발행한다. Redis 발행은 크기 2,048의 비동기 큐와 전용 worker가 담당하므로 Redis 응답이 Kafka 전송을 지연시키지 않는다. 큐가 가득 차면 가장 오래된 실시간 알림을 제거하고 최신 체결을 유지한다. `UPBIT_WEBSOCKET_URL`과 `COLLECTION_TARGET_REFRESH_INTERVAL`은 선택 설정이며 기본값은 각각 Upbit 공식 WebSocket 주소와 `5s`다.
 
 Consumer 실행에는 동일한 DB·Kafka·Redis 설정이 필요하다. Consumer는 Poll 배치에서 변경된 종목별 마지막 진행 봉만 모아 `candle:1m:progress:{partition}` Hash에 한 번의 `HSET`으로 저장한 뒤 Kafka offset을 커밋한다. 각 필드에는 진행 봉, 마지막 체결 순번, Kafka source offset을 함께 저장한다. 커밋 성공 후 종목별 최신 진행 봉 한 건을 `candle:1m:live:updates` 채널에 JSON으로 발행하며 내부 복구 값인 `source_offset`은 제외한다. Pub/Sub 실패는 저장·커밋 결과를 되돌리지 않는다. 최근 1,000개 확정 봉 캐시는 아직 구현하지 않는다.
 
