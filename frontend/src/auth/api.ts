@@ -1,21 +1,23 @@
 import { request } from '../api/client'
 import { isApiError } from '../api/error'
-import type { AuthorizeUrlResponse, MemberResponse } from './types'
+import { errorCodes } from '../api/errorCodes'
+import type { AuthorizeUrlResponse, CurrentMemberResponse, MemberResponse } from './types'
 
 export function fetchAuthorizeUrl(): Promise<AuthorizeUrlResponse> {
   return request<AuthorizeUrlResponse>('/auth/ssafy/authorize-url')
 }
 
 /*
- * 401 은 "로그인하지 않았다"는 정상 답이므로 null 로 바꾼다. 서버 장애 같은 그 외
- * 실패는 그대로 던져서 화면이 로그인 안 됨과 구분할 수 있게 한다.
+ * 401 은 "로그인하지 않았다"는 정상 답이므로 오류 코드를 담아 돌려준다. 서버 장애
+ * 같은 그 외 실패는 그대로 던져서 화면이 로그인 안 됨과 구분할 수 있게 한다.
  */
-export async function fetchCurrentMember(): Promise<MemberResponse | null> {
+export async function fetchCurrentMember(): Promise<CurrentMemberResponse> {
   try {
-    return await request<MemberResponse>('/members/me')
+    const member = await request<MemberResponse>('/members/me')
+    return { member, unauthorizedCode: null }
   } catch (error) {
     if (isApiError(error) && error.status === 401) {
-      return null
+      return { member: null, unauthorizedCode: error.code ?? errorCodes.authCredentialRequired }
     }
     throw error
   }

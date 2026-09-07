@@ -10,10 +10,10 @@ import { Topbar } from './Topbar'
  * 여기서 회원은 항상 있다. 960px 이하에서 사이드바를 접는 규칙은 base.css 가 담당한다.
  */
 export function AppShell() {
-  const { data: member } = useCurrentMember()
+  const { data } = useCurrentMember()
   const logout = useLogout()
 
-  if (!member) {
+  if (!data?.member) {
     return null
   }
 
@@ -21,7 +21,7 @@ export function AppShell() {
     <div className="shell">
       <Sidebar />
       <div className="col">
-        <Topbar member={member} session={demoSession} onLogout={() => logout.mutate()} />
+        <Topbar member={data.member} session={demoSession} onLogout={() => logout.mutate()} />
         <main className="wrap">
           <Outlet />
         </main>
