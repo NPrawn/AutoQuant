@@ -30,6 +30,21 @@ class BacktestPositionTest {
         assertThat(position.positionSide()).isEqualTo(PositionSide.LONG);
         assertThat(position.quantity()).isEqualByComparingTo("2");
         assertThat(position.averageEntryPrice()).isEqualByComparingTo("100000");
+        assertThat(position.costBasis()).isEqualByComparingTo("200000.00000000");
+    }
+
+    @DisplayName("매수 수수료를 포함한 취득원가로 포지션을 생성한다")
+    @Test
+    void createPositionWithCostBasis() {
+        BacktestPosition position = new BacktestPosition(
+                ASSET_ID,
+                PositionSide.LONG,
+                BigDecimal.valueOf(2),
+                BigDecimal.valueOf(100_000),
+                BigDecimal.valueOf(200_100)
+        );
+
+        assertThat(position.costBasis()).isEqualByComparingTo("200100");
     }
 
     @DisplayName("포지션 수량은 0보다 커야 한다")
@@ -53,6 +68,32 @@ class BacktestPositionTest {
                         PositionSide.LONG,
                         BigDecimal.valueOf(2),
                         BigDecimal.ZERO
+                ));
+    }
+
+    @DisplayName("취득원가는 0보다 커야 한다")
+    @Test
+    void rejectZeroCostBasis() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new BacktestPosition(
+                        ASSET_ID,
+                        PositionSide.LONG,
+                        BigDecimal.valueOf(2),
+                        BigDecimal.valueOf(100_000),
+                        BigDecimal.ZERO
+                ));
+    }
+
+    @DisplayName("취득원가는 null일 수 없다")
+    @Test
+    void rejectNullCostBasis() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new BacktestPosition(
+                        ASSET_ID,
+                        PositionSide.LONG,
+                        BigDecimal.valueOf(2),
+                        BigDecimal.valueOf(100_000),
+                        null
                 ));
     }
 }
