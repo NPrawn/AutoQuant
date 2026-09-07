@@ -165,7 +165,7 @@ class BacktestPortfolioTest {
     void applyPartialSellFill() {
         BacktestPortfolio portfolio = portfolioWithPosition();
 
-        portfolio.applySell(fill(
+        RealizedTradeResult result = portfolio.applySell(fill(
                 PositionSide.LONG,
                 TradeSide.SELL,
                 BigDecimal.valueOf(120_000),
@@ -178,6 +178,10 @@ class BacktestPortfolioTest {
         assertThat(portfolio.getCashBalance()).isEqualByComparingTo("919840.00000000");
         assertThat(position.quantity()).isEqualByComparingTo("1");
         assertThat(position.averageEntryPrice()).isEqualByComparingTo("100000.00000000");
+        assertThat(position.costBasis()).isEqualByComparingTo("100050.00000000");
+        assertThat(result.allocatedCostBasis()).isEqualByComparingTo("100050.00000000");
+        assertThat(result.netProceeds()).isEqualByComparingTo("119940.00000000");
+        assertThat(result.realizedProfitLoss()).isEqualByComparingTo("19890.00000000");
     }
 
     @DisplayName("전량 매도 체결은 포지션을 제거한다")
@@ -185,7 +189,7 @@ class BacktestPortfolioTest {
     void applyFullSellFill() {
         BacktestPortfolio portfolio = portfolioWithPosition();
 
-        portfolio.applySell(fill(
+        RealizedTradeResult result = portfolio.applySell(fill(
                 PositionSide.LONG,
                 TradeSide.SELL,
                 BigDecimal.valueOf(120_000),
@@ -196,6 +200,9 @@ class BacktestPortfolioTest {
 
         assertThat(portfolio.getCashBalance()).isEqualByComparingTo("1039780.00000000");
         assertThat(portfolio.findPosition(ASSET_ID)).isEmpty();
+        assertThat(result.allocatedCostBasis()).isEqualByComparingTo("200100.00000000");
+        assertThat(result.netProceeds()).isEqualByComparingTo("239880.00000000");
+        assertThat(result.realizedProfitLoss()).isEqualByComparingTo("39780.00000000");
     }
 
     @DisplayName("보유하지 않은 자산은 매도할 수 없다")
