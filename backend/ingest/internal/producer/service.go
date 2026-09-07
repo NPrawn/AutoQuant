@@ -16,7 +16,7 @@ type TradeStreamer interface {
 	) error
 }
 
-// Service keeps the Upbit subscription synchronized with enabled database targets.
+// Service keeps the Upbit subscription synchronized with enabled targets owned by this Collector.
 type Service struct {
 	watcher         *TargetWatcher
 	streamer        TradeStreamer
@@ -31,8 +31,12 @@ func NewService(watcher *TargetWatcher, streamer TradeStreamer, refreshInterval 
 	}
 }
 
-func (s *Service) Run(ctx context.Context, trades chan<- tradedomain.MarketTrade) error {
-	initialTargets, _, err := s.watcher.Refresh(ctx)
+func (s *Service) Run(
+	ctx context.Context,
+	shardChanges <-chan []int32,
+	trades chan<- tradedomain.MarketTrade,
+) error {
+	targets, _, err := s.watcher.Refresh(ctx)
 	if err != nil {
 		close(trades)
 		return err
@@ -42,7 +46,6 @@ func (s *Service) Run(ctx context.Context, trades chan<- tradedomain.MarketTrade
 	defer cancel()
 
 	updates := make(chan []assetdomain.MarketDataCollectionTarget, 1)
-	updates <- initialTargets
 	streamErrors := make(chan error, 1)
 	go func() {
 		streamErrors <- s.streamer.Run(runContext, updates, trades)
@@ -50,6 +53,16 @@ func (s *Service) Run(ctx context.Context, trades chan<- tradedomain.MarketTrade
 
 	ticker := time.NewTicker(s.refreshInterval)
 	defer ticker.Stop()
+	var ownedShards []int32
+	var subscribedTargets []assetdomain.MarketDataCollectionTarget
+	updateSubscription := func() {
+		nextTargets := TargetsForShards(targets, ownedShards)
+		if equalTargets(subscribedTargets, nextTargets) {
+			return
+		}
+		subscribedTargets = nextTargets
+		updates <- nextTargets
+	}
 
 	for {
 		select {
@@ -58,15 +71,23 @@ func (s *Service) Run(ctx context.Context, trades chan<- tradedomain.MarketTrade
 			return <-streamErrors
 		case err := <-streamErrors:
 			return err
+		case shards, open := <-shardChanges:
+			if !open {
+				shardChanges = nil
+				continue
+			}
+			ownedShards = append(ownedShards[:0], shards...)
+			updateSubscription()
 		case <-ticker.C:
-			targets, changed, err := s.watcher.Refresh(ctx)
+			nextTargets, changed, err := s.watcher.Refresh(ctx)
 			if err != nil {
 				cancel()
 				<-streamErrors
 				return err
 			}
 			if changed {
-				updates <- targets
+				targets = nextTargets
+				updateSubscription()
 			}
 		}
 	}

@@ -60,7 +60,7 @@ func run() error {
 		return coordinator.Run(groupContext)
 	})
 	group.Go(func() error {
-		return service.Run(groupContext, trades)
+		return service.Run(groupContext, coordinator.AssignmentChanges(), trades)
 	})
 	group.Go(func() error {
 		for range trades {
