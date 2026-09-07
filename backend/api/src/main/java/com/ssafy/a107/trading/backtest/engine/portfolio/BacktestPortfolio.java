@@ -88,6 +88,67 @@ public class BacktestPortfolio {
                 .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
     }
 
+    public void applySell(VirtualFill fill) {
+        Objects.requireNonNull(fill);
+
+        if (fill.order().side() != TradeSide.SELL) {
+            throw new IllegalArgumentException(
+                    "Only sell fills can be applied as a sell"
+            );
+        }
+
+        if (fill.order().positionSide() != PositionSide.LONG) {
+            throw new IllegalArgumentException(
+                    "Only long positions are supported"
+            );
+        }
+
+        UUID assetId = fill.order().assetId();
+        BacktestPosition currentPosition = positions.get(assetId);
+
+        if (currentPosition == null) {
+            throw new IllegalStateException(
+                    "Position does not exist for sell fill"
+            );
+        }
+
+        if (fill.quantity().compareTo(currentPosition.quantity()) > 0) {
+            throw new IllegalStateException(
+                    "Sell quantity exceeds position quantity"
+            );
+        }
+
+        BigDecimal proceeds = fill.notional()
+                .subtract(fill.feeAmount())
+                .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+
+        if (proceeds.signum() < 0) {
+            throw new IllegalArgumentException(
+                    "Sell fee must not exceed notional"
+            );
+        }
+
+        BigDecimal updatedQuantity = currentPosition.quantity()
+                .subtract(fill.quantity());
+
+        if (updatedQuantity.signum() == 0) {
+            positions.remove(assetId);
+        } else {
+            positions.put(
+                    assetId,
+                    new BacktestPosition(
+                            assetId,
+                            PositionSide.LONG,
+                            updatedQuantity,
+                            currentPosition.averageEntryPrice()
+                    )
+            );
+        }
+
+        cashBalance = cashBalance.add(proceeds)
+                .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+    }
+
     public BigDecimal getCashBalance() {
         return cashBalance;
     }
