@@ -2,7 +2,7 @@
 
 > Upbit 데이터 수집 · 적재 파이프라인. Go 모듈 하나에서 바이너리 3개를 만든다.
 > 현재 Producer는 Kafka Consumer Group에서 Collector 샤드를 할당받고, DB 수집 대상 중 담당 종목만 Upbit WebSocket으로 구독해 `tick-raw` 토픽에 발행한다.
-> Consumer 내부에는 `tick-raw` 소비와 1분봉 집계 기반만 구현되어 있다. 저장과 offset 커밋 전까지 `cmd/consumer`에는 연결하지 않는다.
+> Consumer는 `tick-raw`를 소비해 partition별로 1분봉을 집계하고, 확정된 봉만 PostgreSQL에 멱등 적재한 뒤 offset을 커밋한다.
 
 JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리의 존재를 모른다 (Gradle 프로젝트는 형제 디렉토리 `../api` 에 있음). 결합은 런타임에만 존재하며, 그 접점은 두 개다 — Redis 키/값 포맷과 DB 스키마.
 
@@ -11,7 +11,7 @@ JVM 트리와 **빌드 의존성이 전혀 없다.** Gradle은 이 디렉토리�
 | 바이너리 | 역할 | 실행 형태 |
 |---|---|---|
 | `cmd/producer` | DB 수집 대상 감지 → Upbit WebSocket 체결 수신 | 상시 실행 |
-| `cmd/consumer` | 저장·offset 커밋 구현 후 Kafka 소비 파이프라인 연결 예정 | 미활성 |
+| `cmd/consumer` | Kafka 소비 → 1분봉 집계 → PostgreSQL 확정 봉 적재 → offset 커밋 | 상시 실행 |
 | `cmd/backfill` | Upbit REST 조회 → Kafka 누락 이벤트 발행 | 주기 실행 · 일회성 |
 
 세 바이너리를 **하나의 Go 모듈**에 둔 이유는 Upbit 클라이언트, Kafka 메시지 구조체, DB 모델을 전부 공유하기 때문이다. 모듈을 쪼개면 이 코드를 중복 구현해야 한다.
@@ -31,7 +31,7 @@ ingest/
 │  ├─ candle/domain/        확정 MinuteCandle
 │  ├─ trade/domain/         실시간 MarketTrade
 │  ├─ producer/             수집 대상 변경 감지 · Collector 샤드 소유권
-│  ├─ consumer/             체결 메시지 검증 · partition별 1분봉 집계
+│  ├─ consumer/             체결 메시지 검증 · partition별 1분봉 집계 · 확정 봉 적재 · offset 커밋
 │  ├─ upbit/               WebSocket · REST 클라이언트, 재연결, 페이로드 파싱
 │  ├─ kafka/               토픽 상수, 메시지 구조체, Consumer Group · 프로듀서 · 컨슈머 래퍼
 │  ├─ redis/               캐시 키 규칙, 쓰기          ← Go↔JVM 계약의 원본
@@ -73,6 +73,8 @@ ingest/
 ## 명령
 
 Producer 실행에는 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`가 필요하다. Kafka 브로커가 여러 개면 쉼표로 구분한다. Producer는 `collector-shards` 토픽과 `upbit-trade-collectors` 그룹으로 담당 종목을 결정하고, 체결 데이터는 마켓 코드를 key로 사용해 `tick-raw` 토픽에 발행한다. `UPBIT_WEBSOCKET_URL`과 `COLLECTION_TARGET_REFRESH_INTERVAL`은 선택 설정이며 기본값은 각각 Upbit 공식 WebSocket 주소와 `5s`다.
+
+Consumer 실행에는 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `KAFKA_BOOTSTRAP_SERVERS`가 필요하다. `minute-candle-aggregators` 그룹으로 `tick-raw`를 구독하며, partition마다 Aggregator를 하나씩 두어 봉 상태를 섞지 않는다. 확정 봉을 저장한 뒤에만 offset을 커밋하므로 재기동 시 봉이 유실되지 않는다. 진행 중 봉 캐시는 Redis 키·값 포맷 합의 전까지 값을 버리는 구현을 쓴다.
 
 ```bash
 go build ./...            # 3개 바이너리 컴파일 확인
