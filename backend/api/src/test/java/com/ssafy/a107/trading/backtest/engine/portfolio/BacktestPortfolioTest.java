@@ -158,6 +158,59 @@ class BacktestPortfolioTest {
                 )));
     }
 
+    @DisplayName("부분 매도 체결은 수수료를 차감한 현금을 더하고 남은 포지션을 유지한다")
+    @Test
+    void applyPartialSellFill() {
+        BacktestPortfolio portfolio = portfolioWithPosition();
+
+        portfolio.applySell(fill(
+                PositionSide.LONG,
+                TradeSide.SELL,
+                BigDecimal.valueOf(120_000),
+                BigDecimal.ONE,
+                BigDecimal.valueOf(120_000),
+                BigDecimal.valueOf(60)
+        ));
+
+        BacktestPosition position = portfolio.findPosition(ASSET_ID).orElseThrow();
+        assertThat(portfolio.getCashBalance()).isEqualByComparingTo("919840.00000000");
+        assertThat(position.quantity()).isEqualByComparingTo("1");
+        assertThat(position.averageEntryPrice()).isEqualByComparingTo("100000.00000000");
+    }
+
+    @DisplayName("전량 매도 체결은 포지션을 제거한다")
+    @Test
+    void applyFullSellFill() {
+        BacktestPortfolio portfolio = portfolioWithPosition();
+
+        portfolio.applySell(fill(
+                PositionSide.LONG,
+                TradeSide.SELL,
+                BigDecimal.valueOf(120_000),
+                BigDecimal.valueOf(2),
+                BigDecimal.valueOf(240_000),
+                BigDecimal.valueOf(120)
+        ));
+
+        assertThat(portfolio.getCashBalance()).isEqualByComparingTo("1039780.00000000");
+        assertThat(portfolio.findPosition(ASSET_ID)).isEmpty();
+    }
+
+    private BacktestPortfolio portfolioWithPosition() {
+        BacktestPortfolio portfolio = new BacktestPortfolio(
+                BigDecimal.valueOf(1_000_000)
+        );
+        portfolio.applyBuy(fill(
+                PositionSide.LONG,
+                TradeSide.BUY,
+                BigDecimal.valueOf(100_000),
+                BigDecimal.valueOf(2),
+                BigDecimal.valueOf(200_000),
+                BigDecimal.valueOf(100)
+        ));
+        return portfolio;
+    }
+
     private VirtualFill fill(
             PositionSide positionSide,
             TradeSide side,
