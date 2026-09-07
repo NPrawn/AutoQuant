@@ -118,7 +118,7 @@ public class BacktestTrade {
             Asset asset,
             PositionSide positionSide,
             TradeSide side,
-            Instant SignalAt,
+            Instant signalAt,
             Instant filledAt,
             BigDecimal executedPrice,
             BigDecimal quantity,
