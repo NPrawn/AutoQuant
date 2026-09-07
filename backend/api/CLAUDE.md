@@ -18,6 +18,9 @@ com.ssafy.a107
 │                       Upbit 공개 페어 목록 Client
 ├── asset/domain        거래소의 거래 자산·수집 대상 기준 정보
 ├── candle/domain       확정 분봉 읽기 모델
+├── ai/controller       전략 설명 변환 API
+├── ai/service          회원당 호출 한도와 변환 조율
+├── ai/infrastructure   ai/ FastAPI 서버 Client
 ├── auth                인증
 └── trading             백테스트·모의투자
 ```
@@ -27,6 +30,8 @@ com.ssafy.a107
 - `member`는 서비스 회원을, `asset`은 거래소의 거래 자산을 표현한다.
 - `asset`을 회원 보유 잔액이나 포지션 의미로 사용하지 않는다.
 - `candle`과 `trading`은 서로 직접 참조하지 않는다.
+- `ai`는 `strategy/domain/dsl`을 그대로 쓴다. 전략 DSL 타입을 `ai` 안에 다시 만들지 않는다.
+- AI 서버의 오류 형식(`code`·`message`·`detail`)은 밖으로 흘리지 않고 `ApiErrorCode`로 옮긴다.
 - 확정 분봉은 Go Consumer가 쓰고 Spring은 `@Immutable` 엔티티로 읽는다.
 - `AssetTradingStatus`는 거래소 거래지원 상태이고 `MarketDataCollectionStatus`는 우리 서비스의 수집 희망 상태다. 두 상태를 합치지 않는다.
 - 종목 등록 API의 `ENABLED`는 실제 Go WebSocket 구독 완료를 의미하지 않는다.

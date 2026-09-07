@@ -1,0 +1,48 @@
+{
+  "strategy": {
+    "timeframe": "1D",
+    "filters": {
+      "type": "GROUP",
+      "logic": "AND",
+      "children": [
+        {
+          "type": "CONDITION",
+          "left": {
+            "type": "FACTOR",
+            "factor": "VOLUME_RATIO",
+            "period": 20
+          },
+          "operator": "GTE",
+          "right": {
+            "type": "VALUE",
+            "value": 1.5
+          }
+        }
+      ]
+    },
+    "ranking": {
+      "factor": "VOLUME_RATIO",
+      "period": 20,
+      "direction": "DESC"
+    },
+    "selection": {
+      "topN": 5
+    },
+    "rebalance": {
+      "period": "WEEKLY"
+    }
+  },
+  "meta": {
+    "attempts": 1,
+    "model": "gpt-5.4-mini",
+    "elapsedMs": 2612,
+    "warnings": [],
+    "assumptions": [
+      "거래량 급증은 20일 기준 거래량 비율이 1.5배 이상으로 해석했습니다.",
+      "기본 시간프레임 1D를 사용했습니다.",
+      "기본 상위 선택 수 5개를 사용했습니다.",
+      "기본 리밸런싱 주기 WEEKLY를 사용했습니다."
+    ],
+    "changes": []
+  }
+}

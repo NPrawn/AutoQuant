@@ -43,6 +43,13 @@ public enum ApiErrorCode {
     CANDLE_INVALID_INTERVAL(HttpStatus.BAD_REQUEST, "CANDLE-400-001", "분봉 간격은 1 이상 32767 이하여야 합니다."),
     CANDLE_NOT_FOUND(HttpStatus.NOT_FOUND, "CANDLE-404-001", "요청한 분봉을 찾을 수 없습니다."),
 
+    // AI 전략 변환
+    AI_TRANSLATION_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "AI-502-001", "AI 서버 응답을 처리할 수 없습니다."),
+    AI_TRANSLATION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI-503-001", "AI 서버를 일시적으로 사용할 수 없습니다."),
+    AI_TRANSLATION_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "AI-504-001", "AI 서버 응답이 지연되고 있습니다."),
+    AI_TRANSLATION_FAILED(HttpStatus.UNPROCESSABLE_ENTITY, "AI-422-001", "전략 설명을 전략으로 바꾸지 못했습니다."),
+    AI_TRANSLATION_QUOTA_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI-429-001", "전략 변환 요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요."),
+
     // 백테스트
     BACKTEST_INVALID_PERIOD(HttpStatus.BAD_REQUEST, "BACKTEST-400-001", "백테스트 기간이 올바르지 않습니다."),
     BACKTEST_UNSUPPORTED_QUOTE_CURRENCY(HttpStatus.BAD_REQUEST, "BACKTEST-400-002", "현재 지원하지 않는 기준 통화입니다."),
