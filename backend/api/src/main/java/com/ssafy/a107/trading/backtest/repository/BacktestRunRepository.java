@@ -29,4 +29,7 @@ public interface BacktestRunRepository extends JpaRepository<BacktestRun, UUID> 
             where backtestRun.backtestId = :backtestId
             """)
     Optional<BacktestRun> findByBacktestIdForUpdate(@Param("backtestId") UUID backtestId);
+
+    @EntityGraph(attributePaths = "strategy")
+    Optional<BacktestRun> findByBacktestId(UUID backtestId);
 }
