@@ -107,6 +107,8 @@ POST /api/admin/assets
 
 ## 최근 확정 1분봉 조회
 
+차트 종목 선택은 JWT 인증이 필요한 `GET /api/assets`를 사용한다. 등록된 Upbit KRW 종목 중 `TRADING` 상태를 마켓 코드 오름차순으로 반환한다. 응답은 `[{"assetId":"UUID","marketCode":"KRW-BTC","koreanName":"비트코인"}]`이며 없으면 빈 배열이다. 수집 연결·봉 존재를 보장하는 목록은 아니다. Controller → AssetReadService → AssetRepository로 조회하며 REST Docs/OpenAPI에 포함한다.
+
 ```http
 GET /api/assets/{assetId}/candles/1m?limit=1000
 ```
@@ -163,7 +165,8 @@ API가 기동되면 Go가 발행하는 Redis 채널 두 개를 각각 한 번씩
 - 먼저 로그인하고 **현재 페이지와 같은 오리진**의 `ws://.../ws` 또는 `wss://.../ws`로 연결한다. 브라우저가 `access_token` httpOnly 쿠키를 handshake에 전송한다. STOMP CONNECT 헤더나 URL query에 JWT를 넣지 않는다.
 - HTTP handshake에서 토큰이 없거나 만료·위조되면 401, 다른 오리진이면 403으로 거부한다. 브라우저 외 클라이언트는 HTTP handshake의 Bearer 헤더도 사용할 수 있다.
 - JWT는 연결 시 검증한다. 이미 열린 연결의 토큰 만료·로그아웃에 따른 강제 종료는 제공하지 않으므로 프론트에서 로그아웃할 때 연결을 종료해야 한다. 재연결은 다시 인증한다.
-- 개발 Vite 및 배포 프록시는 `/ws`에 대해 WebSocket Upgrade를 전달하고 same-origin 정보(Host/Origin)를 유지해야 한다. 현재 브랜치에는 프론트 프록시 변경이 포함되지 않는다.
+- 개발 Vite 및 운영 Nginx 설정은 `/ws` WebSocket Upgrade와 same-origin 정보(Host/Origin)를 유지한다. 운영 설정은 배포 시 적용해야 한다.
+- `server.forward-headers-strategy: native`로 신뢰하는 프록시의 HTTPS 정보를 반영한다. 운영에서는 API 포트의 loopback 바인딩과 프록시의 전달 헤더 덮어쓰기를 유지한다. 다른 Origin은 계속 403으로 거부한다.
 
 아래는 한 연결에서 BTC 체결, ETH 체결, BTC 진행 봉을 받는 STOMP 프레임 예시다. 프레임마다 마지막 빈 줄 뒤에 실제 NULL 바이트(`\0`)를 붙인다.
 

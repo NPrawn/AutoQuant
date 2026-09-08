@@ -301,8 +301,37 @@ class RealtimeWebSocketIntegrationTest {
     }
 
     private HttpResponse<?> handshake(String token, String origin) {
+        return handshake(token, origin, false);
+    }
+
+    @Test
+    @DisplayName("HTTPS 프록시 뒤에서도 같은 오리진의 JWT WebSocket 연결을 허용한다")
+    void acceptSecureProxyOrigin() throws Exception {
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            WebSocket connection = client.newWebSocketBuilder()
+                    .header("Cookie", "access_token=" + validToken())
+                    .header("Origin", "https://localhost")
+                    .header("X-Forwarded-Proto", "https")
+                    .header("X-Forwarded-Port", "443")
+                    .buildAsync(URI.create("ws://localhost:" + port + "/ws"), new WebSocket.Listener() { })
+                    .get(5, TimeUnit.SECONDS);
+            connection.abort();
+        }
+    }
+
+    @Test
+    @DisplayName("HTTPS 프록시를 거쳐도 다른 오리진의 연결은 거부한다")
+    void rejectCrossOriginBehindProxy() {
+        assertThat(handshake(validToken(), "https://untrusted.example", true).statusCode()).isEqualTo(403);
+    }
+
+    private HttpResponse<?> handshake(String token, String origin, boolean secureProxy) {
         try (HttpClient client = HttpClient.newHttpClient()) {
             WebSocket.Builder request = client.newWebSocketBuilder().connectTimeout(Duration.ofSeconds(5));
+            if (secureProxy) {
+                request.header("X-Forwarded-Proto", "https");
+                request.header("X-Forwarded-Port", "443");
+            }
             if (token != null) {
                 request.header("Cookie", "access_token=" + token);
             }
