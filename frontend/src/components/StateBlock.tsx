@@ -33,11 +33,18 @@ export function EmptyState(props: EmptyStateProps) {
   return <StateBlock {...props} variant="empty" icon={props.icon ?? <EmptyIcon />} />
 }
 
+export type ErrorDetailRow = {
+  label: string
+  value: string
+}
+
 type ErrorStateProps = {
   title?: string
   description?: ReactNode
   /* 있으면 서버가 보낸 문장을 설명으로 쓰고 코드를 개발자용 상세에 넣는다. */
   error?: unknown
+  /* 목업 24·27 의 .state-detail. 무엇이 잘못됐는지 항목별로 보일 때 쓴다. */
+  details?: ErrorDetailRow[]
   onRetry?: () => void
   actions?: ReactNode
 }
@@ -45,7 +52,7 @@ type ErrorStateProps = {
 const defaultErrorTitle = '문제가 발생했습니다'
 const defaultErrorDescription = '잠시 후 다시 시도해 주세요. 계속되면 관리자에게 알려 주세요.'
 
-export function ErrorState({ title = defaultErrorTitle, description, error, onRetry, actions }: ErrorStateProps) {
+export function ErrorState({ title = defaultErrorTitle, description, error, details, onRetry, actions }: ErrorStateProps) {
   const apiError = isApiError(error) ? error : null
 
   return (
@@ -55,15 +62,27 @@ export function ErrorState({ title = defaultErrorTitle, description, error, onRe
       title={title}
       description={description ?? apiError?.message ?? defaultErrorDescription}
       detail={
-        apiError?.code && (
-          <details className="err-code">
-            <summary>개발자용 상세</summary>
-            <div>
-              {apiError.code} · {apiError.status}
-              {apiError.response?.path && ` · ${apiError.response.path}`}
+        <>
+          {details && details.length > 0 && (
+            <div className="state-detail">
+              {details.map((row, index) => (
+                <div key={`${row.label}-${index}`}>
+                  <span>{row.label}</span>
+                  <strong>{row.value}</strong>
+                </div>
+              ))}
             </div>
-          </details>
-        )
+          )}
+          {apiError?.code && (
+            <details className="err-code">
+              <summary>개발자용 상세</summary>
+              <div>
+                {apiError.code} · {apiError.status}
+                {apiError.response?.path && ` · ${apiError.response.path}`}
+              </div>
+            </details>
+          )}
+        </>
       }
       actions={
         (onRetry || actions) && (
