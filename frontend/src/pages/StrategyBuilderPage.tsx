@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
-import { routes } from '../app/routes'
+import { routes, to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
+import { ErrorState } from '../components/StateBlock'
 import { AssistantPanel } from '../strategy/assistant/AssistantPanel'
 import {
   appendAssistantMessage,
@@ -31,7 +32,8 @@ import {
   validateDraft,
   type StrategyDraft,
 } from '../strategy/draft'
-import { useTranslateStrategy } from '../strategy/queries'
+import { useCreateStrategy, useTranslateStrategy } from '../strategy/queries'
+import { describeSaveError } from '../strategy/saveErrorMessage'
 import { describeTranslateError } from '../strategy/translateErrorMessage'
 import { strategyNameMaxLength, type TranslateStrategyResponse } from '../strategy/types'
 
@@ -39,8 +41,9 @@ import { strategyNameMaxLength, type TranslateStrategyResponse } from '../strate
 type InitialPhase = 'none' | 'pending' | 'failed' | 'done'
 
 /*
- * 전략 빌더(목업 19). 편집 상태는 draft.ts 의 순수 함수로만 바꾼다. 홈에서 넘어온 목표 문장은
+ * 전략 빌더(목업 19·27). 편집 상태는 draft.ts 의 순수 함수로만 바꾼다. 홈에서 넘어온 목표 문장은
  * 진입 즉시 변환해 블록을 채우고, 전략봇의 요청은 지금 블록을 함께 보내 고쳐 받는다.
+ * 저장이 실패하면 블록 자리에 안내를 보이되 편집 내용은 그대로 둔다.
  * base.css 가 #view-builder 로 블록 격자를 정하므로 목업의 id 를 그대로 둔다.
  */
 export function StrategyBuilderPage() {
@@ -51,6 +54,7 @@ export function StrategyBuilderPage() {
   const [draft, setDraft] = useState(createEmptyDraft)
   const [showIssues, setShowIssues] = useState(false)
   const issues = validateDraft(draft)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   /* 홈에서 온 문장은 첫 사용자 메시지로 두고 대기 상태로 시작한다. 변환 호출은 아래 effect 가 한다. */
   const [conversation, setConversation] = useState(() =>
@@ -60,6 +64,8 @@ export function StrategyBuilderPage() {
   const [initialError, setInitialError] = useState<unknown>(null)
 
   const translate = useTranslateStrategy()
+  const create = useCreateStrategy()
+  const [saveError, setSaveError] = useState<unknown>(null)
 
   const applyTranslation = (response: TranslateStrategyResponse, isInitial: boolean) => {
     setDraft((current) => draftFromDsl(response.strategy, { name: current.name, description: current.description }))
@@ -120,9 +126,31 @@ export function StrategyBuilderPage() {
     requestTranslation(entry.prompt, createEmptyDraft(), true)
   }
 
+  /* 화면 검증을 먼저 통과해야 서버로 보낸다. 성공하면 상세로 가고, 실패하면 편집 내용은 그대로 둔다. */
   const handleSave = () => {
     setShowIssues(true)
+    if (issues.length > 0) {
+      if (issues.some((issue) => issue.field === 'name')) {
+        nameInputRef.current?.focus()
+      }
+      return
+    }
+    setSaveError(null)
+    create.mutate(
+      {
+        name: draft.name.trim(),
+        description: draft.description.trim() || undefined,
+        strategyDsl: dslFromDraft(draft),
+      },
+      {
+        onSuccess: (response) => navigate(to.strategyDetail(String(response.strategyId))),
+        onError: (error) => setSaveError(error),
+      },
+    )
   }
+
+  const saveLabel = create.isPending ? '저장 중…' : '전략 저장'
+  const saveErrorView = saveError ? describeSaveError(saveError) : null
 
   return (
     <section className="view active" id="view-builder">
@@ -133,6 +161,7 @@ export function StrategyBuilderPage() {
             전략 이름
           </label>
           <input
+            ref={nameInputRef}
             id="strategyName"
             className="page-title-input"
             type="text"
@@ -147,8 +176,8 @@ export function StrategyBuilderPage() {
           <button className="btn ghost sm" type="button" onClick={() => navigate(routes.strategies)}>
             취소
           </button>
-          <button className="btn primary sm" type="button" onClick={handleSave}>
-            전략 저장
+          <button className="btn primary sm" type="button" onClick={handleSave} disabled={create.isPending}>
+            {saveLabel}
           </button>
         </div>
       </div>
@@ -167,38 +196,53 @@ export function StrategyBuilderPage() {
         </div>
       )}
 
-      <div className="edit-shell">
-        <div>
-          <div className="tabp on">
-            <FilterBlock
-              conditions={draft.conditions}
-              logic={draft.logic}
-              onAdd={() => setDraft(addCondition(draft))}
-              onChange={(id, patch) => setDraft(updateCondition(draft, id, patch))}
-              onRemove={(id) => setDraft(removeCondition(draft, id))}
-            />
-            <RankingBlock
-              ranking={draft.ranking}
-              timeframe={draft.timeframe}
-              onRankingChange={(patch) => setDraft(setRanking(draft, patch))}
-              onTimeframeChange={(timeframe) => setDraft(setTimeframe(draft, timeframe))}
-            />
-            <RebalanceBlock rebalance={draft.rebalance} onChange={(rebalance) => setDraft(setRebalance(draft, rebalance))} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-            <button className="btn ghost" type="button" onClick={() => navigate(routes.strategies)}>
-              취소
+      {saveErrorView ? (
+        <ErrorState
+          title={saveErrorView.title}
+          description={saveErrorView.description}
+          details={saveErrorView.details}
+          error={saveError}
+          onRetry={handleSave}
+          actions={
+            <button className="btn" type="button" onClick={() => setSaveError(null)}>
+              블록 수정
             </button>
-            <button className="btn primary" type="button" onClick={handleSave}>
-              전략 저장
-            </button>
+          }
+        />
+      ) : (
+        <div className="edit-shell">
+          <div>
+            <div className="tabp on">
+              <FilterBlock
+                conditions={draft.conditions}
+                logic={draft.logic}
+                onAdd={() => setDraft(addCondition(draft))}
+                onChange={(id, patch) => setDraft(updateCondition(draft, id, patch))}
+                onRemove={(id) => setDraft(removeCondition(draft, id))}
+              />
+              <RankingBlock
+                ranking={draft.ranking}
+                timeframe={draft.timeframe}
+                onRankingChange={(patch) => setDraft(setRanking(draft, patch))}
+                onTimeframeChange={(timeframe) => setDraft(setTimeframe(draft, timeframe))}
+              />
+              <RebalanceBlock rebalance={draft.rebalance} onChange={(rebalance) => setDraft(setRebalance(draft, rebalance))} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+              <button className="btn ghost" type="button" onClick={() => navigate(routes.strategies)}>
+                취소
+              </button>
+              <button className="btn primary" type="button" onClick={handleSave} disabled={create.isPending}>
+                {saveLabel}
+              </button>
+            </div>
           </div>
-        </div>
 
-        <aside className="edit-side">
-          <StrategySummaryCard draft={draft} goal={entry?.prompt ?? null} issues={showIssues ? issues : []} />
-        </aside>
-      </div>
+          <aside className="edit-side">
+            <StrategySummaryCard draft={draft} goal={entry?.prompt ?? null} issues={showIssues ? issues : []} />
+          </aside>
+        </div>
+      )}
 
       <AssistantPanel
         conversation={conversation}
