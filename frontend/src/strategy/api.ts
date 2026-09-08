@@ -15,3 +15,16 @@ export function translateStrategy(body: TranslateStrategyRequest): Promise<Trans
 export function createStrategy(body: CreateStrategyRequest): Promise<StrategyResponse> {
   return request<StrategyResponse>('/strategies', { method: 'POST', body })
 }
+
+/* 로그인한 회원의 전략만 온다. 회원 식별은 서버가 인증 주체에서 꺼낸다. */
+export function fetchStrategies(): Promise<StrategyResponse[]> {
+  return request<StrategyResponse[]>('/strategies')
+}
+
+export function fetchStrategy(strategyId: string): Promise<StrategyResponse> {
+  return request<StrategyResponse>(`/strategies/${encodeURIComponent(strategyId)}`)
+}
+
+export function deleteStrategy(strategyId: string): Promise<void> {
+  return request<void>(`/strategies/${encodeURIComponent(strategyId)}`, { method: 'DELETE' })
+}

@@ -72,6 +72,25 @@ export type CreateStrategyRequest = {
   strategyDsl: StrategyDsl
 }
 
+/* 화면이 쓰는 전략 모델. 식별자는 라우트 파라미터와 맞추기 위해 문자열로 둔다. */
+export type Strategy = {
+  id: string
+  name: string
+  description: string
+  dsl: StrategyDsl
+  createdAt: Date
+}
+
+export function toStrategy(response: StrategyResponse): Strategy {
+  return {
+    id: String(response.strategyId),
+    name: response.name,
+    description: response.description ?? '',
+    dsl: response.strategyDsl,
+    createdAt: new Date(response.createdAt),
+  }
+}
+
 /* --- /ai/strategies/translate --- */
 
 export type TranslateStrategyRequest = {
