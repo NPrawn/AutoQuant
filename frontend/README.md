@@ -48,6 +48,7 @@ src/
 ├── strategy/             전략 DSL 계약 타입, 표시 문구, 빌더 편집 상태(순수 함수), 빌더 진입 상태
 │   ├── builder/          빌더 블록 컴포넌트(조건·순위·재선정·요약 카드)
 │   └── assistant/        전략봇 패널과 대화 상태
+│   (api.ts 변환·저장 호출, queries.ts 뮤테이션, translateErrorMessage.ts 변환 실패 문구)
 ├── pages/                화면, 목업 번호와 1:1
 ├── styles/               디자인 시스템
 └── mocks/                API 연동 전 표시용 더미
@@ -91,6 +92,16 @@ RequireAuth → GET /api/members/me → 200 이면 셸 렌더, 401 이면 /login
 토큰은 `httpOnly` 쿠키라 JS 가 읽지 못한다. 그래서 `/members/me` 응답이 로그인 상태의 유일한 근거이고, 프론트에 토큰 저장 코드가 없다. 쿠키는 `localhost:8080`이 심지만 브라우저 쿠키는 포트를 구분하지 않아 `localhost:5173` 요청에도 실린다.
 
 콜백이 실패하면 백엔드가, 세션이 끊기면 `RequireAuth`가 `/login?error={코드}`로 보낸다. 코드 상수는 `src/api/errorCodes.ts`, 코드별 문구는 `src/auth/loginErrorMessage.ts`에 있다. 처음부터 로그인이 없던 방문은 안내 없이 로그인 화면만 보인다.
+
+## 전략 변환 흐름
+
+```text
+홈 입력 → /strategies/new (state.prompt) → POST /api/ai/strategies/translate { userInput }
+        → 응답 strategy 로 블록을 채우고 meta.changes/assumptions/warnings 를 전략봇 말풍선에 붙인다
+전략봇 입력 → POST … { userInput, currentStrategy: 지금 블록 } → 같은 방식으로 블록 교체
+```
+
+조건이 하나도 없는 전략은 `currentStrategy`를 보내지 않는다. 백엔드가 빈 조건 그룹을 거부하기 때문이다. 변환 실패 문구는 `src/strategy/translateErrorMessage.ts`에 있고, 첫 변환이 실패하면 블록 위에 재시도 안내를 보인다.
 
 ## 백엔드 호출
 
