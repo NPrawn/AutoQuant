@@ -133,7 +133,10 @@ public class BacktestTrade {
         this.side = Objects.requireNonNull(side);
         this.signalAt = Objects.requireNonNull(signalAt);
         this.filledAt = requireFilledAfterSignal(signalAt, filledAt);
-        this.executedPrice = Objects.requireNonNull(executedPrice);
+        this.executedPrice = requirePositive(
+                executedPrice,
+                "Executed price must be greater than zero"
+        );
         this.quantity = requirePositive(quantity, "Quantity must be greater than zero");
         this.notional = requireNonNegative(notional, "Notional must not be negative");
         this.feeAmount = requireNonNegative(feeAmount, "Fee amount must not be negative");
