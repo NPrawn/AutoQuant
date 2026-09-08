@@ -164,6 +164,25 @@ class BacktestRunCommandServiceTest {
         then(strategyRepository).shouldHaveNoInteractions();
     }
 
+    @DisplayName("수수료율이 1 이상이면 백테스트 요청을 거절한다")
+    @Test
+    void rejectFeeRateAtUpperBound() {
+        BacktestRunCommandService service = createService();
+
+        assertThatThrownBy(() -> service.createBacktestRun(MEMBER_ID, validCommand(
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Instant.parse("2026-02-01T00:00:00Z"),
+                "KRW",
+                BigDecimal.valueOf(1_000_000),
+                BigDecimal.ONE,
+                BigDecimal.valueOf(5)
+        ))).isInstanceOfSatisfying(ApiException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.BACKTEST_INVALID_COST)
+        );
+
+        then(strategyRepository).shouldHaveNoInteractions();
+    }
+
     private BacktestRunCommandService createService() {
         return new BacktestRunCommandService(backtestRunRepository, strategyRepository);
     }

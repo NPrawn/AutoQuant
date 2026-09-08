@@ -72,7 +72,9 @@ public class BacktestRunCommandService {
             throw new ApiException(ApiErrorCode.BACKTEST_INVALID_INITIAL_CAPITAL);
         }
         if (command.feeRate() == null || command.slippageBps() == null
-                || command.feeRate().signum() < 0 || command.slippageBps().signum() < 0) {
+                || command.feeRate().signum() < 0
+                || command.feeRate().compareTo(BigDecimal.ONE) >= 0
+                || command.slippageBps().signum() < 0) {
             throw new ApiException(ApiErrorCode.BACKTEST_INVALID_COST);
         }
     }

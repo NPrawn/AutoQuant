@@ -9,12 +9,19 @@ import com.ssafy.a107.auth.jwt.MemberPrincipal;
 import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.common.exception.ApiExceptionHandler;
+import com.ssafy.a107.asset.domain.Asset;
 import com.ssafy.a107.strategy.domain.Strategy;
 import com.ssafy.a107.strategy.domain.dsl.RebalancePeriod;
 import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
+import com.ssafy.a107.trading.backtest.domain.BacktestResult;
+import com.ssafy.a107.trading.backtest.domain.BacktestTrade;
+import com.ssafy.a107.trading.backtest.domain.BacktestEquity;
+import com.ssafy.a107.trading.backtest.domain.BacktestEquityId;
 import com.ssafy.a107.trading.backtest.domain.ExecutionPriceRule;
+import com.ssafy.a107.trading.backtest.domain.PositionSide;
+import com.ssafy.a107.trading.backtest.domain.TradeSide;
 import com.ssafy.a107.trading.backtest.service.BacktestRunCommandService;
 import com.ssafy.a107.trading.backtest.service.BacktestRunReadService;
 import com.ssafy.a107.trading.backtest.service.CreateBacktestRunCommand;
@@ -84,11 +91,7 @@ class BacktestRunControllerTest {
                 .apply(documentationConfiguration(restDocumentation))
                 .build();
         io.restassured.module.mockmvc.RestAssuredMockMvc.mockMvc(mockMvc);
-        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
-                new MemberPrincipal(MEMBER_ID),
-                null,
-                List.of()
-        ));
+        authenticate();
     }
 
     @AfterEach
@@ -249,6 +252,103 @@ class BacktestRunControllerTest {
                 .body("code", equalTo(ApiErrorCode.BACKTEST_NOT_FOUND.getCode()));
     }
 
+    @Test
+    @DisplayName("백테스트 최종 성과를 조회한다")
+    void getBacktestResult() {
+        BacktestResult result = mock(BacktestResult.class);
+        given(result.getBacktestId()).willReturn(BACKTEST_ID);
+        given(result.getFinalAssetValue()).willReturn(new BigDecimal("1100000"));
+        given(result.getCumulativeReturn()).willReturn(new BigDecimal("0.1"));
+        given(result.getCagr()).willReturn(new BigDecimal("0.1"));
+        given(result.getMdd()).willReturn(new BigDecimal("0.05"));
+        given(result.getSharpeRatio()).willReturn(new BigDecimal("1.2"));
+        given(result.getVolatility()).willReturn(new BigDecimal("0.2"));
+        given(result.getWinRate()).willReturn(new BigDecimal("0.5"));
+        given(result.getTradeCount()).willReturn(3);
+        given(result.getTotalFee()).willReturn(new BigDecimal("1000"));
+        given(result.getBenchmarkReturn()).willReturn(new BigDecimal("0.08"));
+        given(backtestRunReadService.getBacktestResult(MEMBER_ID, BACKTEST_ID))
+                .willReturn(result);
+
+        given()
+                .when()
+                .get("/backtests/{backtestId}/result", BACKTEST_ID)
+                .then()
+                .apply(document(
+                        "backtests-result",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Backtest")
+                                .summary("Get backtest result")
+                                .description("Returns the completed backtest performance summary.")
+                                .responseSchema(schema("BacktestResultResponse"))
+                                .build())
+                ))
+                .statusCode(HttpStatus.OK.value())
+                .body("backtestId", equalTo(BACKTEST_ID.toString()))
+                .body("finalAssetValue", equalTo(1100000))
+                .body("tradeCount", equalTo(3))
+                .body("benchmarkReturn", equalTo(0.08F));
+
+        then(backtestRunReadService).should()
+                .getBacktestResult(MEMBER_ID, BACKTEST_ID);
+    }
+
+    @Test
+    @DisplayName("백테스트 체결과 Equity 이력을 페이지로 조회한다")
+    void getBacktestTradesAndEquities() {
+        org.springframework.data.domain.Page<BacktestTrade> trades =
+                new org.springframework.data.domain.PageImpl<>(List.of(backtestTrade()));
+        org.springframework.data.domain.Page<BacktestEquity> equities =
+                new org.springframework.data.domain.PageImpl<>(List.of(backtestEquity()));
+        given(backtestRunReadService.getBacktestTrades(
+                eq(MEMBER_ID),
+                eq(BACKTEST_ID),
+                any()
+        )).willReturn(trades);
+        given(backtestRunReadService.getBacktestEquities(
+                eq(MEMBER_ID),
+                eq(BACKTEST_ID),
+                any()
+        )).willReturn(equities);
+
+        given()
+                .when()
+                .get("/backtests/{backtestId}/trades?page=0&size=20", BACKTEST_ID)
+                .then()
+                .apply(document(
+                        "backtests-trades",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Backtest")
+                                .summary("Get backtest trades")
+                                .description("Returns completed backtest fills in chronological order.")
+                                .responseSchema(schema("BacktestTradePageResponse"))
+                                .build())
+                ))
+                .statusCode(HttpStatus.OK.value())
+                .body("content.size()", equalTo(1))
+                .body("content[0].assetId", equalTo("11111111-1111-1111-1111-111111111111"))
+                .body("content[0].side", equalTo("BUY"));
+
+        authenticate();
+        given()
+                .when()
+                .get("/backtests/{backtestId}/equity?page=0&size=20", BACKTEST_ID)
+                .then()
+                .apply(document(
+                        "backtests-equity",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Backtest")
+                                .summary("Get backtest equity")
+                                .description("Returns the completed backtest equity curve.")
+                                .responseSchema(schema("BacktestEquityPageResponse"))
+                                .build())
+                ))
+                .statusCode(HttpStatus.OK.value())
+                .body("content.size()", equalTo(1))
+                .body("content[0].totalAssetValue", equalTo(1100000))
+                .body("content[0].drawdownRate", equalTo(0.05F));
+    }
+
     private BacktestRun backtestRun() {
         BacktestRun backtestRun = mock(BacktestRun.class);
         Strategy strategy = mock(Strategy.class);
@@ -269,6 +369,51 @@ class BacktestRunControllerTest {
         given(backtestRun.getMarketDataVersion()).willReturn("market-v1");
         given(backtestRun.getQueuedAt()).willReturn(Instant.parse("2026-01-01T00:00:00Z"));
         return backtestRun;
+    }
+
+    private void authenticate() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        new MemberPrincipal(MEMBER_ID),
+                        null,
+                        List.of()
+                )
+        );
+    }
+
+    private BacktestTrade backtestTrade() {
+        UUID assetId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        Asset asset = mock(Asset.class);
+        BacktestTrade trade = mock(BacktestTrade.class);
+        given(trade.getTradeId()).willReturn(UUID.fromString(
+                "22222222-2222-2222-2222-222222222222"
+        ));
+        given(trade.getAsset()).willReturn(asset);
+        given(asset.getAssetId()).willReturn(assetId);
+        given(asset.getExchangeMarketCode()).willReturn("KRW-BTC");
+        given(trade.getPositionSide()).willReturn(PositionSide.LONG);
+        given(trade.getSide()).willReturn(TradeSide.BUY);
+        given(trade.getSignalAt()).willReturn(Instant.parse("2026-01-01T00:00:00Z"));
+        given(trade.getFilledAt()).willReturn(Instant.parse("2026-01-01T01:00:00Z"));
+        given(trade.getExecutedPrice()).willReturn(new BigDecimal("100000"));
+        given(trade.getQuantity()).willReturn(BigDecimal.ONE);
+        given(trade.getNotional()).willReturn(new BigDecimal("100000"));
+        given(trade.getFeeAmount()).willReturn(new BigDecimal("50"));
+        given(trade.getSlippageAmount()).willReturn(new BigDecimal("100"));
+        return trade;
+    }
+
+    private BacktestEquity backtestEquity() {
+        BacktestEquity equity = mock(BacktestEquity.class);
+        given(equity.getId()).willReturn(new BacktestEquityId(
+                BACKTEST_ID,
+                Instant.parse("2026-01-01T00:00:00Z")
+        ));
+        given(equity.getTotalAssetValue()).willReturn(new BigDecimal("1100000"));
+        given(equity.getCashBalance()).willReturn(new BigDecimal("500000"));
+        given(equity.getReturnRate()).willReturn(new BigDecimal("0.1"));
+        given(equity.getDrawdownRate()).willReturn(new BigDecimal("0.05"));
+        return equity;
     }
 
     private FieldDescriptor[] createRequestFields() {
