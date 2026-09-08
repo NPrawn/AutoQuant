@@ -21,3 +21,16 @@
   background: none;
   color: inherit;
 }
+
+/* 화면에는 숨기고 보조기기에만 읽히는 라벨. 목업은 placeholder 만 있어 라벨이 없다. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
