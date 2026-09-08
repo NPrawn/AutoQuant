@@ -58,11 +58,18 @@ def scope_of(category: str) -> str:
 
 
 def evaluate_holdout_case(
-    strategy: Mapping[str, Any] | None, assumptions: list[str]
+    strategy: Mapping[str, Any] | None, assumptions: list[str], attempts: int | None = None
 ) -> dict[str, Any]:
-    """한 응답에서 기계로 판정 가능한 것만 본다. assumptions 의 내용은 채점하지 않는다."""
+    """한 응답에서 기계로 판정 가능한 것만 본다. assumptions 의 내용은 채점하지 않는다.
+
+    `attempts` 가 0이고 전략이 없으면 짧은 경로다. LLM을 부르지 않고 사유만 돌려준
+    정상 동작이라 스키마 실패로 세지 않고 분모에서 뺀다. 홀드아웃의 "전략이 아닌 입력"은
+    이 경로로 빠지는 것이 오히려 맞는 동작이라, 실패로 세면 옳은 동작이 통과율을 깎는다.
+    """
+    short_circuit = attempts == 0 and strategy is None
     scale_errors = find_scale_errors(strategy) if strategy is not None else []
     return {
+        "shortCircuit": short_circuit,
         "schemaOk": strategy is not None,
         "assumptionsOk": bool(assumptions),
         "scaleErrors": scale_errors,
