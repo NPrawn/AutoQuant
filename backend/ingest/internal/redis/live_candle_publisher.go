@@ -66,8 +66,8 @@ func (p *LiveMinuteCandlePublisher) PublishBatch(
 	}
 
 	_, err := p.client.Pipelined(ctx, func(pipe goredis.Pipeliner) error {
-		for _, payload := range payloads {
-			pipe.Publish(ctx, LiveMinuteCandleChannel, payload)
+		for index, payload := range payloads {
+			pipe.Publish(ctx, LiveCandleChannel(checkpoints[index].InProgress.IntervalMinutes), payload)
 		}
 		return nil
 	})

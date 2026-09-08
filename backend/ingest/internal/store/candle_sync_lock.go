@@ -14,12 +14,17 @@ const candleSyncAdvisoryLockID = int64(171001)
 // CandleSyncLock holds one PostgreSQL session advisory lock for a complete run.
 type CandleSyncLock struct {
 	connection *pgxpool.Conn
+	lockID     int64
 }
 
 func TryAcquireCandleSyncLock(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 ) (*CandleSyncLock, bool, error) {
+	return tryAcquireCandleLock(ctx, pool, candleSyncAdvisoryLockID)
+}
+
+func tryAcquireCandleLock(ctx context.Context, pool *pgxpool.Pool, lockID int64) (*CandleSyncLock, bool, error) {
 	connection, err := pool.Acquire(ctx)
 	if err != nil {
 		return nil, false, exception.Wrap(exception.CodeDatabaseUnavailable, err)
@@ -29,7 +34,7 @@ func TryAcquireCandleSyncLock(
 	if err := connection.QueryRow(
 		ctx,
 		"SELECT pg_try_advisory_lock($1)",
-		candleSyncAdvisoryLockID,
+		lockID,
 	).Scan(&acquired); err != nil {
 		closeErr := connection.Conn().Close(ctx)
 		connection.Release()
@@ -43,7 +48,7 @@ func TryAcquireCandleSyncLock(
 		return nil, false, nil
 	}
 
-	return &CandleSyncLock{connection: connection}, true, nil
+	return &CandleSyncLock{connection: connection, lockID: lockID}, true, nil
 }
 
 func (l *CandleSyncLock) Release(ctx context.Context) error {
@@ -58,7 +63,7 @@ func (l *CandleSyncLock) Release(ctx context.Context) error {
 	if err := connection.QueryRow(
 		ctx,
 		"SELECT pg_advisory_unlock($1)",
-		candleSyncAdvisoryLockID,
+		l.lockID,
 	).Scan(&released); err != nil {
 		return errors.Join(
 			exception.Wrap(exception.CodeDatabaseUnavailable, err),
