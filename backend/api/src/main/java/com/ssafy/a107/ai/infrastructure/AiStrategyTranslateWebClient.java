@@ -4,10 +4,12 @@ import com.ssafy.a107.ai.service.port.AiStrategyTranslation;
 import com.ssafy.a107.ai.service.port.AiStrategyTranslator;
 import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
+import com.ssafy.a107.common.logging.RequestIdFilter;
 import com.ssafy.a107.strategy.domain.dsl.StrategyDsl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -62,6 +64,7 @@ public class AiStrategyTranslateWebClient implements AiStrategyTranslator {
             return webClient.post()
                     .uri(TRANSLATE_PATH)
                     .contentType(MediaType.APPLICATION_JSON)
+                    .headers(this::putRequestId)
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(AiTranslateResponse.class)
@@ -98,6 +101,14 @@ public class AiStrategyTranslateWebClient implements AiStrategyTranslator {
             case 504 -> ApiErrorCode.AI_TRANSLATION_TIMEOUT;
             default -> ApiErrorCode.AI_TRANSLATION_INVALID_RESPONSE;
         };
+    }
+
+    /* AI 서버가 같은 이름의 헤더를 읽어 자기 로그의 request_id 로 쓴다. 없으면 저쪽이 새로 만든다. */
+    private void putRequestId(HttpHeaders headers) {
+        String requestId = RequestIdFilter.current();
+        if (requestId != null) {
+            headers.set(RequestIdFilter.HEADER_NAME, requestId);
+        }
     }
 
     private List<String> orEmpty(List<String> values) {
