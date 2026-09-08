@@ -58,7 +58,7 @@ class RedisRecentMinuteCandleCacheTest {
         given(sortedSet.reverseRangeWithScores("candle:1m:recent:" + ASSET_ID, 0, 9))
                 .willThrow(new DataAccessResourceFailureException("redis unavailable"));
 
-        assertThat(cache.findRecent(ASSET_ID, 10)).isEmpty();
+        assertThat(cache.findRecent(ASSET_ID, 1, 10)).isEmpty();
     }
 
     @Test
@@ -67,7 +67,7 @@ class RedisRecentMinuteCandleCacheTest {
         given(redis.execute(ArgumentMatchers.<RedisScript<Long>>any(), anyList(), any(Object[].class)))
                 .willThrow(new DataAccessResourceFailureException("redis unavailable"));
 
-        assertThatCode(() -> cache.fillMissing(ASSET_ID, List.of(candle(0)))).doesNotThrowAnyException();
+        assertThatCode(() -> cache.fillMissing(ASSET_ID, 1, List.of(candle(0)))).doesNotThrowAnyException();
     }
 
     @Test
@@ -81,6 +81,6 @@ class RedisRecentMinuteCandleCacheTest {
                                 (double) OPEN_TIME)
                 ));
 
-        assertThat(cache.findRecent(ASSET_ID, 10)).isEmpty();
+        assertThat(cache.findRecent(ASSET_ID, 1, 10)).isEmpty();
     }
 }

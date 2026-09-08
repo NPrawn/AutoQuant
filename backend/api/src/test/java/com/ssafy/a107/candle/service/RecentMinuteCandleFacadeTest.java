@@ -37,9 +37,9 @@ class RecentMinuteCandleFacadeTest {
     @DisplayName("요청 개수만큼 캐시가 있으면 DB에 접근하지 않는다")
     void returnCacheHit() {
         List<MinuteCandleSnapshot> cached = List.of(candle(1), candle(2));
-        given(cache.findRecent(ASSET_ID, 2)).willReturn(cached);
+        given(cache.findRecent(ASSET_ID, 1, 2)).willReturn(cached);
 
-        assertThat(facade.findRecent(ASSET_ID, 2)).containsExactlyElementsOf(cached);
+        assertThat(facade.findRecent(ASSET_ID, 1, 2)).containsExactlyElementsOf(cached);
         then(readService).shouldHaveNoInteractions();
     }
 
@@ -48,41 +48,41 @@ class RecentMinuteCandleFacadeTest {
     void fillCacheAndSliceLatest() {
         List<MinuteCandleSnapshot> stored = IntStream.range(0, 1000)
                 .mapToObj(RecentMinuteCandleFixtures::candle).toList();
-        given(cache.findRecent(ASSET_ID, 2)).willReturn(List.of());
-        given(readService.findRecent(ASSET_ID)).willReturn(stored);
+        given(cache.findRecent(ASSET_ID, 1, 2)).willReturn(List.of());
+        given(readService.findRecent(ASSET_ID, 1)).willReturn(stored);
 
-        assertThat(facade.findRecent(ASSET_ID, 2)).containsExactly(candle(998), candle(999));
-        then(cache).should().fillMissing(ASSET_ID, stored);
+        assertThat(facade.findRecent(ASSET_ID, 1, 2)).containsExactly(candle(998), candle(999));
+        then(cache).should().fillMissing(ASSET_ID, 1, stored);
     }
 
     @Test
     @DisplayName("일부 캐시만 있으면 충분한 과거 봉을 DB에서 보충한다")
     void supplementPartialCache() {
-        given(cache.findRecent(ASSET_ID, 3)).willReturn(List.of(candle(3)));
+        given(cache.findRecent(ASSET_ID, 1, 3)).willReturn(List.of(candle(3)));
         List<MinuteCandleSnapshot> stored = List.of(candle(1), candle(2), candle(3));
-        given(readService.findRecent(ASSET_ID)).willReturn(stored);
+        given(readService.findRecent(ASSET_ID, 1)).willReturn(stored);
 
-        assertThat(facade.findRecent(ASSET_ID, 3)).containsExactlyElementsOf(stored);
-        then(cache).should().fillMissing(ASSET_ID, stored);
+        assertThat(facade.findRecent(ASSET_ID, 1, 3)).containsExactlyElementsOf(stored);
+        then(cache).should().fillMissing(ASSET_ID, 1, stored);
     }
 
     @Test
     @DisplayName("DB에도 봉이 없으면 빈 목록을 반환하고 빈 캐시를 저장하지 않는다")
     void returnEmptyHistory() {
-        given(cache.findRecent(ASSET_ID, 1000)).willReturn(List.of());
-        given(readService.findRecent(ASSET_ID)).willReturn(List.of());
+        given(cache.findRecent(ASSET_ID, 1, 1000)).willReturn(List.of());
+        given(readService.findRecent(ASSET_ID, 1)).willReturn(List.of());
 
-        assertThat(facade.findRecent(ASSET_ID, 1000)).isEmpty();
-        then(cache).should().findRecent(ASSET_ID, 1000);
+        assertThat(facade.findRecent(ASSET_ID, 1, 1000)).isEmpty();
+        then(cache).should().findRecent(ASSET_ID, 1, 1000);
         then(cache).shouldHaveNoMoreInteractions();
     }
 
     @Test
     @DisplayName("요청보다 봉이 적으면 존재하는 봉만 반환한다")
     void returnShortHistory() {
-        given(cache.findRecent(ASSET_ID, 1000)).willReturn(List.of());
-        given(readService.findRecent(ASSET_ID)).willReturn(List.of(candle(0)));
+        given(cache.findRecent(ASSET_ID, 1, 1000)).willReturn(List.of());
+        given(readService.findRecent(ASSET_ID, 1)).willReturn(List.of(candle(0)));
 
-        assertThat(facade.findRecent(ASSET_ID, 1000)).containsExactly(candle(0));
+        assertThat(facade.findRecent(ASSET_ID, 1, 1000)).containsExactly(candle(0));
     }
 }

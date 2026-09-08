@@ -57,7 +57,7 @@ class MinuteCandleRepositoryIntegrationTest {
         insertCandles(ethereum, 1, 1);
         entityManager.clear();
 
-        List<MinuteCandleSnapshot> candles = service.findRecent(bitcoin);
+        List<MinuteCandleSnapshot> candles = service.findRecent(bitcoin, 1);
 
         assertThat(candles).hasSize(1000);
         assertThat(candles).allMatch(candle -> candle.assetId().equals(bitcoin));
@@ -70,9 +70,25 @@ class MinuteCandleRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("조회 간격이 다른 봉과 다른 종목의 봉을 섞지 않는다")
+    void readSelectedInterval() {
+        UUID bitcoin = UUID.randomUUID();
+        UUID ethereum = UUID.randomUUID();
+        insertAsset(bitcoin, "BTC");
+        insertAsset(ethereum, "ETH");
+        insertCandles(bitcoin, 1, 3);
+        insertCandles(bitcoin, 5, 1);
+        insertCandles(ethereum, 5, 2);
+        entityManager.clear();
+
+        assertThat(service.findRecent(bitcoin, 5)).singleElement()
+                .satisfies(candle -> assertThat(candle.assetId()).isEqualTo(bitcoin));
+    }
+
+    @Test
     @DisplayName("봉이 없는 자산 UUID 조회는 빈 목록을 반환한다")
     void readEmptyHistory() {
-        assertThat(service.findRecent(UUID.randomUUID())).isEmpty();
+        assertThat(service.findRecent(UUID.randomUUID(), 1)).isEmpty();
     }
 
     private void insertAsset(UUID assetId, String currency) {
