@@ -70,10 +70,52 @@ public class BacktestEquity {
     ) {
         this.id = Objects.requireNonNull(id);
         this.backtestRun = Objects.requireNonNull(backtestRun);
-        this.totalAssetValue = Objects.requireNonNull(totalAssetValue);
-        this.cashBalance = Objects.requireNonNull(cashBalance);
-        this.returnRate = Objects.requireNonNull(returnRate);
-        this.drawdownRate = Objects.requireNonNull(drawdownRate);
+        this.totalAssetValue = requireNonNegative(
+                totalAssetValue,
+                "Total asset value must not be negative"
+        );
+        this.cashBalance = requireNonNegative(
+                cashBalance,
+                "Cash balance must not be negative"
+        );
+        this.returnRate = requireAtLeastNegativeOne(returnRate);
+        this.drawdownRate = requireRate(drawdownRate);
+
+        if (this.cashBalance.compareTo(this.totalAssetValue) > 0) {
+            throw new IllegalArgumentException(
+                    "Cash balance must not exceed total asset value"
+            );
+        }
+    }
+
+    private static BigDecimal requireNonNegative(
+            BigDecimal value,
+            String message
+    ) {
+        if (value == null || value.signum() < 0) {
+            throw new IllegalArgumentException(message);
+        }
+        return value;
+    }
+
+    private static BigDecimal requireAtLeastNegativeOne(BigDecimal value) {
+        if (value == null || value.compareTo(BigDecimal.ONE.negate()) < 0) {
+            throw new IllegalArgumentException(
+                    "Return rate must not be less than -1"
+            );
+        }
+        return value;
+    }
+
+    private static BigDecimal requireRate(BigDecimal value) {
+        if (value == null
+                || value.signum() < 0
+                || value.compareTo(BigDecimal.ONE) > 0) {
+            throw new IllegalArgumentException(
+                    "Drawdown rate must be between 0 and 1"
+            );
+        }
+        return value;
     }
 
     public BacktestEquityId getId() {
