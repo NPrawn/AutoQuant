@@ -1,19 +1,12 @@
 package com.ssafy.a107.trading.backtest.engine.marketdata;
 
 import com.ssafy.a107.strategy.domain.dsl.*;
-import jakarta.servlet.Filter;
 import org.springframework.stereotype.Component;
 
 import java.util.Objects;
 
 @Component
 public class BacktestWarmupCandleCountResolver {
-
-    private final Filter filter;
-
-    public BacktestWarmupCandleCountResolver(Filter filter) {
-        this.filter = filter;
-    }
 
     public int resolve(StrategyDsl strategyDsl) {
         Objects.requireNonNull(strategyDsl);
