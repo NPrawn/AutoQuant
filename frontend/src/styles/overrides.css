@@ -35,3 +35,11 @@ dialog.mbd {
 dialog.mbd::backdrop {
   background: transparent;
 }
+
+/*
+ * 목업은 .mbd.on 으로 모달을 켰지만 dialog 는 open 속성이 켜짐의 기준이다. .on 이 항상
+ * 붙어 있어 닫힌 dialog 의 기본 display:none 을 덮어쓰므로 닫힘 상태를 다시 숨긴다.
+ */
+dialog.mbd:not([open]) {
+  display: none;
+}
