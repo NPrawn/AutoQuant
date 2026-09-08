@@ -5,7 +5,10 @@ import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.strategy.domain.Strategy;
 import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
+import com.ssafy.a107.trading.backtest.messaging.BacktestJobMessage;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
+import com.ssafy.a107.trading.backtest.messaging.BacktestJobQueuedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,13 +22,16 @@ public class BacktestRunCommandService {
 
     private final BacktestRunRepository backtestRunRepository;
     private final StrategyRepository strategyRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public BacktestRunCommandService(
             BacktestRunRepository backtestRunRepository,
-            StrategyRepository strategyRepository
+            StrategyRepository strategyRepository,
+            ApplicationEventPublisher applicationEventPublisher
     ) {
         this.backtestRunRepository = backtestRunRepository;
         this.strategyRepository = strategyRepository;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     public BacktestRun createBacktestRun(UUID memberId, CreateBacktestRunCommand command) {
@@ -51,7 +57,16 @@ public class BacktestRunCommandService {
                 command.marketDataVersion(),
                 Instant.now()
         );
-        return backtestRunRepository.save(backtestRun);
+
+        BacktestRun savedBacktestRun = backtestRunRepository.save(backtestRun);
+
+        applicationEventPublisher.publishEvent(
+                new BacktestJobQueuedEvent(
+                        BacktestJobMessage.from(UUID.randomUUID(), savedBacktestRun)
+                )
+        );
+
+        return savedBacktestRun;
     }
 
     private void validate(CreateBacktestRunCommand command) {
