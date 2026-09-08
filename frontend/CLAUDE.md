@@ -26,7 +26,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 로그인은 사이드바가 없는 화면이라 공통 레이아웃 라우트(`AppShell`) 바깥에 둔다.
 - 상단바 제목은 라우트 정의의 `handle.title`로 정하고 페이지 컴포넌트가 제목을 그리지 않는다.
 - 사이드바 항목은 `src/app/navigation.tsx`에만 추가한다.
-- 모달은 네이티브 `dialog`를 `showModal()`로 열고 겉모습만 목업의 `.mbd`·`.modal`을 쓴다. 포커스 트랩, Esc 닫기, 바깥 요소 비활성화는 브라우저에 맡기고 직접 구현하지 않는다.
+- 모달은 네이티브 `dialog`를 `showModal()`로 열고 겉모습만 목업의 `.mbd`·`.modal`을 쓴다. 포커스 트랩, Esc 닫기, 바깥 요소 비활성화는 브라우저에 맡기고 직접 구현하지 않는다. 되돌릴 수 없는 동작의 확인은 `src/components/ConfirmDialog`를 쓴다.
 - 드롭다운 메뉴는 열렸을 때만 렌더링하고 바깥 `pointerdown`과 Esc 로 닫으며, 닫힐 때 여는 버튼으로 포커스를 되돌린다.
 - 정의되지 않은 경로는 `NotFoundPage`가 받는다.
 

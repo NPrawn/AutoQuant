@@ -107,3 +107,13 @@
 .bot-notes li.change { color: var(--good-ink); }
 .bot-notes li.assumption { color: var(--ink-3); }
 .bot-notes li.warning { color: var(--warn-ink); }
+
+/* 삭제처럼 되돌릴 수 없는 확정 버튼. 색 계약상 오류는 주황(--crit)이고 빨강은 상승에 쓴다. */
+.btn.primary.danger {
+  background: var(--crit);
+  border-color: var(--crit);
+  color: #fff;
+}
+.btn.primary.danger:hover {
+  filter: brightness(1.08);
+}

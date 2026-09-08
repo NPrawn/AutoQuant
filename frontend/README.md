@@ -44,11 +44,11 @@ src/
 │   └── layout/           AppShell, Sidebar, Topbar, AccountMenu, LogoutConfirmModal
 ├── api/                  request 함수, ApiError
 ├── auth/                 인증 API, 회원 모델, useCurrentMember, RequireAuth, GuestOnly, 세션 만료 처리
-├── components/           LoadingState, EmptyState, ErrorState
+├── components/           LoadingState, EmptyState, ErrorState, ConfirmDialog
 ├── strategy/             전략 DSL 계약 타입, 표시 문구, 빌더 편집 상태(순수 함수), 빌더 진입 상태
-│   ├── builder/          빌더 블록 컴포넌트(조건·순위·재선정·요약 카드)
+│   ├── builder/          StrategyEditor(빌더 본체)와 블록 컴포넌트(조건·순위·재선정·요약 카드)
 │   └── assistant/        전략봇 패널과 대화 상태
-│   (api.ts 변환·저장 호출, queries.ts 뮤테이션, translateErrorMessage.ts 변환 실패 문구)
+│   (api.ts 변환·저장·조회·삭제 호출, queries.ts 쿼리·뮤테이션, summary.ts DSL 요약 문장, *ErrorMessage.ts 실패 문구)
 ├── pages/                화면, 목업 번호와 1:1
 ├── styles/               디자인 시스템
 └── mocks/                API 연동 전 표시용 더미
@@ -104,6 +104,17 @@ RequireAuth → GET /api/members/me → 200 이면 셸 렌더, 401 이면 /login
 ```
 
 조건이 하나도 없는 전략은 `currentStrategy`를 보내지 않는다. 백엔드가 빈 조건 그룹을 거부하기 때문이다. 변환 실패 문구는 `src/strategy/translateErrorMessage.ts`에 있고, 첫 변환이 실패하면 블록 위에 재시도 안내를 보인다.
+
+## 전략 목록·상세
+
+```text
+/strategies              GET /api/strategies → 표. 상태·수익률·낙폭은 백테스트 결과 API 가 없어 초안·빈 값
+/strategies/:id[/tab]    GET /api/strategies/:id → 성과(빈 상태) · 전략 구성(DSL 문장) · 전략 코드(JSON)
+/strategies/:id/edit     같은 조회로 초안을 만들어 StrategyEditor 를 수정 모드로. 저장은 새 전략 생성
+삭제                     ConfirmDialog → DELETE /api/strategies/:id → 목록
+```
+
+공개·복제 버튼은 백엔드가 없어 비활성이다. 백테스트 실행은 `state.strategyId`(`src/strategy/backtestEntry.ts`)를 들고 `/backtest`로 간다.
 
 ## 백엔드 호출
 
