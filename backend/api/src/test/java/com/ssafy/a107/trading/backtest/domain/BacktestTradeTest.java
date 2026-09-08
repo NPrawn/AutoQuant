@@ -73,6 +73,19 @@ class BacktestTradeTest {
                 ));
     }
 
+    @DisplayName("체결 가격은 0보다 커야 한다")
+    @Test
+    void rejectZeroExecutedPrice() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> createTrade(
+                        FILLED_AT,
+                        BigDecimal.ONE,
+                        BigDecimal.ZERO,
+                        BigDecimal.valueOf(50),
+                        BigDecimal.valueOf(5)
+                ));
+    }
+
     @DisplayName("수수료 금액은 음수일 수 없다")
     @Test
     void rejectNegativeFeeAmount() {
@@ -91,6 +104,22 @@ class BacktestTradeTest {
             BigDecimal feeAmount,
             BigDecimal slippageAmount
     ) {
+        return createTrade(
+                filledAt,
+                quantity,
+                BigDecimal.valueOf(100_000),
+                feeAmount,
+                slippageAmount
+        );
+    }
+
+    private BacktestTrade createTrade(
+            Instant filledAt,
+            BigDecimal quantity,
+            BigDecimal executedPrice,
+            BigDecimal feeAmount,
+            BigDecimal slippageAmount
+    ) {
         return new BacktestTrade(
                 backtestRun(),
                 asset(),
@@ -98,7 +127,7 @@ class BacktestTradeTest {
                 TradeSide.BUY,
                 SIGNAL_AT,
                 filledAt,
-                BigDecimal.valueOf(100_000),
+                executedPrice,
                 quantity,
                 BigDecimal.valueOf(100_000),
                 feeAmount,
