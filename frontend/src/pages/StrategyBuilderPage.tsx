@@ -1,7 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 
 import { routes } from '../app/routes'
+import { AssistantPanel } from '../strategy/assistant/AssistantPanel'
+import {
+  appendAssistantMessage,
+  appendUserMessage,
+  createConversation,
+  describeStrategy,
+  setPending,
+  suggestedQuestions,
+} from '../strategy/assistant/conversation'
 import { readBuilderEntry } from '../strategy/builderEntry'
 import { FilterBlock } from '../strategy/builder/FilterBlock'
 import { RankingBlock } from '../strategy/builder/RankingBlock'
@@ -20,6 +29,10 @@ import {
 } from '../strategy/draft'
 import { strategyNameMaxLength } from '../strategy/types'
 
+/* 변환 API 가 붙기 전까지 전략봇이 하는 답. 연동 작업에서 실제 응답으로 바뀐다. */
+const interimReply = '변환 서비스는 아직 연결 전입니다. 블록의 값은 직접 바꿀 수 있고, 연결되면 여기서 문장으로 바꿔 드립니다.'
+const interimReplyDelayMs = 600
+
 /*
  * 전략 빌더(목업 19). 편집 상태는 draft.ts 의 순수 함수로만 바꾼다. 홈에서 넘어온 목표 문장은
  * 요약 카드에 보이고, 그 문장으로 블록을 채우는 변환 호출과 저장 호출은 다음 작업에서 연결한다.
@@ -33,6 +46,21 @@ export function StrategyBuilderPage() {
   const [draft, setDraft] = useState(createEmptyDraft)
   const [showIssues, setShowIssues] = useState(false)
   const issues = validateDraft(draft)
+
+  const [conversation, setConversation] = useState(createConversation)
+  const replyTimer = useRef<number | null>(null)
+  useEffect(() => () => {
+    if (replyTimer.current !== null) {
+      window.clearTimeout(replyTimer.current)
+    }
+  }, [])
+
+  const handleAsk = (text: string) => {
+    setConversation((current) => setPending(appendUserMessage(current, text), true))
+    replyTimer.current = window.setTimeout(() => {
+      setConversation((current) => appendAssistantMessage(current, interimReply))
+    }, interimReplyDelayMs)
+  }
 
   const handleSave = () => {
     setShowIssues(true)
@@ -99,6 +127,13 @@ export function StrategyBuilderPage() {
           <StrategySummaryCard draft={draft} goal={entry?.prompt ?? null} issues={showIssues ? issues : []} />
         </aside>
       </div>
+
+      <AssistantPanel
+        conversation={conversation}
+        opening={describeStrategy(draft)}
+        suggestions={suggestedQuestions}
+        onSend={handleAsk}
+      />
     </section>
   )
 }
