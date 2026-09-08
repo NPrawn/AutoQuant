@@ -1,6 +1,9 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { translateStrategy } from './api'
+import { createStrategy, translateStrategy } from './api'
+
+/* 전략 목록·상세 쿼리의 키 뿌리. 저장이 성공하면 이 키 아래를 무효화한다. */
+export const strategiesQueryKey = ['strategies'] as const
 
 /*
  * 변환은 같은 입력에도 답이 달라질 수 있는 쓰기 성격의 호출이라 쿼리가 아니라 뮤테이션이다.
@@ -8,4 +11,13 @@ import { translateStrategy } from './api'
  */
 export function useTranslateStrategy() {
   return useMutation({ mutationFn: translateStrategy })
+}
+
+export function useCreateStrategy() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: createStrategy,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: strategiesQueryKey }),
+  })
 }
