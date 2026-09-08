@@ -99,6 +99,8 @@ RequireAuth → GET /api/members/me → 200 이면 셸 렌더, 401 이면 /login
 홈 입력 → /strategies/new (state.prompt) → POST /api/ai/strategies/translate { userInput }
         → 응답 strategy 로 블록을 채우고 meta.changes/assumptions/warnings 를 전략봇 말풍선에 붙인다
 전략봇 입력 → POST … { userInput, currentStrategy: 지금 블록 } → 같은 방식으로 블록 교체
+전략 저장 → validateDraft 통과 → POST /api/strategies { name, description?, strategyDsl } → 201 → /strategies/:id
+         → 실패 시 블록 자리에 ErrorState(400 은 필드별 항목), 편집 내용 유지
 ```
 
 조건이 하나도 없는 전략은 `currentStrategy`를 보내지 않는다. 백엔드가 빈 조건 그룹을 거부하기 때문이다. 변환 실패 문구는 `src/strategy/translateErrorMessage.ts`에 있고, 첫 변환이 실패하면 블록 위에 재시도 안내를 보인다.
