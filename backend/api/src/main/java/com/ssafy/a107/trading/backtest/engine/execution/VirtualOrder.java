@@ -23,7 +23,7 @@ public record VirtualOrder(
         positionSide = Objects.requireNonNull(positionSide);
         side = Objects.requireNonNull(side);
         signalAt = Objects.requireNonNull(signalAt);
-        filledAt = requireAfterSignal(signalAt, filledAt);
+        filledAt = requireAtOrAfterSignal(signalAt, filledAt);
         referencePrice = requirePositive(
                 referencePrice,
                 "Reference price must be greater than zero"
@@ -34,13 +34,13 @@ public record VirtualOrder(
         );
     }
 
-    private static Instant requireAfterSignal(
+    private static Instant requireAtOrAfterSignal(
             Instant signalAt,
             Instant filledAt
     ) {
-        if (filledAt == null || !signalAt.isBefore(filledAt)) {
+        if (filledAt == null || filledAt.isBefore(signalAt)) {
             throw new IllegalArgumentException(
-                    "Filled at must be after signal at"
+                    "Filled at must not be before signal at"
             );
         }
         return filledAt;

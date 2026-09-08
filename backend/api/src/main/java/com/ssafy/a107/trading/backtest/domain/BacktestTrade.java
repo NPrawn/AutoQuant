@@ -132,7 +132,7 @@ public class BacktestTrade {
         this.positionSide = Objects.requireNonNull(positionSide);
         this.side = Objects.requireNonNull(side);
         this.signalAt = Objects.requireNonNull(signalAt);
-        this.filledAt = requireFilledAfterSignal(signalAt, filledAt);
+        this.filledAt = requireFilledAtOrAfterSignal(signalAt, filledAt);
         this.executedPrice = requirePositive(
                 executedPrice,
                 "Executed price must be greater than zero"
@@ -147,13 +147,13 @@ public class BacktestTrade {
         this.reason = normalizeReason(reason);
     }
 
-    private static Instant requireFilledAfterSignal(
+    private static Instant requireFilledAtOrAfterSignal(
             Instant signalAt,
             Instant filledAt
     ) {
-        if (filledAt == null || !signalAt.isBefore(filledAt)) {
+        if (filledAt == null || filledAt.isBefore(signalAt)) {
             throw new IllegalArgumentException(
-                    "Filled at must be after signal at"
+                    "Filled at must not be before signal at"
             );
         }
         return filledAt;
