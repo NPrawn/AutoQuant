@@ -34,3 +34,39 @@
   white-space: nowrap;
   border: 0;
 }
+
+/* 빌더 상단의 전략 이름 입력. 목업은 제목을 글자로만 그려 입력 칸이 없다. h1 과 같은 모양으로 둔다. */
+.page-title-input {
+  display: block;
+  width: 100%;
+  max-width: 640px;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-max);
+  font-family: "Gothic A1", sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.3;
+}
+.page-title-input::placeholder {
+  color: var(--ink-4);
+  font-weight: 500;
+}
+.page-title-input:focus-visible {
+  outline: none;
+  border-radius: 0;
+  border-bottom-color: var(--accent);
+}
+.page-title-input[aria-invalid='true'] {
+  border-bottom-color: var(--crit);
+}
+
+/* 조건 한도에 닿으면 추가 버튼을 비활성으로 둔다. 목업엔 이 상태가 없다. */
+.add-cond:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
