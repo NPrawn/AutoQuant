@@ -32,7 +32,7 @@ src/main/resources/
 | `member` | 외부 로그인 식별자, 회원 프로필·상태 | 비밀번호, 인증 제공자 토큰 |
 | `asset` | 거래소 마켓, 기준·상대 통화, 거래지원 상태 | 회원 잔액, 포지션 |
 | `auth` | SSAFY SSO 연동, JWT 발급·검증 | 회원 프로필, 비밀번호·인증 제공자 토큰 저장 |
-| `candle` | 확정 분봉 엔티티·조회 | 시세 수집, Redis·Kafka 쓰기 |
+| `candle` | 확정 분봉 조회, Redis 최근 봉 조회·캐시 보충 | 시세 수집, 확정 봉 DB 쓰기, Kafka 접근 |
 | `realtime` | Redis 이벤트 수신·검증, 종목별 WebSocket 중계 | DB 접근, 봉 집계, 재전송 |
 | `trading` | 모의투자 주문·체결, 백테스팅 엔진 | 시세 수집, 랭킹 |
 
@@ -104,6 +104,49 @@ POST /api/admin/assets
 요청에는 `exchange`와 `exchangeMarketCode`만 받는다. API가 Upbit 공개 페어 목록에서 실제 거래지원 여부와 종목명을 검증한 뒤 `reference.asset`과 `ops.market_data_collection_target`을 함께 저장한다.
 
 `collectionStatus=ENABLED`는 API가 기록하는 수집 희망 상태다. Go Producer는 이 목록을 주기적으로 읽어 Upbit WebSocket 구독을 갱신하며, 실제 연결 상태를 이 값에 다시 기록하지 않는다.
+
+## 최근 확정 1분봉 조회
+
+```http
+GET /api/assets/{assetId}/candles/1m?limit=1000
+```
+
+기존 JWT 쿠키 또는 Bearer 인증으로 호출한다. `assetId`는 종목의 UUID이며, `limit`은 1~1,000(생략 시 1,000)이다. 최신 봉을 선택한 뒤 **봉 시작 시간 오름차순**으로 반환한다.
+
+```json
+{
+  "assetId": "11111111-1111-1111-1111-111111111111",
+  "intervalMinutes": 1,
+  "candles": [
+    {
+      "openTimeUnixMilli": 1800000000000,
+      "openPrice": "100.123456789012",
+      "highPrice": "101",
+      "lowPrice": "99",
+      "closePrice": "100",
+      "tradeVolume": "0.123456789012345678",
+      "tradeAmount": "12.12345678",
+      "lastEventTimeUnixMilli": 1800000059999
+    }
+  ]
+}
+```
+
+- 가격·수량·거래대금은 정밀도를 보존하는 문자열, 시간은 UTC Unix millisecond다. 확정 봉만 반환하며 진행 봉은 기존 `/topic/markets/{marketCode}/candles/1m` 구독으로 받는다.
+- Redis `candle:1m:recent:{assetId}` Sorted Set에 요청 개수만큼 있으면 바로 반환한다. 캐시가 없거나 부족하거나 읽기에 실패하면 PostgreSQL의 해당 종목 1분봉만 최신 1,000개까지 조회한다. 별도 count 쿼리는 실행하지 않는다.
+- DB 조회 결과는 Go와 같은 JSON 계약으로 캐시에 보충한다. Lua로 비어 있는 score(봉 시작 시간)만 채우고 최신 1,000개를 유지하므로, 이미 캐시에 있는 봉을 오래된 조회 결과로 덮어쓰지 않는다. 캐시 쓰기 실패에도 DB 결과를 반환한다.
+- DB에 봉이 적으면 있는 만큼, 없으면 `200`과 빈 `candles`를 반환한다. 별도 종목 존재 조회는 하지 않아 미등록 UUID도 빈 목록이다. 잘못된 UUID·limit은 `400 COMMON-400-001`이다.
+- 거래가 없는 시간을 인위적인 봉으로 채우지 않는다. 기간 검색·과거 페이지 조회·진행 봉 스냅샷은 제공하지 않는다. 실제 이력이 limit보다 짧으면 다음 요청도 DB 조회로 최신 이력을 확인한다.
+
+패키지는 Controller → Facade → 캐시 port / DB ReadService로 나눈다. DB 트랜잭션은 cache miss 이후의 ReadService에서만 열고, 캐시 형식·오류 처리는 Redis adapter가 담당한다. 성공·400 응답과 사용법은 RestAssuredMockMvc + REST Docs 테스트에서 OpenAPI로 생성한다.
+
+전용 Redis·PostgreSQL을 준비한 경우 아래 환경변수로 실제 캐시 계약·조회 쿼리 테스트를 추가 실행한다. PostgreSQL은 테스트 전용 `candle_test` DB/사용자/비밀번호를 사용하고 Flyway로 스키마를 적용한다. 공용·운영 인스턴스를 지정하지 않는다.
+
+```powershell
+$env:CANDLE_TEST_REDIS_PORT = '16379'
+$env:CANDLE_TEST_DB_PORT = '15432'
+.\gradlew.bat test --tests 'com.ssafy.a107.candle.*' --rerun-tasks
+```
 
 ## 실시간 시세 WebSocket
 
@@ -215,7 +258,7 @@ id:eth-trades
 - Redis 수신 DTO는 `realtime/infrastructure/redis`, 내부 이벤트는 `realtime/domain`, 발행 경계는 `realtime/service/RealtimeEventPublisher`에 둔다. WebSocket adapter는 응답 DTO로 변환해 내장 STOMP 브로커에 발행한다.
 - Redis 수신은 단일 실행 스레드로 순서를 유지한다. 공용 대기 큐는 2,048건으로 제한하며 가득 차면 가장 오래 대기한 알림을 버리고 최신 갱신을 받는다. 사용자별 재전송 버퍼는 없다.
 - 필수 필드·UUID·종목 코드·ASK/BID·양수 시간/순번·1분 간격을 검증한다. 잘못된 메시지와 중계 실패는 원문 없이 경고 로그를 남기고 이후 수신을 계속한다.
-- Pub/Sub은 best-effort다. 중단·과부하 중 빠진 메시지는 재전송하지 않으며 체결과 진행 봉 두 채널 사이의 동기화도 보장하지 않는다. 초기 차트 조회·재연결 스냅샷 복구 API는 별도 작업이다.
+- Pub/Sub은 best-effort다. 중단·과부하 중 빠진 메시지는 재전송하지 않으며 체결과 진행 봉 두 채널 사이의 동기화도 보장하지 않는다. 초기 확정 봉은 최근 1분봉 조회 API로 읽는다. 진행 봉 스냅샷 복구는 별도 작업이다.
 
 기본 `build`는 외부 Redis 없이 실제 내장 서버의 JWT handshake, 종목별 구독/해제, 메시지 라우팅과 보안 정책을 검증한다. 전용 테스트 Redis의 로컬 포트를 지정하면 실제 Pub/Sub 및 다중 인스턴스 테스트도 실행한다. 운영/공용 Redis를 테스트 대상으로 사용하지 않는다.
 
