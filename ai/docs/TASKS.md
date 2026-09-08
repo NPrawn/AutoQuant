@@ -351,8 +351,8 @@ H-3 → L-3 → L-4 → L-5 → L-6
 
 ## 미결로 남아 배정 전 확인이 필요한 것
 
-| 항목 | 영향받는 작업 |
-|---|---|
-| 결정 6 — 미니 백테스터 포함 여부 | 전체 일정 |
+**없다 (2026-09-08 기준).**
 
-결정 4·5는 2026-08-27 확정됐다. [DECISIONS.md](DECISIONS.md) 확정 로그 참조.
+마지막까지 남아 있던 결정 6(미니 백테스터)은 **안 만드는 것으로 닫혔다.** 백엔드 `strategy/engine/StrategyExecutionPipeline`이 우리 DSL을 실제로 실행하면서 "이 DSL이 실행 가능한 명세인가"에 이미 답했다. 근거는 [DECISIONS.md](DECISIONS.md)의 "닫힌 미결"에 있다.
+
+확정 로그 전체는 [DECISIONS.md](DECISIONS.md)를 본다.
