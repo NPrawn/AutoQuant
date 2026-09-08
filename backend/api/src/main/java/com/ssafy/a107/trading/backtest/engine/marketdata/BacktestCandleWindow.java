@@ -86,7 +86,7 @@ public record BacktestCandleWindow(
         for (MinuteCandle candle : candles) {
             if (!assetId.equals(candle.getId().getAssetId())) {
                 throw new IllegalArgumentException(
-                        "Candle asset must match map ket"
+                        "Candle asset must match map key"
                 );
             }
 
