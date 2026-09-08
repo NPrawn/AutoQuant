@@ -5,8 +5,11 @@ import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.trading.backtest.controller.request.CreateBacktestRunRequest;
 import com.ssafy.a107.trading.backtest.controller.response.BacktestRunCreatedResponse;
+import com.ssafy.a107.trading.backtest.controller.response.BacktestEquityPageResponse;
 import com.ssafy.a107.trading.backtest.controller.response.BacktestRunPageResponse;
 import com.ssafy.a107.trading.backtest.controller.response.BacktestRunResponse;
+import com.ssafy.a107.trading.backtest.controller.response.BacktestResultResponse;
+import com.ssafy.a107.trading.backtest.controller.response.BacktestTradePageResponse;
 import com.ssafy.a107.trading.backtest.service.BacktestRunCommandService;
 import com.ssafy.a107.trading.backtest.service.BacktestRunReadService;
 import jakarta.validation.Valid;
@@ -79,5 +82,57 @@ public class BacktestRunController {
         return BacktestRunResponse.from(
                 backtestRunReadService.getBacktestRun(principal.memberId(), backtestId)
         );
+    }
+
+    @GetMapping("/{backtestId}/result")
+    public BacktestResultResponse getBacktestResult(
+            @AuthenticationPrincipal MemberPrincipal principal,
+            @PathVariable UUID backtestId
+    ) {
+        return BacktestResultResponse.from(
+                backtestRunReadService.getBacktestResult(
+                        principal.memberId(),
+                        backtestId
+                )
+        );
+    }
+
+    @GetMapping("/{backtestId}/trades")
+    public BacktestTradePageResponse getBacktestTrades(
+            @AuthenticationPrincipal MemberPrincipal principal,
+            @PathVariable UUID backtestId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) @Min(1) @Max(MAX_PAGE_SIZE) int size
+    ) {
+        return BacktestTradePageResponse.from(
+                backtestRunReadService.getBacktestTrades(
+                        principal.memberId(),
+                        backtestId,
+                        pageRequest(page, size)
+                )
+        );
+    }
+
+    @GetMapping("/{backtestId}/equity")
+    public BacktestEquityPageResponse getBacktestEquities(
+            @AuthenticationPrincipal MemberPrincipal principal,
+            @PathVariable UUID backtestId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) @Min(1) @Max(MAX_PAGE_SIZE) int size
+    ) {
+        return BacktestEquityPageResponse.from(
+                backtestRunReadService.getBacktestEquities(
+                        principal.memberId(),
+                        backtestId,
+                        pageRequest(page, size)
+                )
+        );
+    }
+
+    private PageRequest pageRequest(int page, int size) {
+        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
+            throw new ApiException(ApiErrorCode.INVALID_REQUEST);
+        }
+        return PageRequest.of(page, size);
     }
 }
