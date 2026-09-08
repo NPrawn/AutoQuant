@@ -186,6 +186,7 @@ pipeline {
                         a107-postgres \
                         a107-redis \
                         a107-kafka \
+                        a107-rabbitmq \
                         a107-backend-api \
                         a107-ai \
                         a107-frontend \
@@ -200,7 +201,7 @@ pipeline {
                         fi
                     done
 
-                    for container in a107-postgres a107-redis a107-kafka; do
+                    for container in a107-postgres a107-redis a107-kafka a107-rabbitmq; do
                         health=$(docker inspect --format '{{.State.Health.Status}}' "$container")
 
                         if [ "$health" != "healthy" ]; then

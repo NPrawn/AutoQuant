@@ -38,6 +38,22 @@ services:
       retries: 12
     restart: unless-stopped
 
+  rabbitmq:
+    image: rabbitmq:4.3.5-management-alpine
+    container_name: a107-rabbitmq
+    logging: *default-logging
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:?RABBITMQ_USERNAME is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
   kafka:
     image: apache/kafka:3.9.0
     container_name: a107-kafka
@@ -122,6 +138,10 @@ services:
       SSAFY_REDIRECT_URI: ${SSAFY_REDIRECT_URI:?SSAFY_REDIRECT_URI is required}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?FRONTEND_BASE_URL is required}
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?RABBITMQ_USERNAME is required}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
     ports:
       - "127.0.0.1:18080:8080"
     depends_on:
@@ -131,6 +151,8 @@ services:
         condition: service_healthy
       ai:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
 
   ai:
@@ -233,3 +255,4 @@ volumes:
   postgres-data:
   redis-data:
   kafka-data:
+  rabbitmq-data:
