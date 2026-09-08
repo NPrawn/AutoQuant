@@ -46,7 +46,8 @@ src/
 ├── auth/                 인증 API, 회원 모델, useCurrentMember, RequireAuth, GuestOnly, 세션 만료 처리
 ├── components/           LoadingState, EmptyState, ErrorState
 ├── strategy/             전략 DSL 계약 타입, 표시 문구, 빌더 편집 상태(순수 함수), 빌더 진입 상태
-│   └── builder/          빌더 블록 컴포넌트(조건·순위·재선정·요약 카드)
+│   ├── builder/          빌더 블록 컴포넌트(조건·순위·재선정·요약 카드)
+│   └── assistant/        전략봇 패널과 대화 상태
 ├── pages/                화면, 목업 번호와 1:1
 ├── styles/               디자인 시스템
 └── mocks/                API 연동 전 표시용 더미
