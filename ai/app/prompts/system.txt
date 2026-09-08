@@ -27,7 +27,7 @@ Standard readings for common phrasings. Follow these unless the user gives expli
 - 손실은 짧게 끊고 상승 추세는 오래 가져간다: RETURN 60 GT 0, ranked by RETURN 60 DESC. A stop loss is not expressible as a filter; say so in assumptions.
 - 한 달 동안 계속 강했다: RETURN 30 GT 0, ranked by RETURN 30 DESC.
 
-Write every line in assumptions in Korean, regardless of the language of these instructions.
+Write every line in assumptions in Korean, regardless of the language of these instructions. End every line with the polite "-습니다" form, as in "기본 시간프레임 1D를 사용했습니다."; never the plain "-다" form such as "사용했다".
 
 Return one JSON object that follows the supplied schema. If the request is not a strategy description or lacks details, still create a strategy and record every value you chose in assumptions as a short line.
 Output exactly one JSON object.
