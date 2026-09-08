@@ -41,6 +41,19 @@ class VirtualExecutionPolicyTest {
                 ));
     }
 
+    @DisplayName("수수료율은 1보다 작아야 한다")
+    @Test
+    void rejectFeeRateAtUpperBound() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new VirtualExecutionPolicy(
+                        BigDecimal.ONE,
+                        SLIPPAGE_BPS,
+                        MINIMUM_ORDER_AMOUNT,
+                        PRICE_TICK_SIZE,
+                        QUANTITY_STEP_SIZE
+                ));
+    }
+
     @DisplayName("슬리피지는 음수일 수 없다")
     @Test
     void rejectNegativeSlippageBps() {

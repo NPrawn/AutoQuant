@@ -110,6 +110,13 @@ class BacktestRunTest {
                 ));
     }
 
+    @DisplayName("수수료율은 1보다 작아야 한다")
+    @Test
+    void rejectFeeRateAtUpperBound() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> backtestRun(BigDecimal.ONE));
+    }
+
     private BacktestRun runningBacktestRun() {
         BacktestRun backtestRun = backtestRun();
         backtestRun.markRunning(STARTED_AT);
@@ -117,6 +124,10 @@ class BacktestRunTest {
     }
 
     private BacktestRun backtestRun() {
+        return backtestRun(BigDecimal.valueOf(0.0005));
+    }
+
+    private BacktestRun backtestRun(BigDecimal feeRate) {
         return new BacktestRun(
                 member(),
                 strategy(),
@@ -125,7 +136,7 @@ class BacktestRunTest {
                 Timeframe.ONE_HOUR,
                 "KRW",
                 BigDecimal.valueOf(1_000_000),
-                BigDecimal.valueOf(0.0005),
+                feeRate,
                 BigDecimal.valueOf(5),
                 RebalancePeriod.DAILY,
                 ExecutionPriceRule.NEXT_CANDLE_OPEN,
