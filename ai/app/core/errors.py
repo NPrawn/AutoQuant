@@ -30,6 +30,12 @@ class LLMCreditLimitError(DomainError):
     default_message = "LLM request limit exceeded"
 
 
+class LLMCircuitOpenError(DomainError):
+    status_code = 503
+    code = "LLM_CIRCUIT_OPEN"
+    default_message = "LLM gateway is unavailable"
+
+
 class DSLValidationError(DomainError):
     status_code = 422
     code = "DSL_VALIDATION_FAILED"

@@ -4,7 +4,13 @@ from dataclasses import dataclass
 from time import perf_counter
 
 from app.core.schema import Strategy, StrategyEnvelope, TranslateMeta
-from app.core.errors import DSLValidationError, LLMCreditLimitError
+from app.core.errors import (
+    DSLValidationError,
+    LLMCreditLimitError,
+    LLMTimeoutError,
+    LLMUpstreamError,
+)
+from app.services.circuit_breaker import llm_circuit
 from app.services.llm_client import complete
 from app.services.prompt_builder import build_messages, build_retry_messages
 from app.services.strategy_warnings import inspect_strategy
@@ -51,10 +57,10 @@ def translate(
     messages = build_messages(user_input, current_strategy)
     result: ValidationResult[StrategyEnvelope] | None = None
     for attempt in range(1, settings.max_retries + 2):
+        # 서킷을 크레딧 상한보다 먼저 본다. 열려 있으면 호출 슬롯도 쓰지 않는다.
+        llm_circuit.before_call()
         _reserve_llm_call()
-        response_text, _ = complete(
-            messages=messages, timeout_seconds=settings.llm_timeout_seconds, attempt=attempt
-        )
+        response_text = _complete_through_circuit(messages, attempt)
         result = validate_llm_response(response_text, StrategyEnvelope)
         if result.value is not None:
             return TranslationResult(
@@ -80,6 +86,26 @@ def translate(
         attempts=settings.max_retries + 1,
         last_errors=[error_message],
     )
+
+
+def _complete_through_circuit(messages: list[dict[str, str]], attempt: int) -> str:
+    """게이트웨이 장애만 서킷의 실패로 센다.
+
+    검증 실패는 프롬프트나 모델 출력의 문제라 게이트웨이는 멀쩡하다. 그것으로 서킷을
+    열면 프롬프트가 나쁜 날에 멀쩡한 게이트웨이를 우리가 차단한다. 크레딧 상한도
+    우리가 스스로 건 것이라 장애 신호가 아니다. 둘 다 여기까지 오지 않는다.
+    """
+    from app.core.config import settings
+
+    try:
+        response_text, _ = complete(
+            messages=messages, timeout_seconds=settings.llm_timeout_seconds, attempt=attempt
+        )
+    except (LLMTimeoutError, LLMUpstreamError):
+        llm_circuit.record_failure()
+        raise
+    llm_circuit.record_success()
+    return response_text
 
 
 def _is_short_circuit_input(user_input: str) -> bool:
