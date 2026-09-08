@@ -274,6 +274,15 @@ class BacktestRunControllerTest {
                 .when()
                 .get("/backtests/{backtestId}/result", BACKTEST_ID)
                 .then()
+                .apply(document(
+                        "backtests-result",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Backtest")
+                                .summary("Get backtest result")
+                                .description("Returns the completed backtest performance summary.")
+                                .responseSchema(schema("BacktestResultResponse"))
+                                .build())
+                ))
                 .statusCode(HttpStatus.OK.value())
                 .body("backtestId", equalTo(BACKTEST_ID.toString()))
                 .body("finalAssetValue", equalTo(1100000))
@@ -306,6 +315,15 @@ class BacktestRunControllerTest {
                 .when()
                 .get("/backtests/{backtestId}/trades?page=0&size=20", BACKTEST_ID)
                 .then()
+                .apply(document(
+                        "backtests-trades",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Backtest")
+                                .summary("Get backtest trades")
+                                .description("Returns completed backtest fills in chronological order.")
+                                .responseSchema(schema("BacktestTradePageResponse"))
+                                .build())
+                ))
                 .statusCode(HttpStatus.OK.value())
                 .body("content.size()", equalTo(1))
                 .body("content[0].assetId", equalTo("11111111-1111-1111-1111-111111111111"))
@@ -316,6 +334,15 @@ class BacktestRunControllerTest {
                 .when()
                 .get("/backtests/{backtestId}/equity?page=0&size=20", BACKTEST_ID)
                 .then()
+                .apply(document(
+                        "backtests-equity",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("Backtest")
+                                .summary("Get backtest equity")
+                                .description("Returns the completed backtest equity curve.")
+                                .responseSchema(schema("BacktestEquityPageResponse"))
+                                .build())
+                ))
                 .statusCode(HttpStatus.OK.value())
                 .body("content.size()", equalTo(1))
                 .body("content[0].totalAssetValue", equalTo(1100000))
