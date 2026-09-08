@@ -64,7 +64,7 @@ uvicorn app.main:app --reload
 | `GET /health` | 200 `{"status": "ok"}` |
 | `GET /health/ready` | 프롬프트 파일이 있으면 200, 없으면 503 |
 
-**지금 `/health/ready`가 503인 것은 정상이다.** `app/prompts/` 아래에 `.txt`가 아직 없어서다. 프롬프트가 들어가면 200이 된다. 장애가 아니다.
+`/health/ready`는 프롬프트 파일이 들어와 200이다. 503이 뜨면 프롬프트 로딩이 깨진 것이니, 통과시키려고 검사를 무르게 만들지 않는다.
 
 헬스체크는 LLM API를 호출하지 않는다. 과금 요인이 헬스체크에 붙으면 안 된다.
 
@@ -86,9 +86,13 @@ uvicorn app.main:app --reload
 |---|---|---|
 | LLM 응답 시간 초과 | 504 | `LLM_TIMEOUT` |
 | LLM 게이트웨이 오류 | 502 | `LLM_UPSTREAM_ERROR` |
+| 서킷이 열려 호출하지 않음 | 503 | `LLM_CIRCUIT_OPEN` |
+| 분당 총량 초과 | 429 | `LLM_CREDIT_LIMIT_EXCEEDED` |
 | 생성된 DSL이 스펙 위반 | 422 | `DSL_VALIDATION_FAILED` |
 | 요청 본문이 잘못됨 | 400 | `INVALID_REQUEST` |
 | 그 밖 | 500 | `INTERNAL_ERROR` |
+
+정의처는 [`app/core/errors.py`](app/core/errors.py) 하나다.
 
 요청 검증 실패의 `detail`에는 필드 경로와 사유만 담는다. 보낸 값은 되돌려주지 않는다.
 
@@ -101,6 +105,71 @@ python -m pytest
 ```
 
 **GMS 키 없이 전부 돈다.** 실제 LLM API를 치는 테스트가 없다. 필요한 환경변수는 테스트가 직접 주입한다.
+
+## Spring 연동 계약
+
+Spring이 이 서비스를 부르는 방식이다. **값은 여기서 다시 정하지 않고 정의처를 가리킨다.** README가 숫자를 베끼면 사본이 하나 더 생기고, 사본은 원본이 바뀔 때 조용히 낡는다.
+
+### 오류 코드는 Spring이 자기 형식으로 바꾼다
+
+우리 `code`는 밖으로 나가지 않는다. Spring이 `ApiErrorCode`로 옮겨 `timestamp`·`status`·`code`·`message`·`path`·`validationErrors` 형식으로 내보낸다. **한 서버가 두 오류 형식으로 말하지 않기 위해서다** — 프론트가 경로에 따라 두 체계를 알아야 하면 분기가 두 배가 된다.
+
+| 상황 | AI 서비스 | Spring |
+|---|---|---|
+| 재시도 소진 | 422 `DSL_VALIDATION_FAILED` | `AI-422-001` |
+| 분당 총량 초과 | 429 `LLM_CREDIT_LIMIT_EXCEEDED` | `AI-429-001` |
+| 게이트웨이 오류 | 502 `LLM_UPSTREAM_ERROR` | `AI-503-001` |
+| 서킷 열림 | 503 `LLM_CIRCUIT_OPEN` | `AI-503-001` |
+| 응답 시간 초과 | 504 `LLM_TIMEOUT` | `AI-504-001` |
+| 요청 본문 오류 | 400 `INVALID_REQUEST` | `COMMON-400-001` |
+
+**502와 503이 한 코드로 묶인다.** 프론트가 보기에 게이트웨이가 죽은 것과 AI 서비스가 안 뜬 것은 같은 상황이라 그렇게 정했다. `AI-502-001`은 다른 뜻이다 — 우리 응답을 Spring이 파싱하지 못했을 때 쓴다.
+
+매핑은 [`AiStrategyTranslateWebClient.toErrorCode()`](../backend/api/src/main/java/com/ssafy/a107/ai/infrastructure/AiStrategyTranslateWebClient.java), 코드 정의는 [`ApiErrorCode`](../backend/api/src/main/java/com/ssafy/a107/common/exception/ApiErrorCode.java)에 있다.
+
+우리 `detail`(`attempts`·`lastErrors`)은 Spring 응답으로 나가지 않는다. `ApiErrorResponse`에 담을 자리가 없고, `lastErrors`는 LLM 출력에서 나온 문자열이라 밖으로 내보내려면 매번 봐야 한다. Spring이 로그에만 남긴다.
+
+### 요청 식별자
+
+헤더는 `X-Request-ID`. **규칙은 세 홉이 같다 — 있으면 이어받고 없으면 만든다.** 각 홉이 같은 규칙을 쓰면 어느 지점에서 추적을 시작하든 그 아래가 이어진다. 프론트가 아직 안 보내므로 지금은 Spring이 만든다.
+
+Spring은 `[A-Za-z0-9._-]{1,64}`에 맞는 값만 이어받고 어긋나면 새로 만든다. 클라이언트가 보낸 문자열이 두 서버의 로그 식별자 자리에 그대로 앉기 때문이다.
+
+받는 쪽은 [`app/main.py`](app/main.py)의 `add_request_context`, 보내는 쪽은 [`RequestIdFilter`](../backend/api/src/main/java/com/ssafy/a107/common/logging/RequestIdFilter.java)와 `AiStrategyTranslateWebClient`다.
+
+### 타임아웃이 두 개다
+
+| 무엇을 기다리나 | 값 | 정의처 |
+|---|---|---|
+| 우리가 GMS를 | `LLM_TIMEOUT_SECONDS` 기본 30초 | [`app/core/config.py`](app/core/config.py) |
+| Spring이 우리를 | `ai.timeout` 10초 | [`application.yml`](../backend/api/src/main/resources/application.yml) |
+
+**Spring이 우리를 기다리는 시간이 우리가 GMS를 기다리는 시간보다 짧다.** 실측 중앙값 2,270~2,619ms, 상위 95% 4,353~4,649ms라 정상 응답은 10초 안에 들어온다. GMS가 30초를 끌면 Spring이 먼저 끊고 `AI-504-001`을 내는 것이 맞다 — 사용자를 30초 기다리게 하지 않는다.
+
+### 호출 한도가 두 겹이다
+
+| 어디 | 한도 | 무엇을 지키나 |
+|---|---|---|
+| AI 서비스 | 프로세스 총량 분당 30회 (`MAX_LLM_CALLS_PER_MINUTE`, [`translator.py`](app/services/translator.py)) | GMS 크레딧 |
+| Spring | 회원당 분당 10회 (`ai.translations-per-minute-per-member`) | 한 사용자의 폭주 |
+
+**사용자 식별은 Spring만 할 수 있다.** 우리는 무상태고 요청 본문에 회원 정보가 없다. 반대로 크레딧은 우리 프로세스 전체를 봐야 하므로 우리 쪽이다. 한쪽이 다른 쪽을 대신하지 못한다.
+
+### 서킷 브레이커가 있다
+
+연속 실패가 상한에 닿으면 일정 시간 동안 LLM을 부르지 않고 즉시 503 `LLM_CIRCUIT_OPEN`을 낸다. 값과 동작은 [`app/services/circuit_breaker.py`](app/services/circuit_breaker.py)에 있다.
+
+**일시적 상태다.** 차단 시간이 지나면 시험 호출을 흘려보내고 성공하면 닫힌다. 받는 쪽이 이것을 영구 장애로 다루면 재시도 정책을 잘못 세운다.
+
+게이트웨이 장애(`LLM_TIMEOUT`·`LLM_UPSTREAM_ERROR`)만 실패로 센다. 검증 실패와 총량 초과는 우리 쪽 사정이라 세지 않는다. 근거는 [`docs/DECISIONS.md`](docs/DECISIONS.md) 결정 14.
+
+### `strategy`가 `null`일 수 있다
+
+전략 설명이 아닌 입력에는 LLM을 부르지 않고 `strategy: null`, `attempts: 0`, 사유가 담긴 `assumptions`를 돌려준다. **오류가 아니라 200이다.** Spring `TranslateStrategyResponse.strategy`가 nullable인 이유가 이것이다.
+
+### 계약 산출물
+
+기계가 뽑은 정본이 [`docs/contract/`](docs/contract/) 아래에 있다. OpenAPI 명세, DSL JSON Schema, 응답 예시 다섯이다. **손으로 고치지 않는다** — `python scripts/export_contract.py`로 다시 뽑고, 코드와 어긋나면 `pytest`가 실패한다.
 
 ## 문서
 
