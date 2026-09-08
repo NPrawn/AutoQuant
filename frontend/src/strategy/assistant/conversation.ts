@@ -61,10 +61,13 @@ export function describeStrategy(draft: StrategyDraft): string {
   return `지금 전략은 ${filters} 인 코인만 후보로 남기고, 그중 ${ranking}를 ${cadence}`
 }
 
-/* 목업 19 의 제안 질문. 사용자가 무엇을 물을 수 있는지 보여 준다. */
-export const suggestedQuestions = [
-  '통과 종목이 너무 많아요',
-  '하락장에 강하게 만들려면?',
-  'SMA 이격률이 뭐예요?',
-  '재선정 주기는 어떻게 정해요?',
+/*
+ * 제안 문장. 변환 API 는 질문에 답하는 게 아니라 전략을 바꾸는 요청을 받으므로 목업의
+ * 질문형 칩 대신 블록을 바꾸는 요청형으로 둔다.
+ */
+export const suggestedRequests = [
+  '통과 종목을 더 좁혀줘',
+  '하락장에 강하게 만들어줘',
+  '거래량 급증 조건을 추가해줘',
+  '재선정을 매월로 바꿔줘',
 ] as const

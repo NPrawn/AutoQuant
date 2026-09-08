@@ -10,6 +10,11 @@ export const errorCodes = {
   authInvalidCredential: 'AUTH-401-003',
   authMemberNotActive: 'AUTH-403-001',
   authProviderUnavailable: 'AUTH-502-001',
+  aiTranslationFailed: 'AI-422-001',
+  aiTranslationQuotaExceeded: 'AI-429-001',
+  aiTranslationInvalidResponse: 'AI-502-001',
+  aiTranslationUnavailable: 'AI-503-001',
+  aiTranslationTimeout: 'AI-504-001',
 } as const
 
 export type ErrorCode = (typeof errorCodes)[keyof typeof errorCodes]
