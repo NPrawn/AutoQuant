@@ -46,3 +46,14 @@ test('종목 전환으로 종료한 연결의 늦은 메시지는 화면으로 �
   client.subscriptions[0].callback(message)
   assert.equal(received, 1)
 })
+
+test('간격 전환 시 선택한 봉 토픽만 구독하고 체결 토픽은 유지한다', () => {
+  const stop = connectMarketStream({ id: 'asset', marketCode: 'KRW-BTC', name: '비트코인' }, {
+    onConnected: () => {}, onDisconnected: () => {}, onTrade: () => {}, onCandle: () => {},
+  }, 240)
+  client.options.onConnect()
+  assert.deepEqual(client.subscriptions.map((item) => item.destination), [
+    '/topic/markets/KRW-BTC/trades', '/topic/markets/KRW-BTC/candles/240m',
+  ])
+  stop()
+})

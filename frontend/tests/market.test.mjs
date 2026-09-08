@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { appendTrade, mergeCandles, parseLiveCandle, parseTrade, upsertLive } from '../src/market/model.ts'
+import { appendTrade, mergeCandles, parseLiveCandle, parseTrade, upsertLive, CANDLE_INTERVALS } from '../src/market/model.ts'
 
 const asset = { id: '11111111-1111-1111-1111-111111111111', marketCode: 'KRW-BTC', name: '비트코인' }
 const start = 1800000000000
@@ -41,4 +41,14 @@ test('최근 체결은 중복 없이 최신순 최대 30건을 유지한다', ()
   assert.equal(trades.length, 30)
   assert.equal(trades[0].sequenceId, '40')
   assert.equal(appendTrade(trades, trade('40')), trades)
+})
+
+test('선택 간격과 UTC 경계가 일치하는 진행 봉만 반영한다', () => {
+  for (const interval of CANDLE_INTERVALS) {
+    const open = Math.floor(start / (interval * 60000)) * interval * 60000
+    const value = { ...candle(0), intervalMinutes: interval, openTimeUnixMilli: open }
+    assert.equal(parseLiveCandle(JSON.stringify(value), asset, interval).intervalMinutes, interval)
+    assert.equal(parseLiveCandle(JSON.stringify({ ...value, openTimeUnixMilli: open + 1 }), asset, interval), null)
+    assert.equal(parseLiveCandle(JSON.stringify(value), { ...asset, marketCode: 'KRW-ETH' }, interval), null)
+  }
 })
