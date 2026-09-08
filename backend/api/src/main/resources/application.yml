@@ -65,3 +65,9 @@ jwt:
 auth:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   cookie-secure: ${AUTH_COOKIE_SECURE:false}
+
+backtest:
+  job:
+    exchange: ${BACKTEST_JOB_EXCHANGE:backtest.exchange}
+    queue: ${BACKTEST_JOB_QUEUE:backtest.queue}
+    routing-key: ${BACKTEST_JOB_ROUTING_KEY:backtest.run}
