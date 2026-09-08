@@ -48,6 +48,8 @@ class PerformanceReportCalculatorTest {
         PerformanceReport report = calculator.calculate(
                 new PerformanceCalculationInput(
                         new BigDecimal("1000000"),
+                        Instant.parse("2025-01-01T00:00:00Z"),
+                        Instant.parse("2027-01-01T00:00:00Z"),
                         List.of(
                                 snapshot("2026-01-01T00:00:00Z", "1000000", "0"),
                                 snapshot("2026-07-01T00:00:00Z", "1200000", "0"),
@@ -76,7 +78,7 @@ class PerformanceReportCalculatorTest {
                 .isEqualByComparingTo("1100000");
         assertThat(report.cumulativeReturn())
                 .isEqualByComparingTo("0.10000000");
-        assertThat(report.cagr()).isEqualByComparingTo("0.10000000");
+        assertThat(report.cagr()).isEqualByComparingTo("0.04880885");
         assertThat(report.maximumDrawdown())
                 .isEqualByComparingTo("0.08333333");
         assertThat(report.volatility()).isPresent();
@@ -106,6 +108,8 @@ class PerformanceReportCalculatorTest {
         PerformanceReport report = calculator.calculate(
                 new PerformanceCalculationInput(
                         new BigDecimal("1000000"),
+                        Instant.parse("2026-01-01T00:00:00Z"),
+                        Instant.parse("2027-01-01T00:00:00Z"),
                         List.of(
                                 snapshot("2026-01-01T00:00:00Z", "1000000", "0"),
                                 snapshot("2027-01-01T00:00:00Z", "1100000", "0")

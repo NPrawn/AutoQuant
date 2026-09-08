@@ -57,6 +57,8 @@ class PerformanceCalculationInputTest {
     ) {
         return new PerformanceCalculationInput(
                 initialCapital,
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Instant.parse("2026-02-01T00:00:00Z"),
                 snapshots,
                 List.of(),
                 List.of(),
