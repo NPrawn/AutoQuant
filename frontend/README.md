@@ -45,7 +45,7 @@ src/
 ├── api/                  request 함수, ApiError
 ├── auth/                 인증 API, 회원 모델, useCurrentMember, RequireAuth, GuestOnly, 세션 만료 처리
 ├── components/           LoadingState, EmptyState, ErrorState
-├── strategy/             전략 빌더 진입 상태, 전략 DSL·편집 상태(예정)
+├── strategy/             전략 DSL 계약 타입, 표시 문구, 빌더 편집 상태(순수 함수), 빌더 진입 상태
 ├── pages/                화면, 목업 번호와 1:1
 ├── styles/               디자인 시스템
 └── mocks/                API 연동 전 표시용 더미
