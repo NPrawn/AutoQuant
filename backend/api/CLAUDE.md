@@ -53,6 +53,7 @@ com.ssafy.a107
 - 캐시가 없거나 요청 개수보다 적거나 손상/장애가 있으면 DB의 최근 1분봉 최대 1,000개를 조회한다. 진행 봉은 이 REST 응답에 포함하지 않는다.
 - `AssetTradingStatus`는 거래소 거래지원 상태이고 `MarketDataCollectionStatus`는 우리 서비스의 수집 희망 상태다. 두 상태를 합치지 않는다.
 - 종목 등록 API의 `ENABLED`는 실제 Go WebSocket 구독 완료를 의미하지 않는다.
+- `GET /api/assets`는 AssetReadService의 읽기 전용 트랜잭션으로 등록된 Upbit KRW TRADING 종목을 조회한다. `assetId`·`marketCode`·한글명만 응답하며 실제 수집 연결 여부는 판단하지 않는다.
 - `realtime`은 Redis 수신 이벤트를 WebSocket으로 중계한다. DB 조회·쓰기와 봉 집계를 하지 않는다.
 - Redis 수신 adapter는 `RealtimeEventPublisher`에 의존하고 WebSocket adapter를 직접 참조하지 않는다.
 - `trade:realtime:updates`와 `candle:1m:live:updates`는 인스턴스마다 한 번씩 구독한다. Go의 snake_case JSON을 검증하고 종목별 camelCase 응답으로 변환한다.

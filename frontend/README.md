@@ -15,7 +15,7 @@ React 19 + TypeScript + Vite.
 | 라우터 | react-router 7 |
 | 서버 상태 | TanStack Query 5 |
 
-**차트 라이브러리는 아직 넣지 않았다.** 차트 화면을 만들 때 결정할 일이다.
+차트는 `lightweight-charts`, 실시간 STOMP 연결은 `@stomp/stompjs`를 사용한다.
 
 ## 디자인 시스템
 
@@ -50,6 +50,7 @@ src/
 │   └── assistant/        전략봇 패널과 대화 상태
 │   (api.ts 변환·저장·조회·삭제 호출, queries.ts 쿼리·뮤테이션, summary.ts DSL 요약 문장, *ErrorMessage.ts 실패 문구)
 ├── pages/                화면, 목업 번호와 1:1
+├── market/               종목·봉 API, 쿼리, STOMP 연결, 데이터 검증·병합, 1분봉 렌더러
 ├── styles/               디자인 시스템
 └── mocks/                API 연동 전 표시용 더미
 ```
@@ -131,7 +132,20 @@ frontend ──/api──> backend  :8080   랭킹 · 체결 · 전략 · 인증
 
 Kafka · Redis · DB에 직접 접근하지 않는다. 모든 데이터는 API를 통해서만 받는다.
 
-## 실행
+## 종목별 실시간 차트
+
+- `/chart`에서 등록된 Upbit KRW 거래지원 종목을 선택한다. `GET /api/assets`의 `assetId`는 봉 조회, `marketCode`는 구독에 사용한다. 수집 중이 아니거나 이력이 없는 종목은 빈 상태로 표시된다.
+- 같은 오리진 `/ws`에 쿠키 인증으로 접속하고 선택 종목의 `/topic/markets/{marketCode}/trades`, `/topic/markets/{marketCode}/candles/1m` 두 토픽을 구독한다.
+- 구독 전송 후 `GET /api/assets/{assetId}/candles/1m?limit=1000`으로 확정 봉을 조회한다. 조회 중 진행 봉은 시간별 최신 값으로 버퍼링해 합친다. 확정된 시간은 진행 봉으로 덮어쓰지 않는다.
+- 진행 봉은 차트를 갱신하고 체결은 현재가와 최근 30건에 별도로 표시된다. 시세가 오기 전 현재가는 `—`이며, 연결이 끊겼을 때 남아 있는 값은 마지막 수신값이다.
+- 연결 종료를 감지하면 3초 간격으로 재접속한다. 재접속 후 구독·확정 봉 조회를 다시 시작한다. 종목 전환·로그아웃으로 화면을 떠나면 연결과 구독을 종료한다.
+- Simple broker는 구독 receipt와 heartbeat를 제공하지 않는다. 구독과 REST의 원자적 스냅샷, 체결 재전송, 아직 도착하지 않은 진행 봉의 복구는 보장하지 않는다. 현재가·진행 봉은 다음 이벤트를 기다린다.
+- 가격·수량은 문자열로 표시하고 64비트 순번도 문자열로 보존한다. 차트 좌표만 숫자로 변환한다. 차트는 TradingView Lightweight Charts™를 사용하며 출처 링크를 표시한다.
+- 지표·호가·다른 시간봉·과거 페이지네이션은 범위 밖이다.
+
+Vite와 운영 `infra/nginx/j15a107.p.ssafy.io.conf`는 `/api/assets`의 접두사를 유지하고 `/ws` Upgrade를 전달한다. 기존 나머지 REST 프록시 규칙은 그대로다. 운영 Nginx 파일 변경은 배포 시 적용해야 한다.
+
+## 실행 명령
 
 ```bash
 cp .env.example .env      # 기본값 그대로면 생략 가능
@@ -139,11 +153,12 @@ npm install
 npm run dev               # :5173
 npm run build             # tsc -b && vite build → dist/
 npm run lint
+npm test                  # Node 24 내장 테스트 (모듈 mock은 실험적 API)
 ```
 
 ## 다음 단계
 
-- [ ] 차트 라이브러리 선정 (TradingView Lightweight Charts 등)
+- [x] 1분봉 차트와 실시간 체결 연동 (Lightweight Charts + STOMP)
 - [x] 라우터 도입
 - [x] 상태관리 도입 (서버 상태만 TanStack Query, 전역 상태 라이브러리 없음)
 - [x] API 클라이언트 레이어
