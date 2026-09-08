@@ -19,6 +19,11 @@ com.ssafy.a107
 │                       Upbit 공개 페어 목록 Client
 ├── asset/domain        거래소의 거래 자산·수집 대상 기준 정보
 ├── candle/domain       확정 분봉 읽기 모델
+├── candle/controller   최근 1분봉 조회 API (request·response 분리)
+├── candle/service      캐시 조회 조율과 DB 읽기 전용 트랜잭션
+├── candle/repository   확정 분봉 조회 전용 JPA Repository
+├── candle/infrastructure/redis
+│                       Go Sorted Set 조회·빈 시간대 캐시 보충
 ├── realtime/domain     실시간 체결·진행 봉 이벤트
 ├── realtime/service    실시간 이벤트 발행 인터페이스
 ├── realtime/infrastructure/redis
@@ -43,13 +48,16 @@ com.ssafy.a107
 - AI 서버의 오류 형식(`code`·`message`·`detail`)은 밖으로 흘리지 않고 `ApiErrorCode`로 옮긴다.
 - 외부 서버를 부를 때 `X-Request-ID`를 같이 보낸다. 값은 `RequestIdFilter.current()`가 들고 있다.
 - 확정 분봉은 Go Consumer가 쓰고 Spring은 `@Immutable` 엔티티로 읽는다.
+- 최근 1분봉 조회는 `RecentMinuteCandleFacade`가 cache-aside를 조율하고 `MinuteCandleReadService`만 DB 읽기 전용 트랜잭션을 연다. 캐시 hit 시 DB 트랜잭션을 열지 않는다.
+- `candle:1m:recent:{assetId}`는 Go의 snake_case JSON과 시작 시간 millisecond score를 그대로 사용한다. Spring은 DB 조회 결과로 빈 시간대만 원자적으로 보충하고 최신 1,000개를 유지한다. 기존 값의 보정·갱신은 Go가 담당한다.
+- 캐시가 없거나 요청 개수보다 적거나 손상/장애가 있으면 DB의 최근 1분봉 최대 1,000개를 조회한다. 진행 봉은 이 REST 응답에 포함하지 않는다.
 - `AssetTradingStatus`는 거래소 거래지원 상태이고 `MarketDataCollectionStatus`는 우리 서비스의 수집 희망 상태다. 두 상태를 합치지 않는다.
 - 종목 등록 API의 `ENABLED`는 실제 Go WebSocket 구독 완료를 의미하지 않는다.
 - `realtime`은 Redis 수신 이벤트를 WebSocket으로 중계한다. DB 조회·쓰기와 봉 집계를 하지 않는다.
 - Redis 수신 adapter는 `RealtimeEventPublisher`에 의존하고 WebSocket adapter를 직접 참조하지 않는다.
 - `trade:realtime:updates`와 `candle:1m:live:updates`는 인스턴스마다 한 번씩 구독한다. Go의 snake_case JSON을 검증하고 종목별 camelCase 응답으로 변환한다.
 - `/ws`는 기존 JWT HTTP 인증과 same-origin 정책을 유지한다. STOMP는 종목별 SUBSCRIBE/UNSUBSCRIBE만 제공하며 클라이언트 SEND를 허용하지 않는다.
-- 실시간 스트림은 best-effort이며 초기 데이터·재연결 복구·재집계를 담당하지 않는다. WebSocket 계약은 README에 기록하고 REST Docs/OpenAPI에는 넣지 않는다.
+- 실시간 스트림은 best-effort이며 초기 확정 봉은 candle 조회 API가 담당한다. 진행 봉 스냅샷 복구·재집계는 realtime 범위가 아니다. WebSocket 계약은 README에 기록하고 REST Docs/OpenAPI에는 넣지 않는다.
 
 ## DB와 JPA
 
