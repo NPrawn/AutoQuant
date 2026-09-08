@@ -23,6 +23,12 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:a107}
+    password: ${RABBITMQ_PASSWORD:a107}
+
 server:
   port: ${SERVER_PORT:8080}
 
