@@ -139,7 +139,7 @@ public class BacktestRun extends BaseEntity {
         this.timeframe = Objects.requireNonNull(timeframe);
         this.quoteCurrency = requireUpperCaseCode(quoteCurrency, MAX_QUOTE_CURRENCY_LENGTH);
         this.initialCapital = requirePositive(initialCapital, "Initial capital must be greater than zero");
-        this.feeRate = requireNonNegative(feeRate, "Fee rate must not be negative");
+        this.feeRate = requireFeeRate(feeRate);
         this.slippageBps = requireNonNegative(slippageBps, "Slippage bps must not be negative");
         this.rebalanceInterval = Objects.requireNonNull(rebalanceInterval);
         this.executionPriceRule = Objects.requireNonNull(executionPriceRule);
@@ -204,6 +204,17 @@ public class BacktestRun extends BaseEntity {
     private static BigDecimal requireNonNegative(BigDecimal value, String message) {
         if (value == null || value.signum() < 0) {
             throw new IllegalArgumentException(message);
+        }
+        return value;
+    }
+
+    private static BigDecimal requireFeeRate(BigDecimal value) {
+        if (value == null
+                || value.signum() < 0
+                || value.compareTo(BigDecimal.ONE) >= 0) {
+            throw new IllegalArgumentException(
+                    "Fee rate must be between 0 and 1"
+            );
         }
         return value;
     }

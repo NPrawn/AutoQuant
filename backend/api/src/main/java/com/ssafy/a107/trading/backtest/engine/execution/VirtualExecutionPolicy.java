@@ -13,10 +13,7 @@ public record VirtualExecutionPolicy(
     private static final BigDecimal BPS_DIVISOR = BigDecimal.valueOf(10_000);
 
     public VirtualExecutionPolicy {
-        feeRate = requireNonNegative(
-                feeRate,
-                "Fee rate must not be negative"
-        );
+        feeRate = requireFeeRate(feeRate);
         slippageBps = requireSlippageBps(slippageBps);
         minimumOrderAmount = requirePositive(
                 minimumOrderAmount,
@@ -38,6 +35,17 @@ public record VirtualExecutionPolicy(
         if (value.compareTo(BPS_DIVISOR) >= 0) {
             throw new IllegalArgumentException(
                     "Slippage bps must be less than 10000"
+            );
+        }
+        return value;
+    }
+
+    private static BigDecimal requireFeeRate(BigDecimal value) {
+        if (value == null
+                || value.signum() < 0
+                || value.compareTo(BigDecimal.ONE) >= 0) {
+            throw new IllegalArgumentException(
+                    "Fee rate must be between 0 and 1"
             );
         }
         return value;
