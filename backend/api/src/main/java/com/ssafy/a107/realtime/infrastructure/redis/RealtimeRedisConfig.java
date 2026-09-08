@@ -10,7 +10,7 @@ import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
-import java.util.List;
+import java.util.stream.Stream;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
@@ -44,10 +44,8 @@ public class RealtimeRedisConfig {
         container.setTaskExecutor(executor);
         container.setErrorHandler(exception -> log.warn("Realtime Redis subscription failed: {}",
                 exception.getClass().getSimpleName()));
-        container.addMessageListener(listener, List.of(
-                new ChannelTopic(RealtimeRedisChannels.TRADE),
-                new ChannelTopic(RealtimeRedisChannels.LIVE_MINUTE_CANDLE)
-        ));
+        container.addMessageListener(listener, Stream.concat(Stream.of(RealtimeRedisChannels.TRADE),
+                RealtimeRedisChannels.CANDLES.stream()).map(ChannelTopic::new).toList());
         return container;
     }
 }

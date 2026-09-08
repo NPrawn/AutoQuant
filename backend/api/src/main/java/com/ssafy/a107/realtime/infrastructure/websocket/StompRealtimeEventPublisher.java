@@ -25,7 +25,7 @@ public class StompRealtimeEventPublisher implements RealtimeEventPublisher {
 
     @Override
     public void publish(LiveMinuteCandle candle) {
-        messagingTemplate.convertAndSend(RealtimeDestinations.liveMinuteCandles(candle.marketCode()),
+        messagingTemplate.convertAndSend(RealtimeDestinations.liveMinuteCandles(candle.marketCode(), candle.intervalMinutes()),
                 LiveMinuteCandleResponse.from(candle));
     }
 }

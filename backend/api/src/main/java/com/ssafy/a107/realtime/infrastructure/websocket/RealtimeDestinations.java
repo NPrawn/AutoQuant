@@ -6,7 +6,7 @@ final class RealtimeDestinations {
 
     private static final String PREFIX = "/topic/markets/";
     private static final Pattern SUBSCRIPTION =
-            Pattern.compile("/topic/markets/KRW-[A-Z0-9]+/(?:trades|candles/1m)");
+            Pattern.compile("/topic/markets/KRW-[A-Z0-9]+/(?:trades|candles/(?:1|2|5|15|60|240|1440)m)");
 
     private RealtimeDestinations() {
     }
@@ -15,8 +15,8 @@ final class RealtimeDestinations {
         return PREFIX + marketCode + "/trades";
     }
 
-    static String liveMinuteCandles(String marketCode) {
-        return PREFIX + marketCode + "/candles/1m";
+    static String liveMinuteCandles(String marketCode, int intervalMinutes) {
+        return PREFIX + marketCode + "/candles/" + intervalMinutes + "m";
     }
 
     static boolean isAllowed(String destination) {
