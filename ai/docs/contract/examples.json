@@ -1,0 +1,205 @@
+{
+  "_generation": {
+    "generatedBy": "scripts/export_contract.py",
+    "commit": "6d9cec0305f491b892eeaf0bd695183fbd1a8194",
+    "status": "제안이며 확정 명세가 아니다. 전략 도메인 명세가 바뀌면 이 계약도 바뀐다."
+  },
+  "examples": [
+    {
+      "name": "단순 랭킹 요청",
+      "description": "가장 많이 오른 종목을 담는 전략.",
+      "response": {
+        "strategy": {
+          "timeframe": "1D",
+          "filters": {
+            "type": "GROUP",
+            "logic": "AND",
+            "children": [
+              {
+                "type": "CONDITION",
+                "left": {
+                  "type": "FACTOR",
+                  "factor": "RETURN",
+                  "period": 20
+                },
+                "operator": "GT",
+                "right": {
+                  "type": "VALUE",
+                  "value": 0.0
+                }
+              }
+            ]
+          },
+          "ranking": {
+            "factor": "RETURN",
+            "period": 20,
+            "direction": "DESC"
+          },
+          "selection": {
+            "topN": 5
+          },
+          "rebalance": {
+            "period": "WEEKLY"
+          }
+        },
+        "meta": {
+          "attempts": 1,
+          "model": "gpt-5.4-mini",
+          "elapsedMs": 1984,
+          "warnings": [],
+          "assumptions": [
+            "기본 시간프레임 1D를 사용했습니다.",
+            "기본 상위 선택 수 topN 5를 사용했습니다."
+          ],
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "조건이 여럿 붙은 요청",
+      "description": "여러 필터를 AND 로 쌓은 전략.",
+      "response": {
+        "strategy": {
+          "timeframe": "1D",
+          "filters": {
+            "type": "GROUP",
+            "logic": "AND",
+            "children": [
+              {
+                "type": "CONDITION",
+                "left": {
+                  "type": "FACTOR",
+                  "factor": "RSI",
+                  "period": 14
+                },
+                "operator": "LT",
+                "right": {
+                  "type": "VALUE",
+                  "value": 30.0
+                }
+              },
+              {
+                "type": "CONDITION",
+                "left": {
+                  "type": "FACTOR",
+                  "factor": "VOLUME_RATIO",
+                  "period": 20
+                },
+                "operator": "GTE",
+                "right": {
+                  "type": "VALUE",
+                  "value": 1.5
+                }
+              }
+            ]
+          },
+          "ranking": {
+            "factor": "RETURN",
+            "period": 20,
+            "direction": "DESC"
+          },
+          "selection": {
+            "topN": 5
+          },
+          "rebalance": {
+            "period": "WEEKLY"
+          }
+        },
+        "meta": {
+          "attempts": 1,
+          "model": "gpt-5.4-mini",
+          "elapsedMs": 1984,
+          "warnings": [],
+          "assumptions": [
+            "과매도는 RSI 14 기준 30 미만으로 해석했습니다.",
+            "거래량 급증은 VOLUME_RATIO 20 기준 1.5배 이상으로 해석했습니다."
+          ],
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "편집 요청",
+      "description": "현재 전략을 함께 보내 일부만 고친 결과. changes 가 채워진다.",
+      "response": {
+        "strategy": {
+          "timeframe": "4H",
+          "filters": {
+            "type": "GROUP",
+            "logic": "AND",
+            "children": [
+              {
+                "type": "CONDITION",
+                "left": {
+                  "type": "FACTOR",
+                  "factor": "RETURN",
+                  "period": 20
+                },
+                "operator": "GT",
+                "right": {
+                  "type": "VALUE",
+                  "value": 0.0
+                }
+              }
+            ]
+          },
+          "ranking": {
+            "factor": "RETURN",
+            "period": 20,
+            "direction": "DESC"
+          },
+          "selection": {
+            "topN": 5
+          },
+          "rebalance": {
+            "period": "WEEKLY"
+          }
+        },
+        "meta": {
+          "attempts": 1,
+          "model": "gpt-5.4-mini",
+          "elapsedMs": 1984,
+          "warnings": [],
+          "assumptions": [
+            "요청한 시간프레임만 바꾸고 나머지는 유지했습니다."
+          ],
+          "changes": [
+            "timeframe 값이 바뀌었습니다."
+          ]
+        }
+      }
+    },
+    {
+      "name": "짧은 경로",
+      "description": "전략 설명이 아닌 입력. LLM 을 부르지 않고 사유만 돌려준다. 오류가 아니라 200 이며 strategy 가 null 이다.",
+      "response": {
+        "strategy": null,
+        "meta": {
+          "attempts": 0,
+          "model": "gpt-5.4-mini",
+          "elapsedMs": 1,
+          "warnings": [],
+          "assumptions": [
+            "입력이 짧아 전략을 만들지 않았습니다. 어떤 코인을 어떤 기준으로 사고 싶은지 말해 주세요."
+          ],
+          "changes": []
+        }
+      }
+    },
+    {
+      "name": "오류 응답",
+      "description": "모든 오류가 code·message·detail 세 필드를 가진다. code 는 기계가 분기하는 값이라 안정적으로 유지한다.",
+      "statusCode": 422,
+      "response": {
+        "code": "DSL_VALIDATION_FAILED",
+        "message": "DSL validation failed",
+        "detail": {
+          "attempts": 3,
+          "lastErrors": [
+            "filters.children.0.operator: 허용되지 않는 값입니다."
+          ]
+        }
+      }
+    }
+  ]
+}

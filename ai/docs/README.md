@@ -13,6 +13,7 @@ AI 서버 문서. 코드와 같은 저장소에 두어 함께 버전 관리한�
 | [HANDOFF-C.md](HANDOFF-C.md) | 스키마 상한 정리 + Epic H 인계 명세 (완료) | API가 왜 이렇게 생겼는지 |
 | [HANDOFF-D.md](HANDOFF-D.md) | 프롬프트 도메인 규칙 + 측정 준비 인계 명세 | 지금 티켓을 잡았을 때 |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | 겪은 문제와 해결 | 같은 데서 또 막혔을 때 |
+| [contract/](contract/) | OpenAPI·DSL JSON Schema·응답 예시 5건 | 백엔드·프론트가 계약을 볼 때. **손으로 고치지 않는다** — `python scripts/export_contract.py`가 만든다 |
 | [REVIEW-MOCKUP.md](REVIEW-MOCKUP.md) | 화면 시안 피드백 (AI 서버 관점) | 기획과 계약을 맞출 때 |
 | [REVIEW-STRATEGY-MVP.md](REVIEW-STRATEGY-MVP.md) | 전략팀 MVP 문서 검토 (AI 서버 관점) | 전략 도메인 스펙과 계약을 맞출 때 |
 | [PROPOSAL-FACTORS.md](PROPOSAL-FACTORS.md) | Factor 18개 제안 (ta4j 기준) | 팩터를 늘릴 때, 엔진에 지표를 붙일 때 |
@@ -22,6 +23,8 @@ AI 서버 문서. 코드와 같은 저장소에 두어 함께 버전 관리한�
 **결정과 트레이드오프는 한 파일이다.** `DECISIONS.md`에 선택지·근거·확정이 같이 있다. 트레이드오프만 따로 빼면 결정과 근거가 갈라져서 나중에 어느 쪽이 최신인지 알 수 없게 된다.
 
 **DSL 스펙 문서를 손으로 쓰지 않는다.** 필드명과 허용값은 `app/core/schema.py` 한 곳에만 적는다. 백엔드에 넘길 계약 문서(OpenAPI 명세, DSL JSON Schema, 예시)는 L-3에서 스크립트로 코드에서 뽑는다. 손으로 쓴 스펙은 코드와 갈라지는 순간 거짓말이 된다.
+
+`docs/contract/`가 그 산출물이다. 갈라짐은 규칙이 아니라 테스트가 막는다 — 스크립트를 다시 돌린 결과가 커밋된 파일과 다르면 `tests/test_contract_export.py`가 실패한다.
 
 ## Jira
 
