@@ -14,6 +14,7 @@ src/main/java/com/ssafy/a107/
 ├─ asset/                   거래소 종목 기준 정보 · 수집 대상 등록 API
 ├─ auth/                    JWT 발급 · 검증
 ├─ candle/                  확정 분봉 도메인 · 조회
+├─ realtime/                Redis Pub/Sub → 종목별 STOMP WebSocket 중계
 └─ trading/                 모의투자 · 백테스팅
 
 src/main/resources/
@@ -32,6 +33,7 @@ src/main/resources/
 | `asset` | 거래소 마켓, 기준·상대 통화, 거래지원 상태 | 회원 잔액, 포지션 |
 | `auth` | SSAFY SSO 연동, JWT 발급·검증 | 회원 프로필, 비밀번호·인증 제공자 토큰 저장 |
 | `candle` | 확정 분봉 엔티티·조회 | 시세 수집, Redis·Kafka 쓰기 |
+| `realtime` | Redis 이벤트 수신·검증, 종목별 WebSocket 중계 | DB 접근, 봉 집계, 재전송 |
 | `trading` | 모의투자 주문·체결, 백테스팅 엔진 | 시세 수집, 랭킹 |
 
 ### 의존 방향
@@ -75,6 +77,8 @@ auth ────┘
 | `JWT_ACCESS_TOKEN_VALIDITY` | `1h` | |
 | `UPBIT_BASE_URL` | `https://api.upbit.com` | |
 | `UPBIT_TIMEOUT` | `5s` | |
+| `REDIS_HOST` | `localhost` | 실시간 Pub/Sub을 구독할 Redis 주소 |
+| `REDIS_PORT` | `6379` | Redis 포트 |
 
 Client ID와 Client Secret은 SSAFY project 사이트의 [내 어플리케이션] > [서비스 설정] > [SSAFY 로그인]에서 확인하고, Redirect URI도 같은 화면에 등록한다.
 
@@ -100,6 +104,127 @@ POST /api/admin/assets
 요청에는 `exchange`와 `exchangeMarketCode`만 받는다. API가 Upbit 공개 페어 목록에서 실제 거래지원 여부와 종목명을 검증한 뒤 `reference.asset`과 `ops.market_data_collection_target`을 함께 저장한다.
 
 `collectionStatus=ENABLED`는 API가 기록하는 수집 희망 상태다. Go Producer는 이 목록을 주기적으로 읽어 Upbit WebSocket 구독을 갱신하며, 실제 연결 상태를 이 값에 다시 기록하지 않는다.
+
+## 실시간 시세 WebSocket
+
+API가 기동되면 Go가 발행하는 Redis 채널 두 개를 각각 한 번씩 구독한다. 수신 메시지의 `market_code`로 목적지를 계산하며, 종목이 추가되어도 설정 변경이나 재기동은 필요 없다. API 인스턴스가 여러 개면 각 인스턴스가 동일한 Redis 이벤트를 받고 자신의 연결에만 중계한다.
+
+| Redis 채널 | STOMP 구독 목적지 | 의미 |
+|---|---|---|
+| `trade:realtime:updates` | `/topic/markets/{marketCode}/trades` | Kafka 적재 결과와 독립적으로 발행한 실시간 체결 |
+| `candle:1m:live:updates` | `/topic/markets/{marketCode}/candles/1m` | Go Consumer가 저장 및 offset 커밋 후 발행한 종목별 최신 진행 봉 |
+
+### 연결과 여러 종목 구독
+
+- Native WebSocket + STOMP 1.2를 사용한다. 연결 경로는 `/ws`이며 SockJS 경로가 아니다.
+- 먼저 로그인하고 **현재 페이지와 같은 오리진**의 `ws://.../ws` 또는 `wss://.../ws`로 연결한다. 브라우저가 `access_token` httpOnly 쿠키를 handshake에 전송한다. STOMP CONNECT 헤더나 URL query에 JWT를 넣지 않는다.
+- HTTP handshake에서 토큰이 없거나 만료·위조되면 401, 다른 오리진이면 403으로 거부한다. 브라우저 외 클라이언트는 HTTP handshake의 Bearer 헤더도 사용할 수 있다.
+- JWT는 연결 시 검증한다. 이미 열린 연결의 토큰 만료·로그아웃에 따른 강제 종료는 제공하지 않으므로 프론트에서 로그아웃할 때 연결을 종료해야 한다. 재연결은 다시 인증한다.
+- 개발 Vite 및 배포 프록시는 `/ws`에 대해 WebSocket Upgrade를 전달하고 same-origin 정보(Host/Origin)를 유지해야 한다. 현재 브랜치에는 프론트 프록시 변경이 포함되지 않는다.
+
+아래는 한 연결에서 BTC 체결, ETH 체결, BTC 진행 봉을 받는 STOMP 프레임 예시다. 프레임마다 마지막 빈 줄 뒤에 실제 NULL 바이트(`\0`)를 붙인다.
+
+```text
+CONNECT
+accept-version:1.2
+host:localhost
+
+```
+
+서버의 `CONNECTED`를 받은 다음 각각 보낸다. `id`는 연결 안에서 구독마다 달라야 한다.
+
+```text
+SUBSCRIBE
+id:btc-trades
+destination:/topic/markets/KRW-BTC/trades
+ack:auto
+
+```
+
+```text
+SUBSCRIBE
+id:eth-trades
+destination:/topic/markets/KRW-ETH/trades
+ack:auto
+
+```
+
+```text
+SUBSCRIBE
+id:btc-live-candle
+destination:/topic/markets/KRW-BTC/candles/1m
+ack:auto
+
+```
+
+ETH 체결만 해제하려면 다음 프레임을 보낸다. BTC 구독은 유지된다.
+
+```text
+UNSUBSCRIBE
+id:eth-trades
+
+```
+
+종목 코드는 `KRW-` 뒤에 영문 대문자·숫자가 오는 형식이다. 정확한 종목 목적지만 허용하고 `*`, `**`, `{marketCode}` 같은 패턴 구독은 거부한다. DB에서 종목 존재 여부를 조회하지 않으므로 해당 종목의 수집 이벤트가 없으면 메시지도 오지 않는다.
+
+클라이언트 `SEND` 및 잘못된 구독은 STOMP `ERROR` 후 연결을 닫는다. ERROR의 `message` 헤더는 `REALTIME-400-001`, body는 `허용되지 않은 실시간 구독 요청입니다.`다. 해당 스트림은 `ack:auto`를 사용하며 client ACK/NACK와 트랜잭션 명령은 지원하지 않는다.
+
+### 응답 계약
+
+각 STOMP `MESSAGE`의 body는 다음 camelCase JSON이다. 가격·거래량·거래대금은 정밀도를 보존하는 **문자열**, UUID는 문자열, 시간은 UTC Unix millisecond 정수다. 순번은 64비트 정수이므로 클라이언트에서 정밀도에 주의한다.
+
+체결 응답:
+
+```json
+{
+  "assetId": "11111111-1111-1111-1111-111111111111",
+  "marketCode": "KRW-BTC",
+  "price": "100000000.12345678",
+  "volume": "0.00000001",
+  "side": "BID",
+  "tradedAtUnixMilli": 1800000000123,
+  "sequenceId": 123456789
+}
+```
+
+`side`는 `ASK`(매도) 또는 `BID`(매수)이며 가격·수량은 양수다. `sequenceId`는 체결 식별 순번이다.
+
+진행 봉 응답:
+
+```json
+{
+  "assetId": "11111111-1111-1111-1111-111111111111",
+  "marketCode": "KRW-BTC",
+  "intervalMinutes": 1,
+  "openTimeUnixMilli": 1800000000000,
+  "openPrice": "100000000.12345678",
+  "highPrice": "100000001",
+  "lowPrice": "99999999",
+  "closePrice": "100000000",
+  "tradeVolume": "0.00000001",
+  "tradeAmount": "1.0000000012345678",
+  "lastEventTimeUnixMilli": 1800000000123,
+  "lastSequenceId": 123456789
+}
+```
+
+`openTimeUnixMilli`는 봉 시작 시간이다. 동일한 종목·시작 시간의 봉은 수신 값으로 갱신한다. OHLC는 시가·고가·저가·종가, `tradeVolume`과 `tradeAmount`는 해당 봉 누적 거래량·거래대금이다. `lastEventTimeUnixMilli`와 `lastSequenceId`는 마지막 반영 체결을 나타낸다. 이는 **진행 봉 상태**이며 확정 봉 저장 알림이 아니다.
+
+### 전달과 책임
+
+- Redis 수신 DTO는 `realtime/infrastructure/redis`, 내부 이벤트는 `realtime/domain`, 발행 경계는 `realtime/service/RealtimeEventPublisher`에 둔다. WebSocket adapter는 응답 DTO로 변환해 내장 STOMP 브로커에 발행한다.
+- Redis 수신은 단일 실행 스레드로 순서를 유지한다. 공용 대기 큐는 2,048건으로 제한하며 가득 차면 가장 오래 대기한 알림을 버리고 최신 갱신을 받는다. 사용자별 재전송 버퍼는 없다.
+- 필수 필드·UUID·종목 코드·ASK/BID·양수 시간/순번·1분 간격을 검증한다. 잘못된 메시지와 중계 실패는 원문 없이 경고 로그를 남기고 이후 수신을 계속한다.
+- Pub/Sub은 best-effort다. 중단·과부하 중 빠진 메시지는 재전송하지 않으며 체결과 진행 봉 두 채널 사이의 동기화도 보장하지 않는다. 초기 차트 조회·재연결 스냅샷 복구 API는 별도 작업이다.
+
+기본 `build`는 외부 Redis 없이 실제 내장 서버의 JWT handshake, 종목별 구독/해제, 메시지 라우팅과 보안 정책을 검증한다. 전용 테스트 Redis의 로컬 포트를 지정하면 실제 Pub/Sub 및 다중 인스턴스 테스트도 실행한다. 운영/공용 Redis를 테스트 대상으로 사용하지 않는다.
+
+```powershell
+$env:REALTIME_TEST_REDIS_PORT = '16379'
+.\gradlew.bat test --tests 'com.ssafy.a107.realtime.*' --rerun-tasks
+```
+
+WebSocket/STOMP 계약은 이 절에서 관리하며 REST Docs/OpenAPI에는 포함하지 않는다.
 
 ## API 문서
 

@@ -19,6 +19,14 @@ com.ssafy.a107
 │                       Upbit 공개 페어 목록 Client
 ├── asset/domain        거래소의 거래 자산·수집 대상 기준 정보
 ├── candle/domain       확정 분봉 읽기 모델
+├── realtime/domain     실시간 체결·진행 봉 이벤트
+├── realtime/service    실시간 이벤트 발행 인터페이스
+├── realtime/infrastructure/redis
+│                       Redis 채널 구독·수신 DTO·검증
+├── realtime/infrastructure/websocket
+│                       STOMP 설정·구독 정책·종목별 발행
+├── realtime/controller/response
+│                       WebSocket 응답 DTO
 ├── ai/controller       전략 설명 변환 API
 ├── ai/service          회원당 호출 한도와 변환 조율
 ├── ai/infrastructure   ai/ FastAPI 서버 Client
@@ -37,6 +45,11 @@ com.ssafy.a107
 - 확정 분봉은 Go Consumer가 쓰고 Spring은 `@Immutable` 엔티티로 읽는다.
 - `AssetTradingStatus`는 거래소 거래지원 상태이고 `MarketDataCollectionStatus`는 우리 서비스의 수집 희망 상태다. 두 상태를 합치지 않는다.
 - 종목 등록 API의 `ENABLED`는 실제 Go WebSocket 구독 완료를 의미하지 않는다.
+- `realtime`은 Redis 수신 이벤트를 WebSocket으로 중계한다. DB 조회·쓰기와 봉 집계를 하지 않는다.
+- Redis 수신 adapter는 `RealtimeEventPublisher`에 의존하고 WebSocket adapter를 직접 참조하지 않는다.
+- `trade:realtime:updates`와 `candle:1m:live:updates`는 인스턴스마다 한 번씩 구독한다. Go의 snake_case JSON을 검증하고 종목별 camelCase 응답으로 변환한다.
+- `/ws`는 기존 JWT HTTP 인증과 same-origin 정책을 유지한다. STOMP는 종목별 SUBSCRIBE/UNSUBSCRIBE만 제공하며 클라이언트 SEND를 허용하지 않는다.
+- 실시간 스트림은 best-effort이며 초기 데이터·재연결 복구·재집계를 담당하지 않는다. WebSocket 계약은 README에 기록하고 REST Docs/OpenAPI에는 넣지 않는다.
 
 ## DB와 JPA
 
