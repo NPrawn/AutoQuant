@@ -56,7 +56,6 @@ public class PerformanceReportCalculator {
         Objects.requireNonNull(input);
 
         List<EquitySnapshot> equitySnapshots = input.equitySnapshots();
-        EquitySnapshot firstSnapshot = equitySnapshots.getFirst();
         EquitySnapshot finalSnapshot = equitySnapshots.getLast();
         BigDecimal finalAssetValue = finalSnapshot.totalAssetValue();
 
@@ -67,8 +66,8 @@ public class PerformanceReportCalculator {
         BigDecimal cagr = cagrCalculator.calculate(
                 input.initialCapital(),
                 finalAssetValue,
-                firstSnapshot.valuationAt(),
-                finalSnapshot.valuationAt()
+                input.periodStart(),
+                input.periodEnd()
         );
         BigDecimal maximumDrawdown = maximumDrawdownCalculator.calculate(
                 equitySnapshots

@@ -5,6 +5,7 @@ import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestPosition;
 import com.ssafy.a107.trading.backtest.engine.portfolio.RealizedTradeResult;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -12,6 +13,8 @@ import java.util.UUID;
 
 public record PerformanceCalculationInput(
         BigDecimal initialCapital,
+        Instant periodStart,
+        Instant periodEnd,
         List<EquitySnapshot> equitySnapshots,
         List<VirtualFill> fills,
         List<RealizedTradeResult> realizedTrades,
@@ -26,6 +29,13 @@ public record PerformanceCalculationInput(
         if (initialCapital == null || initialCapital.signum() <= 0) {
             throw new IllegalArgumentException(
                     "Initial capital must be greater than zero"
+            );
+        }
+        periodStart = Objects.requireNonNull(periodStart);
+        periodEnd = Objects.requireNonNull(periodEnd);
+        if (!periodStart.isBefore(periodEnd)) {
+            throw new IllegalArgumentException(
+                    "Period end must be after period start"
             );
         }
 
