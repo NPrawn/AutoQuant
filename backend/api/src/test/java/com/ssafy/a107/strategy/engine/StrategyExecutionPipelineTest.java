@@ -55,7 +55,9 @@ class StrategyExecutionPipelineTest {
         assetCandles.put(fallingAssetId, candles(fallingAssetId, "100", "90", "81"));
 
         // when
-        TargetPortfolio targetPortfolio = pipeline.execute(strategyDsl(1), assetCandles);
+        TargetPortfolio targetPortfolio = pipeline.execute(
+                strategyExecutionContext(strategyDsl(1), assetCandles)
+        );
 
         // then
         assertThat(targetPortfolio.assetWeights()).hasSize(1);
@@ -72,7 +74,9 @@ class StrategyExecutionPipelineTest {
         Map<UUID, List<MinuteCandle>> assetCandles = Map.of(assetId, candles(assetId, "100", "110", "121"));
 
         // when
-        TargetPortfolio targetPortfolio = pipeline.execute(strategyDsl(1_000), assetCandles);
+        TargetPortfolio targetPortfolio = pipeline.execute(
+                strategyExecutionContext(strategyDsl(1_000), assetCandles)
+        );
 
         // then
         assertThat(targetPortfolio.assetWeights()).isEmpty();
@@ -96,8 +100,21 @@ class StrategyExecutionPipelineTest {
 
         // when & then
         assertThatIllegalArgumentException()
-                .isThrownBy(() -> pipeline.execute(strategyDsl(1), Map.of(assetId, candles)))
-                .withMessage("candle interval must match strategy timeframe");
+                .isThrownBy(() -> pipeline.execute(
+                        strategyExecutionContext(strategyDsl(1), Map.of(assetId, candles))
+                ))
+                .withMessage("Candle interval must match strategy timeframe");
+    }
+
+    private StrategyExecutionContext strategyExecutionContext(
+            StrategyDsl strategyDsl,
+            Map<UUID, List<MinuteCandle>> assetCandles
+    ) {
+        return new StrategyExecutionContext(
+                strategyDsl,
+                Instant.parse("2026-01-01T03:00:00Z"),
+                assetCandles
+        );
     }
 
     private StrategyDsl strategyDsl(int minimumRsi) {
