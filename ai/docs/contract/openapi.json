@@ -1,0 +1,634 @@
+{
+  "x-pintect-generation": {
+    "generatedBy": "scripts/export_contract.py",
+    "commit": "6d9cec0305f491b892eeaf0bd695183fbd1a8194",
+    "status": "제안이며 확정 명세가 아니다. 전략 도메인 명세가 바뀌면 이 계약도 바뀐다."
+  },
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FastAPI",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "summary": "Readiness",
+        "operationId": "readiness_health_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ai/strategies/translate": {
+      "post": {
+        "tags": [
+          "strategies"
+        ],
+        "summary": "Translate Strategy",
+        "operationId": "translate_strategy_api_v1_ai_strategies_translate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ComparisonOperator": {
+        "type": "string",
+        "enum": [
+          "GT",
+          "GTE",
+          "LT",
+          "LTE"
+        ],
+        "title": "ComparisonOperator"
+      },
+      "Condition": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "CONDITION",
+            "title": "Type"
+          },
+          "left": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FactorOperand"
+              },
+              {
+                "$ref": "#/components/schemas/ValueOperand"
+              }
+            ],
+            "title": "Left",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "FACTOR": "#/components/schemas/FactorOperand",
+                "VALUE": "#/components/schemas/ValueOperand"
+              }
+            }
+          },
+          "operator": {
+            "$ref": "#/components/schemas/ComparisonOperator"
+          },
+          "right": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FactorOperand"
+              },
+              {
+                "$ref": "#/components/schemas/ValueOperand"
+              }
+            ],
+            "title": "Right",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "FACTOR": "#/components/schemas/FactorOperand",
+                "VALUE": "#/components/schemas/ValueOperand"
+              }
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "left",
+          "operator",
+          "right"
+        ],
+        "title": "Condition"
+      },
+      "FactorOperand": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "FACTOR",
+            "title": "Type"
+          },
+          "factor": {
+            "$ref": "#/components/schemas/FactorType"
+          },
+          "period": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Period",
+            "description": "Factor calculation period in candles."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "factor",
+          "period"
+        ],
+        "title": "FactorOperand"
+      },
+      "FactorType": {
+        "type": "string",
+        "enum": [
+          "RETURN",
+          "RSI",
+          "SMA_DISPARITY",
+          "VOLATILITY",
+          "VOLUME_RATIO",
+          "DRAWDOWN"
+        ],
+        "title": "FactorType"
+      },
+      "FilterGroup-Input": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "GROUP",
+            "title": "Type"
+          },
+          "logic": {
+            "$ref": "#/components/schemas/Logic"
+          },
+          "children": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/FilterGroup-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/Condition"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "CONDITION": "#/components/schemas/Condition",
+                  "GROUP": "#/components/schemas/FilterGroup-Input"
+                }
+              }
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Children"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "logic",
+          "children"
+        ],
+        "title": "FilterGroup"
+      },
+      "FilterGroup-Output": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "GROUP",
+            "title": "Type"
+          },
+          "logic": {
+            "$ref": "#/components/schemas/Logic"
+          },
+          "children": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/FilterGroup-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/Condition"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "CONDITION": "#/components/schemas/Condition",
+                  "GROUP": "#/components/schemas/FilterGroup-Output"
+                }
+              }
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Children"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "logic",
+          "children"
+        ],
+        "title": "FilterGroup"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Logic": {
+        "type": "string",
+        "enum": [
+          "AND",
+          "OR"
+        ],
+        "title": "Logic"
+      },
+      "Ranking": {
+        "properties": {
+          "factor": {
+            "$ref": "#/components/schemas/FactorType"
+          },
+          "period": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Period",
+            "description": "Ranking calculation period in candles."
+          },
+          "direction": {
+            "$ref": "#/components/schemas/RankingDirection"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "factor",
+          "period",
+          "direction"
+        ],
+        "title": "Ranking"
+      },
+      "RankingDirection": {
+        "type": "string",
+        "enum": [
+          "ASC",
+          "DESC"
+        ],
+        "title": "RankingDirection"
+      },
+      "Rebalance": {
+        "properties": {
+          "period": {
+            "$ref": "#/components/schemas/RebalancePeriod"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "period"
+        ],
+        "title": "Rebalance"
+      },
+      "RebalancePeriod": {
+        "type": "string",
+        "enum": [
+          "DAILY",
+          "WEEKLY",
+          "MONTHLY"
+        ],
+        "title": "RebalancePeriod"
+      },
+      "Selection": {
+        "properties": {
+          "topN": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Topn"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "topN"
+        ],
+        "title": "Selection"
+      },
+      "Strategy-Input": {
+        "properties": {
+          "timeframe": {
+            "$ref": "#/components/schemas/Timeframe"
+          },
+          "filters": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FilterGroup-Input"
+              },
+              {
+                "$ref": "#/components/schemas/Condition"
+              }
+            ],
+            "title": "Filters",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "CONDITION": "#/components/schemas/Condition",
+                "GROUP": "#/components/schemas/FilterGroup-Input"
+              }
+            }
+          },
+          "ranking": {
+            "$ref": "#/components/schemas/Ranking"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "rebalance": {
+            "$ref": "#/components/schemas/Rebalance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "timeframe",
+          "filters",
+          "ranking",
+          "selection",
+          "rebalance"
+        ],
+        "title": "Strategy"
+      },
+      "Strategy-Output": {
+        "properties": {
+          "timeframe": {
+            "$ref": "#/components/schemas/Timeframe"
+          },
+          "filters": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/FilterGroup-Output"
+              },
+              {
+                "$ref": "#/components/schemas/Condition"
+              }
+            ],
+            "title": "Filters",
+            "discriminator": {
+              "propertyName": "type",
+              "mapping": {
+                "CONDITION": "#/components/schemas/Condition",
+                "GROUP": "#/components/schemas/FilterGroup-Output"
+              }
+            }
+          },
+          "ranking": {
+            "$ref": "#/components/schemas/Ranking"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/Selection"
+          },
+          "rebalance": {
+            "$ref": "#/components/schemas/Rebalance"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "timeframe",
+          "filters",
+          "ranking",
+          "selection",
+          "rebalance"
+        ],
+        "title": "Strategy"
+      },
+      "Timeframe": {
+        "type": "string",
+        "enum": [
+          "1H",
+          "4H",
+          "1D"
+        ],
+        "title": "Timeframe"
+      },
+      "TranslateMeta": {
+        "properties": {
+          "attempts": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Attempts"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Model"
+          },
+          "elapsedMs": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Elapsedms"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Assumptions"
+          },
+          "changes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Changes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "attempts",
+          "model",
+          "elapsedMs",
+          "warnings",
+          "assumptions",
+          "changes"
+        ],
+        "title": "TranslateMeta"
+      },
+      "TranslateRequest": {
+        "properties": {
+          "userInput": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Userinput"
+          },
+          "currentStrategy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Strategy-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "userInput"
+        ],
+        "title": "TranslateRequest"
+      },
+      "TranslateResponse": {
+        "properties": {
+          "strategy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Strategy-Output"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/TranslateMeta"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "strategy",
+          "meta"
+        ],
+        "title": "TranslateResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ValueOperand": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "VALUE",
+            "title": "Type"
+          },
+          "value": {
+            "type": "number",
+            "title": "Value"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "value"
+        ],
+        "title": "ValueOperand"
+      }
+    }
+  }
+}

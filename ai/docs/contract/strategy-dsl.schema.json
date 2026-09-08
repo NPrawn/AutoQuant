@@ -1,0 +1,300 @@
+{
+  "$comment": "{\"generatedBy\": \"scripts/export_contract.py\", \"commit\": \"6d9cec0305f491b892eeaf0bd695183fbd1a8194\", \"status\": \"제안이며 확정 명세가 아니다. 전략 도메인 명세가 바뀌면 이 계약도 바뀐다.\"}",
+  "$defs": {
+    "ComparisonOperator": {
+      "enum": [
+        "GT",
+        "GTE",
+        "LT",
+        "LTE"
+      ],
+      "title": "ComparisonOperator",
+      "type": "string"
+    },
+    "Condition": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "CONDITION",
+          "title": "Type",
+          "type": "string"
+        },
+        "left": {
+          "discriminator": {
+            "mapping": {
+              "FACTOR": "#/$defs/FactorOperand",
+              "VALUE": "#/$defs/ValueOperand"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/FactorOperand"
+            },
+            {
+              "$ref": "#/$defs/ValueOperand"
+            }
+          ],
+          "title": "Left"
+        },
+        "operator": {
+          "$ref": "#/$defs/ComparisonOperator"
+        },
+        "right": {
+          "discriminator": {
+            "mapping": {
+              "FACTOR": "#/$defs/FactorOperand",
+              "VALUE": "#/$defs/ValueOperand"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/FactorOperand"
+            },
+            {
+              "$ref": "#/$defs/ValueOperand"
+            }
+          ],
+          "title": "Right"
+        }
+      },
+      "required": [
+        "type",
+        "left",
+        "operator",
+        "right"
+      ],
+      "title": "Condition",
+      "type": "object"
+    },
+    "FactorOperand": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "FACTOR",
+          "title": "Type",
+          "type": "string"
+        },
+        "factor": {
+          "$ref": "#/$defs/FactorType"
+        },
+        "period": {
+          "description": "Factor calculation period in candles.",
+          "exclusiveMinimum": 0,
+          "title": "Period",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "factor",
+        "period"
+      ],
+      "title": "FactorOperand",
+      "type": "object"
+    },
+    "FactorType": {
+      "enum": [
+        "RETURN",
+        "RSI",
+        "SMA_DISPARITY",
+        "VOLATILITY",
+        "VOLUME_RATIO",
+        "DRAWDOWN"
+      ],
+      "title": "FactorType",
+      "type": "string"
+    },
+    "FilterGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "GROUP",
+          "title": "Type",
+          "type": "string"
+        },
+        "logic": {
+          "$ref": "#/$defs/Logic"
+        },
+        "children": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "CONDITION": "#/$defs/Condition",
+                "GROUP": "#/$defs/FilterGroup"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/FilterGroup"
+              },
+              {
+                "$ref": "#/$defs/Condition"
+              }
+            ]
+          },
+          "minItems": 1,
+          "title": "Children",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "logic",
+        "children"
+      ],
+      "title": "FilterGroup",
+      "type": "object"
+    },
+    "Logic": {
+      "enum": [
+        "AND",
+        "OR"
+      ],
+      "title": "Logic",
+      "type": "string"
+    },
+    "Ranking": {
+      "additionalProperties": false,
+      "properties": {
+        "factor": {
+          "$ref": "#/$defs/FactorType"
+        },
+        "period": {
+          "description": "Ranking calculation period in candles.",
+          "exclusiveMinimum": 0,
+          "title": "Period",
+          "type": "integer"
+        },
+        "direction": {
+          "$ref": "#/$defs/RankingDirection"
+        }
+      },
+      "required": [
+        "factor",
+        "period",
+        "direction"
+      ],
+      "title": "Ranking",
+      "type": "object"
+    },
+    "RankingDirection": {
+      "enum": [
+        "ASC",
+        "DESC"
+      ],
+      "title": "RankingDirection",
+      "type": "string"
+    },
+    "Rebalance": {
+      "additionalProperties": false,
+      "properties": {
+        "period": {
+          "$ref": "#/$defs/RebalancePeriod"
+        }
+      },
+      "required": [
+        "period"
+      ],
+      "title": "Rebalance",
+      "type": "object"
+    },
+    "RebalancePeriod": {
+      "enum": [
+        "DAILY",
+        "WEEKLY",
+        "MONTHLY"
+      ],
+      "title": "RebalancePeriod",
+      "type": "string"
+    },
+    "Selection": {
+      "additionalProperties": false,
+      "properties": {
+        "topN": {
+          "exclusiveMinimum": 0,
+          "title": "Topn",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "topN"
+      ],
+      "title": "Selection",
+      "type": "object"
+    },
+    "Timeframe": {
+      "enum": [
+        "1H",
+        "4H",
+        "1D"
+      ],
+      "title": "Timeframe",
+      "type": "string"
+    },
+    "ValueOperand": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "VALUE",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "value"
+      ],
+      "title": "ValueOperand",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "timeframe": {
+      "$ref": "#/$defs/Timeframe"
+    },
+    "filters": {
+      "discriminator": {
+        "mapping": {
+          "CONDITION": "#/$defs/Condition",
+          "GROUP": "#/$defs/FilterGroup"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/FilterGroup"
+        },
+        {
+          "$ref": "#/$defs/Condition"
+        }
+      ],
+      "title": "Filters"
+    },
+    "ranking": {
+      "$ref": "#/$defs/Ranking"
+    },
+    "selection": {
+      "$ref": "#/$defs/Selection"
+    },
+    "rebalance": {
+      "$ref": "#/$defs/Rebalance"
+    }
+  },
+  "required": [
+    "timeframe",
+    "filters",
+    "ranking",
+    "selection",
+    "rebalance"
+  ],
+  "title": "Strategy",
+  "type": "object"
+}
