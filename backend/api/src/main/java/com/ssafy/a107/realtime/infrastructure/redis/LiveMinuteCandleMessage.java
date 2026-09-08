@@ -16,7 +16,7 @@ import java.util.UUID;
 record LiveMinuteCandleMessage(
         @NotNull @Pattern(regexp = RedisMessageFormat.UUID_PATTERN) String assetId,
         @NotNull @Pattern(regexp = RedisMessageFormat.MARKET_CODE_PATTERN) String marketCode,
-        @NotNull @Min(1) @Max(1) Integer intervalMinutes,
+        @NotNull @Min(1) @Max(1440) Integer intervalMinutes,
         @NotNull @Positive Long openTimeUnixMilli,
         @NotNull @DecimalMin(value = "0", inclusive = false) String openPrice,
         @NotNull @DecimalMin(value = "0", inclusive = false) String highPrice,

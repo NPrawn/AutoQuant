@@ -109,3 +109,42 @@ func recentMinuteCandle(openTime time.Time) candledomain.MinuteCandle {
 		LastEventTime:   openTime.Add(30 * time.Second),
 	}
 }
+
+func TestRecentCandlesIsolateAssetAndInterval(t *testing.T) {
+	ctx := context.Background()
+	client := ingestredis.NewClient(redisAddress())
+	t.Cleanup(func() {
+		if err := client.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	repository := ingestredis.NewRecentMinuteCandleRepository(client)
+	for _, asset := range []string{recentCandleTestAssetID, "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a23"} {
+		for _, interval := range []int16{1, 2, 5, 15, 60, 240, 1440} {
+			t.Run(asset+"_간격_"+strconv.Itoa(int(interval)), func(t *testing.T) {
+				key := ingestredis.RecentCandlesKey(asset, interval)
+				t.Cleanup(func() {
+					if err := client.Del(ctx, key).Err(); err != nil {
+						t.Error(err)
+					}
+				})
+				start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+				values := make([]candledomain.MinuteCandle, 1001)
+				for index := range values {
+					values[index] = recentMinuteCandle(start.Add(time.Duration(index) * time.Duration(interval) * time.Minute))
+					values[index].AssetID, values[index].IntervalMinutes = asset, interval
+				}
+				if err := repository.SaveBatch(ctx, values); err != nil {
+					t.Fatal(err)
+				}
+				entries, err := client.ZRangeWithScores(ctx, key, 0, -1).Result()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(entries) != 1000 || int64(entries[0].Score) != values[1].OpenTime.UnixMilli() {
+					t.Fatalf("got %d entries, want latest 1000 for %s", len(entries), key)
+				}
+			})
+		}
+	}
+}

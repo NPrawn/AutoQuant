@@ -42,6 +42,7 @@ internal/
 ├── producer            수집 대상 변경 감지·Collector 샤드 소유권
 ├── consumer            Kafka 체결 검증·partition별 1분봉 집계 오케스트레이션
 ├── candlesync          Upbit 1분봉 과거 적재·주기 검증 오케스트레이션
+├── candlerollup         1분봉 기반 다중 간격 집계·진행 봉 합성·재처리 오케스트레이션
 ├── upbit               외부 API와 응답 DTO
 ├── kafka               토픽·메시지·Consumer Group·Producer/Consumer 래퍼
 ├── redis               진행 봉 체크포인트, 최근 확정 봉 Sorted Set, Pub/Sub
@@ -53,7 +54,9 @@ Consumer는 파티션별로 순차 집계하고, 서로 다른 파티션만 병�
 
 Redis Pub/Sub 채널은 `internal/redis`에서만 정의한다. `trade:realtime:updates`는 Kafka 적재 결과와 무관하게 수신한 체결을 건별 발행하고, `candle:1m:live:updates`는 저장 및 offset 커밋에 성공한 Poll의 종목별 최신 진행 봉만 발행한다. Pub/Sub은 복구 저장소가 아니므로 구독자가 놓친 메시지를 재처리하는 용도로 사용하지 않는다.
 
-최근 확정 분봉은 `candle:1m:recent:{assetId}` Sorted Set에 저장한다. score는 `open_time`의 Unix millisecond이며 동일 score는 교체하고 최신 1,000개만 유지한다. 이 데이터는 파생 캐시이므로 초기 miss와 유실은 PostgreSQL에서 복구한다.
+최근 확정 분봉은 `candle:{intervalMinutes}m:recent:{assetId}` Sorted Set에 저장한다. score는 `open_time`의 Unix millisecond이며 Lua로 동일 score 교체·최신 1,000개 trim을 원자 실행한다. 종목과 간격은 서로 격리하며 초기 miss와 유실은 PostgreSQL에서 복구한다.
+
+지원 간격은 1·2·5·15·60·240·1440분, 버킷은 UTC 기준이다. `candlerollup`은 순수 집계·진행 봉 합성·작업 처리를 담당하고 SQL/락은 `store`, 캐시/PubSub은 `redis`에 둔다. V14의 1분봉 INSERT/UPDATE 트리거가 같은 트랜잭션에서 재집계 작업을 남긴다. Consumer 안의 공통 주기 작업이 종료 구간을 DB→Redis 순서로 갱신한 뒤 같은 revision만 완료하며, 실패·동시 보정은 재처리한다. 종료 봉도 원본 검증 전에는 보정될 수 있다. 진행 봉 합계는 종목별 분 전환 시 DB에서 재구성하고 같은 분에는 재사용한다. 상위 봉마다 Kafka 그룹·offset·체결 집계기를 추가하지 않는다.
 
 일반 Go 컨벤션은 `common` 패키지를 금지하지만, 이 프로젝트의 `internal/common/domain`과 `internal/common/exception`은 Java 구조와의 일관성을 위해 팀이 명시적으로 허용했다. 다른 범용 `util`, `helper`, `common` 패키지를 추가로 만들지는 않는다.
 

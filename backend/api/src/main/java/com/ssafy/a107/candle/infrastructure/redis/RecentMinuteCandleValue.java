@@ -14,7 +14,7 @@ import java.util.UUID;
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 record RecentMinuteCandleValue(
         @NotNull UUID assetId,
-        @NotNull @Min(1) @Max(1) Integer intervalMinutes,
+        @NotNull @Min(1) @Max(1440) Integer intervalMinutes,
         @NotNull @Positive Long openTimeUnixMilli,
         @NotNull @DecimalMin("0") String openPrice,
         @NotNull @DecimalMin("0") String highPrice,
@@ -29,8 +29,8 @@ record RecentMinuteCandleValue(
                 lowPrice, closePrice, tradeVolume, tradeAmount, lastEventTimeUnixMilli);
     }
 
-    static RecentMinuteCandleValue from(MinuteCandleSnapshot candle) {
-        return new RecentMinuteCandleValue(candle.assetId(), 1, candle.openTimeUnixMilli(),
+    static RecentMinuteCandleValue from(MinuteCandleSnapshot candle, int intervalMinutes) {
+        return new RecentMinuteCandleValue(candle.assetId(), intervalMinutes, candle.openTimeUnixMilli(),
                 candle.openPrice(), candle.highPrice(), candle.lowPrice(), candle.closePrice(),
                 candle.tradeVolume(), candle.tradeAmount(), candle.lastEventTimeUnixMilli());
     }

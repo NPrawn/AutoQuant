@@ -72,6 +72,23 @@ class RealtimeRedisListenerTest {
     }
 
     @ParameterizedTest
+    @ValueSource(ints = {1, 2, 5, 15, 60, 240, 1440})
+    @DisplayName("지원하는 간격의 채널에서 UTC 경계에 맞는 봉을 수신한다")
+    void receiveSupportedIntervals(int interval) throws Exception {
+        ObjectNode payload = (ObjectNode) MAPPER.readTree(RealtimeFixtures.CANDLE);
+        long width = interval * 60_000L;
+        long start = 1800000000000L / width * width;
+        payload.put("interval_minutes", interval);
+        payload.put("open_time_unix_milli", start);
+        payload.put("last_event_time_unix_milli", start + 123);
+
+        receive(RealtimeRedisChannels.candle(interval), payload.toString());
+
+        assertThat(events).singleElement().isInstanceOfSatisfying(LiveMinuteCandle.class,
+                candle -> assertThat(candle.intervalMinutes()).isEqualTo(interval));
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"{broken", "null", "[]", "{}", "{} {}"})
     @DisplayName("손상되거나 불완전한 JSON은 버리고 다음 메시지를 처리한다")
     void discardMalformedJson(String payload) {

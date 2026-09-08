@@ -20,9 +20,9 @@ public class MinuteCandleReadService {
         this.repository = repository;
     }
 
-    public List<MinuteCandleSnapshot> findRecent(UUID assetId) {
+    public List<MinuteCandleSnapshot> findRecent(UUID assetId, int intervalMinutes) {
         return repository.findByIdAssetIdAndIdIntervalMinutesOrderByIdOpenTimeDesc(
-                        assetId, (short) 1, PageRequest.of(0, RecentMinuteCandleCache.CAPACITY))
+                        assetId, (short) intervalMinutes, PageRequest.of(0, RecentMinuteCandleCache.CAPACITY))
                 .reversed().stream()
                 .map(MinuteCandleSnapshot::from)
                 .toList();

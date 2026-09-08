@@ -23,7 +23,10 @@ class RealtimeSubscriptionInterceptorTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/topic/markets/KRW-BTC/trades", "/topic/markets/KRW-ETH/trades",
-            "/topic/markets/KRW-BTC/candles/1m", "/topic/markets/KRW-NEWCOIN/candles/1m"})
+            "/topic/markets/KRW-BTC/candles/1m", "/topic/markets/KRW-NEWCOIN/candles/1m",
+            "/topic/markets/KRW-BTC/candles/2m", "/topic/markets/KRW-BTC/candles/5m",
+            "/topic/markets/KRW-BTC/candles/15m", "/topic/markets/KRW-BTC/candles/60m",
+            "/topic/markets/KRW-BTC/candles/240m", "/topic/markets/KRW-BTC/candles/1440m"})
     @DisplayName("종목별 체결과 진행 봉 구독을 허용한다")
     void allowMarketSubscriptions(String destination) {
         Message<byte[]> message = message(StompCommand.SUBSCRIBE, destination);
@@ -34,7 +37,7 @@ class RealtimeSubscriptionInterceptorTest {
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"", "/topic/**", "/topic/markets/*/trades", "/topic/markets/KRW-BTC/trades/",
-            "/topic/markets/KRW-BTC/candles/5m", "/topic/markets/KRW-BTC", "/queue/private",
+            "/topic/markets/KRW-BTC/candles/3m", "/topic/markets/KRW-BTC", "/queue/private",
             "/topic/markets/{marketCode}/trades", "/topic/markets/KRW-BTC/trades?x=1"})
     @DisplayName("와일드카드와 정의되지 않은 구독 경로를 거부한다")
     void rejectInvalidSubscriptions(String destination) {

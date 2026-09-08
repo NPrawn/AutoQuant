@@ -105,15 +105,19 @@ POST /api/admin/assets
 
 `collectionStatus=ENABLED`는 API가 기록하는 수집 희망 상태다. Go Producer는 이 목록을 주기적으로 읽어 Upbit WebSocket 구독을 갱신하며, 실제 연결 상태를 이 값에 다시 기록하지 않는다.
 
-## 최근 확정 1분봉 조회
+## 최근 확정 봉 조회
 
 차트 종목 선택은 JWT 인증이 필요한 `GET /api/assets`를 사용한다. 등록된 Upbit KRW 종목 중 `TRADING` 상태를 마켓 코드 오름차순으로 반환한다. 응답은 `[{"assetId":"UUID","marketCode":"KRW-BTC","koreanName":"비트코인"}]`이며 없으면 빈 배열이다. 수집 연결·봉 존재를 보장하는 목록은 아니다. Controller → AssetReadService → AssetRepository로 조회하며 REST Docs/OpenAPI에 포함한다.
 
 ```http
 GET /api/assets/{assetId}/candles/1m?limit=1000
+GET /api/assets/{assetId}/candles/5m?limit=1000
+GET /api/assets/{assetId}/candles/1440m?limit=1000
 ```
 
 기존 JWT 쿠키 또는 Bearer 인증으로 호출한다. `assetId`는 종목의 UUID이며, `limit`은 1~1,000(생략 시 1,000)이다. 최신 봉을 선택한 뒤 **봉 시작 시간 오름차순**으로 반환한다.
+
+경로의 `{intervalMinutes}m`은 **1·2·5·15·60·240·1440분**만 지원한다. 기존 `/1m` 호출은 그대로 사용할 수 있다. UTC 버킷을 사용하며 24시간봉(`/1440m`)의 시작은 UTC 00:00(KST 09:00)이다. 지원하지 않는 간격은 `400 COMMON-400-001`이다.
 
 ```json
 {
@@ -134,11 +138,12 @@ GET /api/assets/{assetId}/candles/1m?limit=1000
 }
 ```
 
-- 가격·수량·거래대금은 정밀도를 보존하는 문자열, 시간은 UTC Unix millisecond다. 확정 봉만 반환하며 진행 봉은 기존 `/topic/markets/{marketCode}/candles/1m` 구독으로 받는다.
-- Redis `candle:1m:recent:{assetId}` Sorted Set에 요청 개수만큼 있으면 바로 반환한다. 캐시가 없거나 부족하거나 읽기에 실패하면 PostgreSQL의 해당 종목 1분봉만 최신 1,000개까지 조회한다. 별도 count 쿼리는 실행하지 않는다.
+- 가격·수량·거래대금은 정밀도를 보존하는 문자열, 시간은 UTC Unix millisecond다. 확정 봉만 반환하며 진행 봉은 `/topic/markets/{marketCode}/candles/{intervalMinutes}m` 구독으로 받는다.
+- Redis `candle:{intervalMinutes}m:recent:{assetId}` Sorted Set에 요청 개수만큼 있으면 바로 반환한다. 캐시가 없거나 부족하거나 읽기에 실패하면 PostgreSQL의 해당 종목·간격만 최신 1,000개까지 조회한다. 사용자 조회 시 1분봉 전체를 재집계하거나 별도 count 쿼리를 실행하지 않는다.
 - DB 조회 결과는 Go와 같은 JSON 계약으로 캐시에 보충한다. Lua로 비어 있는 score(봉 시작 시간)만 채우고 최신 1,000개를 유지하므로, 이미 캐시에 있는 봉을 오래된 조회 결과로 덮어쓰지 않는다. 캐시 쓰기 실패에도 DB 결과를 반환한다.
 - DB에 봉이 적으면 있는 만큼, 없으면 `200`과 빈 `candles`를 반환한다. 별도 종목 존재 조회는 하지 않아 미등록 UUID도 빈 목록이다. 잘못된 UUID·limit은 `400 COMMON-400-001`이다.
 - 거래가 없는 시간을 인위적인 봉으로 채우지 않는다. 기간 검색·과거 페이지 조회·진행 봉 스냅샷은 제공하지 않는다. 실제 이력이 limit보다 짧으면 다음 요청도 DB 조회로 최신 이력을 확인한다.
+- 상위 봉은 Go Consumer의 공통 주기 작업으로 비동기 저장되며, 원본 1분봉 검증·보정 후 다시 갱신될 수 있다. 이력이 충분하지 않으면 있는 만큼만 반환한다. 종료된 봉이 원본 검증까지 완료되었다는 보장은 아니며 프론트는 1분마다 확정 결과를 재조회한다.
 
 패키지는 Controller → Facade → 캐시 port / DB ReadService로 나눈다. DB 트랜잭션은 cache miss 이후의 ReadService에서만 열고, 캐시 형식·오류 처리는 Redis adapter가 담당한다. 성공·400 응답과 사용법은 RestAssuredMockMvc + REST Docs 테스트에서 OpenAPI로 생성한다.
 
@@ -152,12 +157,15 @@ $env:CANDLE_TEST_DB_PORT = '15432'
 
 ## 실시간 시세 WebSocket
 
-API가 기동되면 Go가 발행하는 Redis 채널 두 개를 각각 한 번씩 구독한다. 수신 메시지의 `market_code`로 목적지를 계산하며, 종목이 추가되어도 설정 변경이나 재기동은 필요 없다. API 인스턴스가 여러 개면 각 인스턴스가 동일한 Redis 이벤트를 받고 자신의 연결에만 중계한다.
+API가 기동되면 체결 채널 하나와 지원 간격별 진행 봉 채널 7개를 각각 한 번씩 구독한다. 수신 메시지의 `market_code`와 `interval_minutes`로 목적지를 계산하며, 종목이 추가되어도 설정 변경이나 재기동은 필요 없다. API 인스턴스가 여러 개면 각 인스턴스가 동일한 Redis 이벤트를 받고 자신의 연결에만 중계한다.
 
 | Redis 채널 | STOMP 구독 목적지 | 의미 |
 |---|---|---|
 | `trade:realtime:updates` | `/topic/markets/{marketCode}/trades` | Kafka 적재 결과와 독립적으로 발행한 실시간 체결 |
 | `candle:1m:live:updates` | `/topic/markets/{marketCode}/candles/1m` | Go Consumer가 저장 및 offset 커밋 후 발행한 종목별 최신 진행 봉 |
+| `candle:{intervalMinutes}m:live:updates` | `/topic/markets/{marketCode}/candles/{intervalMinutes}m` | 2·5·15·60·240·1440분 진행 봉. 확정 1분봉 합계 + 커밋된 현재 1분봉 |
+
+예를 들어 4시간 차트는 `/topic/markets/KRW-BTC/candles/240m`을 구독한다. 응답 스키마는 1분봉과 같고 `intervalMinutes`가 선택 간격이다. 채널과 payload 간격 불일치, UTC 경계 불일치는 폐기한다. 진행 중 구간의 REST 보정은 Go의 다음 분 합계 갱신에서 반영된다.
 
 ### 연결과 여러 종목 구독
 
@@ -260,8 +268,8 @@ id:eth-trades
 
 - Redis 수신 DTO는 `realtime/infrastructure/redis`, 내부 이벤트는 `realtime/domain`, 발행 경계는 `realtime/service/RealtimeEventPublisher`에 둔다. WebSocket adapter는 응답 DTO로 변환해 내장 STOMP 브로커에 발행한다.
 - Redis 수신은 단일 실행 스레드로 순서를 유지한다. 공용 대기 큐는 2,048건으로 제한하며 가득 차면 가장 오래 대기한 알림을 버리고 최신 갱신을 받는다. 사용자별 재전송 버퍼는 없다.
-- 필수 필드·UUID·종목 코드·ASK/BID·양수 시간/순번·1분 간격을 검증한다. 잘못된 메시지와 중계 실패는 원문 없이 경고 로그를 남기고 이후 수신을 계속한다.
-- Pub/Sub은 best-effort다. 중단·과부하 중 빠진 메시지는 재전송하지 않으며 체결과 진행 봉 두 채널 사이의 동기화도 보장하지 않는다. 초기 확정 봉은 최근 1분봉 조회 API로 읽는다. 진행 봉 스냅샷 복구는 별도 작업이다.
+- 필수 필드·UUID·종목 코드·ASK/BID·양수 시간/순번·지원 간격·UTC 버킷 경계를 검증한다. 잘못된 메시지와 중계 실패는 원문 없이 경고 로그를 남기고 이후 수신을 계속한다.
+- Pub/Sub은 best-effort다. 중단·과부하 중 빠진 메시지는 재전송하지 않으며 체결과 진행 봉 채널 사이의 동기화도 보장하지 않는다. 초기 확정 봉은 선택 간격의 최근 봉 조회 API로 읽는다. 진행 봉 스냅샷 복구는 별도 작업이다.
 
 기본 `build`는 외부 Redis 없이 실제 내장 서버의 JWT handshake, 종목별 구독/해제, 메시지 라우팅과 보안 정책을 검증한다. 전용 테스트 Redis의 로컬 포트를 지정하면 실제 Pub/Sub 및 다중 인스턴스 테스트도 실행한다. 운영/공용 Redis를 테스트 대상으로 사용하지 않는다.
 

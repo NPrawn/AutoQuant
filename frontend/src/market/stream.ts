@@ -1,5 +1,6 @@
 import { Client } from '@stomp/stompjs'
 import { parseLiveCandle, parseTrade } from './model.ts'
+import type { CandleInterval } from './model.ts'
 import type { ChartAsset, LiveCandle, Trade } from './types.ts'
 
 type Callbacks = {
@@ -9,7 +10,7 @@ type Callbacks = {
   onCandle: (candle: LiveCandle) => void
 }
 
-export function connectMarketStream(asset: ChartAsset, callbacks: Callbacks): () => void {
+export function connectMarketStream(asset: ChartAsset, callbacks: Callbacks, interval: CandleInterval = 1): () => void {
   let disposed = false
   const url = new URL('/ws', window.location.href)
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -28,8 +29,8 @@ export function connectMarketStream(asset: ChartAsset, callbacks: Callbacks): ()
         const trade = parseTrade(message.body, asset)
         if (!disposed && trade) callbacks.onTrade(trade)
       })
-      client.subscribe(`/topic/markets/${asset.marketCode}/candles/1m`, (message) => {
-        const candle = parseLiveCandle(message.body, asset)
+      client.subscribe(`/topic/markets/${asset.marketCode}/candles/${interval}m`, (message) => {
+        const candle = parseLiveCandle(message.body, asset, interval)
         if (!disposed && candle) callbacks.onCandle(candle)
       })
       // SUBSCRIBE 전송 후 REST 조회를 시작한다. 조회 중 수신값은 별도 버퍼에 유지한다.

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"strconv"
 
 	candledomain "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candle/domain"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/common/exception"
@@ -14,8 +13,7 @@ import (
 )
 
 const (
-	recentMinuteCandlesKeyFormat = "candle:1m:recent:%s"
-	recentMinuteCandleLimit      = int64(1000)
+	recentMinuteCandleLimit = int64(1000)
 )
 
 type recentMinuteCandleValue struct {
@@ -59,7 +57,7 @@ func (r *RecentMinuteCandleRepository) SaveBatch(
 		if err != nil {
 			return exception.Wrap(exception.CodeRedisWriteFailed, err)
 		}
-		key := RecentMinuteCandlesKey(candle.AssetID)
+		key := RecentCandlesKey(candle.AssetID, candle.IntervalMinutes)
 		entriesByKey[key] = append(entriesByKey[key], recentMinuteCandleEntry{
 			score:   candle.OpenTime.UnixMilli(),
 			payload: payload,
@@ -74,15 +72,11 @@ func (r *RecentMinuteCandleRepository) SaveBatch(
 
 	_, err := r.client.Pipelined(ctx, func(pipe goredis.Pipeliner) error {
 		for _, key := range keys {
+			args := []any{recentMinuteCandleLimit}
 			for _, entry := range entriesByKey[key] {
-				score := strconv.FormatInt(entry.score, 10)
-				pipe.ZRemRangeByScore(ctx, key, score, score)
-				pipe.ZAdd(ctx, key, goredis.Z{
-					Score:  float64(entry.score),
-					Member: entry.payload,
-				})
+				args = append(args, entry.score, entry.payload)
 			}
-			pipe.ZRemRangeByRank(ctx, key, 0, -(recentMinuteCandleLimit + 1))
+			pipe.Eval(ctx, replaceRecentCandlesScript, []string{key}, args...)
 		}
 		return nil
 	})
@@ -93,9 +87,21 @@ func (r *RecentMinuteCandleRepository) SaveBatch(
 	return nil
 }
 
+const replaceRecentCandlesScript = `
+for i = 2, #ARGV, 2 do
+    redis.call('ZREMRANGEBYSCORE', KEYS[1], ARGV[i], ARGV[i])
+    redis.call('ZADD', KEYS[1], ARGV[i], ARGV[i+1])
+end
+redis.call('ZREMRANGEBYRANK', KEYS[1], 0, -(tonumber(ARGV[1]) + 1))
+return 1`
+
+func RecentCandlesKey(assetID string, intervalMinutes int16) string {
+	return fmt.Sprintf("candle:%dm:recent:%s", intervalMinutes, assetID)
+}
+
 // RecentMinuteCandlesKey returns the Sorted Set key for one asset's finalized candles.
 func RecentMinuteCandlesKey(assetID string) string {
-	return fmt.Sprintf(recentMinuteCandlesKeyFormat, assetID)
+	return RecentCandlesKey(assetID, 1)
 }
 
 func toRecentMinuteCandleValue(candle candledomain.MinuteCandle) recentMinuteCandleValue {

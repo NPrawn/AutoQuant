@@ -2,6 +2,7 @@ package com.ssafy.a107.realtime.infrastructure.websocket;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ssafy.a107.auth.config.SecurityConfig;
 import com.ssafy.a107.auth.jwt.ApiAuthenticationEntryPoint;
 import com.ssafy.a107.auth.jwt.AuthenticationErrorWriter;
@@ -13,6 +14,8 @@ import com.ssafy.a107.realtime.infrastructure.redis.RealtimeRedisConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -140,21 +143,29 @@ class RealtimeWebSocketIntegrationTest {
         assertThat(bitcoin.poll(200, TimeUnit.MILLISECONDS)).isNull();
     }
 
-    @Test
-    @DisplayName("진행 봉의 전체 스키마를 문자열 정밀도와 함께 전달한다")
-    void relayLiveCandle() throws Exception {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 2, 5, 15, 60, 240, 1440})
+    @DisplayName("간격별 진행 봉을 선택한 토픽에 문자열 정밀도와 함께 전달한다")
+    void relayLiveCandle(int interval) throws Exception {
         StompSession session = connect(new BlockingQueueSessionHandler());
         BlockingQueue<String> candles = new LinkedBlockingQueue<>();
-        session.subscribe("/topic/markets/KRW-BTC/candles/1m", frames(candles));
-        awaitSubscriptions("/topic/markets/KRW-BTC/candles/1m", 1);
+        String destination = "/topic/markets/KRW-BTC/candles/" + interval + "m";
+        session.subscribe(destination, frames(candles));
+        awaitSubscriptions(destination, 1);
 
-        receive("candle:1m:live:updates", RealtimeFixtures.CANDLE);
+        long width = interval * 60_000L;
+        long start = 1800000000000L / width * width;
+        ObjectNode payload = (ObjectNode) objectMapper.readTree(RealtimeFixtures.CANDLE);
+        payload.put("interval_minutes", interval);
+        payload.put("open_time_unix_milli", start);
+        payload.put("last_event_time_unix_milli", start + 123);
+        receive("candle:" + interval + "m:live:updates", payload.toString());
 
         JsonNode candle = objectMapper.readTree(take(candles));
         assertThat(candle.size()).isEqualTo(12);
         assertThat(candle.path("marketCode").asText()).isEqualTo("KRW-BTC");
-        assertThat(candle.path("intervalMinutes").asInt()).isEqualTo(1);
-        assertThat(candle.path("openTimeUnixMilli").asLong()).isEqualTo(1800000000000L);
+        assertThat(candle.path("intervalMinutes").asInt()).isEqualTo(interval);
+        assertThat(candle.path("openTimeUnixMilli").asLong()).isEqualTo(start);
         assertThat(candle.path("openPrice").asText()).isEqualTo("100000000.12345678");
         assertThat(candle.path("tradeAmount").asText()).isEqualTo("1.0000000012345678");
         assertThat(candle.path("lastSequenceId").asLong()).isEqualTo(123456789L);

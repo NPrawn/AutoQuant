@@ -57,10 +57,28 @@ class RedisRecentMinuteCandleCacheIntegrationTest {
     @DisplayName("Go Sorted Set JSON을 그대로 읽고 최신 봉을 오름차순으로 반환한다")
     void readGoCacheContract() {
         redis.opsForZSet().add(KEY, GO_CACHE_VALUE, OPEN_TIME);
-        cache.fillMissing(ASSET_ID, List.of(candle(1), candle(2)));
+        cache.fillMissing(ASSET_ID, 1, List.of(candle(1), candle(2)));
 
-        assertThat(cache.findRecent(ASSET_ID, 3)).containsExactly(candle(0), candle(1), candle(2));
-        assertThat(cache.findRecent(ASSET_ID, 2)).containsExactly(candle(1), candle(2));
+        assertThat(cache.findRecent(ASSET_ID, 1, 3)).containsExactly(candle(0), candle(1), candle(2));
+        assertThat(cache.findRecent(ASSET_ID, 1, 2)).containsExactly(candle(1), candle(2));
+    }
+
+    @Test
+    @DisplayName("종목이 같아도 간격별 캐시는 서로 섞이지 않는다")
+    void isolateIntervals() {
+        String derivedKey = "candle:5m:recent:" + ASSET_ID;
+        try {
+            redis.delete(derivedKey);
+            cache.fillMissing(ASSET_ID, 1, List.of(candle(0)));
+            MinuteCandleSnapshot derived = new MinuteCandleSnapshot(ASSET_ID, OPEN_TIME,
+                    "200", "201", "199", "200", "5", "1000", OPEN_TIME + 299999);
+            cache.fillMissing(ASSET_ID, 5, List.of(derived));
+
+            assertThat(cache.findRecent(ASSET_ID, 1, 1)).containsExactly(candle(0));
+            assertThat(cache.findRecent(ASSET_ID, 5, 1)).containsExactly(derived);
+        } finally {
+            redis.delete(derivedKey);
+        }
     }
 
     @Test
@@ -68,24 +86,24 @@ class RedisRecentMinuteCandleCacheIntegrationTest {
     void preserveExistingCandles() {
         MinuteCandleSnapshot corrected = new MinuteCandleSnapshot(ASSET_ID, OPEN_TIME,
                 "200", "201", "199", "200", "1", "200", OPEN_TIME + 59999);
-        cache.fillMissing(ASSET_ID, List.of(corrected, candle(2)));
+        cache.fillMissing(ASSET_ID, 1, List.of(corrected, candle(2)));
 
-        cache.fillMissing(ASSET_ID, List.of(candle(0), candle(1)));
-        cache.fillMissing(ASSET_ID, List.of(candle(0), candle(1)));
+        cache.fillMissing(ASSET_ID, 1, List.of(candle(0), candle(1)));
+        cache.fillMissing(ASSET_ID, 1, List.of(candle(0), candle(1)));
 
-        assertThat(cache.findRecent(ASSET_ID, 3)).containsExactly(corrected, candle(1), candle(2));
+        assertThat(cache.findRecent(ASSET_ID, 1, 3)).containsExactly(corrected, candle(1), candle(2));
         assertThat(redis.opsForZSet().size(KEY)).isEqualTo(3);
     }
 
     @Test
     @DisplayName("오래된 봉을 보충해도 최신 1000개만 남긴다")
     void keepLatestThousand() {
-        cache.fillMissing(ASSET_ID, IntStream.range(1, 1001)
+        cache.fillMissing(ASSET_ID, 1, IntStream.range(1, 1001)
                 .mapToObj(RecentMinuteCandleFixtures::candle).toList());
 
-        cache.fillMissing(ASSET_ID, List.of(candle(0)));
+        cache.fillMissing(ASSET_ID, 1, List.of(candle(0)));
 
-        List<MinuteCandleSnapshot> result = cache.findRecent(ASSET_ID, 1000);
+        List<MinuteCandleSnapshot> result = cache.findRecent(ASSET_ID, 1, 1000);
         assertThat(result).hasSize(1000);
         assertThat(result.getFirst()).isEqualTo(candle(1));
         assertThat(result.getLast()).isEqualTo(candle(1000));
@@ -100,7 +118,7 @@ class RedisRecentMinuteCandleCacheIntegrationTest {
         value.remove(field);
         redis.opsForZSet().add(KEY, value.toString(), OPEN_TIME);
 
-        assertThat(cache.findRecent(ASSET_ID, 1)).isEmpty();
+        assertThat(cache.findRecent(ASSET_ID, 1, 1)).isEmpty();
     }
 
     @Test
@@ -109,7 +127,7 @@ class RedisRecentMinuteCandleCacheIntegrationTest {
         redis.opsForZSet().add(KEY, GO_CACHE_VALUE.replace(ASSET_ID.toString(),
                 "22222222-2222-2222-2222-222222222222"), OPEN_TIME);
 
-        assertThat(cache.findRecent(ASSET_ID, 1)).isEmpty();
+        assertThat(cache.findRecent(ASSET_ID, 1, 1)).isEmpty();
     }
 
     @Test
@@ -117,7 +135,7 @@ class RedisRecentMinuteCandleCacheIntegrationTest {
     void rejectMismatchedScore() {
         redis.opsForZSet().add(KEY, GO_CACHE_VALUE, OPEN_TIME + 1);
 
-        assertThat(cache.findRecent(ASSET_ID, 1)).isEmpty();
+        assertThat(cache.findRecent(ASSET_ID, 1, 1)).isEmpty();
     }
 
     @Test
@@ -125,6 +143,6 @@ class RedisRecentMinuteCandleCacheIntegrationTest {
     void rejectBrokenJson() {
         redis.opsForZSet().add(KEY, "{broken", OPEN_TIME);
 
-        assertThat(cache.findRecent(ASSET_ID, 1)).isEmpty();
+        assertThat(cache.findRecent(ASSET_ID, 1, 1)).isEmpty();
     }
 }

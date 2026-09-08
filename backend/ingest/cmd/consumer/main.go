@@ -8,6 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	"golang.org/x/sync/errgroup"
+
+	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/candlerollup"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/config"
 	"lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/consumer"
 	ingestkafka "lab.ssafy.com/s15-fintech-finance-sub1/S15P21A107/backend/ingest/internal/kafka"
@@ -64,16 +67,21 @@ func run() error {
 	handler := consumer.NewPersistenceHandler(progressRepository, minuteCandleRepository)
 	recentCandleRepository := ingestredis.NewRecentMinuteCandleRepository(redisClient)
 	liveCandlePublisher := ingestredis.NewLiveMinuteCandlePublisher(redisClient)
+	rollupRepository := store.NewCandleRollupRepository(pool)
+	rollupService := candlerollup.NewService(rollupRepository, recentCandleRepository)
 	service := consumer.NewService(
 		kafkaConsumer,
 		progressRepository,
 		handler,
 		recentCandleRepository,
-		liveCandlePublisher,
+		candlerollup.NewLivePublisher(rollupRepository, liveCandlePublisher),
 	)
 
 	slog.Info("ingest consumer started")
-	if err := service.Run(ctx); err != nil {
+	group, groupContext := errgroup.WithContext(ctx)
+	group.Go(func() error { return rollupService.Run(groupContext) })
+	group.Go(func() error { return service.Run(groupContext) })
+	if err := group.Wait(); err != nil {
 		return err
 	}
 	slog.Info("ingest consumer stopped")

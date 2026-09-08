@@ -3,12 +3,15 @@ import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { useChartAssets, useMarketFeed } from '../market/queries'
 import type { ChartAsset } from '../market/types'
+import { CANDLE_INTERVALS, intervalLabel } from '../market/model'
+import type { CandleInterval } from '../market/model'
 
 const MinuteCandleChart = lazy(() => import('../market/MinuteCandleChart').then((module) => ({ default: module.MinuteCandleChart })))
 
 export function ChartPage() {
   const assets = useChartAssets()
   const [selectedId, setSelectedId] = useState('')
+  const [interval, setInterval] = useState<CandleInterval>(1)
   if (assets.isPending) return <LoadingState label="종목을 불러오는 중…" />
   if (assets.isError) return <ErrorState error={assets.error} onRetry={() => void assets.refetch()} />
   const selected = assets.data.find((asset) => asset.id === selectedId) ?? assets.data[0]
@@ -20,15 +23,19 @@ export function ChartPage() {
         <select id="chart-market" value={selected.id} onChange={(event) => setSelectedId(event.target.value)}>
           {assets.data.map((asset) => <option key={asset.id} value={asset.id}>{asset.name} · {asset.marketCode}</option>)}
         </select>
-        <span>1분봉 · 최근 최대 1,000개</span>
+        <label htmlFor="chart-interval">봉 간격</label>
+        <select id="chart-interval" value={interval} onChange={(event) => setInterval(Number(event.target.value) as CandleInterval)}>
+          {CANDLE_INTERVALS.map((value) => <option key={value} value={value}>{intervalLabel(value)}</option>)}
+        </select>
+        <span>최근 최대 1,000개 · UTC 기준</span>
       </div>
-      <MarketChart key={selected.id} asset={selected} />
+      <MarketChart key={`${selected.id}:${interval}`} asset={selected} interval={interval} />
     </div>
   )
 }
 
-function MarketChart({ asset }: { asset: ChartAsset }) {
-  const { history, connected, candles, trades } = useMarketFeed(asset)
+function MarketChart({ asset, interval }: { asset: ChartAsset; interval: CandleInterval }) {
+  const { history, connected, candles, trades } = useMarketFeed(asset, interval)
   const latestTrade = trades[0]
   return (
     <div className="chart-shell market-chart-shell">
@@ -41,7 +48,7 @@ function MarketChart({ asset }: { asset: ChartAsset }) {
           </div>
           <span role="status">{connected ? '실시간 연결됨' : '연결 중 · 끊기면 자동 재연결'}</span>
         </div>
-        {history.isPending ? <LoadingState label={connected ? '최근 1분봉을 불러오는 중…' : '실시간 연결을 기다리는 중…'} />
+        {history.isPending ? <LoadingState label={connected ? '최근 봉을 불러오는 중…' : '실시간 연결을 기다리는 중…'} />
           : history.isError ? <ErrorState error={history.error} onRetry={() => void history.refetch()} />
             : candles.length === 0 ? <EmptyState title="아직 봉 데이터가 없습니다" description="진행 봉이 도착하면 차트가 표시됩니다." />
               : <Suspense fallback={<LoadingState label="차트를 준비하는 중…" />}><MinuteCandleChart candles={candles} /></Suspense>}

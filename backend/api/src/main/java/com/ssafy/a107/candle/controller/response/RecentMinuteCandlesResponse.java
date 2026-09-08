@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public record RecentMinuteCandlesResponse(UUID assetId, int intervalMinutes, List<MinuteCandleResponse> candles) {
 
-    public static RecentMinuteCandlesResponse from(UUID assetId, List<MinuteCandleSnapshot> candles) {
-        return new RecentMinuteCandlesResponse(assetId, 1, candles.stream().map(MinuteCandleResponse::from).toList());
+    public static RecentMinuteCandlesResponse from(UUID assetId, int intervalMinutes, List<MinuteCandleSnapshot> candles) {
+        return new RecentMinuteCandlesResponse(assetId, intervalMinutes, candles.stream().map(MinuteCandleResponse::from).toList());
     }
 }

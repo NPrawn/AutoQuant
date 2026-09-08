@@ -26,7 +26,6 @@ import java.util.UUID;
 public class RedisRecentMinuteCandleCache implements RecentMinuteCandleCache {
 
     private static final Logger log = LoggerFactory.getLogger(RedisRecentMinuteCandleCache.class);
-    private static final String KEY_PREFIX = "candle:1m:recent:";
     private static final DefaultRedisScript<Long> FILL_MISSING = new DefaultRedisScript<>("""
             for i = 2, #ARGV, 2 do
                 local score = ARGV[i]
@@ -53,9 +52,9 @@ public class RedisRecentMinuteCandleCache implements RecentMinuteCandleCache {
     }
 
     @Override
-    public List<MinuteCandleSnapshot> findRecent(UUID assetId, int limit) {
+    public List<MinuteCandleSnapshot> findRecent(UUID assetId, int intervalMinutes, int limit) {
         try {
-            Set<TypedTuple<String>> entries = redis.opsForZSet().reverseRangeWithScores(KEY_PREFIX + assetId, 0, limit - 1L);
+            Set<TypedTuple<String>> entries = redis.opsForZSet().reverseRangeWithScores(key(assetId, intervalMinutes), 0, limit - 1L);
             if (entries == null || entries.isEmpty()) {
                 return List.of();
             }
@@ -65,6 +64,8 @@ public class RedisRecentMinuteCandleCache implements RecentMinuteCandleCache {
                 RecentMinuteCandleValue value = reader.readValue(entry.getValue());
                 if (value == null || !validator.validate(value).isEmpty()
                         || !assetId.equals(value.assetId())
+                        || value.intervalMinutes() != intervalMinutes
+                        || value.openTimeUnixMilli() % (intervalMinutes * 60_000L) != 0
                         || entry.getScore() == null || entry.getScore() != value.openTimeUnixMilli().doubleValue()
                         || !openTimes.add(value.openTimeUnixMilli())) {
                     throw new IllegalArgumentException("Invalid recent candle cache");
@@ -81,7 +82,7 @@ public class RedisRecentMinuteCandleCache implements RecentMinuteCandleCache {
     }
 
     @Override
-    public void fillMissing(UUID assetId, List<MinuteCandleSnapshot> candles) {
+    public void fillMissing(UUID assetId, int intervalMinutes, List<MinuteCandleSnapshot> candles) {
         if (candles.isEmpty()) {
             return;
         }
@@ -90,13 +91,17 @@ public class RedisRecentMinuteCandleCache implements RecentMinuteCandleCache {
             arguments.add(Integer.toString(CAPACITY));
             for (MinuteCandleSnapshot candle : candles) {
                 arguments.add(Long.toString(candle.openTimeUnixMilli()));
-                arguments.add(objectMapper.writeValueAsString(RecentMinuteCandleValue.from(candle)));
+                arguments.add(objectMapper.writeValueAsString(RecentMinuteCandleValue.from(candle, intervalMinutes)));
             }
             // Go가 새로 넣거나 보정한 같은 시간의 봉을 오래된 DB 조회 결과로 덮어쓰지 않는다.
-            redis.execute(FILL_MISSING, List.of(KEY_PREFIX + assetId), arguments.toArray());
+            redis.execute(FILL_MISSING, List.of(key(assetId, intervalMinutes)), arguments.toArray());
         } catch (DataAccessException | IOException exception) {
             log.warn("Recent minute candle cache fill failed; serving DB result ({})",
                     exception.getClass().getSimpleName());
         }
+    }
+
+    private static String key(UUID assetId, int intervalMinutes) {
+        return "candle:" + intervalMinutes + "m:recent:" + assetId;
     }
 }

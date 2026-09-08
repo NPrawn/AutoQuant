@@ -3,6 +3,7 @@ package com.ssafy.a107.candle.controller;
 import com.ssafy.a107.candle.controller.request.RecentMinuteCandlesRequest;
 import com.ssafy.a107.candle.controller.response.RecentMinuteCandlesResponse;
 import com.ssafy.a107.candle.service.RecentMinuteCandleFacade;
+import com.ssafy.a107.candle.domain.CandleIntervals;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -22,11 +23,14 @@ public class MinuteCandleController {
         this.facade = facade;
     }
 
-    @GetMapping("/1m")
+    @GetMapping("/{intervalMinutes}m")
     public RecentMinuteCandlesResponse getRecentMinuteCandles(
             @PathVariable UUID assetId,
+            @PathVariable int intervalMinutes,
             @Valid @ModelAttribute RecentMinuteCandlesRequest request
     ) {
-        return RecentMinuteCandlesResponse.from(assetId, facade.findRecent(assetId, request.limit()));
+        CandleIntervals.requireSupported(intervalMinutes);
+        return RecentMinuteCandlesResponse.from(assetId, intervalMinutes,
+                facade.findRecent(assetId, intervalMinutes, request.limit()));
     }
 }

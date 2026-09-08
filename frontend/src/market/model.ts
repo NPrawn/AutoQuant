@@ -2,6 +2,9 @@ import type { CandleResponse, ChartAsset, LiveCandle, Trade } from './types.ts'
 
 export const CANDLE_LIMIT = 1000
 export const TRADE_LIMIT = 30
+export const CANDLE_INTERVALS = [1, 2, 5, 15, 60, 240, 1440] as const
+export type CandleInterval = typeof CANDLE_INTERVALS[number]
+export const intervalLabel = (interval: CandleInterval) => interval < 60 ? `${interval}분` : `${interval / 60}시간`
 
 export function mergeCandles(confirmed: CandleResponse[], live: LiveCandle[]): CandleResponse[] {
   const candles = new Map(confirmed.map((candle) => [candle.openTimeUnixMilli, candle]))
@@ -48,9 +51,9 @@ export function parseTrade(body: string, asset: ChartAsset): Trade | null {
     ? value as Trade : null
 }
 
-export function parseLiveCandle(body: string, asset: ChartAsset): LiveCandle | null {
+export function parseLiveCandle(body: string, asset: ChartAsset, interval: CandleInterval = 1): LiveCandle | null {
   const value = decode(body, asset)
-  if (!value || value.intervalMinutes !== 1 || !timestamp(value.openTimeUnixMilli) || value.openTimeUnixMilli % 60000 !== 0
+  if (!value || value.intervalMinutes !== interval || !timestamp(value.openTimeUnixMilli) || value.openTimeUnixMilli % (interval * 60000) !== 0
     || !timestamp(value.lastEventTimeUnixMilli) || !sequence(value.lastSequenceId)) return null
   if (!['openPrice', 'highPrice', 'lowPrice', 'closePrice', 'tradeVolume', 'tradeAmount'].every((key) => decimal(value[key]))) return null
   return value as LiveCandle

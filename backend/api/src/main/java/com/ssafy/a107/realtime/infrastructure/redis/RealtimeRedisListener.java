@@ -39,16 +39,21 @@ public class RealtimeRedisListener implements MessageListener {
     public void onMessage(Message message, byte[] pattern) {
         String channel = new String(message.getChannel(), StandardCharsets.UTF_8);
         try {
-            switch (channel) {
-                case RealtimeRedisChannels.TRADE -> {
-                    RealtimeTradeMessage trade = readValid(tradeReader, message.getBody());
-                    publisher.publish(trade.toEvent());
+            if (RealtimeRedisChannels.TRADE.equals(channel)) {
+                RealtimeTradeMessage trade = readValid(tradeReader, message.getBody());
+                publisher.publish(trade.toEvent());
+            } else if (RealtimeRedisChannels.CANDLES.contains(channel)) {
+                LiveMinuteCandleMessage candle = readValid(candleReader, message.getBody());
+                long width = candle.intervalMinutes() * 60_000L;
+                if (!channel.equals(RealtimeRedisChannels.candle(candle.intervalMinutes()))
+                        || candle.openTimeUnixMilli() % width != 0
+                        || candle.lastEventTimeUnixMilli() < candle.openTimeUnixMilli()
+                        || candle.lastEventTimeUnixMilli() - candle.openTimeUnixMilli() >= width) {
+                    throw new IllegalArgumentException("Invalid candle interval");
                 }
-                case RealtimeRedisChannels.LIVE_MINUTE_CANDLE -> {
-                    LiveMinuteCandleMessage candle = readValid(candleReader, message.getBody());
-                    publisher.publish(candle.toEvent());
-                }
-                default -> log.warn("Ignoring unknown realtime Redis channel");
+                publisher.publish(candle.toEvent());
+            } else {
+                log.warn("Ignoring unknown realtime Redis channel");
             }
         } catch (IOException | IllegalArgumentException exception) {
             // 역직렬화 예외에는 원문이 포함될 수 있어 메시지와 스택을 기록하지 않는다.
