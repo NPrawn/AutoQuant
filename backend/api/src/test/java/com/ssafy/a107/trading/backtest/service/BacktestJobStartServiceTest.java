@@ -59,9 +59,9 @@ class BacktestJobStartServiceTest {
         then(backtestRun).should().markRunning(NOW);
     }
 
-    @DisplayName("이미 처리 중인 백테스트 작업은 다시 시작하지 않는다")
+    @DisplayName("재전달된 실행 중 백테스트 작업을 다시 실행한다")
     @Test
-    void ignoreAlreadyStartedBacktestJob() {
+    void restartRedeliveredRunningBacktestJob() {
         BacktestJobStartService service = createService();
         given(backtestRunRepository.findByBacktestIdForUpdate(BACKTEST_ID)).willReturn(Optional.of(backtestRun));
         given(backtestRun.getStrategy()).willReturn(strategy);
@@ -72,7 +72,7 @@ class BacktestJobStartServiceTest {
 
         boolean started = service.start(message());
 
-        assertThat(started).isFalse();
+        assertThat(started).isTrue();
         then(backtestRun).should(never()).markRunning(any(Instant.class));
     }
 

@@ -1,6 +1,7 @@
 package com.ssafy.a107.trading.backtest.service;
 
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
+import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.trading.backtest.engine.BacktestExecutionResult;
 import com.ssafy.a107.trading.backtest.engine.performance.CostComparison;
 import com.ssafy.a107.trading.backtest.engine.performance.EquitySnapshot;
@@ -22,6 +23,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -52,9 +54,11 @@ class BacktestJobCompletionServiceTest {
         BacktestExecutionResult executionResult = executionResult();
         given(backtestRunRepository.findByBacktestIdForUpdate(BACKTEST_ID))
                 .willReturn(Optional.of(backtestRun));
+        given(backtestRun.getStatus()).willReturn(BacktestRunStatus.RUNNING);
 
-        service().complete(BACKTEST_ID, executionResult);
+        boolean completed = service().complete(BACKTEST_ID, executionResult);
 
+        assertThat(completed).isTrue();
         then(backtestResultPersistenceService).should().persist(
                 backtestRun,
                 executionResult.performanceReport(),
@@ -71,6 +75,7 @@ class BacktestJobCompletionServiceTest {
         BacktestExecutionResult executionResult = executionResult();
         given(backtestRunRepository.findByBacktestIdForUpdate(BACKTEST_ID))
                 .willReturn(Optional.of(backtestRun));
+        given(backtestRun.getStatus()).willReturn(BacktestRunStatus.RUNNING);
         given(backtestResultPersistenceService.persist(
                 any(BacktestRun.class),
                 any(PerformanceReport.class),
@@ -83,6 +88,20 @@ class BacktestJobCompletionServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Result persistence failed");
 
+        then(backtestRun).should(never()).complete(any(Instant.class));
+    }
+
+    @DisplayName("이미 완료된 백테스트 작업은 결과를 중복 저장하지 않는다")
+    @Test
+    void skipAlreadyCompletedBacktestJob() {
+        given(backtestRunRepository.findByBacktestIdForUpdate(BACKTEST_ID))
+                .willReturn(Optional.of(backtestRun));
+        given(backtestRun.getStatus()).willReturn(BacktestRunStatus.COMPLETED);
+
+        boolean completed = service().complete(BACKTEST_ID, executionResult());
+
+        assertThat(completed).isFalse();
+        then(backtestResultPersistenceService).shouldHaveNoInteractions();
         then(backtestRun).should(never()).complete(any(Instant.class));
     }
 
