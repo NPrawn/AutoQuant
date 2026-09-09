@@ -39,7 +39,8 @@ import com.ssafy.a107.trading.simulation.repository.SimulationRunRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationTradeRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationUniverseAssetRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -79,6 +80,7 @@ public class SimulationCandleExecutionService {
     private final PortfolioValuationCalculator portfolioValuationCalculator;
     private final BacktestExecutionPolicyProperties executionPolicyProperties;
     private final SimulationMarketPriceCache marketPriceCache;
+    private final TransactionTemplate transactionTemplate;
 
     public SimulationCandleExecutionService(
             SimulationRunRepository simulationRunRepository,
@@ -96,7 +98,8 @@ public class SimulationCandleExecutionService {
             BacktestPortfolioOrderExecutionService portfolioOrderExecutionService,
             PortfolioValuationCalculator portfolioValuationCalculator,
             BacktestExecutionPolicyProperties executionPolicyProperties,
-            SimulationMarketPriceCache marketPriceCache
+            SimulationMarketPriceCache marketPriceCache,
+            PlatformTransactionManager transactionManager
     ) {
         this.simulationRunRepository = simulationRunRepository;
         this.simulationPositionRepository = simulationPositionRepository;
@@ -114,9 +117,9 @@ public class SimulationCandleExecutionService {
         this.portfolioValuationCalculator = portfolioValuationCalculator;
         this.executionPolicyProperties = executionPolicyProperties;
         this.marketPriceCache = marketPriceCache;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
-    @Transactional
     public void handle(LiveMinuteCandle candle) {
         marketPriceCache.update(candle);
         Instant candleAt = Instant.ofEpochMilli(candle.openTimeUnixMilli());
@@ -124,7 +127,9 @@ public class SimulationCandleExecutionService {
                         SimulationRunStatus.RUNNING,
                         timeframeForInterval(candle.intervalMinutes())
                 )
-                .forEach(simulationRun -> process(simulationRun.getSimulationId(), candleAt));
+                .forEach(simulationRun -> transactionTemplate.executeWithoutResult(
+                        transactionStatus -> process(simulationRun.getSimulationId(), candleAt)
+                ));
     }
 
     public void process(UUID simulationId, Instant candleAt) {
