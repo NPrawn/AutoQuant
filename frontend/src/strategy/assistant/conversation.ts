@@ -80,10 +80,14 @@ export function translationReplyText(strategy: StrategyDsl | null, changes: stri
 /*
  * 제안 문장. 변환 API 는 질문에 답하는 게 아니라 전략을 바꾸는 요청을 받으므로 목업의
  * 질문형 칩 대신 블록을 바꾸는 요청형으로 둔다.
+ *
+ * 넷은 ai/tests/fixtures/edit_cases.json 에서 통과가 측정된 편집이고 갈래가 서로 다르다 —
+ * 조건 추가·조건 제거·랭킹 변경·리밸런싱. 칩은 이 봇이 무엇을 할 수 있는지 알려 주는
+ * 유일한 장치라, 못 하는 것을 넣으면 첫 시도가 실패하고 그 뒤로 쓰지 않는다.
  */
 export const suggestedRequests = [
-  '통과 종목을 더 좁혀줘',
-  '하락장에 강하게 만들어줘',
   '거래량 급증 조건을 추가해줘',
+  '거래량 조건은 빼줘',
+  '순위 기준을 변동성으로 바꿔줘',
   '재선정을 매월로 바꿔줘',
 ] as const
