@@ -12,13 +12,18 @@ import (
 )
 
 type readerFake struct {
-	calls int
-	err   error
+	calls    int
+	err      error
+	storedAt time.Time
 }
 
 func (r *readerFake) LoadMinutes(_ context.Context, asset string, from, to time.Time) ([]candledomain.MinuteCandle, error) {
 	r.calls++
-	return []candledomain.MinuteCandle{minute(asset, to.Add(-time.Minute), 100, 2)}, r.err
+	value := minute(asset, to.Add(-time.Minute), 100, 2)
+	if !r.storedAt.IsZero() {
+		value.LastEventTime = r.storedAt
+	}
+	return []candledomain.MinuteCandle{value}, r.err
 }
 
 type publisherFake struct{ values []candle.Checkpoint }
@@ -29,6 +34,24 @@ func (p *publisherFake) PublishBatch(_ context.Context, values []candle.Checkpoi
 }
 
 func TestLivePublisher(t *testing.T) {
+	t.Run("REST_저장_시각이_늦어도_진행봉은_현재_체결_시각을_유지한다", func(t *testing.T) {
+		start := time.Date(2026, 9, 9, 0, 26, 0, 0, time.UTC)
+		current := minute("ATH", start, 120, 3)
+		current.LastEventTime = start.Add(10 * time.Millisecond)
+		sink := &publisherFake{}
+		publisher := candlerollup.NewLivePublisher(&readerFake{storedAt: start.Add(39 * time.Millisecond)}, sink)
+		if err := publisher.PublishBatch(context.Background(), []candle.Checkpoint{{MarketCode: "KRW-ATH", InProgress: current, LastSequenceID: 1}}); err != nil {
+			t.Fatal(err)
+		}
+		if len(sink.values) != 7 {
+			t.Fatalf("got %d candles, want 7", len(sink.values))
+		}
+		for _, value := range sink.values {
+			if !value.InProgress.LastEventTime.Equal(current.LastEventTime) {
+				t.Fatalf("got %v, want live trade time %v", value.InProgress.LastEventTime, current.LastEventTime)
+			}
+		}
+	})
 	t.Run("반복_진행봉은_합산하지_않고_한번_조회한_종목별_상태에_교체한다", func(t *testing.T) {
 		reader, sink := &readerFake{}, &publisherFake{}
 		publisher := candlerollup.NewLivePublisher(reader, sink)

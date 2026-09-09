@@ -139,6 +139,7 @@ GET /api/assets/{assetId}/candles/1440m?limit=1000
 ```
 
 - 가격·수량·거래대금은 정밀도를 보존하는 문자열, 시간은 UTC Unix millisecond다. 확정 봉만 반환하며 진행 봉은 `/topic/markets/{marketCode}/candles/{intervalMinutes}m` 구독으로 받는다.
+- 확정 봉의 `lastEventTimeUnixMilli`는 실시간 집계 시 체결 시각, REST 보정 시 Upbit의 마지막 틱 저장 시각(상위 봉은 원본 최댓값)이므로 봉 종료 경계를 넘을 수 있다. 봉 구간은 `openTimeUnixMilli`와 간격으로 판단한다. WebSocket live candle의 같은 필드는 현재 반영한 체결 시각이다.
 - Redis `candle:{intervalMinutes}m:recent:{assetId}` Sorted Set에 요청 개수만큼 있으면 바로 반환한다. 캐시가 없거나 부족하거나 읽기에 실패하면 PostgreSQL의 해당 종목·간격만 최신 1,000개까지 조회한다. 사용자 조회 시 1분봉 전체를 재집계하거나 별도 count 쿼리를 실행하지 않는다.
 - DB 조회 결과는 Go와 같은 JSON 계약으로 캐시에 보충한다. Lua로 비어 있는 score(봉 시작 시간)만 채우고 최신 1,000개를 유지하므로, 이미 캐시에 있는 봉을 오래된 조회 결과로 덮어쓰지 않는다. 캐시 쓰기 실패에도 DB 결과를 반환한다.
 - DB에 봉이 적으면 있는 만큼, 없으면 `200`과 빈 `candles`를 반환한다. 별도 종목 존재 조회는 하지 않아 미등록 UUID도 빈 목록이다. 잘못된 UUID·limit은 `400 COMMON-400-001`이다.

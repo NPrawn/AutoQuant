@@ -25,6 +25,9 @@ type MinuteCandle struct {
 	TradeVolume decimal.Decimal
 	TradeAmount decimal.Decimal
 
+	// LastEventTime preserves the source time: trade time for live aggregation,
+	// last tick storage time for REST corrections (which may exceed the bucket end).
+	// Bucket membership is determined only by OpenTime and IntervalMinutes.
 	LastEventTime time.Time
 }
 
