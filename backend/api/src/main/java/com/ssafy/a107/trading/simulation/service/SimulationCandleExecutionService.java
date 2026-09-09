@@ -3,6 +3,7 @@ package com.ssafy.a107.trading.simulation.service;
 import com.ssafy.a107.asset.domain.Asset;
 import com.ssafy.a107.asset.domain.Exchange;
 import com.ssafy.a107.asset.repository.AssetRepository;
+import com.ssafy.a107.candle.domain.MinuteCandle;
 import com.ssafy.a107.realtime.domain.LiveMinuteCandle;
 import com.ssafy.a107.strategy.engine.StrategyExecutionContext;
 import com.ssafy.a107.strategy.engine.StrategyExecutionPipeline;
@@ -49,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -132,18 +134,24 @@ public class SimulationCandleExecutionService {
             List<Asset> universe = assetRepository.findAllAvailableAt(Exchange.UPBIT, simulationRun.getQuoteCurrency(), candleAt);
             List<SimulationPosition> persistedPositions = simulationPositionRepository
                     .findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId);
-            Map<UUID, Asset> assetsById = assetsById(universe, persistedPositions);
-            Set<UUID> pricedAssetIds = assetsById.keySet();
-            Map<UUID, BigDecimal> currentPrices = marketPriceCache.snapshotAt(pricedAssetIds, candleAt).orElse(null);
-            if (currentPrices == null || !simulationRun.beginCandle(candleAt)) return;
             if (!rebalanceSchedule.shouldRebalance(
                     simulationRun.getRebalanceInterval(),
                     simulationRun.getTimeframe(),
                     candleAt,
                     simulationRun.getLastRebalanceAt() == null
-            )) return;
+            )) {
+                simulationRun.beginCandle(candleAt);
+                return;
+            }
 
             TargetPortfolio targetPortfolio = executeStrategy(simulationRun, universe, candleAt);
+            Map<UUID, Asset> assetsById = assetsById(universe, persistedPositions);
+            Set<UUID> pricedAssetIds = new java.util.HashSet<>(targetPortfolio.assetWeights().stream()
+                    .map(targetAssetWeight -> targetAssetWeight.assetId())
+                    .toList());
+            persistedPositions.forEach(position -> pricedAssetIds.add(position.getAsset().getAssetId()));
+            Map<UUID, BigDecimal> currentPrices = marketPriceCache.snapshotAt(pricedAssetIds, candleAt).orElse(null);
+            if (currentPrices == null || !simulationRun.beginCandle(candleAt)) return;
             BacktestPortfolio portfolio = restorePortfolio(simulationRun, persistedPositions);
             List<VirtualOrder> orders = rebalanceOrderPlanner.plan(portfolio, targetPortfolio, currentPrices).stream()
                     .map(order -> virtualOrder(order, candleAt, currentPrices))
@@ -162,10 +170,20 @@ public class SimulationCandleExecutionService {
         List<UUID> assetIds = universe.stream().map(Asset::getAssetId).toList();
         int warmupCount = warmupCandleCountResolver.resolve(simulationRun.getStrategy().getStrategyDsl());
         Instant fromInclusive = candleAt.minus(Duration.ofMinutes((long) warmupCount * simulationRun.getTimeframe().getIntervalMinutes()));
+        Map<UUID, List<MinuteCandle>> candlesByAssetId = historicalCandleProvider
+                .load(assetIds, simulationRun.getTimeframe(), fromInclusive, candleAt)
+                .entrySet().stream()
+                .filter(entry -> entry.getValue().size() >= warmupCount)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
         return strategyExecutionPipeline.execute(new StrategyExecutionContext(
                 simulationRun.getStrategy().getStrategyDsl(),
                 candleAt,
-                historicalCandleProvider.load(assetIds, simulationRun.getTimeframe(), fromInclusive, candleAt)
+                candlesByAssetId
         ));
     }
 
