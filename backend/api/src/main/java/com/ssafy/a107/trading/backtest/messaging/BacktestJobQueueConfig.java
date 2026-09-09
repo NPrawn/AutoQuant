@@ -24,6 +24,14 @@ public class BacktestJobQueueConfig {
     public Queue backtestJobQueue(BacktestJobQueueProperties properties) {
         return QueueBuilder
                 .durable(properties.queue())
+                .withArgument(
+                        "x-dead-letter-exchange",
+                        properties.deadLetterExchange()
+                )
+                .withArgument(
+                        "x-dead-letter-routing-key",
+                        properties.deadLetterRoutingKey()
+                )
                 .build();
     }
 

@@ -37,11 +37,13 @@ public class BacktestJobListener {
         try {
             backtestJobExecutionService.execute(message);
         } catch (RuntimeException exception) {
-            backtestJobFailureService.fail(
+            boolean failed = backtestJobFailureService.fail(
                     message.backtestId(),
                     exception
             );
-            backtestJobDeadLetterPublisher.publish(message, exception);
+            if (failed) {
+                backtestJobDeadLetterPublisher.publish(message, exception);
+            }
         }
     }
 }
