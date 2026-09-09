@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 class VirtualExecutionCalculatorTest {
 
@@ -81,6 +82,46 @@ class VirtualExecutionCalculatorTest {
         Optional<VirtualFill> fill = calculator.execute(order, policy);
 
         assertThat(fill).isEmpty();
+    }
+
+    @DisplayName("매수 가능 현금이 요청 금액보다 적으면 수수료를 포함한 한도 내에서 체결한다")
+    @Test
+    void executeBuyOrderWithinAvailableCash() {
+        BigDecimal availableCash = BigDecimal.valueOf(100_000);
+
+        VirtualFill fill = calculator.execute(
+                order(TradeSide.BUY, BigDecimal.valueOf(500_000)),
+                policy(),
+                availableCash
+        ).orElseThrow();
+
+        assertThat(fill.quantity()).isEqualByComparingTo("0.9990");
+        assertThat(fill.notional().add(fill.feeAmount()))
+                .isLessThanOrEqualTo(availableCash);
+    }
+
+    @DisplayName("매수 가능 현금으로 최소 주문 금액을 충족하지 못하면 체결하지 않는다")
+    @Test
+    void skipBuyOrderBelowMinimumAmountAfterCashLimit() {
+        Optional<VirtualFill> fill = calculator.execute(
+                order(TradeSide.BUY, BigDecimal.valueOf(500_000)),
+                policy(),
+                BigDecimal.valueOf(5_000)
+        );
+
+        assertThat(fill).isEmpty();
+    }
+
+    @DisplayName("매수 가능 현금은 음수일 수 없다")
+    @Test
+    void rejectNegativeAvailableCash() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> calculator.execute(
+                        order(TradeSide.BUY, BigDecimal.valueOf(500_000)),
+                        policy(),
+                        BigDecimal.ONE.negate()
+                ))
+                .withMessage("Available cash must not be negative");
     }
 
     private VirtualOrder order(
