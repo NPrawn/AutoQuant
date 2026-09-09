@@ -81,3 +81,14 @@ backtest:
     exchange: ${BACKTEST_JOB_EXCHANGE:backtest.exchange}
     queue: ${BACKTEST_JOB_QUEUE:backtest.queue}
     routing-key: ${BACKTEST_JOB_ROUTING_KEY:backtest.run}
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: backtest-worker
+  rabbitmq:
+    listener:
+      simple:
+        default-requeue-rejected: false
