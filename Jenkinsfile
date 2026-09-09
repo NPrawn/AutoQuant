@@ -210,6 +210,15 @@ pipeline {
                         fi
                     done
 
+                    worker_count=$(docker compose --env-file "$PRODUCTION_ENV_FILE" \
+                      -f "$PRODUCTION_COMPOSE" ps --status running --services \
+                      | grep -cx 'backtest-worker' || true)
+
+                    if [ "$worker_count" -lt 1 ]; then
+                        echo 'backtest-worker is not running'
+                        exit 1
+                    fi
+
                     echo 'Smoke test passed.'
                 '''
             }
