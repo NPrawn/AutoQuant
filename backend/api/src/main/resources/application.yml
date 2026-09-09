@@ -58,10 +58,11 @@ ssafy:
     timeout: ${SSAFY_TIMEOUT:5s}
 
 # 서비스 자체 액세스 토큰. secret 은 HS256 최소 길이인 32바이트 이상이어야 한다.
+# 리프레시 토큰이 없어 만료가 곧 재로그인이라, 유효 시간을 12시간으로 두어 사용 중 끊기지 않게 한다.
 jwt:
   secret: ${JWT_SECRET}
   issuer: ${JWT_ISSUER:a107}
-  access-token-validity: ${JWT_ACCESS_TOKEN_VALIDITY:1h}
+  access-token-validity: ${JWT_ACCESS_TOKEN_VALIDITY:12h}
 
 # 로그인 완료 후 브라우저를 돌려보낼 프론트 주소와 토큰 쿠키 설정. HTTPS 배포에서는 cookie-secure 를 켠다.
 auth:

@@ -74,7 +74,7 @@ auth ────┘
 | `SSAFY_BASE_URL` | `https://project.ssafy.com` | |
 | `SSAFY_TIMEOUT` | `5s` | |
 | `JWT_ISSUER` | `a107` | |
-| `JWT_ACCESS_TOKEN_VALIDITY` | `1h` | |
+| `JWT_ACCESS_TOKEN_VALIDITY` | `12h` | 액세스 토큰 유효 시간, 쿠키 Max-Age 와 JWT exp 에 함께 쓴다 |
 | `UPBIT_BASE_URL` | `https://api.upbit.com` | |
 | `UPBIT_TIMEOUT` | `5s` | |
 | `REDIS_HOST` | `localhost` | 실시간 Pub/Sub을 구독할 Redis 주소 |
