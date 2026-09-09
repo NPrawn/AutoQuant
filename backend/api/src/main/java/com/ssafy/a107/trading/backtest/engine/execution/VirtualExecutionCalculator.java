@@ -51,10 +51,39 @@ public class VirtualExecutionCalculator {
         return executeInternal(order, policy, availableCash);
     }
 
+    public Optional<VirtualFill> executeSell(
+            VirtualOrder order,
+            VirtualExecutionPolicy policy,
+            BigDecimal availableQuantity
+    ) {
+        Objects.requireNonNull(order);
+        requireNonNegative(
+                availableQuantity,
+                "Available quantity must not be negative"
+        );
+
+        if (order.side() != TradeSide.SELL) {
+            throw new IllegalArgumentException(
+                    "Only sell orders can be executed with available quantity"
+            );
+        }
+
+        return executeInternal(order, policy, null, availableQuantity);
+    }
+
     private Optional<VirtualFill> executeInternal(
             VirtualOrder order,
             VirtualExecutionPolicy policy,
             BigDecimal availableCash
+    ) {
+        return executeInternal(order, policy, availableCash, null);
+    }
+
+    private Optional<VirtualFill> executeInternal(
+            VirtualOrder order,
+            VirtualExecutionPolicy policy,
+            BigDecimal availableCash,
+            BigDecimal availableQuantity
     ) {
         Objects.requireNonNull(order);
         Objects.requireNonNull(policy);
@@ -86,6 +115,14 @@ public class VirtualExecutionCalculator {
                     executedPrice,
                     policy,
                     availableCash
+            );
+        }
+
+        if (order.side() == TradeSide.SELL && availableQuantity != null) {
+            quantity = limitSellQuantity(
+                    quantity,
+                    policy,
+                    availableQuantity
             );
         }
 
@@ -142,6 +179,23 @@ public class VirtualExecutionCalculator {
         );
 
         return requestedQuantity.min(affordableQuantity);
+    }
+
+    private BigDecimal limitSellQuantity(
+            BigDecimal requestedQuantity,
+            VirtualExecutionPolicy policy,
+            BigDecimal availableQuantity
+    ) {
+        if (availableQuantity.signum() == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal executableQuantity = orderPrecisionCalculator.roundQuantity(
+                availableQuantity,
+                policy.quantityStepSize()
+        );
+
+        return requestedQuantity.min(executableQuantity);
     }
 
     private Optional<VirtualFill> createFill(
