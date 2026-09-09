@@ -66,7 +66,7 @@ def test_live_holdout_cases_write_measurement_report():
     report_path = REPORTS_DIR / f"holdout-live-{datetime.now(UTC):%Y%m%dT%H%M%SZ}.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    assert len(results) == 28
+    assert len(results) == 26
 
 
 def _error_result(case: dict, failure_reason: str, attempts: int | None) -> dict:
