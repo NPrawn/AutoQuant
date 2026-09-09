@@ -9,9 +9,11 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeSet;
 import java.util.UUID;
 
 @Component
@@ -22,9 +24,24 @@ public class BacktestStrategyExecutionContextFactory {
             BacktestCandleWindow candleWindow,
             Instant candleOpenTime
     ) {
+        return create(
+                backtestRun,
+                candleWindow,
+                candleOpenTime,
+                candleWindow.candlesByAssetId().keySet()
+        );
+    }
+
+    public StrategyExecutionContext create(
+            BacktestRun backtestRun,
+            BacktestCandleWindow candleWindow,
+            Instant candleOpenTime,
+            Collection<UUID> assetIds
+    ) {
         Objects.requireNonNull(backtestRun);
         Objects.requireNonNull(candleWindow);
         Objects.requireNonNull(candleOpenTime);
+        Objects.requireNonNull(assetIds);
 
         if (backtestRun.getTimeframe() != candleWindow.timeframe()) {
             throw new IllegalArgumentException(
@@ -52,14 +69,21 @@ public class BacktestStrategyExecutionContextFactory {
 
         Map<UUID, List<MinuteCandle>> candlesByAssetId = new LinkedHashMap<>();
 
-        for (Map.Entry<UUID, List<MinuteCandle>> entry
-                : candleWindow.candlesByAssetId().entrySet()) {
-            List<MinuteCandle> availableCandles = entry.getValue().stream()
+        for (UUID assetId : new TreeSet<>(assetIds)) {
+            List<MinuteCandle> candles = candleWindow.candlesByAssetId()
+                    .get(assetId);
+            if (candles == null) {
+                throw new IllegalArgumentException(
+                        "Candle window does not contain requested asset"
+                );
+            }
+
+            List<MinuteCandle> availableCandles = candles.stream()
                     .filter(candle -> !candle.getId().getOpenTime()
                             .plus(candleDuration)
                             .isAfter(evaluationAt))
                     .toList();
-            candlesByAssetId.put(entry.getKey(), availableCandles);
+            candlesByAssetId.put(assetId, availableCandles);
         }
 
         return new StrategyExecutionContext(
