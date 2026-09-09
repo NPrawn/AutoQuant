@@ -105,4 +105,57 @@ class SimulationRunControllerTest {
         then(simulationRunCommandService).should()
                 .createSimulationRun(eq(MEMBER_ID), any(CreateSimulationRunCommand.class));
     }
+
+    @DisplayName("생성된 모의투자는 시작 API로 실행 상태가 된다")
+    @Test
+    void startSimulationRun() {
+        SimulationRun simulationRun = responseRun(SimulationRunStatus.RUNNING);
+        given(simulationRunCommandService.startSimulationRun(MEMBER_ID, SIMULATION_ID)).willReturn(simulationRun);
+
+        given()
+                .when()
+                .post("/simulations/{simulationId}/start", SIMULATION_ID)
+                .then()
+                .apply(document("simulations-start"))
+                .statusCode(200)
+                .body("status", equalTo("RUNNING"));
+
+        then(simulationRunCommandService).should().startSimulationRun(MEMBER_ID, SIMULATION_ID);
+    }
+
+    @DisplayName("실행 중인 모의투자는 중지 API로 중지 상태가 된다")
+    @Test
+    void stopSimulationRun() {
+        SimulationRun simulationRun = responseRun(SimulationRunStatus.STOPPED);
+        given(simulationRunCommandService.stopSimulationRun(MEMBER_ID, SIMULATION_ID)).willReturn(simulationRun);
+
+        given()
+                .when()
+                .post("/simulations/{simulationId}/stop", SIMULATION_ID)
+                .then()
+                .apply(document("simulations-stop"))
+                .statusCode(200)
+                .body("status", equalTo("STOPPED"));
+
+        then(simulationRunCommandService).should().stopSimulationRun(MEMBER_ID, SIMULATION_ID);
+    }
+
+    private SimulationRun responseRun(SimulationRunStatus status) {
+        SimulationRun simulationRun = mock(SimulationRun.class);
+        com.ssafy.a107.strategy.domain.Strategy strategy = mock(com.ssafy.a107.strategy.domain.Strategy.class);
+        given(simulationRun.getSimulationId()).willReturn(SIMULATION_ID);
+        given(simulationRun.getStrategy()).willReturn(strategy);
+        given(strategy.getStrategyId()).willReturn(1L);
+        given(simulationRun.getStatus()).willReturn(status);
+        given(simulationRun.getTimeframe()).willReturn(com.ssafy.a107.strategy.domain.dsl.Timeframe.ONE_HOUR);
+        given(simulationRun.getQuoteCurrency()).willReturn("KRW");
+        given(simulationRun.getInitialCapital()).willReturn(java.math.BigDecimal.valueOf(1_000_000));
+        given(simulationRun.getCashBalance()).willReturn(java.math.BigDecimal.valueOf(1_000_000));
+        given(simulationRun.getFeeRate()).willReturn(java.math.BigDecimal.valueOf(0.0005));
+        given(simulationRun.getSlippageBps()).willReturn(java.math.BigDecimal.valueOf(5));
+        given(simulationRun.getRebalanceInterval()).willReturn(com.ssafy.a107.strategy.domain.dsl.RebalancePeriod.DAILY);
+        given(simulationRun.getExecutionPriceRule()).willReturn(com.ssafy.a107.trading.backtest.domain.ExecutionPriceRule.NEXT_CANDLE_OPEN);
+        given(simulationRun.getEngineVersion()).willReturn("engine-v1");
+        return simulationRun;
+    }
 }
