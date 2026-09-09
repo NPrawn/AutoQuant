@@ -14,8 +14,10 @@ class BacktestJobPublishEventListenerTest {
     @Test
     @DisplayName("커밋된 작업 이벤트의 메시지를 발행기에 전달한다")
     void publishesCommittedJobMessage() {
-        BacktestJobPublisher publisher = mock(BacktestJobPublisher.class);
-        BacktestJobPublishEventListener listener = new BacktestJobPublishEventListener(publisher);
+        BacktestJobOutboxService outboxService = mock(BacktestJobOutboxService.class);
+        BacktestJobPublishEventListener listener = new BacktestJobPublishEventListener(
+                outboxService
+        );
         BacktestJobMessage message = new BacktestJobMessage(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
@@ -26,6 +28,6 @@ class BacktestJobPublishEventListenerTest {
 
         listener.publish(new BacktestJobQueuedEvent(message));
 
-        verify(publisher).publish(message);
+        verify(outboxService).publish(message.jobId());
     }
 }

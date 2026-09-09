@@ -22,6 +22,8 @@ import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.trading.backtest.domain.ExecutionPriceRule;
 import com.ssafy.a107.trading.backtest.messaging.BacktestJobQueuedEvent;
+import com.ssafy.a107.trading.backtest.messaging.BacktestJobMessage;
+import com.ssafy.a107.trading.backtest.messaging.BacktestJobOutboxService;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -58,6 +60,9 @@ class BacktestRunCommandServiceTest {
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
+    private BacktestJobOutboxService backtestJobOutboxService;
 
     @DisplayName("회원 소유 전략으로 QUEUED 백테스트 실행을 생성한다")
     @Test
@@ -100,6 +105,12 @@ class BacktestRunCommandServiceTest {
         assertThat(eventCaptor.getValue().message().strategyId()).isEqualTo(STRATEGY_ID);
         assertThat(eventCaptor.getValue().message().engineVersion()).isEqualTo("engine-v1");
         assertThat(eventCaptor.getValue().message().marketDataVersion()).isEqualTo("market-v1");
+        ArgumentCaptor<BacktestJobMessage> messageCaptor = ArgumentCaptor.forClass(
+                BacktestJobMessage.class
+        );
+        then(backtestJobOutboxService).should().enqueue(messageCaptor.capture());
+        assertThat(messageCaptor.getValue())
+                .isEqualTo(eventCaptor.getValue().message());
     }
 
     @DisplayName("소유하지 않은 전략으로 백테스트 실행을 생성할 수 없다")
@@ -207,7 +218,8 @@ class BacktestRunCommandServiceTest {
         return new BacktestRunCommandService(
                 backtestRunRepository,
                 strategyRepository,
-                applicationEventPublisher
+                applicationEventPublisher,
+                backtestJobOutboxService
         );
     }
 
