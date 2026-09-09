@@ -5,6 +5,7 @@ import com.ssafy.a107.trading.backtest.service.BacktestJobFailureService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
+import org.springframework.amqp.ImmediateRequeueAmqpException;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 
@@ -99,6 +100,32 @@ class BacktestJobListenerTest {
         when(failureService.fail(BACKTEST_ID, exception)).thenReturn(false);
 
         listener(executionService, failureService).consume(message, rawMessage(false));
+    }
+
+    @DisplayName("실패 상태 저장에 실패하면 작업을 재큐잉한다")
+    @Test
+    void requeueBacktestJobWhenFailureStateCannotBePersisted() {
+        BacktestJobExecutionService executionService = mock(
+                BacktestJobExecutionService.class
+        );
+        BacktestJobFailureService failureService = mock(
+                BacktestJobFailureService.class
+        );
+        BacktestJobMessage message = message();
+        IllegalStateException executionException = new IllegalStateException("execution failed");
+        IllegalStateException persistenceException = new IllegalStateException("persistence failed");
+        doThrow(executionException).when(executionService).execute(message, false);
+        doThrow(persistenceException).when(failureService).fail(
+                BACKTEST_ID,
+                executionException
+        );
+
+        assertThatThrownBy(() -> listener(executionService, failureService)
+                .consume(message, rawMessage(false)))
+                .isInstanceOf(ImmediateRequeueAmqpException.class)
+                .hasCause(persistenceException);
+
+        then(failureService).should().fail(BACKTEST_ID, executionException);
     }
 
     private BacktestJobListener listener(
