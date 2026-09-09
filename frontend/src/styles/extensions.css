@@ -165,3 +165,35 @@
   color: var(--ink-3);
   font-size: 12px;
 }
+
+/*
+ * 전략봇이 바꾼 영역을 잠깐 강조한다. 색은 블록이 data-cat 으로 정한 --section 을 그대로
+ * 쓴다. 카테고리 색이라 상승(--up)·하락(--down)·오류(--crit) 의미와 겹치지 않는다
+ * (base.css 18절 "category hue, never severity"). 요약 카드는 data-cat 이 없어 중립색이다.
+ */
+.blk.changed,
+.sum-card.changed {
+  animation: section-changed 1.6s ease-out;
+}
+
+@keyframes section-changed {
+  0% {
+    box-shadow:
+      inset 0 0 0 1px var(--section, var(--cat-neutral)),
+      0 0 0 3px color-mix(in srgb, var(--section, var(--cat-neutral)) 22%, transparent);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 1px transparent,
+      0 0 0 3px transparent;
+  }
+}
+
+/* 깜빡임에 민감한 사용자에게는 움직임 대신 정적 테두리만 남긴다. */
+@media (prefers-reduced-motion: reduce) {
+  .blk.changed,
+  .sum-card.changed {
+    animation: none;
+    box-shadow: inset 0 0 0 1px var(--section, var(--cat-neutral));
+  }
+}

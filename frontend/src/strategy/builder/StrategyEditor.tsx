@@ -17,6 +17,7 @@ import {
 import type { BuilderEntryState } from '../builderEntry'
 import {
   addCondition,
+  changedSections,
   createEmptyDraft,
   draftFromDsl,
   dslFromDraft,
@@ -27,6 +28,7 @@ import {
   setTimeframe,
   updateCondition,
   validateDraft,
+  type BuilderSection,
   type StrategyDraft,
 } from '../draft'
 import { useCreateStrategy, useTranslateStrategy } from '../queries'
@@ -37,6 +39,9 @@ import { FilterBlock } from './FilterBlock'
 import { RankingBlock } from './RankingBlock'
 import { RebalanceBlock } from './RebalanceBlock'
 import { StrategySummaryCard } from './StrategySummaryCard'
+
+/* 강조가 켜져 있는 시간. extensions.css 의 애니메이션보다 조금 길게 둔다. */
+const highlightDurationMs = 1800
 
 /* 홈에서 넘어온 첫 변환의 진행 상태. 성공하면 done, 실패하면 화면 위쪽에 안내와 재시도를 보인다. */
 type InitialPhase = 'none' | 'pending' | 'failed' | 'done'
@@ -59,6 +64,33 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
 
   const [draft, setDraft] = useState(() => initialDraft)
   const [showIssues, setShowIssues] = useState(false)
+
+  /*
+   * 전략봇이 바꾼 영역을 잠깐 강조한다. 전략봇은 오른쪽 아래 패널이고 블록은 그 뒤라,
+   * 표시가 없으면 무엇이 바뀌었는지 시야 밖에서 일어난다.
+   */
+  const [highlighted, setHighlighted] = useState<BuilderSection[]>([])
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const highlightSections = (sections: BuilderSection[]) => {
+    if (highlightTimer.current !== null) {
+      clearTimeout(highlightTimer.current)
+    }
+    setHighlighted(sections)
+    if (sections.length === 0) {
+      return
+    }
+    highlightTimer.current = setTimeout(() => setHighlighted([]), highlightDurationMs)
+  }
+
+  useEffect(
+    () => () => {
+      if (highlightTimer.current !== null) {
+        clearTimeout(highlightTimer.current)
+      }
+    },
+    [],
+  )
   const issues = validateDraft(draft)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
@@ -82,6 +114,12 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
     const { strategy } = response
     const { changes, assumptions, warnings } = response.meta
     if (strategy !== null) {
+      /*
+       * 비교는 이름·설명을 보지 않으므로 base 없이 만든 초안이면 충분하다.
+       * ponytail: 비교 기준이 렌더 시점 초안이라, 요청이 도는 사이에 블록을 고치면 강조가
+       * 한 칸 넓어질 수 있다. 초안 적용 자체는 최신 값을 쓰므로 데이터는 잃지 않는다.
+       */
+      highlightSections(changedSections(draft, draftFromDsl(strategy)))
       setDraft((current) => draftFromDsl(strategy, { name: current.name, description: current.description }))
     }
     setConversation((current) =>
@@ -229,6 +267,7 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
           <div>
             <div className="tabp on">
               <FilterBlock
+                changed={highlighted.includes('filters')}
                 conditions={draft.conditions}
                 logic={draft.logic}
                 onAdd={() => setDraft(addCondition(draft))}
@@ -236,12 +275,17 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
                 onRemove={(id) => setDraft(removeCondition(draft, id))}
               />
               <RankingBlock
+                changed={highlighted.includes('ranking')}
                 ranking={draft.ranking}
                 timeframe={draft.timeframe}
                 onRankingChange={(patch) => setDraft(setRanking(draft, patch))}
                 onTimeframeChange={(timeframe) => setDraft(setTimeframe(draft, timeframe))}
               />
-              <RebalanceBlock rebalance={draft.rebalance} onChange={(rebalance) => setDraft(setRebalance(draft, rebalance))} />
+              <RebalanceBlock
+                changed={highlighted.includes('rebalance')}
+                rebalance={draft.rebalance}
+                onChange={(rebalance) => setDraft(setRebalance(draft, rebalance))}
+              />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
               <button className="btn ghost" type="button" onClick={() => navigate(routes.strategies)}>
@@ -254,7 +298,12 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
           </div>
 
           <aside className="edit-side">
-            <StrategySummaryCard draft={draft} goal={entry?.prompt ?? null} issues={showIssues ? issues : []} />
+            <StrategySummaryCard
+              changed={highlighted.includes('summary')}
+              draft={draft}
+              goal={entry?.prompt ?? null}
+              issues={showIssues ? issues : []}
+            />
           </aside>
         </div>
       )}

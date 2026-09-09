@@ -1,4 +1,4 @@
-import { factorMeta } from './labels'
+import { factorMeta } from './labels.ts'
 import {
   strategyNameMaxLength,
   type ComparisonOperator,
@@ -9,7 +9,7 @@ import {
   type RebalancePeriod,
   type StrategyDsl,
   type Timeframe,
-} from './types'
+} from './types.ts'
 
 /*
  * 빌더가 편집하는 상태. DSL 은 조건에 식별자가 없어 React 목록 키와 삭제 대상을 정할 수
@@ -234,4 +234,57 @@ export function validateDraft(draft: StrategyDraft): DraftIssue[] {
   }
 
   return issues
+}
+
+/* 전략봇 변경을 강조할 화면 영역. 블록 셋과, topN 을 보여 주는 요약 카드다. */
+export type BuilderSection = 'filters' | 'ranking' | 'rebalance' | 'summary'
+
+/*
+ * 두 초안을 화면 영역 단위로 비교한다. 응답의 meta.changes 를 파싱하지 않는다. 그것은
+ * 한국어 문장이라 문구가 바뀌면 강조가 조용히 깨진다. 화면 상태의 비교는 화면이 한다.
+ *
+ * 조건 비교에서 id 를 뺀다. draftFromDsl 이 조건마다 새 id 를 만들어서, id 까지 보면
+ * 내용이 같아도 언제나 바뀐 것으로 나온다.
+ *
+ * 이름과 설명은 전략의 내용이 아니라 라벨이라 비교하지 않는다.
+ */
+export function changedSections(before: StrategyDraft, after: StrategyDraft): BuilderSection[] {
+  const sections: BuilderSection[] = []
+  if (before.logic !== after.logic || !sameConditions(before.conditions, after.conditions)) {
+    sections.push('filters')
+  }
+  if (before.timeframe !== after.timeframe || !sameRanking(before.ranking, after.ranking)) {
+    sections.push('ranking')
+  }
+  if (before.rebalance !== after.rebalance) {
+    sections.push('rebalance')
+  }
+  if (before.topN !== after.topN) {
+    sections.push('summary')
+  }
+  return sections
+}
+
+function sameConditions(before: ConditionDraft[], after: ConditionDraft[]): boolean {
+  return before.length === after.length && before.every((condition, index) => sameCondition(condition, after[index]))
+}
+
+function sameCondition(before: ConditionDraft, after: ConditionDraft): boolean {
+  if (before.kind === 'simple' && after.kind === 'simple') {
+    return (
+      before.factor === after.factor &&
+      before.period === after.period &&
+      before.operator === after.operator &&
+      before.value === after.value
+    )
+  }
+  if (before.kind === 'raw' && after.kind === 'raw') {
+    /* ponytail: 원본 노드는 직렬화해서 비교한다. 양쪽 다 같은 서버 응답에서 와 키 순서가 같다. */
+    return JSON.stringify(before.node) === JSON.stringify(after.node)
+  }
+  return false
+}
+
+function sameRanking(before: Ranking, after: Ranking): boolean {
+  return before.factor === after.factor && before.period === after.period && before.direction === after.direction
 }

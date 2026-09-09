@@ -4,12 +4,14 @@ import type { RebalancePeriod } from '../types'
 type RebalanceBlockProps = {
   rebalance: RebalancePeriod
   onChange: (rebalance: RebalancePeriod) => void
+  /* 전략봇이 방금 이 블록을 바꿨는지. 잠깐 강조하고 꺼진다. */
+  changed?: boolean
 }
 
 /* 블록 03. 재선정 주기. 세그먼트 버튼은 라디오 그룹으로 읽히게 한다. */
-export function RebalanceBlock({ rebalance, onChange }: RebalanceBlockProps) {
+export function RebalanceBlock({ rebalance, onChange, changed = false }: RebalanceBlockProps) {
   return (
-    <div className="blk ex" data-cat="exec" style={{ borderBottom: 0 }}>
+    <div className={changed ? 'blk ex changed' : 'blk ex'} data-cat="exec" style={{ borderBottom: 0 }}>
       <div className="blk-title">
         <span className="blk-index">03</span>
         <div>
