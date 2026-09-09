@@ -1,0 +1,15 @@
+[
+  {
+    "market": "KRW-ATH",
+    "candle_date_time_utc": "2026-09-09T00:25:00",
+    "candle_date_time_kst": "2026-09-09T09:25:00",
+    "opening_price": 6.86,
+    "high_price": 6.92,
+    "low_price": 6.83,
+    "trade_price": 6.87,
+    "timestamp": 1788913560039,
+    "candle_acc_trade_price": 62842971.52951752,
+    "candle_acc_trade_volume": 9163744.18910138,
+    "unit": 1
+  }
+]

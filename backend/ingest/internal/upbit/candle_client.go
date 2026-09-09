@@ -182,8 +182,10 @@ func decodeMinuteCandle(
 		return candledomain.MinuteCandle{}, exception.Wrap(exception.CodeUpbitInvalidResponse, err)
 	}
 	openTime = openTime.UTC()
+	// REST timestamp is the last tick's storage time, not its trade time.
+	// It may cross the candle boundary; only candle_date_time_utc selects the bucket.
 	lastEventTime := time.UnixMilli(payload.Timestamp).UTC()
-	if lastEventTime.Before(openTime) || !lastEventTime.Before(openTime.Add(time.Minute)) {
+	if lastEventTime.Before(openTime) {
 		return candledomain.MinuteCandle{}, exception.New(exception.CodeUpbitInvalidResponse)
 	}
 
