@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -23,8 +24,10 @@ public class RealtimeRedisListener implements MessageListener {
     private final ObjectReader candleReader;
     private final Validator validator;
     private final RealtimeEventPublisher publisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
-    public RealtimeRedisListener(ObjectMapper objectMapper, Validator validator, RealtimeEventPublisher publisher) {
+    public RealtimeRedisListener(ObjectMapper objectMapper, Validator validator, RealtimeEventPublisher publisher,
+                                 ApplicationEventPublisher applicationEventPublisher) {
         this.tradeReader = objectMapper.readerFor(RealtimeTradeMessage.class)
                 .without(DeserializationFeature.ACCEPT_FLOAT_AS_INT)
                 .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
@@ -33,6 +36,7 @@ public class RealtimeRedisListener implements MessageListener {
                 .with(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
         this.validator = validator;
         this.publisher = publisher;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Override
@@ -51,7 +55,9 @@ public class RealtimeRedisListener implements MessageListener {
                         || candle.lastEventTimeUnixMilli() - candle.openTimeUnixMilli() >= width) {
                     throw new IllegalArgumentException("Invalid candle interval");
                 }
-                publisher.publish(candle.toEvent());
+                var candleEvent = candle.toEvent();
+                publisher.publish(candleEvent);
+                applicationEventPublisher.publishEvent(candleEvent);
             } else {
                 log.warn("Ignoring unknown realtime Redis channel");
             }

@@ -12,4 +12,6 @@ public interface SimulationPositionRepository extends JpaRepository<SimulationPo
 
     @EntityGraph(attributePaths = "asset")
     List<SimulationPosition> findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(UUID simulationId);
+
+    long deleteAllBySimulationRunSimulationId(UUID simulationId);
 }

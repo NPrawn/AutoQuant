@@ -29,6 +29,22 @@ public class BacktestPortfolio {
         );
     }
 
+    public BacktestPortfolio(
+            BigDecimal cashBalance,
+            List<BacktestPosition> positions
+    ) {
+        this.cashBalance = requireNonNegative(
+                cashBalance,
+                "Cash balance must not be negative"
+        );
+        for (BacktestPosition position : positions) {
+            BacktestPosition requiredPosition = Objects.requireNonNull(position);
+            if (this.positions.put(requiredPosition.assetId(), requiredPosition) != null) {
+                throw new IllegalArgumentException("Positions must not contain duplicate assets");
+            }
+        }
+    }
+
     public void applyBuy(VirtualFill fill) {
         Objects.requireNonNull(fill);
 
@@ -194,6 +210,16 @@ public class BacktestPortfolio {
             String message
     ) {
         if (value == null || value.signum() <= 0) {
+            throw new IllegalArgumentException(message);
+        }
+        return value;
+    }
+
+    private BigDecimal requireNonNegative(
+            BigDecimal value,
+            String message
+    ) {
+        if (value == null || value.signum() < 0) {
             throw new IllegalArgumentException(message);
         }
         return value;
