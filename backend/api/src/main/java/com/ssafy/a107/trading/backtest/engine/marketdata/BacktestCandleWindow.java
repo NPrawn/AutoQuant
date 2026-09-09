@@ -97,9 +97,9 @@ public record BacktestCandleWindow(
             }
 
             Instant openTime = candle.getId().getOpenTime();
-            if (!openTime.isBefore(evaluationEnd)) {
+            if (openTime.isAfter(evaluationEnd)) {
                 throw new IllegalArgumentException(
-                        "Candle open time must be before evaluation end"
+                        "Candle open time must not be after evaluation end"
                 );
             }
 

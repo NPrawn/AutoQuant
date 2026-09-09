@@ -44,7 +44,7 @@ public class BacktestCandleWindowProvider {
                         assetIds,
                         backtestRun.getTimeframe(),
                         loadStart,
-                        backtestRun.getPeriodEnd()
+                        backtestRun.getPeriodEnd().plus(candleDuration)
                 );
 
         return new BacktestCandleWindow(
