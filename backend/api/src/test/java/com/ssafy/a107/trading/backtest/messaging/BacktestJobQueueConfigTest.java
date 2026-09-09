@@ -14,7 +14,10 @@ class BacktestJobQueueConfigTest {
     private static final BacktestJobQueueProperties PROPERTIES = new BacktestJobQueueProperties(
             "backtest.exchange",
             "backtest.queue",
-            "backtest.run"
+            "backtest.run",
+            "backtest.dead-letter.exchange",
+            "backtest.dead-letter.queue",
+            "backtest.dead-letter"
     );
 
     private final BacktestJobQueueConfig config = new BacktestJobQueueConfig();
@@ -33,5 +36,21 @@ class BacktestJobQueueConfigTest {
         assertThat(binding.getExchange()).isEqualTo(PROPERTIES.exchange());
         assertThat(binding.getDestination()).isEqualTo(PROPERTIES.queue());
         assertThat(binding.getRoutingKey()).isEqualTo(PROPERTIES.routingKey());
+
+        DirectExchange deadLetterExchange = config
+                .backtestJobDeadLetterExchange(PROPERTIES);
+        Queue deadLetterQueue = config.backtestJobDeadLetterQueue(PROPERTIES);
+        Binding deadLetterBinding = config.backtestJobDeadLetterBinding(
+                deadLetterQueue,
+                deadLetterExchange,
+                PROPERTIES
+        );
+
+        assertThat(deadLetterExchange.getName())
+                .isEqualTo(PROPERTIES.deadLetterExchange());
+        assertThat(deadLetterQueue.getName())
+                .isEqualTo(PROPERTIES.deadLetterQueue());
+        assertThat(deadLetterBinding.getRoutingKey())
+                .isEqualTo(PROPERTIES.deadLetterRoutingKey());
     }
 }

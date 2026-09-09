@@ -15,7 +15,10 @@ class BacktestJobPublisherTest {
     private static final BacktestJobQueueProperties PROPERTIES = new BacktestJobQueueProperties(
             "backtest.exchange",
             "backtest.queue",
-            "backtest.run"
+            "backtest.run",
+            "backtest.dead-letter.exchange",
+            "backtest.dead-letter.queue",
+            "backtest.dead-letter"
     );
 
     @Test

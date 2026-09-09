@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -30,10 +29,17 @@ class BacktestJobListenerTest {
         BacktestJobFailureService failureService = mock(
                 BacktestJobFailureService.class
         );
+        BacktestJobDeadLetterPublisher deadLetterPublisher = mock(
+                BacktestJobDeadLetterPublisher.class
+        );
         BacktestJobMessage message = message();
         when(executionService.execute(message)).thenReturn(true);
 
-        listener(executionService, failureService).consume(message);
+        listener(
+                executionService,
+                failureService,
+                deadLetterPublisher
+        ).consume(message);
 
         verify(executionService).execute(message);
         verify(failureService, never()).fail(
@@ -51,25 +57,33 @@ class BacktestJobListenerTest {
         BacktestJobFailureService failureService = mock(
                 BacktestJobFailureService.class
         );
+        BacktestJobDeadLetterPublisher deadLetterPublisher = mock(
+                BacktestJobDeadLetterPublisher.class
+        );
         BacktestJobMessage message = message();
         IllegalStateException exception = new IllegalStateException("실행 실패");
         doThrow(exception).when(executionService).execute(message);
 
-        assertThatIllegalStateException()
-                .isThrownBy(() -> listener(
-                        executionService,
-                        failureService
-                ).consume(message))
-                .isSameAs(exception);
+        listener(
+                executionService,
+                failureService,
+                deadLetterPublisher
+        ).consume(message);
 
         then(failureService).should().fail(BACKTEST_ID, exception);
+        then(deadLetterPublisher).should().publish(message, exception);
     }
 
     private BacktestJobListener listener(
             BacktestJobExecutionService executionService,
-            BacktestJobFailureService failureService
+            BacktestJobFailureService failureService,
+            BacktestJobDeadLetterPublisher deadLetterPublisher
     ) {
-        return new BacktestJobListener(executionService, failureService);
+        return new BacktestJobListener(
+                executionService,
+                failureService,
+                deadLetterPublisher
+        );
     }
 
     private BacktestJobMessage message() {
