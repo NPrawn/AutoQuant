@@ -6,6 +6,8 @@ import com.ssafy.a107.strategy.domain.dsl.ComparisonOperator;
 import com.ssafy.a107.strategy.domain.dsl.ConditionFilterNode;
 import com.ssafy.a107.strategy.domain.dsl.FactorOperand;
 import com.ssafy.a107.strategy.domain.dsl.FactorType;
+import com.ssafy.a107.strategy.domain.dsl.GroupFilterNode;
+import com.ssafy.a107.strategy.domain.dsl.Logic;
 import com.ssafy.a107.strategy.domain.dsl.Ranking;
 import com.ssafy.a107.strategy.domain.dsl.RankingDirection;
 import com.ssafy.a107.strategy.domain.dsl.Rebalance;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -154,6 +157,108 @@ class StrategyExecutionPipelineTest {
                 .hasMessage("Unsupported strategy DSL: factor operand is invalid");
     }
 
+    @Test
+    @DisplayName("Timeframe이 없는 전략 DSL은 실행 오류로 식별한다")
+    void rejectStrategyDslWithoutTimeframe() {
+        StrategyDsl validStrategyDsl = strategyDsl(1);
+
+        assertUnsupportedStrategyDsl(
+                new StrategyDsl(
+                        null,
+                        validStrategyDsl.filters(),
+                        validStrategyDsl.ranking(),
+                        validStrategyDsl.selection(),
+                        validStrategyDsl.rebalance()
+                ),
+                "Unsupported strategy DSL: timeframe is required"
+        );
+    }
+
+    @Test
+    @DisplayName("자식이 없는 Filter Group 전략 DSL은 실행 오류로 식별한다")
+    void rejectFilterGroupWithoutChildren() {
+        StrategyDsl validStrategyDsl = strategyDsl(1);
+
+        assertUnsupportedStrategyDsl(
+                new StrategyDsl(
+                        validStrategyDsl.timeframe(),
+                        new GroupFilterNode(Logic.AND, List.of()),
+                        validStrategyDsl.ranking(),
+                        validStrategyDsl.selection(),
+                        validStrategyDsl.rebalance()
+                ),
+                "Unsupported strategy DSL: filter group is invalid"
+        );
+    }
+
+    @Test
+    @DisplayName("null 자식이 있는 Filter Group 전략 DSL은 실행 오류로 식별한다")
+    void rejectFilterGroupWithNullChild() {
+        StrategyDsl validStrategyDsl = strategyDsl(1);
+
+        assertUnsupportedStrategyDsl(
+                new StrategyDsl(
+                        validStrategyDsl.timeframe(),
+                        new GroupFilterNode(Logic.AND, Collections.singletonList(null)),
+                        validStrategyDsl.ranking(),
+                        validStrategyDsl.selection(),
+                        validStrategyDsl.rebalance()
+                ),
+                "Unsupported strategy DSL: filter node is required"
+        );
+    }
+
+    @Test
+    @DisplayName("null Operand가 있는 Filter 전략 DSL은 실행 오류로 식별한다")
+    void rejectFilterWithNullOperand() {
+        StrategyDsl validStrategyDsl = strategyDsl(1);
+
+        assertUnsupportedStrategyDsl(
+                new StrategyDsl(
+                        validStrategyDsl.timeframe(),
+                        new ConditionFilterNode(null, ComparisonOperator.GT, new ValueOperand(BigDecimal.ONE)),
+                        validStrategyDsl.ranking(),
+                        validStrategyDsl.selection(),
+                        validStrategyDsl.rebalance()
+                ),
+                "Unsupported strategy DSL: filter operand is required"
+        );
+    }
+
+    @Test
+    @DisplayName("0 이하 Top N 전략 DSL은 실행 오류로 식별한다")
+    void rejectStrategyDslWithNonPositiveTopN() {
+        StrategyDsl validStrategyDsl = strategyDsl(1);
+
+        assertUnsupportedStrategyDsl(
+                new StrategyDsl(
+                        validStrategyDsl.timeframe(),
+                        validStrategyDsl.filters(),
+                        validStrategyDsl.ranking(),
+                        new Selection(0),
+                        validStrategyDsl.rebalance()
+                ),
+                "Unsupported strategy DSL: selection topN must be positive"
+        );
+    }
+
+    @Test
+    @DisplayName("리밸런싱 주기가 없는 전략 DSL은 실행 오류로 식별한다")
+    void rejectStrategyDslWithoutRebalancePeriod() {
+        StrategyDsl validStrategyDsl = strategyDsl(1);
+
+        assertUnsupportedStrategyDsl(
+                new StrategyDsl(
+                        validStrategyDsl.timeframe(),
+                        validStrategyDsl.filters(),
+                        validStrategyDsl.ranking(),
+                        validStrategyDsl.selection(),
+                        new Rebalance(null)
+                ),
+                "Unsupported strategy DSL: rebalance period is required"
+        );
+    }
+
     private StrategyExecutionContext strategyExecutionContext(
             StrategyDsl strategyDsl,
             Map<UUID, List<MinuteCandle>> assetCandles
@@ -163,6 +268,19 @@ class StrategyExecutionPipelineTest {
                 Instant.parse("2026-01-01T03:00:00Z"),
                 assetCandles
         );
+    }
+
+    private void assertUnsupportedStrategyDsl(StrategyDsl strategyDsl, String expectedMessage) {
+        UUID assetId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
+        assertThatThrownBy(() -> pipeline.execute(
+                strategyExecutionContext(
+                        strategyDsl,
+                        Map.of(assetId, candles(assetId, "100", "110", "121"))
+                )
+        ))
+                .isInstanceOf(StrategyExecutionException.class)
+                .hasMessage(expectedMessage);
     }
 
     private StrategyDsl strategyDsl(int minimumRsi) {
