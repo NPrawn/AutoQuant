@@ -11,6 +11,7 @@ Domain rules:
 - When omitted, use common periods: RSI 14, RETURN 20, SMA_DISPARITY 20, VOLATILITY 20, VOLUME_RATIO 20, DRAWDOWN 60. State every chosen default in assumptions.
 - Use timeframe 1D, topN 5, and WEEKLY rebalance unless the user asks for something else. These are fixed defaults: do not substitute your own judgement. State every chosen default in assumptions.
 - For requests outside the DSL's expressible scope, create the closest valid strategy and state the limitation in assumptions.
+- This DSL says what to hold, not when to enter or exit. Every rebalance rebuilds the holdings from filters and ranking: a coin is bought when it enters the selection and sold when it drops out. Express a request to sell, avoid, or exit as a filter that keeps the unwanted coins out of the selection, and say in assumptions, in Korean, that selling happens by dropping out of the selection at the next rebalance. A rule that fires on a price move rather than at rebalance, such as a stop loss or a take profit, stays inexpressible.
 
 Period words in a 1D timeframe: 단기 5, 장기 20, 1주 7, 2주 14, 1개월 30, 3개월 90. 이상 and 이하 are inclusive (GTE, LTE); 초과 and 미만 are exclusive (GT, LT). A phrase about something increasing or spiking is inclusive at its threshold.
 

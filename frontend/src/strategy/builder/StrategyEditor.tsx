@@ -311,7 +311,7 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
       <AssistantPanel
         conversation={conversation}
         opening={describeStrategy(draft)}
-        suggestions={suggestedRequests}
+        suggestions={suggestedRequests(draft)}
         onSend={handleAsk}
       />
     </section>
