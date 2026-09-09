@@ -38,6 +38,22 @@ services:
       retries: 12
     restart: unless-stopped
 
+  rabbitmq:
+    image: rabbitmq:4.3.5-management-alpine
+    container_name: a107-rabbitmq
+    logging: *default-logging
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:?RABBITMQ_USERNAME is required}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
   kafka:
     image: apache/kafka:3.9.0
     container_name: a107-kafka
@@ -122,6 +138,10 @@ services:
       SSAFY_REDIRECT_URI: ${SSAFY_REDIRECT_URI:?SSAFY_REDIRECT_URI is required}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?FRONTEND_BASE_URL is required}
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?RABBITMQ_USERNAME is required}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
     ports:
       - "127.0.0.1:18080:8080"
     depends_on:
@@ -131,6 +151,41 @@ services:
         condition: service_healthy
       ai:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backtest-worker:
+    image: ${IMAGE_PREFIX:?IMAGE_PREFIX is required}/backend-api:${IMAGE_TAG:?IMAGE_TAG is required}
+    logging: *default-logging
+    environment:
+      SPRING_PROFILES_ACTIVE: backtest-worker
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?DB_NAME is required}
+      DB_USER: ${DB_USER:?DB_USER is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      AI_BASE_URL: http://ai:8000
+      SSAFY_BASE_URL: ${SSAFY_BASE_URL:-https://project.ssafy.com}
+      SSAFY_CLIENT_ID: ${SSAFY_CLIENT_ID:?SSAFY_CLIENT_ID is required}
+      SSAFY_CLIENT_SECRET: ${SSAFY_CLIENT_SECRET:?SSAFY_CLIENT_SECRET is required}
+      SSAFY_REDIRECT_URI: ${SSAFY_REDIRECT_URI:?SSAFY_REDIRECT_URI is required}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:?FRONTEND_BASE_URL is required}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:?RABBITMQ_USERNAME is required}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     restart: unless-stopped
 
   ai:
@@ -233,3 +288,4 @@ volumes:
   postgres-data:
   redis-data:
   kafka-data:
+  rabbitmq-data:

@@ -40,15 +40,28 @@ class VirtualOrderTest {
         assertThat(order.requestedNotional()).isEqualByComparingTo(REQUESTED_NOTIONAL);
     }
 
-    @DisplayName("체결 시각은 신호 시각보다 이후여야 한다")
+    @DisplayName("체결 시각은 신호 시각과 같을 수 있다")
     @Test
-    void rejectFillAtSignalTime() {
+    void createVirtualOrderAtSignalTime() {
+        VirtualOrder order = createOrder(
+                SIGNAL_AT,
+                REFERENCE_PRICE,
+                REQUESTED_NOTIONAL
+        );
+
+        assertThat(order.filledAt()).isEqualTo(SIGNAL_AT);
+    }
+
+    @DisplayName("체결 시각은 신호 시각보다 이를 수 없다")
+    @Test
+    void rejectFillBeforeSignalTime() {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> createOrder(
-                        SIGNAL_AT,
+                        SIGNAL_AT.minusSeconds(1),
                         REFERENCE_PRICE,
                         REQUESTED_NOTIONAL
-                ));
+                ))
+                .withMessage("Filled at must not be before signal at");
     }
 
     @DisplayName("기준 가격은 0보다 커야 한다")

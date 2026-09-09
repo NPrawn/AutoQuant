@@ -5,7 +5,11 @@ import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.strategy.domain.Strategy;
 import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
+import com.ssafy.a107.trading.backtest.messaging.BacktestJobMessage;
+import com.ssafy.a107.trading.backtest.messaging.BacktestJobOutboxService;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
+import com.ssafy.a107.trading.backtest.messaging.BacktestJobQueuedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,13 +23,19 @@ public class BacktestRunCommandService {
 
     private final BacktestRunRepository backtestRunRepository;
     private final StrategyRepository strategyRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
+    private final BacktestJobOutboxService backtestJobOutboxService;
 
     public BacktestRunCommandService(
             BacktestRunRepository backtestRunRepository,
-            StrategyRepository strategyRepository
+            StrategyRepository strategyRepository,
+            ApplicationEventPublisher applicationEventPublisher,
+            BacktestJobOutboxService backtestJobOutboxService
     ) {
         this.backtestRunRepository = backtestRunRepository;
         this.strategyRepository = strategyRepository;
+        this.applicationEventPublisher = applicationEventPublisher;
+        this.backtestJobOutboxService = backtestJobOutboxService;
     }
 
     public BacktestRun createBacktestRun(UUID memberId, CreateBacktestRunCommand command) {
@@ -51,7 +61,19 @@ public class BacktestRunCommandService {
                 command.marketDataVersion(),
                 Instant.now()
         );
-        return backtestRunRepository.save(backtestRun);
+
+        BacktestRun savedBacktestRun = backtestRunRepository.save(backtestRun);
+
+        BacktestJobMessage message = BacktestJobMessage.from(
+                UUID.randomUUID(),
+                savedBacktestRun
+        );
+        backtestJobOutboxService.enqueue(message);
+        applicationEventPublisher.publishEvent(
+                new BacktestJobQueuedEvent(message)
+        );
+
+        return savedBacktestRun;
     }
 
     private void validate(CreateBacktestRunCommand command) {

@@ -49,16 +49,30 @@ class BacktestTradeTest {
         assertThat(trade.getReason()).isEqualTo("리밸런싱 매수");
     }
 
-    @DisplayName("체결 시각은 신호 시각보다 이후여야 한다")
+    @DisplayName("체결 시각은 신호 시각과 같을 수 있다")
     @Test
-    void rejectFillAtSignalTime() {
+    void createBacktestTradeAtSignalTime() {
+        BacktestTrade trade = createTrade(
+                SIGNAL_AT,
+                BigDecimal.ONE,
+                BigDecimal.valueOf(50),
+                BigDecimal.valueOf(5)
+        );
+
+        assertThat(trade.getFilledAt()).isEqualTo(SIGNAL_AT);
+    }
+
+    @DisplayName("체결 시각은 신호 시각보다 이를 수 없다")
+    @Test
+    void rejectFillBeforeSignalTime() {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> createTrade(
-                        SIGNAL_AT,
+                        SIGNAL_AT.minusSeconds(1),
                         BigDecimal.ONE,
                         BigDecimal.valueOf(50),
                         BigDecimal.valueOf(5)
-                ));
+                ))
+                .withMessage("Filled at must not be before signal at");
     }
 
     @DisplayName("체결 수량은 0보다 커야 한다")

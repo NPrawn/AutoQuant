@@ -6,6 +6,8 @@ import com.ssafy.a107.trading.backtest.domain.BacktestResult;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.trading.backtest.domain.BacktestTrade;
+import com.ssafy.a107.trading.backtest.domain.BacktestUniverseAsset;
+import com.ssafy.a107.trading.backtest.domain.BacktestUniverseAssetId;
 import com.ssafy.a107.trading.backtest.domain.PositionSide;
 import com.ssafy.a107.trading.backtest.domain.TradeSide;
 import com.ssafy.a107.trading.backtest.engine.execution.VirtualFill;
@@ -17,6 +19,7 @@ import com.ssafy.a107.trading.backtest.engine.performance.TradeStatistics;
 import com.ssafy.a107.trading.backtest.repository.BacktestEquityRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestResultRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestTradeRepository;
+import com.ssafy.a107.trading.backtest.repository.BacktestUniverseAssetRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,6 +61,9 @@ class BacktestResultPersistenceServiceTest {
     private BacktestEquityRepository backtestEquityRepository;
 
     @Mock
+    private BacktestUniverseAssetRepository backtestUniverseAssetRepository;
+
+    @Mock
     private BacktestRun backtestRun;
 
     @Mock
@@ -72,6 +78,9 @@ class BacktestResultPersistenceServiceTest {
     @Captor
     private ArgumentCaptor<List<BacktestEquity>> equitiesCaptor;
 
+    @Captor
+    private ArgumentCaptor<List<BacktestUniverseAsset>> universeAssetsCaptor;
+
     @DisplayName("완료된 백테스트의 성과와 체결 및 자산 스냅샷을 함께 저장한다")
     @Test
     void persistBacktestResult() {
@@ -84,12 +93,16 @@ class BacktestResultPersistenceServiceTest {
                 backtestRun,
                 report(),
                 List.of(fill()),
-                Map.of(ASSET_ID, asset)
+                Map.of(ASSET_ID, asset),
+                List.of(universeAsset())
         );
 
         then(backtestResultRepository).should().save(resultCaptor.capture());
         then(backtestTradeRepository).should().saveAll(tradesCaptor.capture());
         then(backtestEquityRepository).should().saveAll(equitiesCaptor.capture());
+        then(backtestUniverseAssetRepository).should().saveAll(
+                universeAssetsCaptor.capture()
+        );
 
         assertThat(result).isSameAs(resultCaptor.getValue());
         assertThat(resultCaptor.getValue().getFinalAssetValue())
@@ -111,6 +124,11 @@ class BacktestResultPersistenceServiceTest {
                             .isEqualTo(BACKTEST_ID);
                     assertThat(equity.getTotalAssetValue())
                             .isEqualByComparingTo("1100000");
+                });
+        assertThat(universeAssetsCaptor.getValue()).singleElement()
+                .satisfies(universeAsset -> {
+                    assertThat(universeAsset.getAsset()).isSameAs(asset);
+                    assertThat(universeAsset.isSelected()).isTrue();
                 });
     }
 
@@ -134,7 +152,22 @@ class BacktestResultPersistenceServiceTest {
         return new BacktestResultPersistenceService(
                 backtestResultRepository,
                 backtestTradeRepository,
-                backtestEquityRepository
+                backtestEquityRepository,
+                backtestUniverseAssetRepository
+        );
+    }
+
+    private BacktestUniverseAsset universeAsset() {
+        return new BacktestUniverseAsset(
+                new BacktestUniverseAssetId(
+                        BACKTEST_ID,
+                        Instant.parse("2026-01-02T00:00:00Z"),
+                        ASSET_ID
+                ),
+                backtestRun,
+                asset,
+                (short) 1,
+                true
         );
     }
 

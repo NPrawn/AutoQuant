@@ -162,7 +162,12 @@ public class BacktestRun extends BaseEntity {
     }
 
     public void fail(String failureReason) {
-        ensureStatus(BacktestRunStatus.RUNNING);
+        if (status != BacktestRunStatus.QUEUED
+                && status != BacktestRunStatus.RUNNING) {
+            throw new IllegalStateException(
+                    "Backtest run must be queued or running"
+            );
+        }
         this.failureReason = requireNonBlank(failureReason, Integer.MAX_VALUE, "Failure reason");
         this.status = BacktestRunStatus.FAILED;
     }

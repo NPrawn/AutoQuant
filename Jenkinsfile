@@ -186,6 +186,7 @@ pipeline {
                         a107-postgres \
                         a107-redis \
                         a107-kafka \
+                        a107-rabbitmq \
                         a107-backend-api \
                         a107-ai \
                         a107-frontend \
@@ -200,7 +201,7 @@ pipeline {
                         fi
                     done
 
-                    for container in a107-postgres a107-redis a107-kafka; do
+                    for container in a107-postgres a107-redis a107-kafka a107-rabbitmq; do
                         health=$(docker inspect --format '{{.State.Health.Status}}' "$container")
 
                         if [ "$health" != "healthy" ]; then
@@ -208,6 +209,15 @@ pipeline {
                             exit 1
                         fi
                     done
+
+                    worker_count=$(docker compose --env-file "$PRODUCTION_ENV_FILE" \
+                      -f "$PRODUCTION_COMPOSE" ps --status running --services \
+                      | grep -cx 'backtest-worker' || true)
+
+                    if [ "$worker_count" -lt 1 ]; then
+                        echo 'backtest-worker is not running'
+                        exit 1
+                    fi
 
                     echo 'Smoke test passed.'
                 '''

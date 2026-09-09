@@ -40,6 +40,7 @@ dependencies {
 
     // 파생 계층 — Go consumer 가 써둔 값을 읽는다 (cache 패키지)
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-amqp'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.rest-assured:spring-mock-mvc'

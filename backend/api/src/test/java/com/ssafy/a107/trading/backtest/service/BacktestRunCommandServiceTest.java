@@ -21,10 +21,16 @@ import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.trading.backtest.domain.ExecutionPriceRule;
+import com.ssafy.a107.trading.backtest.messaging.BacktestJobQueuedEvent;
+import com.ssafy.a107.trading.backtest.messaging.BacktestJobMessage;
+import com.ssafy.a107.trading.backtest.messaging.BacktestJobOutboxService;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -43,6 +49,7 @@ import static org.mockito.BDDMockito.then;
 class BacktestRunCommandServiceTest {
 
     private static final UUID MEMBER_ID = UUID.fromString("b7ced58c-00e9-4617-9658-4f576ea2f6fe");
+    private static final UUID BACKTEST_ID = UUID.fromString("e4b4e9e0-8d17-4a47-98d4-4d9f06d97b2b");
     private static final Long STRATEGY_ID = 1L;
 
     @Mock
@@ -50,6 +57,12 @@ class BacktestRunCommandServiceTest {
 
     @Mock
     private StrategyRepository strategyRepository;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
+    @Mock
+    private BacktestJobOutboxService backtestJobOutboxService;
 
     @DisplayName("회원 소유 전략으로 QUEUED 백테스트 실행을 생성한다")
     @Test
@@ -59,7 +72,11 @@ class BacktestRunCommandServiceTest {
         given(strategyRepository.findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(STRATEGY_ID, MEMBER_ID))
                 .willReturn(Optional.of(strategy));
         given(backtestRunRepository.save(any(BacktestRun.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
+                .willAnswer(invocation -> {
+                    BacktestRun savedBacktestRun = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(savedBacktestRun, "backtestId", BACKTEST_ID);
+                    return savedBacktestRun;
+                });
 
         BacktestRun backtestRun = service.createBacktestRun(MEMBER_ID, new CreateBacktestRunCommand(
                 STRATEGY_ID,
@@ -80,6 +97,20 @@ class BacktestRunCommandServiceTest {
         assertThat(backtestRun.getRebalanceInterval()).isEqualTo(strategy.getStrategyDsl().rebalance().period());
         assertThat(backtestRun.getQueuedAt()).isNotNull();
         then(backtestRunRepository).should().save(any(BacktestRun.class));
+
+        ArgumentCaptor<BacktestJobQueuedEvent> eventCaptor = ArgumentCaptor.forClass(BacktestJobQueuedEvent.class);
+        then(applicationEventPublisher).should().publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().message().jobId()).isNotNull();
+        assertThat(eventCaptor.getValue().message().backtestId()).isEqualTo(BACKTEST_ID);
+        assertThat(eventCaptor.getValue().message().strategyId()).isEqualTo(STRATEGY_ID);
+        assertThat(eventCaptor.getValue().message().engineVersion()).isEqualTo("engine-v1");
+        assertThat(eventCaptor.getValue().message().marketDataVersion()).isEqualTo("market-v1");
+        ArgumentCaptor<BacktestJobMessage> messageCaptor = ArgumentCaptor.forClass(
+                BacktestJobMessage.class
+        );
+        then(backtestJobOutboxService).should().enqueue(messageCaptor.capture());
+        assertThat(messageCaptor.getValue())
+                .isEqualTo(eventCaptor.getValue().message());
     }
 
     @DisplayName("소유하지 않은 전략으로 백테스트 실행을 생성할 수 없다")
@@ -184,7 +215,12 @@ class BacktestRunCommandServiceTest {
     }
 
     private BacktestRunCommandService createService() {
-        return new BacktestRunCommandService(backtestRunRepository, strategyRepository);
+        return new BacktestRunCommandService(
+                backtestRunRepository,
+                strategyRepository,
+                applicationEventPublisher,
+                backtestJobOutboxService
+        );
     }
 
     private CreateBacktestRunCommand validCommand(
@@ -216,7 +252,9 @@ class BacktestRunCommandServiceTest {
                 "backtest-service@example.com",
                 "백테스트 사용자"
         );
-        return new Strategy(member, "RSI 전략", null, strategyDsl());
+        Strategy strategy = new Strategy(member, "RSI 전략", null, strategyDsl());
+        ReflectionTestUtils.setField(strategy, "strategyId", STRATEGY_ID);
+        return strategy;
     }
 
     private StrategyDsl strategyDsl() {

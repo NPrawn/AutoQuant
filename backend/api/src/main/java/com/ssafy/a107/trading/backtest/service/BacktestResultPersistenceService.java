@@ -6,12 +6,14 @@ import com.ssafy.a107.trading.backtest.domain.BacktestEquityId;
 import com.ssafy.a107.trading.backtest.domain.BacktestResult;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.domain.BacktestTrade;
+import com.ssafy.a107.trading.backtest.domain.BacktestUniverseAsset;
 import com.ssafy.a107.trading.backtest.engine.execution.VirtualFill;
 import com.ssafy.a107.trading.backtest.engine.performance.EquitySnapshot;
 import com.ssafy.a107.trading.backtest.engine.performance.PerformanceReport;
 import com.ssafy.a107.trading.backtest.repository.BacktestEquityRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestResultRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestTradeRepository;
+import com.ssafy.a107.trading.backtest.repository.BacktestUniverseAssetRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,15 +29,18 @@ public class BacktestResultPersistenceService {
     private final BacktestResultRepository backtestResultRepository;
     private final BacktestTradeRepository backtestTradeRepository;
     private final BacktestEquityRepository backtestEquityRepository;
+    private final BacktestUniverseAssetRepository backtestUniverseAssetRepository;
 
     public BacktestResultPersistenceService(
             BacktestResultRepository backtestResultRepository,
             BacktestTradeRepository backtestTradeRepository,
-            BacktestEquityRepository backtestEquityRepository
+            BacktestEquityRepository backtestEquityRepository,
+            BacktestUniverseAssetRepository backtestUniverseAssetRepository
     ) {
         this.backtestResultRepository = backtestResultRepository;
         this.backtestTradeRepository = backtestTradeRepository;
         this.backtestEquityRepository = backtestEquityRepository;
+        this.backtestUniverseAssetRepository = backtestUniverseAssetRepository;
     }
 
     public BacktestResult persist(
@@ -44,10 +49,27 @@ public class BacktestResultPersistenceService {
             List<VirtualFill> fills,
             Map<UUID, Asset> assets
     ) {
+        return persist(
+                backtestRun,
+                performanceReport,
+                fills,
+                assets,
+                List.of()
+        );
+    }
+
+    public BacktestResult persist(
+            BacktestRun backtestRun,
+            PerformanceReport performanceReport,
+            List<VirtualFill> fills,
+            Map<UUID, Asset> assets,
+            List<BacktestUniverseAsset> universeAssets
+    ) {
         Objects.requireNonNull(backtestRun);
         Objects.requireNonNull(performanceReport);
         Objects.requireNonNull(fills);
         Objects.requireNonNull(assets);
+        Objects.requireNonNull(universeAssets);
 
         List<BacktestTrade> trades = fills.stream()
                 .map(fill -> toBacktestTrade(backtestRun, fill, assets))
@@ -62,6 +84,7 @@ public class BacktestResultPersistenceService {
         );
         backtestTradeRepository.saveAll(trades);
         backtestEquityRepository.saveAll(equities);
+        backtestUniverseAssetRepository.saveAll(universeAssets);
 
         return backtestResult;
     }

@@ -23,6 +23,16 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:a107}
+    password: ${RABBITMQ_PASSWORD:a107}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+
 server:
   port: ${SERVER_PORT:8080}
   # 신뢰하는 프록시가 전달한 HTTPS 정보를 WebSocket same-origin 검사에도 사용한다.
@@ -68,3 +78,27 @@ jwt:
 auth:
   frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
   cookie-secure: ${AUTH_COOKIE_SECURE:false}
+
+backtest:
+  execution:
+    minimum-order-amount: ${BACKTEST_MINIMUM_ORDER_AMOUNT:5000}
+    price-tick-size: ${BACKTEST_PRICE_TICK_SIZE:1}
+    quantity-step-size: ${BACKTEST_QUANTITY_STEP_SIZE:0.00000001}
+  job:
+    exchange: ${BACKTEST_JOB_EXCHANGE:backtest.exchange}
+    queue: ${BACKTEST_JOB_QUEUE:backtest.queue}
+    routing-key: ${BACKTEST_JOB_ROUTING_KEY:backtest.run}
+    dead-letter-exchange: ${BACKTEST_JOB_DEAD_LETTER_EXCHANGE:backtest.dead-letter.exchange}
+    dead-letter-queue: ${BACKTEST_JOB_DEAD_LETTER_QUEUE:backtest.dead-letter.queue}
+    dead-letter-routing-key: ${BACKTEST_JOB_DEAD_LETTER_ROUTING_KEY:backtest.dead-letter}
+
+---
+
+spring:
+  config:
+    activate:
+      on-profile: backtest-worker
+  rabbitmq:
+    listener:
+      simple:
+        default-requeue-rejected: false

@@ -48,7 +48,21 @@ public class StrategyExecutionPipeline {
         this.targetPortfolioEvaluator = targetPortfolioEvaluator;
     }
 
-    public TargetPortfolio execute(StrategyDsl strategyDsl, Map<UUID, List<MinuteCandle>> assetCandles) {
+    public TargetPortfolio execute(
+            StrategyExecutionContext strategyExecutionContext
+    ) {
+        Objects.requireNonNull(strategyExecutionContext);
+
+        return executeInternal(
+                strategyExecutionContext.strategyDsl(),
+                strategyExecutionContext.candlesByAssetId()
+        );
+    }
+
+    private TargetPortfolio executeInternal(
+            StrategyDsl strategyDsl,
+            Map<UUID, List<MinuteCandle>> assetCandles
+    ) {
         Objects.requireNonNull(strategyDsl);
         Objects.requireNonNull(assetCandles);
 

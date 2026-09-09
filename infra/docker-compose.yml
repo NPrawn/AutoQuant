@@ -38,6 +38,23 @@ services:
       timeout: 3s
       retries: 10
 
+  rabbitmq:
+    image: rabbitmq:4.3.5-management-alpine
+    container_name: a107-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-a107}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-a107}
+    ports:
+      - "${RABBITMQ_PORT:-5672}:5672"
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   # Kafka — KRaft 모드 (ZooKeeper 불필요)
   kafka:
     image: apache/kafka:3.9.0
@@ -108,3 +125,4 @@ volumes:
   postgres-data:
   redis-data:
   kafka-data:
+  rabbitmq-data:
