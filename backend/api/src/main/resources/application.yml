@@ -81,6 +81,9 @@ backtest:
     exchange: ${BACKTEST_JOB_EXCHANGE:backtest.exchange}
     queue: ${BACKTEST_JOB_QUEUE:backtest.queue}
     routing-key: ${BACKTEST_JOB_ROUTING_KEY:backtest.run}
+    dead-letter-exchange: ${BACKTEST_JOB_DEAD_LETTER_EXCHANGE:backtest.dead-letter.exchange}
+    dead-letter-queue: ${BACKTEST_JOB_DEAD_LETTER_QUEUE:backtest.dead-letter.queue}
+    dead-letter-routing-key: ${BACKTEST_JOB_DEAD_LETTER_ROUTING_KEY:backtest.dead-letter}
 
 ---
 

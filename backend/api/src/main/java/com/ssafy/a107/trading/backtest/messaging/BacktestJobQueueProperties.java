@@ -9,6 +9,9 @@ import org.springframework.validation.annotation.Validated;
 public record BacktestJobQueueProperties(
         @NotBlank String exchange,
         @NotBlank String queue,
-        @NotBlank String routingKey
+        @NotBlank String routingKey,
+        @NotBlank String deadLetterExchange,
+        @NotBlank String deadLetterQueue,
+        @NotBlank String deadLetterRoutingKey
 ) {
 }

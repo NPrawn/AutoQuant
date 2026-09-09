@@ -14,16 +14,21 @@ public class BacktestJobListener {
 
     private final BacktestJobExecutionService backtestJobExecutionService;
     private final BacktestJobFailureService backtestJobFailureService;
+    private final BacktestJobDeadLetterPublisher backtestJobDeadLetterPublisher;
 
     public BacktestJobListener(
             BacktestJobExecutionService backtestJobExecutionService,
-            BacktestJobFailureService backtestJobFailureService
+            BacktestJobFailureService backtestJobFailureService,
+            BacktestJobDeadLetterPublisher backtestJobDeadLetterPublisher
     ) {
         this.backtestJobExecutionService = Objects.requireNonNull(
                 backtestJobExecutionService
         );
         this.backtestJobFailureService = Objects.requireNonNull(
                 backtestJobFailureService
+        );
+        this.backtestJobDeadLetterPublisher = Objects.requireNonNull(
+                backtestJobDeadLetterPublisher
         );
     }
 
@@ -36,7 +41,7 @@ public class BacktestJobListener {
                     message.backtestId(),
                     exception
             );
-            throw exception;
+            backtestJobDeadLetterPublisher.publish(message, exception);
         }
     }
 }

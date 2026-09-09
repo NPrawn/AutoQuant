@@ -7,6 +7,7 @@ import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Qualifier;
 @Configuration
 @EnableConfigurationProperties(BacktestJobQueueProperties.class)
 public class BacktestJobQueueConfig {
@@ -28,14 +29,41 @@ public class BacktestJobQueueConfig {
 
     @Bean
     public Binding backtestJobBinding(
-            Queue backtestJobQueue,
-            DirectExchange backtestJobExchange,
+            @Qualifier("backtestJobQueue") Queue backtestJobQueue,
+            @Qualifier("backtestJobExchange") DirectExchange backtestJobExchange,
             BacktestJobQueueProperties properties
     ) {
         return BindingBuilder
                 .bind(backtestJobQueue)
                 .to(backtestJobExchange)
                 .with(properties.routingKey());
+    }
+
+    @Bean
+    public DirectExchange backtestJobDeadLetterExchange(
+            BacktestJobQueueProperties properties
+    ) {
+        return ExchangeBuilder.directExchange(properties.deadLetterExchange())
+                .durable(true)
+                .build();
+    }
+
+    @Bean
+    public Queue backtestJobDeadLetterQueue(
+            BacktestJobQueueProperties properties
+    ) {
+        return QueueBuilder.durable(properties.deadLetterQueue()).build();
+    }
+
+    @Bean
+    public Binding backtestJobDeadLetterBinding(
+            @Qualifier("backtestJobDeadLetterQueue") Queue backtestJobDeadLetterQueue,
+            @Qualifier("backtestJobDeadLetterExchange") DirectExchange backtestJobDeadLetterExchange,
+            BacktestJobQueueProperties properties
+    ) {
+        return BindingBuilder.bind(backtestJobDeadLetterQueue)
+                .to(backtestJobDeadLetterExchange)
+                .with(properties.deadLetterRoutingKey());
     }
 
     @Bean
