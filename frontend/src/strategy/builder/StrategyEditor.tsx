@@ -12,6 +12,7 @@ import {
   describeStrategy,
   setPending,
   suggestedRequests,
+  translationReplyText,
 } from '../assistant/conversation'
 import type { BuilderEntryState } from '../builderEntry'
 import {
@@ -72,15 +73,24 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
   const create = useCreateStrategy()
   const [saveError, setSaveError] = useState<unknown>(null)
 
+  /*
+   * strategy 가 null 이면 전략 설명이 아닌 입력이라 서버가 LLM 을 부르지 않은 것이다. 200 이고
+   * 실패가 아니므로 초안을 건드리지 않고 사유만 전략봇에 띄운다. 사용자가 이미 채운 값이 있으면
+   * 그대로 둬야 하고, initialPhase 를 failed 로 두면 오류 배너와 재시도가 뜬다.
+   */
   const applyTranslation = (response: TranslateStrategyResponse, isInitial: boolean) => {
-    setDraft((current) => draftFromDsl(response.strategy, { name: current.name, description: current.description }))
+    const { strategy } = response
     const { changes, assumptions, warnings } = response.meta
-    const text = isInitial
-      ? '입력한 목표로 초안을 만들었습니다. 블록에서 값을 직접 조정할 수 있습니다.'
-      : changes.length > 0
-        ? '요청대로 블록을 바꿨습니다.'
-        : '바꿀 것이 없어 지금 전략을 그대로 두었습니다.'
-    setConversation((current) => appendAssistantMessage(current, text, { changes, assumptions, warnings }))
+    if (strategy !== null) {
+      setDraft((current) => draftFromDsl(strategy, { name: current.name, description: current.description }))
+    }
+    setConversation((current) =>
+      appendAssistantMessage(current, translationReplyText(strategy, changes, isInitial), {
+        changes,
+        assumptions,
+        warnings,
+      }),
+    )
     if (isInitial) {
       setInitialPhase('done')
     }
