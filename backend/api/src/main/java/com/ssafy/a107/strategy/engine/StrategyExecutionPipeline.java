@@ -6,7 +6,9 @@ import com.ssafy.a107.strategy.domain.dsl.FactorOperand;
 import com.ssafy.a107.strategy.domain.dsl.FilterNode;
 import com.ssafy.a107.strategy.domain.dsl.GroupFilterNode;
 import com.ssafy.a107.strategy.domain.dsl.Operand;
+import com.ssafy.a107.strategy.domain.dsl.Ranking;
 import com.ssafy.a107.strategy.domain.dsl.StrategyDsl;
+import com.ssafy.a107.strategy.domain.dsl.ValueOperand;
 import com.ssafy.a107.strategy.engine.factor.Ta4jFactorCalculator;
 import com.ssafy.a107.strategy.engine.filter.FilterEvaluator;
 import com.ssafy.a107.strategy.engine.portfolio.TargetPortfolio;
@@ -66,6 +68,7 @@ public class StrategyExecutionPipeline {
         Objects.requireNonNull(strategyDsl);
         Objects.requireNonNull(assetCandles);
 
+        validateSupportedStrategyDsl(strategyDsl);
         validateCandleTimeframes(strategyDsl, assetCandles);
 
         Set<FactorOperand> requiredFactors = collectRequiredFactors(strategyDsl);
@@ -78,6 +81,88 @@ public class StrategyExecutionPipeline {
         List<UUID> rankedAssetIds = rankingEvaluator.rank(eligibleAssetFactorValues, strategyDsl.ranking());
         List<UUID> selectedAssetIds = selectionEvaluator.select(rankedAssetIds, strategyDsl.selection());
         return targetPortfolioEvaluator.create(selectedAssetIds);
+    }
+
+    private void validateSupportedStrategyDsl(StrategyDsl strategyDsl) {
+        if (strategyDsl.filters() == null) {
+            throw unsupportedStrategyDsl("filters are required");
+        }
+        if (strategyDsl.ranking() == null) {
+            throw unsupportedStrategyDsl("ranking is required");
+        }
+        if (strategyDsl.selection() == null) {
+            throw unsupportedStrategyDsl("selection is required");
+        }
+        if (strategyDsl.rebalance() == null) {
+            throw unsupportedStrategyDsl("rebalance is required");
+        }
+        if (strategyDsl.timeframe() == null) {
+            throw unsupportedStrategyDsl("timeframe is required");
+        }
+
+        validateFilterNode(strategyDsl.filters());
+        validateRanking(strategyDsl.ranking());
+
+        if (strategyDsl.selection().topN() == null || strategyDsl.selection().topN() <= 0) {
+            throw unsupportedStrategyDsl("selection topN must be positive");
+        }
+        if (strategyDsl.rebalance().period() == null) {
+            throw unsupportedStrategyDsl("rebalance period is required");
+        }
+    }
+
+    private void validateFilterNode(FilterNode filterNode) {
+        if (filterNode == null) {
+            throw unsupportedStrategyDsl("filter node is required");
+        }
+
+        if (filterNode instanceof GroupFilterNode group) {
+            if (group.logic() == null || group.children() == null || group.children().isEmpty()) {
+                throw unsupportedStrategyDsl("filter group is invalid");
+            }
+            group.children().forEach(this::validateFilterNode);
+            return;
+        }
+
+        ConditionFilterNode condition = (ConditionFilterNode) filterNode;
+        if (condition.operator() == null) {
+            throw unsupportedStrategyDsl("filter operator is required");
+        }
+        validateOperand(condition.left());
+        validateOperand(condition.right());
+    }
+
+    private void validateRanking(Ranking ranking) {
+        if (ranking.direction() == null) {
+            throw unsupportedStrategyDsl("ranking direction is required");
+        }
+        validateFactorOperand(new FactorOperand(ranking.factor(), ranking.period()));
+    }
+
+    private void validateOperand(Operand operand) {
+        if (operand == null) {
+            throw unsupportedStrategyDsl("filter operand is required");
+        }
+
+        if (operand instanceof FactorOperand factorOperand) {
+            validateFactorOperand(factorOperand);
+            return;
+        }
+
+        ValueOperand valueOperand = (ValueOperand) operand;
+        if (valueOperand.value() == null) {
+            throw unsupportedStrategyDsl("value operand is required");
+        }
+    }
+
+    private void validateFactorOperand(FactorOperand factorOperand) {
+        if (factorOperand.factor() == null || factorOperand.period() == null || factorOperand.period() <= 0) {
+            throw unsupportedStrategyDsl("factor operand is invalid");
+        }
+    }
+
+    private StrategyExecutionException unsupportedStrategyDsl(String reason) {
+        return new StrategyExecutionException("Unsupported strategy DSL: " + reason);
     }
 
     private Set<FactorOperand> collectRequiredFactors(StrategyDsl strategyDsl) {

@@ -126,6 +126,34 @@ class StrategyExecutionPipelineTest {
                 );
     }
 
+    @Test
+    @DisplayName("지원하지 않는 전략 DSL 구성은 실행 오류로 식별한다")
+    void rejectUnsupportedStrategyDsl() {
+        // given
+        UUID assetId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        StrategyDsl unsupportedStrategyDsl = new StrategyDsl(
+                Timeframe.ONE_HOUR,
+                new ConditionFilterNode(
+                        new FactorOperand(FactorType.RSI, 2),
+                        ComparisonOperator.GT,
+                        new ValueOperand(BigDecimal.ONE)
+                ),
+                new Ranking(null, 2, RankingDirection.DESC),
+                new Selection(1),
+                new Rebalance(RebalancePeriod.WEEKLY)
+        );
+
+        // when & then
+        assertThatThrownBy(() -> pipeline.execute(
+                strategyExecutionContext(
+                        unsupportedStrategyDsl,
+                        Map.of(assetId, candles(assetId, "100", "110", "121"))
+                )
+        ))
+                .isInstanceOf(StrategyExecutionException.class)
+                .hasMessage("Unsupported strategy DSL: factor operand is invalid");
+    }
+
     private StrategyExecutionContext strategyExecutionContext(
             StrategyDsl strategyDsl,
             Map<UUID, List<MinuteCandle>> assetCandles
