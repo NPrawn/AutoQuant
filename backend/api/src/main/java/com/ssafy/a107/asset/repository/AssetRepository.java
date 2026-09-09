@@ -34,4 +34,26 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
             @Param("quoteCurrencyCode") String quoteCurrencyCode,
             @Param("evaluationAt") Instant evaluationAt
     );
+
+    @Query("""
+        select asset
+        from Asset asset
+        where asset.exchange = :exchange
+          and asset.quoteCurrencyCode = :quoteCurrencyCode
+          and (
+              asset.tradingSupportStartedAt is null
+              or asset.tradingSupportStartedAt < :periodEnd
+          )
+          and (
+              asset.tradingSupportEndedAt is null
+              or asset.tradingSupportEndedAt > :periodStart
+          )
+        order by asset.assetId asc
+        """)
+    List<Asset> findAllAvailableDuring(
+            @Param("exchange") Exchange exchange,
+            @Param("quoteCurrencyCode") String quoteCurrencyCode,
+            @Param("periodStart") Instant periodStart,
+            @Param("periodEnd") Instant periodEnd
+    );
 }

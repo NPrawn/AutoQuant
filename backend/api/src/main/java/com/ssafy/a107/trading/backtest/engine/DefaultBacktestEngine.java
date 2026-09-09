@@ -103,11 +103,9 @@ public class DefaultBacktestEngine implements BacktestEngine {
     public BacktestExecutionResult execute(BacktestRun backtestRun) {
         Objects.requireNonNull(backtestRun);
 
-        List<Asset> initialUniverse = backtestUniverseResolver.resolve(
-                backtestRun,
-                backtestRun.getPeriodStart()
-        );
-        Map<UUID, Asset> assets = assetsById(initialUniverse);
+        List<Asset> candidateUniverse = backtestUniverseResolver
+                .resolveCandidates(backtestRun);
+        Map<UUID, Asset> assets = assetsById(candidateUniverse);
         if (assets.isEmpty()) {
             throw new IllegalArgumentException("Backtest universe must not be empty");
         }

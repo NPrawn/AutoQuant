@@ -39,4 +39,15 @@ public class BacktestUniverseResolver {
                 evaluationAt
         ));
     }
+
+    public List<Asset> resolveCandidates(BacktestRun backtestRun) {
+        Objects.requireNonNull(backtestRun);
+
+        return List.copyOf(assetRepository.findAllAvailableDuring(
+                Exchange.UPBIT,
+                backtestRun.getQuoteCurrency(),
+                backtestRun.getPeriodStart(),
+                backtestRun.getPeriodEnd()
+        ));
+    }
 }
