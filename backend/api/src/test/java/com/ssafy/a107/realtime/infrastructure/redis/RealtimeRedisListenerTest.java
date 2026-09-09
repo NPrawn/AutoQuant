@@ -40,6 +40,7 @@ class RealtimeRedisListenerTest {
                 public void publish(LiveMinuteCandle candle) {
                     events.add(candle);
                 }
+            }, event -> {
             }
     );
 
@@ -189,7 +190,8 @@ class RealtimeRedisListenerTest {
                     @Override
                     public void publish(LiveMinuteCandle candle) {
                     }
-                }
+            }, event -> {
+            }
         );
         DefaultMessage message = message(RealtimeRedisChannels.TRADE, RealtimeFixtures.TRADE);
         failingListener.onMessage(message, null);
