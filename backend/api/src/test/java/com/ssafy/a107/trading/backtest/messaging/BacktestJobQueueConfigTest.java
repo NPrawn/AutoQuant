@@ -33,6 +33,13 @@ class BacktestJobQueueConfigTest {
         assertThat(exchange.isDurable()).isTrue();
         assertThat(queue.getName()).isEqualTo(PROPERTIES.queue());
         assertThat(queue.isDurable()).isTrue();
+        assertThat(queue.getArguments()).containsEntry(
+                "x-dead-letter-exchange",
+                PROPERTIES.deadLetterExchange()
+        ).containsEntry(
+                "x-dead-letter-routing-key",
+                PROPERTIES.deadLetterRoutingKey()
+        );
         assertThat(binding.getExchange()).isEqualTo(PROPERTIES.exchange());
         assertThat(binding.getDestination()).isEqualTo(PROPERTIES.queue());
         assertThat(binding.getRoutingKey()).isEqualTo(PROPERTIES.routingKey());

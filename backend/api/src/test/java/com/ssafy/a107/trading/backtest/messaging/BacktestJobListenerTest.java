@@ -63,6 +63,7 @@ class BacktestJobListenerTest {
         BacktestJobMessage message = message();
         IllegalStateException exception = new IllegalStateException("실행 실패");
         doThrow(exception).when(executionService).execute(message);
+        when(failureService.fail(BACKTEST_ID, exception)).thenReturn(true);
 
         listener(
                 executionService,
@@ -72,6 +73,32 @@ class BacktestJobListenerTest {
 
         then(failureService).should().fail(BACKTEST_ID, exception);
         then(deadLetterPublisher).should().publish(message, exception);
+    }
+
+    @DisplayName("이미 종료된 작업의 실행 예외는 dead-letter 메시지를 중복 발행하지 않는다")
+    @Test
+    void doNotPublishDeadLetterWhenFailureStateWasNotChanged() {
+        BacktestJobExecutionService executionService = mock(
+                BacktestJobExecutionService.class
+        );
+        BacktestJobFailureService failureService = mock(
+                BacktestJobFailureService.class
+        );
+        BacktestJobDeadLetterPublisher deadLetterPublisher = mock(
+                BacktestJobDeadLetterPublisher.class
+        );
+        BacktestJobMessage message = message();
+        IllegalStateException exception = new IllegalStateException("실행 실패");
+        doThrow(exception).when(executionService).execute(message);
+        when(failureService.fail(BACKTEST_ID, exception)).thenReturn(false);
+
+        listener(
+                executionService,
+                failureService,
+                deadLetterPublisher
+        ).consume(message);
+
+        then(deadLetterPublisher).should(never()).publish(message, exception);
     }
 
     private BacktestJobListener listener(
