@@ -88,6 +88,19 @@ class BacktestStrategyExecutionContextFactoryTest {
                 .withMessage("Backtest timeframe must match candle window");
     }
 
+    @DisplayName("요청 유니버스에 캔들 데이터가 없는 종목이 있으면 문맥을 만들 수 없다")
+    @Test
+    void rejectUniverseAssetWithoutCandleData() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> factory.create(
+                        backtestRun(Timeframe.ONE_HOUR),
+                        candleWindow(Timeframe.ONE_HOUR),
+                        EVALUATION_START,
+                        List.of(UUID.randomUUID())
+                ))
+                .withMessage("Candle window does not contain requested asset");
+    }
+
     private BacktestRun backtestRun(Timeframe timeframe) {
         BacktestRun backtestRun = mock(BacktestRun.class);
         Strategy strategy = mock(Strategy.class);
