@@ -1,5 +1,6 @@
 import type { StrategyDraft } from '../draft'
-import { describeCondition, directionLabels, factorMeta, logicLabels, rebalanceMeta } from '../labels'
+import { describeCondition, directionLabels, factorMeta, logicLabels, rebalanceMeta } from '../labels.ts'
+import type { StrategyDsl } from '../types'
 
 /*
  * 전략봇 대화 상태. 화면은 이 함수들로만 상태를 바꾸고, 변환 API 응답을 대화에 넣는 일은
@@ -59,6 +60,21 @@ export function describeStrategy(draft: StrategyDraft): string {
     .map((condition) => describeCondition(condition.factor, condition.operator, condition.value))
     .join(` ${logicLabels[draft.logic]} `)
   return `지금 전략은 ${filters} 인 코인만 후보로 남기고, 그중 ${ranking}를 ${cadence}`
+}
+
+/*
+ * 변환 응답에 붙일 전략봇 문장. strategy 가 null 인 것은 실패가 아니라 전략 설명이 아닌
+ * 입력이라 서버가 LLM 을 부르지 않은 것이다. 왜 안 만들었는지는 meta.assumptions 가 말하므로
+ * 여기서는 다음에 무엇을 하면 되는지만 말한다.
+ */
+export function translationReplyText(strategy: StrategyDsl | null, changes: string[], isInitial: boolean): string {
+  if (strategy === null) {
+    return '전략으로 옮길 내용을 찾지 못했습니다. 어떤 코인을 어떤 기준으로 고르고 싶은지 알려 주세요.'
+  }
+  if (isInitial) {
+    return '입력한 목표로 초안을 만들었습니다. 블록에서 값을 직접 조정할 수 있습니다.'
+  }
+  return changes.length > 0 ? '요청대로 블록을 바꿨습니다.' : '바꿀 것이 없어 지금 전략을 그대로 두었습니다.'
 }
 
 /*
