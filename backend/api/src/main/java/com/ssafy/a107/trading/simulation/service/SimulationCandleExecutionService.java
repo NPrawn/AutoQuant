@@ -114,6 +114,7 @@ public class SimulationCandleExecutionService {
         this.marketPriceCache = marketPriceCache;
     }
 
+    @Transactional
     public void handle(LiveMinuteCandle candle) {
         marketPriceCache.update(candle);
         Instant candleAt = Instant.ofEpochMilli(candle.openTimeUnixMilli());
@@ -124,35 +125,37 @@ public class SimulationCandleExecutionService {
                 .forEach(simulationRun -> process(simulationRun.getSimulationId(), candleAt));
     }
 
-    @Transactional
     public void process(UUID simulationId, Instant candleAt) {
         SimulationRun simulationRun = simulationRunRepository.findBySimulationIdForUpdate(simulationId).orElse(null);
         if (simulationRun == null || simulationRun.getStatus() != SimulationRunStatus.RUNNING) return;
+        try {
+            List<Asset> universe = assetRepository.findAllAvailableAt(Exchange.UPBIT, simulationRun.getQuoteCurrency(), candleAt);
+            List<SimulationPosition> persistedPositions = simulationPositionRepository
+                    .findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId);
+            Map<UUID, Asset> assetsById = assetsById(universe, persistedPositions);
+            Set<UUID> pricedAssetIds = assetsById.keySet();
+            Map<UUID, BigDecimal> currentPrices = marketPriceCache.snapshotAt(pricedAssetIds, candleAt).orElse(null);
+            if (currentPrices == null || !simulationRun.beginCandle(candleAt)) return;
+            if (!rebalanceSchedule.shouldRebalance(
+                    simulationRun.getRebalanceInterval(),
+                    simulationRun.getTimeframe(),
+                    candleAt,
+                    simulationRun.getLastRebalanceAt() == null
+            )) return;
 
-        List<Asset> universe = assetRepository.findAllAvailableAt(Exchange.UPBIT, simulationRun.getQuoteCurrency(), candleAt);
-        List<SimulationPosition> persistedPositions = simulationPositionRepository
-                .findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId);
-        Map<UUID, Asset> assetsById = assetsById(universe, persistedPositions);
-        Set<UUID> pricedAssetIds = assetsById.keySet();
-        Map<UUID, BigDecimal> currentPrices = marketPriceCache.snapshotAtOrBefore(pricedAssetIds, candleAt).orElse(null);
-        if (currentPrices == null || !simulationRun.beginCandle(candleAt)) return;
-        if (!rebalanceSchedule.shouldRebalance(
-                simulationRun.getRebalanceInterval(),
-                simulationRun.getTimeframe(),
-                candleAt,
-                simulationRun.getLastRebalanceAt() == null
-        )) return;
+            TargetPortfolio targetPortfolio = executeStrategy(simulationRun, universe, candleAt);
+            BacktestPortfolio portfolio = restorePortfolio(simulationRun, persistedPositions);
+            List<VirtualOrder> orders = rebalanceOrderPlanner.plan(portfolio, targetPortfolio, currentPrices).stream()
+                    .map(order -> virtualOrder(order, candleAt, currentPrices))
+                    .toList();
+            BacktestOrderExecutionResult executionResult = portfolioOrderExecutionService.execute(
+                    portfolio, orders, executionPolicy(simulationRun)
+            );
 
-        TargetPortfolio targetPortfolio = executeStrategy(simulationRun, universe, candleAt);
-        BacktestPortfolio portfolio = restorePortfolio(simulationRun, persistedPositions);
-        List<VirtualOrder> orders = rebalanceOrderPlanner.plan(portfolio, targetPortfolio, currentPrices).stream()
-                .map(order -> virtualOrder(order, candleAt, currentPrices))
-                .toList();
-        BacktestOrderExecutionResult executionResult = portfolioOrderExecutionService.execute(
-                portfolio, orders, executionPolicy(simulationRun)
-        );
-
-        persistLedger(simulationRun, candleAt, universe, targetPortfolio, assetsById, portfolio, executionResult, currentPrices);
+            persistLedger(simulationRun, candleAt, universe, targetPortfolio, assetsById, portfolio, executionResult, currentPrices);
+        } catch (RuntimeException exception) {
+            simulationRun.fail(exception.getClass().getSimpleName());
+        }
     }
 
     private TargetPortfolio executeStrategy(SimulationRun simulationRun, List<Asset> universe, Instant candleAt) {

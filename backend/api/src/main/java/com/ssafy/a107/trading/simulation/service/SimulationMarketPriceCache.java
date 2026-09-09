@@ -24,11 +24,11 @@ public class SimulationMarketPriceCache {
         ));
     }
 
-    public Optional<Map<UUID, BigDecimal>> snapshotAtOrBefore(Collection<UUID> assetIds, Instant candleAt) {
+    public Optional<Map<UUID, BigDecimal>> snapshotAt(Collection<UUID> assetIds, Instant candleAt) {
         Map<UUID, BigDecimal> prices = new LinkedHashMap<>();
         for (UUID assetId : assetIds) {
             PriceSnapshot priceSnapshot = pricesByAssetId.get(assetId);
-            if (priceSnapshot == null || priceSnapshot.candleOpenTime().isAfter(candleAt)) {
+            if (priceSnapshot == null || !priceSnapshot.candleOpenTime().equals(candleAt)) {
                 return Optional.empty();
             }
             prices.put(assetId, priceSnapshot.openPrice());
