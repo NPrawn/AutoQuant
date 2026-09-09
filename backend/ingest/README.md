@@ -100,6 +100,8 @@ Backfill 실행에는 DB·Redis 설정과 `CANDLE_HISTORY_FROM`이 필요하다.
 
 Upbit 봉과 같은 `open_time`의 PostgreSQL 봉은 REST 값으로 교체하고 `verified_at`을 기록한다. Redis Sorted Set도 같은 score의 값을 교체한 뒤 최신 1,000개만 남긴다. DB에만 존재하는 봉은 자동 삭제하지 않고 해당 구간의 검증 상태를 이동하지 않는다. Redis 갱신 실패는 정본 저장을 되돌리지 않는다. 동시에 실행된 Backfill은 PostgreSQL advisory lock으로 한 개만 처리된다. 바이너리는 시작 직후 한 번 처리하고 `CANDLE_SYNC_INTERVAL`마다 반복하며 기본값은 5분이다.
 
+REST 봉의 소속 구간과 캐시 score는 `candle_date_time_utc`로 결정한다. Upbit `timestamp`는 마지막 틱이 **저장된 시각**이므로 분 종료를 넘을 수 있으며 `last_event_time`에 자르거나 이동하지 않고 보존한다. 실시간 집계의 같은 필드는 체결 발생 시각이다. 상위 확정 봉은 원본 시각의 최댓값을, live candle은 현재 체결 시각을 유지한다. timestamp 때문에 실패한 구간은 수정 배포 후 기존 검증 경계부터 재처리하므로 DB·Redis·검증 상태를 초기화하지 않는다. [Upbit 필드 정의](https://docs.upbit.com/kr/v1.5.9/reference/분minute-캔들-1)
+
 ```bash
 go build ./...            # 3개 바이너리 컴파일 확인
 go vet ./...

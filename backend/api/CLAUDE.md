@@ -48,6 +48,7 @@ com.ssafy.a107
 - AI 서버의 오류 형식(`code`·`message`·`detail`)은 밖으로 흘리지 않고 `ApiErrorCode`로 옮긴다.
 - 외부 서버를 부를 때 `X-Request-ID`를 같이 보낸다. 값은 `RequestIdFilter.current()`가 들고 있다.
 - 확정 분봉은 Go Consumer가 쓰고 Spring은 `@Immutable` 엔티티로 읽는다.
+- 확정 봉의 `lastEventTimeUnixMilli`는 REST 보정 후 마지막 틱 저장 시각으로 봉 종료를 넘을 수 있다. 구간은 시작 시각·간격으로 판단하며, live candle의 체결 시각 검증과 혼용하지 않는다.
 - 최근 봉 조회는 `RecentMinuteCandleFacade`가 cache-aside를 조율하고 `MinuteCandleReadService`만 DB 읽기 전용 트랜잭션을 연다. 캐시 hit 시 DB 트랜잭션을 열지 않는다.
 - 간격은 `candle/domain/CandleIntervals`의 1·2·5·15·60·240·1440분만 지원한다. UTC 버킷이며 `/candles/{intervalMinutes}m`으로 조회한다. 기존 `/1m`도 유지한다.
 - `candle:{intervalMinutes}m:recent:{assetId}`는 Go의 snake_case JSON과 시작 시간 millisecond score를 사용한다. Spring은 DB 조회 결과로 빈 시간대만 원자적으로 보충하고 종목·간격별 최신 1,000개를 유지한다. 기존 값의 보정·갱신은 Go가 담당한다.

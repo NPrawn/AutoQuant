@@ -65,6 +65,7 @@ Redis Pub/Sub 채널은 `internal/redis`에서만 정의한다. `trade:realtime:
 - 패키지명은 `market`이 아니라 `candle`이다.
 - `MinuteCandle`은 확정 분봉만 표현한다.
 - 내부 `asset_id` UUID는 문자열, 분봉 간격은 `int16`, 시각은 `time.Time`을 사용한다.
+- 봉 구간은 `OpenTime` 기준이다. `LastEventTime`은 실시간에서는 체결 시각, REST 보정에서는 Upbit의 마지막 틱 저장 시각으로 종료 경계를 넘을 수 있다. 원본 시각을 잘라내지 않으며 live candle에는 현재 체결 시각을 사용한다.
 - 가격·거래량·거래대금은 `shopspring/decimal`로 다루고, Kafka 메시지와 Redis 값 같은 계약 경계에서는 문자열을 유지한다.
 - Upbit DTO, Kafka 메시지, Candle 도메인, DB 저장 파라미터를 하나의 구조체로 재사용하지 않고 경계에서 변환한다.
 - Go에서 DDL을 실행하지 않는다. DB 변경은 `backend/api` Flyway에 추가한다.
