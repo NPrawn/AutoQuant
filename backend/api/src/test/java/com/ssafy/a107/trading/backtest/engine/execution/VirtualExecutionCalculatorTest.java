@@ -124,6 +124,35 @@ class VirtualExecutionCalculatorTest {
                 .withMessage("Available cash must not be negative");
     }
 
+    @DisplayName("매도 요청 수량이 보유 수량보다 크면 수량 단위에 맞춘 보유량까지만 체결한다")
+    @Test
+    void executeSellOrderWithinAvailableQuantity() {
+        VirtualFill fill = calculator.executeSell(
+                order(TradeSide.SELL, BigDecimal.valueOf(500_000)),
+                policy(),
+                new BigDecimal("5.00009")
+        ).orElseThrow();
+
+        assertThat(fill.quantity()).isEqualByComparingTo("5.0000");
+        assertThat(fill.quantity()).isLessThanOrEqualTo(
+                new BigDecimal("5.00009")
+        );
+    }
+
+    @DisplayName("매도 주문이 아니면 보유 수량 제한 체결을 사용할 수 없다")
+    @Test
+    void rejectBuyOrderForAvailableQuantityExecution() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> calculator.executeSell(
+                        order(TradeSide.BUY, BigDecimal.valueOf(500_000)),
+                        policy(),
+                        BigDecimal.ONE
+                ))
+                .withMessage(
+                        "Only sell orders can be executed with available quantity"
+                );
+    }
+
     private VirtualOrder order(
             TradeSide side,
             BigDecimal requestedNotional
