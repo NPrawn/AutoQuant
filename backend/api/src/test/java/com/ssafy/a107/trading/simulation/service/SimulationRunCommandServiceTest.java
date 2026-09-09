@@ -1,5 +1,6 @@
 package com.ssafy.a107.trading.simulation.service;
 
+import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.member.domain.LoginProvider;
 import com.ssafy.a107.member.domain.Member;
@@ -74,7 +75,9 @@ class SimulationRunCommandServiceTest {
         );
 
         assertThatThrownBy(() -> simulationRunCommandService.createSimulationRun(MEMBER_ID, invalidCommand))
-                .isInstanceOf(ApiException.class);
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.SIMULATION_INVALID_CONFIGURATION);
 
         then(strategyRepository).shouldHaveNoInteractions();
     }
@@ -89,9 +92,27 @@ class SimulationRunCommandServiceTest {
         given(simulationRunRepository.findBySimulationIdForUpdate(SIMULATION_ID)).willReturn(Optional.of(simulationRun));
 
         assertThatThrownBy(() -> simulationRunCommandService.startSimulationRun(MEMBER_ID, SIMULATION_ID))
-                .isInstanceOf(ApiException.class);
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.SIMULATION_NOT_FOUND);
 
         then(simulationRun).should(org.mockito.Mockito.never()).start(any());
+    }
+
+    @DisplayName("시작할 수 없는 상태의 모의투자는 상태 전이 오류를 반환한다")
+    @Test
+    void rejectInvalidStatusTransitionWhenStartingSimulation() {
+        SimulationRun simulationRun = org.mockito.Mockito.mock(SimulationRun.class);
+        Member member = org.mockito.Mockito.mock(Member.class);
+        given(member.getMemberId()).willReturn(MEMBER_ID);
+        given(simulationRun.getMember()).willReturn(member);
+        given(simulationRunRepository.findBySimulationIdForUpdate(SIMULATION_ID)).willReturn(Optional.of(simulationRun));
+        org.mockito.Mockito.doThrow(new IllegalStateException()).when(simulationRun).start(any());
+
+        assertThatThrownBy(() -> simulationRunCommandService.startSimulationRun(MEMBER_ID, SIMULATION_ID))
+                .isInstanceOf(ApiException.class)
+                .extracting(exception -> ((ApiException) exception).getErrorCode())
+                .isEqualTo(ApiErrorCode.SIMULATION_INVALID_STATUS_TRANSITION);
     }
 
     private CreateSimulationRunCommand command() {
