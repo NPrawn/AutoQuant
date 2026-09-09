@@ -112,6 +112,30 @@ class BacktestCandleWindowTest {
                 .withMessage("Candle asset must match map key");
     }
 
+    @DisplayName("평가 종료 시각의 봉은 다음 체결 봉으로 보관하고 평가 봉에서는 제외한다")
+    @Test
+    void keepExecutionCandleAtEvaluationEnd() {
+        BacktestCandleWindow window = new BacktestCandleWindow(
+                Timeframe.ONE_HOUR,
+                EVALUATION_START,
+                EVALUATION_END,
+                Map.of(ASSET_ID, List.of(
+                        candle(Instant.parse("2026-01-02T23:00:00Z")),
+                        candle(EVALUATION_END)
+                ))
+        );
+
+        assertThat(window.candlesByAssetId().get(ASSET_ID))
+                .extracting(candle -> candle.getId().getOpenTime())
+                .containsExactly(
+                        Instant.parse("2026-01-02T23:00:00Z"),
+                        EVALUATION_END
+                );
+        assertThat(window.evaluationCandlesByAssetId().get(ASSET_ID))
+                .extracting(candle -> candle.getId().getOpenTime())
+                .containsExactly(Instant.parse("2026-01-02T23:00:00Z"));
+    }
+
     private MinuteCandle candle(Instant openTime) {
         return MinuteCandleFixture.minuteCandle(
                 ASSET_ID,

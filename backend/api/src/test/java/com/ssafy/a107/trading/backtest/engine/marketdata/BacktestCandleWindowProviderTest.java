@@ -47,6 +47,7 @@ class BacktestCandleWindowProviderTest {
         Strategy strategy = mock(Strategy.class);
         StrategyDsl strategyDsl = strategyDsl();
         Instant expectedLoadStart = Instant.parse("2026-01-01T21:00:00Z");
+        Instant expectedLoadEnd = Instant.parse("2026-01-03T01:00:00Z");
 
         when(backtestRun.getStrategy()).thenReturn(strategy);
         when(strategy.getStrategyDsl()).thenReturn(strategyDsl);
@@ -58,7 +59,7 @@ class BacktestCandleWindowProviderTest {
                 List.of(ASSET_ID),
                 Timeframe.ONE_HOUR,
                 expectedLoadStart,
-                PERIOD_END
+                expectedLoadEnd
         )).thenReturn(Map.of(ASSET_ID, List.of()));
 
         BacktestCandleWindow window = provider.load(backtestRun, List.of(ASSET_ID));
@@ -72,7 +73,7 @@ class BacktestCandleWindowProviderTest {
                 List.of(ASSET_ID),
                 Timeframe.ONE_HOUR,
                 expectedLoadStart,
-                PERIOD_END
+                expectedLoadEnd
         );
     }
 
