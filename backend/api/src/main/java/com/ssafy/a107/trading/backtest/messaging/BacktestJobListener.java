@@ -2,6 +2,8 @@ package com.ssafy.a107.trading.backtest.messaging;
 
 import com.ssafy.a107.trading.backtest.service.BacktestJobExecutionService;
 import com.ssafy.a107.trading.backtest.service.BacktestJobFailureService;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
+import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -14,12 +16,10 @@ public class BacktestJobListener {
 
     private final BacktestJobExecutionService backtestJobExecutionService;
     private final BacktestJobFailureService backtestJobFailureService;
-    private final BacktestJobDeadLetterPublisher backtestJobDeadLetterPublisher;
 
     public BacktestJobListener(
             BacktestJobExecutionService backtestJobExecutionService,
-            BacktestJobFailureService backtestJobFailureService,
-            BacktestJobDeadLetterPublisher backtestJobDeadLetterPublisher
+            BacktestJobFailureService backtestJobFailureService
     ) {
         this.backtestJobExecutionService = Objects.requireNonNull(
                 backtestJobExecutionService
@@ -27,22 +27,27 @@ public class BacktestJobListener {
         this.backtestJobFailureService = Objects.requireNonNull(
                 backtestJobFailureService
         );
-        this.backtestJobDeadLetterPublisher = Objects.requireNonNull(
-                backtestJobDeadLetterPublisher
-        );
     }
 
     @RabbitListener(queues = "${backtest.job.queue}")
-    public void consume(BacktestJobMessage message) {
+    public void consume(BacktestJobMessage message, Message rawMessage) {
         try {
-            backtestJobExecutionService.execute(message);
+            backtestJobExecutionService.execute(
+                    message,
+                    Boolean.TRUE.equals(
+                            rawMessage.getMessageProperties().isRedelivered()
+                    )
+            );
         } catch (RuntimeException exception) {
             boolean failed = backtestJobFailureService.fail(
                     message.backtestId(),
                     exception
             );
             if (failed) {
-                backtestJobDeadLetterPublisher.publish(message, exception);
+                throw new AmqpRejectAndDontRequeueException(
+                        "Backtest job execution failed",
+                        exception
+                );
             }
         }
     }

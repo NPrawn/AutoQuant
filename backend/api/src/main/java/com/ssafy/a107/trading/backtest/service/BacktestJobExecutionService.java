@@ -32,9 +32,13 @@ public class BacktestJobExecutionService {
     }
 
     public boolean execute(BacktestJobMessage message) {
+        return execute(message, false);
+    }
+
+    public boolean execute(BacktestJobMessage message, boolean redelivered) {
         Objects.requireNonNull(message);
 
-        if (!backtestJobStartService.start(message)) {
+        if (!backtestJobStartService.start(message, redelivered)) {
             return false;
         }
 

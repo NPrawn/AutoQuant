@@ -27,6 +27,11 @@ public class BacktestJobStartService {
 
     @Transactional
     public boolean start(BacktestJobMessage message) {
+        return start(message, false);
+    }
+
+    @Transactional
+    public boolean start(BacktestJobMessage message, boolean redelivered) {
         Objects.requireNonNull(message);
 
         BacktestRun backtestRun = backtestRunRepository.findByBacktestIdForUpdate(message.backtestId())
@@ -35,7 +40,7 @@ public class BacktestJobStartService {
         validateMessage(message, backtestRun);
 
         if (backtestRun.getStatus() == BacktestRunStatus.RUNNING) {
-            return true;
+            return redelivered;
         }
 
         if (backtestRun.getStatus() != BacktestRunStatus.QUEUED) {
