@@ -33,6 +33,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class StrategyExecutionPipelineTest {
 
@@ -104,6 +105,25 @@ class StrategyExecutionPipelineTest {
                         strategyExecutionContext(strategyDsl(1), Map.of(assetId, candles))
                 ))
                 .withMessage("Candle interval must match strategy timeframe");
+    }
+
+    @Test
+    @DisplayName("전략에 필요한 지표를 계산할 캔들이 부족하면 실행 오류를 식별한다")
+    void rejectInsufficientCandlesForRequiredFactors() {
+        // given
+        UUID assetId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        Map<UUID, List<MinuteCandle>> assetCandles = Map.of(assetId, candles(assetId, "100"));
+
+        // when & then
+        assertThatThrownBy(() -> pipeline.execute(
+                strategyExecutionContext(strategyDsl(1), assetCandles)
+        ))
+                .isInstanceOf(StrategyExecutionException.class)
+                .hasMessage(
+                        "Insufficient candle data for asset "
+                                + assetId
+                                + ": [FactorOperand[factor=RSI, period=2], FactorOperand[factor=RETURN, period=2]]"
+                );
     }
 
     private StrategyExecutionContext strategyExecutionContext(

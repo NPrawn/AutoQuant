@@ -70,6 +70,7 @@ public class StrategyExecutionPipeline {
 
         Set<FactorOperand> requiredFactors = collectRequiredFactors(strategyDsl);
         Map<UUID, Map<FactorOperand, BigDecimal>> assetFactorValues = calculateFactorValues(assetCandles, requiredFactors);
+        validateRequiredFactorValues(assetFactorValues, requiredFactors);
         Map<UUID, Map<FactorOperand, BigDecimal>> eligibleAssetFactorValues = filterEligibleAssets(
                 assetFactorValues,
                 strategyDsl
@@ -125,6 +126,26 @@ public class StrategyExecutionPipeline {
             assetFactorValues.put(assetCandleEntry.getKey(), Map.copyOf(factorValues));
         }
         return assetFactorValues;
+    }
+
+    private void validateRequiredFactorValues(
+            Map<UUID, Map<FactorOperand, BigDecimal>> assetFactorValues,
+            Set<FactorOperand> requiredFactors
+    ) {
+        for (Map.Entry<UUID, Map<FactorOperand, BigDecimal>> assetFactorValueEntry : assetFactorValues.entrySet()) {
+            List<FactorOperand> missingFactors = requiredFactors.stream()
+                    .filter(requiredFactor -> !assetFactorValueEntry.getValue().containsKey(requiredFactor))
+                    .toList();
+
+            if (!missingFactors.isEmpty()) {
+                throw new StrategyExecutionException(
+                        "Insufficient candle data for asset "
+                                + assetFactorValueEntry.getKey()
+                                + ": "
+                                + missingFactors
+                );
+            }
+        }
     }
 
     private Map<UUID, Map<FactorOperand, BigDecimal>> filterEligibleAssets(
