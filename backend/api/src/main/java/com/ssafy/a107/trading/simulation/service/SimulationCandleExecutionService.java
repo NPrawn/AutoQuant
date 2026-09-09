@@ -81,6 +81,7 @@ public class SimulationCandleExecutionService {
     private final BacktestExecutionPolicyProperties executionPolicyProperties;
     private final SimulationMarketPriceCache marketPriceCache;
     private final TransactionTemplate transactionTemplate;
+    private final SimulationExecutionFailureService simulationExecutionFailureService;
 
     public SimulationCandleExecutionService(
             SimulationRunRepository simulationRunRepository,
@@ -99,7 +100,8 @@ public class SimulationCandleExecutionService {
             PortfolioValuationCalculator portfolioValuationCalculator,
             BacktestExecutionPolicyProperties executionPolicyProperties,
             SimulationMarketPriceCache marketPriceCache,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            SimulationExecutionFailureService simulationExecutionFailureService
     ) {
         this.simulationRunRepository = simulationRunRepository;
         this.simulationPositionRepository = simulationPositionRepository;
@@ -118,6 +120,7 @@ public class SimulationCandleExecutionService {
         this.executionPolicyProperties = executionPolicyProperties;
         this.marketPriceCache = marketPriceCache;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
+        this.simulationExecutionFailureService = simulationExecutionFailureService;
     }
 
     public void handle(LiveMinuteCandle candle) {
@@ -127,16 +130,23 @@ public class SimulationCandleExecutionService {
                         SimulationRunStatus.RUNNING,
                         timeframeForInterval(candle.intervalMinutes())
                 )
-                .forEach(simulationRun -> transactionTemplate.executeWithoutResult(
-                        transactionStatus -> process(simulationRun.getSimulationId(), candleAt)
-                ));
+                .forEach(simulationRun -> processInTransaction(simulationRun.getSimulationId(), candleAt));
+    }
+
+    private void processInTransaction(UUID simulationId, Instant candleAt) {
+        try {
+            transactionTemplate.executeWithoutResult(
+                    transactionStatus -> process(simulationId, candleAt)
+            );
+        } catch (RuntimeException exception) {
+            simulationExecutionFailureService.fail(simulationId, exception);
+        }
     }
 
     public void process(UUID simulationId, Instant candleAt) {
         SimulationRun simulationRun = simulationRunRepository.findBySimulationIdForUpdate(simulationId).orElse(null);
         if (simulationRun == null || simulationRun.getStatus() != SimulationRunStatus.RUNNING) return;
-        try {
-            List<Asset> universe = assetRepository.findAllAvailableAt(Exchange.UPBIT, simulationRun.getQuoteCurrency(), candleAt);
+        List<Asset> universe = assetRepository.findAllAvailableAt(Exchange.UPBIT, simulationRun.getQuoteCurrency(), candleAt);
             List<SimulationPosition> persistedPositions = simulationPositionRepository
                     .findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId);
             if (!rebalanceSchedule.shouldRebalance(
@@ -165,10 +175,7 @@ public class SimulationCandleExecutionService {
                     portfolio, orders, executionPolicy(simulationRun)
             );
 
-            persistLedger(simulationRun, candleAt, universe, targetPortfolio, assetsById, portfolio, executionResult, currentPrices);
-        } catch (RuntimeException exception) {
-            simulationRun.fail(exception.getClass().getSimpleName());
-        }
+        persistLedger(simulationRun, candleAt, universe, targetPortfolio, assetsById, portfolio, executionResult, currentPrices);
     }
 
     private TargetPortfolio executeStrategy(SimulationRun simulationRun, List<Asset> universe, Instant candleAt) {

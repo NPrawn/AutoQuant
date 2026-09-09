@@ -48,7 +48,7 @@ public class SimulationRunReadService {
 
     public SimulationRun getSimulationRun(UUID memberId, UUID simulationId) {
         return simulationRunRepository.findBySimulationIdAndMemberMemberId(simulationId, memberId)
-                .orElseThrow(() -> new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new ApiException(ApiErrorCode.SIMULATION_NOT_FOUND));
     }
 
     public List<SimulationPosition> getSimulationPositions(UUID memberId, UUID simulationId) {
@@ -69,6 +69,6 @@ public class SimulationRunReadService {
     public SimulationResult getSimulationResult(UUID memberId, UUID simulationId) {
         getSimulationRun(memberId, simulationId);
         return simulationResultRepository.findById(simulationId)
-                .orElseThrow(() -> new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new ApiException(ApiErrorCode.SIMULATION_NOT_FOUND));
     }
 }

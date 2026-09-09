@@ -59,7 +59,12 @@ public enum ApiErrorCode {
     BACKTEST_INVALID_INITIAL_CAPITAL(HttpStatus.BAD_REQUEST, "BACKTEST-400-003", "초기 자본은 0보다 커야 합니다."),
     BACKTEST_INVALID_COST(HttpStatus.BAD_REQUEST, "BACKTEST-400-004", "수수료와 슬리피지는 음수일 수 없습니다."),
     BACKTEST_INVALID_CONFIGURATION(HttpStatus.BAD_REQUEST, "BACKTEST-400-005", "백테스트 실행 설정이 올바르지 않습니다."),
-    BACKTEST_NOT_FOUND(HttpStatus.NOT_FOUND, "BACKTEST-404-001", "요청한 백테스트 실행을 찾을 수 없습니다.");
+    BACKTEST_NOT_FOUND(HttpStatus.NOT_FOUND, "BACKTEST-404-001", "요청한 백테스트 실행을 찾을 수 없습니다."),
+
+    // 모의투자
+    SIMULATION_INVALID_CONFIGURATION(HttpStatus.BAD_REQUEST, "SIMULATION-400-001", "모의투자 실행 설정이 올바르지 않습니다."),
+    SIMULATION_NOT_FOUND(HttpStatus.NOT_FOUND, "SIMULATION-404-001", "요청한 모의투자 실행을 찾을 수 없습니다."),
+    SIMULATION_INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "SIMULATION-409-001", "현재 모의투자 실행 상태에서는 요청한 상태로 변경할 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

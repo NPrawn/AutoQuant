@@ -43,7 +43,7 @@ public class SimulationRunCommandService {
             simulationRun.start(Instant.now());
             return simulationRun;
         } catch (IllegalStateException exception) {
-            throw new ApiException(ApiErrorCode.INVALID_REQUEST);
+            throw new ApiException(ApiErrorCode.SIMULATION_INVALID_STATUS_TRANSITION);
         }
     }
 
@@ -53,15 +53,15 @@ public class SimulationRunCommandService {
             simulationRun.stop(Instant.now());
             return simulationRun;
         } catch (IllegalStateException exception) {
-            throw new ApiException(ApiErrorCode.INVALID_REQUEST);
+            throw new ApiException(ApiErrorCode.SIMULATION_INVALID_STATUS_TRANSITION);
         }
     }
 
     private SimulationRun findForUpdate(UUID memberId, UUID simulationId) {
         SimulationRun simulationRun = simulationRunRepository.findBySimulationIdForUpdate(simulationId)
-                .orElseThrow(() -> new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new ApiException(ApiErrorCode.SIMULATION_NOT_FOUND));
         if (!simulationRun.getMember().getMemberId().equals(memberId)) {
-            throw new ApiException(ApiErrorCode.RESOURCE_NOT_FOUND);
+            throw new ApiException(ApiErrorCode.SIMULATION_NOT_FOUND);
         }
         return simulationRun;
     }
@@ -73,7 +73,7 @@ public class SimulationRunCommandService {
                 || command.feeRate() == null || command.slippageBps() == null
                 || command.feeRate().signum() < 0 || command.feeRate().compareTo(BigDecimal.ONE) >= 0
                 || command.slippageBps().signum() < 0) {
-            throw new ApiException(ApiErrorCode.INVALID_REQUEST);
+            throw new ApiException(ApiErrorCode.SIMULATION_INVALID_CONFIGURATION);
         }
     }
 

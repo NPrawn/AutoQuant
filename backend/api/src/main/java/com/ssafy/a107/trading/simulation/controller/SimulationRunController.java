@@ -114,7 +114,7 @@ public class SimulationRunController {
 
     private PageRequest pageRequest(int page, int size) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
-            throw new ApiException(ApiErrorCode.INVALID_REQUEST);
+            throw new ApiException(ApiErrorCode.SIMULATION_INVALID_CONFIGURATION);
         }
         return PageRequest.of(page, size);
     }
