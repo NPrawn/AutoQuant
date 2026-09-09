@@ -59,7 +59,8 @@ class BacktestJobCompletionServiceTest {
                 backtestRun,
                 executionResult.performanceReport(),
                 executionResult.fills(),
-                executionResult.assets()
+                executionResult.assets(),
+                executionResult.universeAssets()
         );
         then(backtestRun).should().complete(NOW);
     }
@@ -74,7 +75,8 @@ class BacktestJobCompletionServiceTest {
                 any(BacktestRun.class),
                 any(PerformanceReport.class),
                 anyList(),
-                anyMap()
+                anyMap(),
+                anyList()
         )).willThrow(new IllegalStateException("Result persistence failed"));
 
         assertThatThrownBy(() -> service().complete(BACKTEST_ID, executionResult))

@@ -1,6 +1,7 @@
 package com.ssafy.a107.trading.backtest.engine;
 
 import com.ssafy.a107.asset.domain.Asset;
+import com.ssafy.a107.trading.backtest.domain.BacktestUniverseAsset;
 import com.ssafy.a107.trading.backtest.engine.execution.VirtualFill;
 import com.ssafy.a107.trading.backtest.engine.performance.CostComparison;
 import com.ssafy.a107.trading.backtest.engine.performance.EquitySnapshot;
@@ -29,21 +30,27 @@ class BacktestExecutionResultTest {
     void copyMutableCollections() {
         List<VirtualFill> fills = new ArrayList<>();
         Map<UUID, Asset> assets = new HashMap<>();
+        List<BacktestUniverseAsset> universeAssets = new ArrayList<>();
 
         BacktestExecutionResult result = new BacktestExecutionResult(
                 performanceReport(),
                 fills,
-                assets
+                assets,
+                universeAssets
         );
 
         fills.add(null);
         assets.put(UUID.randomUUID(), null);
+        universeAssets.add(null);
 
         assertThat(result.fills()).isEmpty();
         assertThat(result.assets()).isEmpty();
+        assertThat(result.universeAssets()).isEmpty();
         assertThatThrownBy(() -> result.fills().add(null))
                 .isInstanceOf(UnsupportedOperationException.class);
         assertThatThrownBy(() -> result.assets().put(UUID.randomUUID(), null))
+                .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> result.universeAssets().add(null))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
