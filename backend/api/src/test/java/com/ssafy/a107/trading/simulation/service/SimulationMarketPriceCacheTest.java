@@ -21,18 +21,18 @@ class SimulationMarketPriceCacheTest {
         SimulationMarketPriceCache cache = new SimulationMarketPriceCache();
         cache.update(candle(Instant.parse("2026-09-14T01:00:00Z"), "100"));
 
-        assertThat(cache.snapshotAtOrBefore(List.of(ASSET_ID), Instant.parse("2026-09-14T00:00:00Z")))
+        assertThat(cache.snapshotAt(List.of(ASSET_ID), Instant.parse("2026-09-14T00:00:00Z")))
                 .isEmpty();
     }
 
-    @DisplayName("동일하거나 이전 Candle의 시가만 가격 스냅샷으로 반환한다")
+    @DisplayName("동일 Candle의 시가만 가격 스냅샷으로 반환한다")
     @Test
     void returnsOpenPriceAtOrBeforeCandle() {
         SimulationMarketPriceCache cache = new SimulationMarketPriceCache();
         Instant candleAt = Instant.parse("2026-09-14T00:00:00Z");
         cache.update(candle(candleAt, "100"));
 
-        assertThat(cache.snapshotAtOrBefore(List.of(ASSET_ID), candleAt))
+        assertThat(cache.snapshotAt(List.of(ASSET_ID), candleAt))
                 .hasValueSatisfying(prices ->
                         assertThat(prices.get(ASSET_ID)).isEqualByComparingTo(BigDecimal.valueOf(100))
                 );
