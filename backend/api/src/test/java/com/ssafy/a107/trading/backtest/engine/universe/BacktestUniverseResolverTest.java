@@ -65,6 +65,26 @@ class BacktestUniverseResolverTest {
         then(assetRepository).shouldHaveNoInteractions();
     }
 
+    @DisplayName("백테스트 기간 중 거래 지원 이력이 있는 종목을 후보 유니버스로 조회한다")
+    @Test
+    void resolveCandidateUniverseDuringBacktestPeriod() {
+        given(backtestRun.getQuoteCurrency()).willReturn("KRW");
+        given(backtestRun.getPeriodStart()).willReturn(PERIOD_START);
+        given(backtestRun.getPeriodEnd()).willReturn(PERIOD_END);
+        given(assetRepository.findAllAvailableDuring(
+                Exchange.UPBIT,
+                "KRW",
+                PERIOD_START,
+                PERIOD_END
+        )).willReturn(List.of(asset));
+
+        List<Asset> candidates = resolver().resolveCandidates(backtestRun);
+
+        assertThat(candidates).containsExactly(asset);
+        assertThatThrownBy(() -> candidates.add(asset))
+                .isInstanceOf(UnsupportedOperationException.class);
+    }
+
     private BacktestUniverseResolver resolver() {
         return new BacktestUniverseResolver(assetRepository);
     }

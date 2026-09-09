@@ -106,6 +106,8 @@ class DefaultBacktestEngineTest {
         BacktestCandleWindow candleWindow = candleWindow();
 
         when(asset.getAssetId()).thenReturn(ASSET_ID);
+        when(universeResolver.resolveCandidates(backtestRun))
+                .thenReturn(List.of(asset));
         when(universeResolver.resolve(any(BacktestRun.class), any(Instant.class)))
                 .thenReturn(List.of(asset));
         when(candleWindowProvider.load(any(BacktestRun.class), any()))
