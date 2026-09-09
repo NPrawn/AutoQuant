@@ -34,6 +34,10 @@ public class BacktestJobStartService {
 
         validateMessage(message, backtestRun);
 
+        if (backtestRun.getStatus() == BacktestRunStatus.RUNNING) {
+            return true;
+        }
+
         if (backtestRun.getStatus() != BacktestRunStatus.QUEUED) {
             return false;
         }

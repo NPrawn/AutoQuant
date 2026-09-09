@@ -1,6 +1,7 @@
 package com.ssafy.a107.trading.backtest.service;
 
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
+import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.trading.backtest.engine.BacktestExecutionResult;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import jakarta.transaction.Transactional;
@@ -29,7 +30,7 @@ public class BacktestJobCompletionService {
     }
 
     @Transactional
-    public void complete(
+    public boolean complete(
             UUID backtestId,
             BacktestExecutionResult executionResult
     ) {
@@ -39,6 +40,10 @@ public class BacktestJobCompletionService {
         BacktestRun backtestRun = backtestRunRepository.findByBacktestIdForUpdate(backtestId)
                 .orElseThrow(() -> new IllegalArgumentException("Backtest run not found"));
 
+        if (backtestRun.getStatus() != BacktestRunStatus.RUNNING) {
+            return false;
+        }
+
         backtestResultPersistenceService.persist(
                 backtestRun,
                 executionResult.performanceReport(),
@@ -47,5 +52,6 @@ public class BacktestJobCompletionService {
                 executionResult.universeAssets()
         );
         backtestRun.complete(Instant.now(clock));
+        return true;
     }
 }

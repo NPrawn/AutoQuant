@@ -42,11 +42,9 @@ public class BacktestJobExecutionService {
                 .orElseThrow(() -> new IllegalArgumentException("Backtest run not found"));
 
         BacktestExecutionResult executionResult = backtestEngine.execute(backtestRun);
-        backtestJobCompletionService.complete(
+        return backtestJobCompletionService.complete(
                 message.backtestId(),
                 executionResult
         );
-
-        return true;
     }
 }
