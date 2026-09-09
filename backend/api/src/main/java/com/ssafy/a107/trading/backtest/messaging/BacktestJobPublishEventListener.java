@@ -7,14 +7,16 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 public class BacktestJobPublishEventListener {
 
-    private final BacktestJobPublisher publisher;
+    private final BacktestJobOutboxService backtestJobOutboxService;
 
-    public BacktestJobPublishEventListener(BacktestJobPublisher publisher) {
-        this.publisher = publisher;
+    public BacktestJobPublishEventListener(
+            BacktestJobOutboxService backtestJobOutboxService
+    ) {
+        this.backtestJobOutboxService = backtestJobOutboxService;
     }
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publish(BacktestJobQueuedEvent event) {
-        publisher.publish(event.message());
+        backtestJobOutboxService.publish(event.message().jobId());
     }
 }
