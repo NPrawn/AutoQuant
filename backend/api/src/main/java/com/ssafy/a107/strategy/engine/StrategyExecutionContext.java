@@ -14,13 +14,23 @@ public record StrategyExecutionContext(
 ) {
 
     public StrategyExecutionContext {
-        strategyDsl = Objects.requireNonNull(strategyDsl);
+        strategyDsl = requireStrategyDslWithTimeframe(strategyDsl);
         evaluationAt = Objects.requireNonNull(evaluationAt);
         candlesByAssetId = copyAndValidate(
                 strategyDsl,
                 evaluationAt,
                 candlesByAssetId
         );
+    }
+
+    private static StrategyDsl requireStrategyDslWithTimeframe(StrategyDsl strategyDsl) {
+        if (strategyDsl == null) {
+            throw new StrategyExecutionException("Unsupported strategy DSL: strategy DSL is required");
+        }
+        if (strategyDsl.timeframe() == null) {
+            throw new StrategyExecutionException("Unsupported strategy DSL: timeframe is required");
+        }
+        return strategyDsl;
     }
 
     private static Map<UUID, List<MinuteCandle>> copyAndValidate(
