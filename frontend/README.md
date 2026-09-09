@@ -44,6 +44,7 @@ src/
 │   └── layout/           AppShell, Sidebar, Topbar, AccountMenu, LogoutConfirmModal
 ├── api/                  request 함수, ApiError
 ├── auth/                 인증 API, 회원 모델, useCurrentMember, RequireAuth, GuestOnly, 세션 만료 처리
+├── backtest/             백테스트 API·상태 폴링, 실행 조건(순수 함수), 결과·자산 곡선·거래 내역
 ├── components/           LoadingState, EmptyState, ErrorState, ConfirmDialog
 ├── strategy/             전략 DSL 계약 타입, 표시 문구, 빌더 편집 상태(순수 함수), 빌더 진입 상태
 │   ├── builder/          StrategyEditor(빌더 본체)와 블록 컴포넌트(조건·순위·재선정·요약 카드)
@@ -117,6 +118,19 @@ RequireAuth → GET /api/members/me → 200 이면 셸 렌더, 401 이면 /login
 
 공개·복제 버튼은 백엔드가 없어 비활성이다. 백테스트 실행은 `state.strategyId`(`src/strategy/backtestEntry.ts`)를 들고 `/backtest`로 간다.
 
+## 백테스트
+
+```text
+/backtest                POST /api/backtests → 202, backtestId 를 주소의 run 파라미터에 둔다
+/backtest?run={id}       GET /api/backtests/{id} 2초 폴링, QUEUED → RUNNING → COMPLETED 또는 FAILED
+COMPLETED                /result 지표, /equity 자산 곡선, /trades 거래 내역
+```
+
+실행 식별자가 주소에 있어 화면을 떠났다 돌아오거나 새로고침해도 진행 중인 계산을 이어서 본다. 폴링은 다른 탭을 보는 동안에도 이어진다.
+
+봉 주기와 리밸런싱 주기는 요청 필드가 아니다. 백엔드가 전략 DSL 에서 가져가므로 화면은 읽기 전용으로 보여 준다. 기준 통화, 수수료율, 슬리피지, 체결가 규칙은 서비스 고정값이다. 엔진과 시장 데이터 버전은 서버가 아는 값인데 요청 필드로 열려 있어 상수로 보내고 있다.
+
+자산 곡선은 페이지로 오므로 앞에서부터 최대 20페이지까지만 이어 받는다. 목업 12 의 종목별 기여도와 비용 비교 카드는 응답에 없어 거래 내역 표로 대체했다.
 ## 백엔드 호출
 
 ```
