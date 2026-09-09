@@ -4,9 +4,13 @@ import com.ssafy.a107.trading.backtest.service.BacktestJobExecutionService;
 import com.ssafy.a107.trading.backtest.service.BacktestJobFailureService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageProperties;
 
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -29,88 +33,85 @@ class BacktestJobListenerTest {
         BacktestJobFailureService failureService = mock(
                 BacktestJobFailureService.class
         );
-        BacktestJobDeadLetterPublisher deadLetterPublisher = mock(
-                BacktestJobDeadLetterPublisher.class
-        );
         BacktestJobMessage message = message();
-        when(executionService.execute(message)).thenReturn(true);
+        when(executionService.execute(message, false)).thenReturn(true);
 
-        listener(
-                executionService,
-                failureService,
-                deadLetterPublisher
-        ).consume(message);
+        listener(executionService, failureService).consume(message, rawMessage(false));
 
-        verify(executionService).execute(message);
+        verify(executionService).execute(message, false);
         verify(failureService, never()).fail(
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()
         );
     }
 
-    @DisplayName("작업 실행 예외는 실패 상태 저장 후 다시 전파한다")
+    @DisplayName("재전달된 작업은 redelivery 표식과 함께 실행 서비스에 전달한다")
     @Test
-    void failBacktestJobWhenExecutionFails() {
+    void passRedeliveryFlagToExecutionService() {
         BacktestJobExecutionService executionService = mock(
                 BacktestJobExecutionService.class
         );
         BacktestJobFailureService failureService = mock(
                 BacktestJobFailureService.class
         );
-        BacktestJobDeadLetterPublisher deadLetterPublisher = mock(
-                BacktestJobDeadLetterPublisher.class
-        );
         BacktestJobMessage message = message();
-        IllegalStateException exception = new IllegalStateException("실행 실패");
-        doThrow(exception).when(executionService).execute(message);
-        when(failureService.fail(BACKTEST_ID, exception)).thenReturn(true);
+        when(executionService.execute(message, true)).thenReturn(true);
 
-        listener(
-                executionService,
-                failureService,
-                deadLetterPublisher
-        ).consume(message);
+        listener(executionService, failureService).consume(message, rawMessage(true));
 
-        then(failureService).should().fail(BACKTEST_ID, exception);
-        then(deadLetterPublisher).should().publish(message, exception);
+        verify(executionService).execute(message, true);
     }
 
-    @DisplayName("이미 종료된 작업의 실행 예외는 dead-letter 메시지를 중복 발행하지 않는다")
+    @DisplayName("작업 실행 예외는 실패 상태 저장 후 broker DLQ로 거부한다")
     @Test
-    void doNotPublishDeadLetterWhenFailureStateWasNotChanged() {
+    void rejectBacktestJobWhenExecutionFails() {
         BacktestJobExecutionService executionService = mock(
                 BacktestJobExecutionService.class
         );
         BacktestJobFailureService failureService = mock(
                 BacktestJobFailureService.class
         );
-        BacktestJobDeadLetterPublisher deadLetterPublisher = mock(
-                BacktestJobDeadLetterPublisher.class
+        BacktestJobMessage message = message();
+        IllegalStateException exception = new IllegalStateException("실행 실패");
+        doThrow(exception).when(executionService).execute(message, false);
+        when(failureService.fail(BACKTEST_ID, exception)).thenReturn(true);
+
+        assertThatThrownBy(() -> listener(executionService, failureService)
+                .consume(message, rawMessage(false)))
+                .isInstanceOf(AmqpRejectAndDontRequeueException.class)
+                .hasCause(exception);
+
+        then(failureService).should().fail(BACKTEST_ID, exception);
+    }
+
+    @DisplayName("이미 종료된 작업의 실행 예외는 broker DLQ로 중복 이동하지 않는다")
+    @Test
+    void doNotRejectWhenFailureStateWasNotChanged() {
+        BacktestJobExecutionService executionService = mock(
+                BacktestJobExecutionService.class
+        );
+        BacktestJobFailureService failureService = mock(
+                BacktestJobFailureService.class
         );
         BacktestJobMessage message = message();
         IllegalStateException exception = new IllegalStateException("실행 실패");
-        doThrow(exception).when(executionService).execute(message);
+        doThrow(exception).when(executionService).execute(message, false);
         when(failureService.fail(BACKTEST_ID, exception)).thenReturn(false);
 
-        listener(
-                executionService,
-                failureService,
-                deadLetterPublisher
-        ).consume(message);
-
-        then(deadLetterPublisher).should(never()).publish(message, exception);
+        listener(executionService, failureService).consume(message, rawMessage(false));
     }
 
     private BacktestJobListener listener(
             BacktestJobExecutionService executionService,
-            BacktestJobFailureService failureService,
-            BacktestJobDeadLetterPublisher deadLetterPublisher
+            BacktestJobFailureService failureService
     ) {
-        return new BacktestJobListener(
-                executionService,
-                failureService,
-                deadLetterPublisher
-        );
+        return new BacktestJobListener(executionService, failureService);
+    }
+
+    private Message rawMessage(boolean redelivered) {
+        MessageProperties properties = new MessageProperties();
+        properties.setRedelivered(redelivered);
+        return new Message(new byte[0], properties);
     }
 
     private BacktestJobMessage message() {

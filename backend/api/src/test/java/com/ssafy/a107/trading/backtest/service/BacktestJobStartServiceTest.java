@@ -70,9 +70,27 @@ class BacktestJobStartServiceTest {
         given(backtestRun.getEngineVersion()).willReturn("engine-v1");
         given(backtestRun.getStatus()).willReturn(BacktestRunStatus.RUNNING);
 
-        boolean started = service.start(message());
+        boolean started = service.start(message(), true);
 
         assertThat(started).isTrue();
+        then(backtestRun).should(never()).markRunning(any(Instant.class));
+    }
+
+    @DisplayName("redelivery가 아닌 실행 중 백테스트 작업은 다시 시작하지 않는다")
+    @Test
+    void ignoreDuplicateRunningBacktestJob() {
+        BacktestJobStartService service = createService();
+        given(backtestRunRepository.findByBacktestIdForUpdate(BACKTEST_ID))
+                .willReturn(Optional.of(backtestRun));
+        given(backtestRun.getStrategy()).willReturn(strategy);
+        given(strategy.getStrategyId()).willReturn(STRATEGY_ID);
+        given(backtestRun.getMarketDataVersion()).willReturn("market-v1");
+        given(backtestRun.getEngineVersion()).willReturn("engine-v1");
+        given(backtestRun.getStatus()).willReturn(BacktestRunStatus.RUNNING);
+
+        boolean started = service.start(message(), false);
+
+        assertThat(started).isFalse();
         then(backtestRun).should(never()).markRunning(any(Instant.class));
     }
 
