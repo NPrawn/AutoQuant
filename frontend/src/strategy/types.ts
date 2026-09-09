@@ -99,7 +99,8 @@ export type TranslateStrategyRequest = {
 }
 
 export type TranslateStrategyResponse = {
-  strategy: StrategyDsl
+  /* 전략 설명이 아닌 입력에는 서버가 LLM 을 부르지 않고 null 과 사유만 돌려준다. 오류가 아니라 200 이다. */
+  strategy: StrategyDsl | null
   meta: {
     attempts: number
     elapsedMs: number

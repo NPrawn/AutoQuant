@@ -1,6 +1,7 @@
 package com.ssafy.a107.asset.repository;
 
 import com.ssafy.a107.asset.domain.Asset;
+import com.ssafy.a107.asset.domain.AssetTradingStatus;
 import com.ssafy.a107.asset.domain.Exchange;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -55,5 +56,11 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
             @Param("quoteCurrencyCode") String quoteCurrencyCode,
             @Param("periodStart") Instant periodStart,
             @Param("periodEnd") Instant periodEnd
+    );
+
+    List<Asset> findByExchangeAndQuoteCurrencyCodeAndTradingStatusOrderByExchangeMarketCodeAsc(
+            Exchange exchange,
+            String quoteCurrencyCode,
+            AssetTradingStatus tradingStatus
     );
 }

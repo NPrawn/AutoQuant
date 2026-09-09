@@ -8,3 +8,7 @@ __pycache__
 venv
 *.py[cod]
 *.log
+tests
+reports
+docs
+scripts

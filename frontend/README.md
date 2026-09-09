@@ -15,7 +15,7 @@ React 19 + TypeScript + Vite.
 | 라우터 | react-router 7 |
 | 서버 상태 | TanStack Query 5 |
 
-**차트 라이브러리는 아직 넣지 않았다.** 차트 화면을 만들 때 결정할 일이다.
+차트는 `lightweight-charts`, 실시간 STOMP 연결은 `@stomp/stompjs`를 사용한다.
 
 ## 디자인 시스템
 
@@ -44,12 +44,14 @@ src/
 │   └── layout/           AppShell, Sidebar, Topbar, AccountMenu, LogoutConfirmModal
 ├── api/                  request 함수, ApiError
 ├── auth/                 인증 API, 회원 모델, useCurrentMember, RequireAuth, GuestOnly, 세션 만료 처리
+├── backtest/             백테스트 API·상태 폴링, 실행 조건(순수 함수), 결과·자산 곡선·거래 내역
 ├── components/           LoadingState, EmptyState, ErrorState, ConfirmDialog
 ├── strategy/             전략 DSL 계약 타입, 표시 문구, 빌더 편집 상태(순수 함수), 빌더 진입 상태
 │   ├── builder/          StrategyEditor(빌더 본체)와 블록 컴포넌트(조건·순위·재선정·요약 카드)
 │   └── assistant/        전략봇 패널과 대화 상태
 │   (api.ts 변환·저장·조회·삭제 호출, queries.ts 쿼리·뮤테이션, summary.ts DSL 요약 문장, *ErrorMessage.ts 실패 문구)
 ├── pages/                화면, 목업 번호와 1:1
+├── market/               종목·봉 API, 쿼리, STOMP 연결, 데이터 검증·병합, 1분봉 렌더러
 ├── styles/               디자인 시스템
 └── mocks/                API 연동 전 표시용 더미
 ```
@@ -116,6 +118,19 @@ RequireAuth → GET /api/members/me → 200 이면 셸 렌더, 401 이면 /login
 
 공개·복제 버튼은 백엔드가 없어 비활성이다. 백테스트 실행은 `state.strategyId`(`src/strategy/backtestEntry.ts`)를 들고 `/backtest`로 간다.
 
+## 백테스트
+
+```text
+/backtest                POST /api/backtests → 202, backtestId 를 주소의 run 파라미터에 둔다
+/backtest?run={id}       GET /api/backtests/{id} 2초 폴링, QUEUED → RUNNING → COMPLETED 또는 FAILED
+COMPLETED                /result 지표, /equity 자산 곡선, /trades 거래 내역
+```
+
+실행 식별자가 주소에 있어 화면을 떠났다 돌아오거나 새로고침해도 진행 중인 계산을 이어서 본다. 폴링은 다른 탭을 보는 동안에도 이어진다.
+
+봉 주기와 리밸런싱 주기는 요청 필드가 아니다. 백엔드가 전략 DSL 에서 가져가므로 화면은 읽기 전용으로 보여 준다. 기준 통화, 수수료율, 슬리피지, 체결가 규칙은 서비스 고정값이다. 엔진과 시장 데이터 버전은 서버가 아는 값인데 요청 필드로 열려 있어 상수로 보내고 있다.
+
+자산 곡선은 페이지로 오므로 앞에서부터 최대 20페이지까지만 이어 받는다. 목업 12 의 종목별 기여도와 비용 비교 카드는 응답에 없어 거래 내역 표로 대체했다.
 ## 백엔드 호출
 
 ```
@@ -131,7 +146,21 @@ frontend ──/api──> backend  :8080   랭킹 · 체결 · 전략 · 인증
 
 Kafka · Redis · DB에 직접 접근하지 않는다. 모든 데이터는 API를 통해서만 받는다.
 
-## 실행
+## 종목별 실시간 차트
+
+- `/chart`에서 등록된 Upbit KRW 거래지원 종목을 선택한다. `GET /api/assets`의 `assetId`는 봉 조회, `marketCode`는 구독에 사용한다. 수집 중이 아니거나 이력이 없는 종목은 빈 상태로 표시된다.
+- 봉 간격은 1·2·5·15분, 1·4·24시간 중 선택한다. 종목·간격별 최신 최대 1,000개를 표시하며 UTC 기준이다. 24시간봉은 한국 시간 09:00에 시작한다.
+- 같은 오리진 `/ws`에 쿠키 인증으로 접속하고 선택 종목의 `/topic/markets/{marketCode}/trades`, `/topic/markets/{marketCode}/candles/{intervalMinutes}m` 두 토픽을 구독한다.
+- 구독 전송 후 `GET /api/assets/{assetId}/candles/{intervalMinutes}m?limit=1000`으로 확정 봉을 조회한다. 조회 중 진행 봉은 시간별 최신 값으로 버퍼링해 합친다. 확정된 시간은 진행 봉으로 덮어쓰지 않는다. 비동기 확정·보정 결과는 1분 주기 재조회로 반영한다.
+- 진행 봉은 차트를 갱신하고 체결은 현재가와 최근 30건에 별도로 표시된다. 시세가 오기 전 현재가는 `—`이며, 연결이 끊겼을 때 남아 있는 값은 마지막 수신값이다.
+- 연결 종료를 감지하면 3초 간격으로 재접속한다. 재접속 후 구독·확정 봉 조회를 다시 시작한다. 종목·간격 전환과 로그아웃에서 연결과 구독을 종료한다. 각 선택의 쿼리·진행 봉·체결 상태는 격리하며 전환 직후 체결은 새로 수신한다.
+- Simple broker는 구독 receipt와 heartbeat를 제공하지 않는다. 구독과 REST의 원자적 스냅샷, 체결 재전송, 아직 도착하지 않은 진행 봉의 복구는 보장하지 않는다. 현재가·진행 봉은 다음 이벤트를 기다린다.
+- 가격·수량은 문자열로 표시하고 64비트 순번도 문자열로 보존한다. 차트 좌표만 숫자로 변환한다. 차트는 TradingView Lightweight Charts™를 사용하며 출처 링크를 표시한다.
+- 지표·호가·임의 간격·과거 페이지네이션은 범위 밖이다. 원본 이력이 부족하면 요청 개수보다 적게 표시한다.
+
+Vite와 운영 `infra/nginx/j15a107.p.ssafy.io.conf`는 `/api/assets`의 접두사를 유지하고 `/ws` Upgrade를 전달한다. 기존 나머지 REST 프록시 규칙은 그대로다. 운영 Nginx 파일 변경은 배포 시 적용해야 한다.
+
+## 실행 명령
 
 ```bash
 cp .env.example .env      # 기본값 그대로면 생략 가능
@@ -139,11 +168,12 @@ npm install
 npm run dev               # :5173
 npm run build             # tsc -b && vite build → dist/
 npm run lint
+npm test                  # Node 24 내장 테스트 (모듈 mock은 실험적 API)
 ```
 
 ## 다음 단계
 
-- [ ] 차트 라이브러리 선정 (TradingView Lightweight Charts 등)
+- [x] 1분봉 차트와 실시간 체결 연동 (Lightweight Charts + STOMP)
 - [x] 라우터 도입
 - [x] 상태관리 도입 (서버 상태만 TanStack Query, 전역 상태 라이브러리 없음)
 - [x] API 클라이언트 레이어

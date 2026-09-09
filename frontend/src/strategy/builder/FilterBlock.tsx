@@ -11,17 +11,19 @@ type FilterBlockProps = {
   onAdd: () => void
   onChange: (id: string, patch: SimpleConditionPatch) => void
   onRemove: (id: string) => void
+  /* 전략봇이 방금 이 블록을 바꿨는지. 잠깐 강조하고 꺼진다. */
+  changed?: boolean
 }
 
 /*
  * 블록 01. 후보 조건 목록. 조건 사이의 논리는 목업처럼 고정 표시만 한다. AI 가 OR 을 보내면
  * 그대로 보여 주되 화면에서 바꾸는 컨트롤은 두지 않는다. 스크리닝은 조건을 쌓아 좁히는 작업이다.
  */
-export function FilterBlock({ conditions, logic, onAdd, onChange, onRemove }: FilterBlockProps) {
+export function FilterBlock({ conditions, logic, onAdd, onChange, onRemove, changed = false }: FilterBlockProps) {
   const full = conditions.length >= conditionLimit
 
   return (
-    <div className="blk sig" data-cat="signal">
+    <div className={changed ? 'blk sig changed' : 'blk sig'} data-cat="signal">
       <div className="blk-title">
         <span className="blk-index">01</span>
         <div>

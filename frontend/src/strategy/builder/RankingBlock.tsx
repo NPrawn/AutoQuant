@@ -8,14 +8,16 @@ type RankingBlockProps = {
   timeframe: Timeframe
   onRankingChange: (patch: Partial<Ranking>) => void
   onTimeframeChange: (timeframe: Timeframe) => void
+  /* 전략봇이 방금 이 블록을 바꿨는지. 잠깐 강조하고 꺼진다. */
+  changed?: boolean
 }
 
 /* 블록 02. 순위 기준. 목업의 세 칸에 봉 주기를 더해 인라인 편집기의 4칸을 채운다. */
-export function RankingBlock({ ranking, timeframe, onRankingChange, onTimeframeChange }: RankingBlockProps) {
+export function RankingBlock({ ranking, timeframe, onRankingChange, onTimeframeChange, changed = false }: RankingBlockProps) {
   const id = useId()
 
   return (
-    <div className="blk pf" data-cat="alloc">
+    <div className={changed ? 'blk pf changed' : 'blk pf'} data-cat="alloc">
       <div className="blk-title">
         <span className="blk-index">02</span>
         <div>

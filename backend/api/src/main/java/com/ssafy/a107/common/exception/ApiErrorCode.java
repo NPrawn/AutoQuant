@@ -43,6 +43,9 @@ public enum ApiErrorCode {
     CANDLE_INVALID_INTERVAL(HttpStatus.BAD_REQUEST, "CANDLE-400-001", "분봉 간격은 1 이상 32767 이하여야 합니다."),
     CANDLE_NOT_FOUND(HttpStatus.NOT_FOUND, "CANDLE-404-001", "요청한 분봉을 찾을 수 없습니다."),
 
+    // 실시간 시세
+    REALTIME_INVALID_STOMP_REQUEST(HttpStatus.BAD_REQUEST, "REALTIME-400-001", "허용되지 않은 실시간 구독 요청입니다."),
+
     // AI 전략 변환
     AI_TRANSLATION_INVALID_RESPONSE(HttpStatus.BAD_GATEWAY, "AI-502-001", "AI 서버 응답을 처리할 수 없습니다."),
     AI_TRANSLATION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI-503-001", "AI 서버를 일시적으로 사용할 수 없습니다."),

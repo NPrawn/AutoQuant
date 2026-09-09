@@ -27,6 +27,10 @@ docker compose -f infra/docker-compose.yml down -v    # 볼륨까지 삭제
 
 ## 운영 분봉 동기화
 
+운영 Nginx의 `/api/assets`는 Spring의 동일 경로로 전달하고 `/ws`는 JWT 쿠키와 Host/Origin을 유지한 WebSocket Upgrade로 전달한다. 그 외 `/api/`의 기존 접두사 제거 규칙은 유지한다. `nginx/j15a107.p.ssafy.io.conf` 수정은 운영 배포 시 별도로 적용한다.
+
+Spring은 `server.forward-headers-strategy: native`로 프록시가 전달한 HTTPS를 인식한다. 운영 API 포트는 기존처럼 `127.0.0.1:18080` 바인딩을 유지한다. `/ws`의 전달 헤더는 Nginx가 덮어쓰며 Origin은 변경하지 않는다.
+
 운영 Compose를 기동하면 `ingest-backfill`도 별도 상시 컨테이너로 함께 시작된다. 시작 직후 한 번 동기화하고 `CANDLE_SYNC_INTERVAL` 간격으로 반복하며 기본값은 `5m`이다. 호스트의 cron이나 systemd 등록은 필요하지 않다.
 
 Backfill은 한 컨테이너 안에서 작업을 순차 실행하고, 여러 서버에서 컨테이너가 함께 기동되더라도 PostgreSQL advisory lock이 한 실행만 허용한다.

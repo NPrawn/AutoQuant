@@ -1,5 +1,6 @@
 import type { StrategyDraft } from '../draft'
-import { describeCondition, directionLabels, factorMeta, logicLabels, rebalanceMeta } from '../labels'
+import { describeCondition, directionLabels, factorMeta, logicLabels, rebalanceMeta } from '../labels.ts'
+import type { StrategyDsl } from '../types'
 
 /*
  * 전략봇 대화 상태. 화면은 이 함수들로만 상태를 바꾸고, 변환 API 응답을 대화에 넣는 일은
@@ -62,12 +63,31 @@ export function describeStrategy(draft: StrategyDraft): string {
 }
 
 /*
+ * 변환 응답에 붙일 전략봇 문장. strategy 가 null 인 것은 실패가 아니라 전략 설명이 아닌
+ * 입력이라 서버가 LLM 을 부르지 않은 것이다. 왜 안 만들었는지는 meta.assumptions 가 말하므로
+ * 여기서는 다음에 무엇을 하면 되는지만 말한다.
+ */
+export function translationReplyText(strategy: StrategyDsl | null, changes: string[], isInitial: boolean): string {
+  if (strategy === null) {
+    return '전략으로 옮길 내용을 찾지 못했습니다. 어떤 코인을 어떤 기준으로 고르고 싶은지 알려 주세요.'
+  }
+  if (isInitial) {
+    return '입력한 목표로 초안을 만들었습니다. 블록에서 값을 직접 조정할 수 있습니다.'
+  }
+  return changes.length > 0 ? '요청대로 블록을 바꿨습니다.' : '바꿀 것이 없어 지금 전략을 그대로 두었습니다.'
+}
+
+/*
  * 제안 문장. 변환 API 는 질문에 답하는 게 아니라 전략을 바꾸는 요청을 받으므로 목업의
  * 질문형 칩 대신 블록을 바꾸는 요청형으로 둔다.
+ *
+ * 넷은 ai/tests/fixtures/edit_cases.json 에서 통과가 측정된 편집이고 갈래가 서로 다르다 —
+ * 조건 추가·조건 제거·랭킹 변경·리밸런싱. 칩은 이 봇이 무엇을 할 수 있는지 알려 주는
+ * 유일한 장치라, 못 하는 것을 넣으면 첫 시도가 실패하고 그 뒤로 쓰지 않는다.
  */
 export const suggestedRequests = [
-  '통과 종목을 더 좁혀줘',
-  '하락장에 강하게 만들어줘',
   '거래량 급증 조건을 추가해줘',
+  '거래량 조건은 빼줘',
+  '순위 기준을 변동성으로 바꿔줘',
   '재선정을 매월로 바꿔줘',
 ] as const

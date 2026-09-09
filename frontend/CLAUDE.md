@@ -4,9 +4,9 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 
 ## 현재 상태
 
-- 화면 목업의 디자인 시스템은 `src/styles`로 옮겨져 있고 실제 서비스 화면은 구현 전이다.
+- 화면 목업의 디자인 시스템은 `src/styles`로 옮겨져 있고 실제 서비스 화면을 구현 중이다.
 - 화면 기획과 목업은 `../docs/기획/박민규/화면 설계/v1/README.md`를 참고한다.
-- 라우터는 `react-router`, 서버 상태는 `@tanstack/react-query`를 쓴다. 전역 상태 라이브러리는 두지 않는다. 차트 라이브러리와 테스트 프레임워크는 아직 확정되지 않았다. 사용자 확인 없이 추가하지 않는다.
+- 라우터는 `react-router`, 서버 상태는 `@tanstack/react-query`를 쓴다. 전역 상태 라이브러리는 두지 않는다. 차트는 `lightweight-charts`, STOMP는 `@stomp/stompjs`를 쓴다. 별도 테스트 프레임워크 없이 Node 24 내장 테스트 러너를 사용한다.
 
 ## 디자인 시스템
 
@@ -38,12 +38,18 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 토큰은 `httpOnly` 쿠키라 프론트가 읽거나 저장하지 않는다. 로그인 여부의 유일한 근거는 `useCurrentMember`(`GET /members/me`) 결과다.
 - 인증이 필요한 화면은 `RequireAuth` 아래에, 로그인 화면은 `GuestOnly` 아래에 둔다.
 - API 응답 타입(`XxxResponse`)과 화면 모델은 `src/{feature}/types.ts`에서 분리하고 변환 함수를 거친다.
+- 백테스트 실행 조건 편집과 검증은 `src/backtest/runForm.ts` 의 순수 함수에만 두고 화면은 그 결과를 표시한다. 실행 식별자는 주소의 `run` 파라미터가 소유하며 상태 폴링은 `queries.ts` 가 맡는다.
 - 전략 DSL 계약 타입은 `src/strategy/types.ts`, 열거형 문구·단위는 `src/strategy/labels.ts`, 빌더 편집 동작은 `src/strategy/draft.ts`의 순수 함수에만 둔다. 컴포넌트가 DSL 을 직접 조립하지 않는다.
 - 오류 코드는 `src/api/errorCodes.ts`의 상수만 쓰고 `'AUTH-401-…'` 문자열을 화면 코드에 직접 쓰지 않는다.
 - 401 은 화면이 처리하지 않는다. `QueryClient` 캐시의 `onError`가 회원 쿼리를 "로그인 안 됨"으로 바꾸고 `RequireAuth`가 이유를 붙여 로그인 화면으로 보낸다.
 - 로딩·빈·오류 상태는 `src/components`의 `LoadingState`, `EmptyState`, `ErrorState`를 쓴다. 화면이 같은 구조를 다시 그리지 않는다.
 
 ## 경계
+
+- 차트 책임은 `src/market`의 API·queries, STOMP 연결(`stream.ts`), 데이터 검증·병합(`model.ts`), 차트 렌더러로 나눈다. `ChartPage`는 종목 선택과 표시만 한다.
+- 가격·수량과 int64 체결 순번은 문자열로 보존하며 차트 좌표만 number로 변환한다. 진행 봉은 확정 봉을 덮어쓰지 않고 최대 1,000개, 체결은 최대 30건만 유지한다.
+- 지원 간격은 `market/model.ts`의 1·2·5·15·60·240·1440분으로 제한한다. 조회·STOMP 목적지에 동일 간격을 사용하며 UTC 버킷을 검증한다. 1440분봉은 KST 09:00부터다.
+- 선택 종목·간격 화면이 연결 하나와 구독 두 개를 소유한다. 종목·간격 전환·언마운트 때 종료하며, 재연결 후 구독을 전송하고 확정 봉을 다시 조회한다. 쿼리 키에 종목·간격·연결 세대를 포함해 조회 결과와 진행 봉 버퍼를 격리한다. 확정/보정 결과는 1분마다 재조회한다.
 
 - 브라우저는 `/api`를 통해 Spring API만 호출한다.
 - AI 서버, Upbit, PostgreSQL, Redis, Kafka에 직접 연결하지 않는다.
@@ -73,6 +79,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 ```bash
 npm run lint
 npm run build
+npm test
 ```
 
-현재 테스트 스크립트는 없다. 테스트 도구를 추가하려면 먼저 사용자와 범위를 합의한다.
+`npm test`는 Node 24의 내장 테스트·모듈 mock으로 데이터 병합과 STOMP 연결 수명주기를 검증한다. 추가 테스트 프레임워크는 도입하지 않는다.

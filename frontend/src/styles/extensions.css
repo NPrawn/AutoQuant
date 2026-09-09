@@ -3,6 +3,20 @@
  * 변형만 두고 새 컴포넌트 계층을 만들지 않는다.
  */
 
+.market-chart-page { display: grid; gap: 12px; }
+.market-chart-shell { grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); }
+.market-chart-shell > .card { min-width: 0; }
+.market-chart-page select { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); padding: 8px; border-radius: var(--r-s); }
+.market-candle-chart { height: 440px; width: 100%; }
+.market-chart-note { padding: 8px 20px; color: var(--ink-3); font-size: 12px; }
+.market-trades { padding: 16px; }
+.market-trades h2 { font-size: 15px; }
+.market-trades p { color: var(--ink-3); font-size: 12px; margin: 8px 0; }
+.market-trade-scroll { overflow: auto; max-height: 520px; }
+.market-trades table { width: 100%; font-size: 11px; white-space: nowrap; }
+.market-trades th, .market-trades td { text-align: right; padding: 6px; }
+@media (max-width: 1100px) { .market-chart-shell { grid-template-columns: minmax(0, 1fr); } }
+
 /* 오류 콜아웃. 색 계약상 오류는 주황(--crit)이다. 빨강은 상승에 배정돼 있다. */
 .callout.crit {
   background: var(--crit-soft);
@@ -116,4 +130,70 @@
 }
 .btn.primary.danger:hover {
   filter: brightness(1.08);
+}
+
+/* 백테스트 자산 곡선. 캔들 차트와 같은 높이를 쓴다. */
+.backtest-equity-chart {
+  height: 400px;
+  width: 100%;
+}
+
+/* 입력 아래 안내와 검증 문구. 목업은 필드별 오류 표시가 없다. */
+.field-note {
+  margin: 6px 0 0;
+  color: var(--ink-3);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.field-note.crit {
+  color: var(--crit);
+}
+
+/* 전략이 정한 값이라 고칠 수 없는 입력. */
+.fld input[readonly] {
+  color: var(--ink-3);
+  cursor: default;
+}
+
+/* 거래 내역 페이지 이동. 목업에는 표 페이지가 없다. */
+.backtest-pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+/*
+ * 전략봇이 바꾼 영역을 잠깐 강조한다. 색은 블록이 data-cat 으로 정한 --section 을 그대로
+ * 쓴다. 카테고리 색이라 상승(--up)·하락(--down)·오류(--crit) 의미와 겹치지 않는다
+ * (base.css 18절 "category hue, never severity"). 요약 카드는 data-cat 이 없어 중립색이다.
+ */
+.blk.changed,
+.sum-card.changed {
+  animation: section-changed 1.6s ease-out;
+}
+
+@keyframes section-changed {
+  0% {
+    box-shadow:
+      inset 0 0 0 1px var(--section, var(--cat-neutral)),
+      0 0 0 3px color-mix(in srgb, var(--section, var(--cat-neutral)) 22%, transparent);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 1px transparent,
+      0 0 0 3px transparent;
+  }
+}
+
+/* 깜빡임에 민감한 사용자에게는 움직임 대신 정적 테두리만 남긴다. */
+@media (prefers-reduced-motion: reduce) {
+  .blk.changed,
+  .sum-card.changed {
+    animation: none;
+    box-shadow: inset 0 0 0 1px var(--section, var(--cat-neutral));
+  }
 }
