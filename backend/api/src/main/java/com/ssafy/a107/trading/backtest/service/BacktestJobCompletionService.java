@@ -43,7 +43,8 @@ public class BacktestJobCompletionService {
                 backtestRun,
                 executionResult.performanceReport(),
                 executionResult.fills(),
-                executionResult.assets()
+                executionResult.assets(),
+                executionResult.universeAssets()
         );
         backtestRun.complete(Instant.now(clock));
     }
