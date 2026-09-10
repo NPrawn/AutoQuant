@@ -6,7 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.task.TaskExecutor;
 
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
@@ -17,16 +18,30 @@ class SimulationLiveCandleListenerTest {
     @Test
     void delegateLiveCandleToExecutor() {
         SimulationCandleExecutionService executionService = mock(SimulationCandleExecutionService.class);
-        AtomicReference<Runnable> submittedTask = new AtomicReference<>();
-        TaskExecutor taskExecutor = submittedTask::set;
+        List<Runnable> submittedTasks = new ArrayList<>();
+        TaskExecutor taskExecutor = submittedTasks::add;
         SimulationLiveCandleListener listener = new SimulationLiveCandleListener(executionService, taskExecutor);
         LiveMinuteCandle candle = candle();
 
         listener.onLiveMinuteCandle(candle);
 
         then(executionService).shouldHaveNoInteractions();
-        submittedTask.get().run();
+        submittedTasks.getFirst().run();
         then(executionService).should().handle(candle);
+    }
+
+    @DisplayName("동일한 진행 Candle은 실행 큐에 한 번만 등록한다")
+    @Test
+    void enqueueSameLiveCandleOnlyOnce() {
+        SimulationCandleExecutionService executionService = mock(SimulationCandleExecutionService.class);
+        List<Runnable> submittedTasks = new ArrayList<>();
+        SimulationLiveCandleListener listener = new SimulationLiveCandleListener(executionService, submittedTasks::add);
+        LiveMinuteCandle candle = candle();
+
+        listener.onLiveMinuteCandle(candle);
+        listener.onLiveMinuteCandle(candle);
+
+        org.assertj.core.api.Assertions.assertThat(submittedTasks).hasSize(1);
     }
 
     private LiveMinuteCandle candle() {
