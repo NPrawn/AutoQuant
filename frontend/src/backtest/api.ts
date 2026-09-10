@@ -18,6 +18,11 @@ export function fetchBacktestRun(backtestId: string): Promise<BacktestRunRespons
   return request<BacktestRunResponse>(`/backtests/${encodeURIComponent(backtestId)}`)
 }
 
+/* 내 실행 목록. 서버가 접수 시각 내림차순으로 준다. */
+export function fetchBacktestRuns(page: number, size: number): Promise<PageResponse<BacktestRunResponse>> {
+  return request<PageResponse<BacktestRunResponse>>(`/backtests?page=${page}&size=${size}`)
+}
+
 export function fetchBacktestResult(backtestId: string): Promise<BacktestResultResponse> {
   return request<BacktestResultResponse>(`/backtests/${encodeURIComponent(backtestId)}/result`)
 }
