@@ -15,6 +15,8 @@ type ConfirmDialogProps = {
   /* 삭제처럼 위험한 확정은 오류 색으로 구분한다. 색 계약상 빨강은 상승이라 쓰지 않는다. */
   danger?: boolean
   pending?: boolean
+  /* 동의 체크처럼 확정 전에 채워야 하는 조건이 있을 때 확정 버튼만 막는다. */
+  confirmDisabled?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -28,6 +30,7 @@ export function ConfirmDialog({
   cancelLabel = '취소',
   danger = false,
   pending = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -63,7 +66,13 @@ export function ConfirmDialog({
           <button className="btn" type="button" onClick={onCancel} disabled={pending}>
             {cancelLabel}
           </button>
-          <button className={danger ? 'btn primary danger' : 'btn primary'} type="button" onClick={onConfirm} disabled={pending} aria-busy={pending}>
+          <button
+            className={danger ? 'btn primary danger' : 'btn primary'}
+            type="button"
+            onClick={onConfirm}
+            disabled={pending || confirmDisabled}
+            aria-busy={pending}
+          >
             {confirmLabel}
           </button>
         </div>

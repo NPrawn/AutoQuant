@@ -1,9 +1,10 @@
 import { Link } from 'react-router'
 
-import { to } from '../app/routes'
+import { routes, to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/StateBlock'
-import { EquityChart } from './EquityChart'
+import { EquityChart } from '../components/EquityChart'
+import type { SimulationEntryState } from '../simulation/simulationEntry'
 import { blank, formatDate, formatRate } from './labels'
 import { useBacktestEquityCurve, useBacktestResult } from './queries'
 import { ResultKpis } from './ResultKpis'
@@ -39,6 +40,7 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
 
   const metrics = result.data
   const points = equity.data ?? []
+  const simulationEntry: SimulationEntryState = { strategyId: run.strategyId }
 
   return (
     <div className="bt-res on">
@@ -90,9 +92,9 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
         <Link className="btn ghost" to={to.strategyEdit(run.strategyId)}>
           전략 수정
         </Link>
-        <button className="btn primary" type="button" disabled title="모의투자는 백엔드 준비 후 열립니다">
+        <Link className="btn primary" to={routes.simulations} state={simulationEntry}>
           이 전략으로 모의투자
-        </button>
+        </Link>
       </div>
     </div>
   )

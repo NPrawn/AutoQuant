@@ -2,10 +2,19 @@ import { useEffect, useRef } from 'react'
 import { AreaSeries, ColorType, createChart } from 'lightweight-charts'
 import type { ISeriesApi, UTCTimestamp } from 'lightweight-charts'
 
-import type { EquityPoint } from './types'
+/* 백테스트와 모의투자의 자산 곡선 행이 같은 모양이라 두 화면이 이 차트를 함께 쓴다. */
+export type EquityChartPoint = {
+  valuationAt: Date
+  totalAssetValue: number
+}
+
+type EquityChartProps = {
+  points: readonly EquityChartPoint[]
+  label?: string
+}
 
 /* 자산 곡선. 캔들 차트와 같은 방식으로 테마 토큰을 읽고 data-theme 이 바뀌면 다시 적용한다. */
-export function EquityChart({ points }: { points: EquityPoint[] }) {
+export function EquityChart({ points, label = '평가 기간의 자산 곡선' }: EquityChartProps) {
   const container = useRef<HTMLDivElement>(null)
   const series = useRef<ISeriesApi<'Area'>>(null)
   const fitted = useRef(false)
@@ -58,5 +67,5 @@ export function EquityChart({ points }: { points: EquityPoint[] }) {
     }
   }, [points])
 
-  return <div ref={container} className="backtest-equity-chart" role="img" aria-label="평가 기간의 자산 곡선" />
+  return <div ref={container} className="backtest-equity-chart" role="img" aria-label={label} />
 }
