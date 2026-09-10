@@ -4,11 +4,15 @@ import com.ssafy.a107.realtime.domain.LiveMinuteCandle;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.scheduling.TaskScheduler;
 
 import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.Instant;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 
@@ -20,7 +24,9 @@ class SimulationLiveCandleListenerTest {
         SimulationCandleExecutionService executionService = mock(SimulationCandleExecutionService.class);
         List<Runnable> submittedTasks = new ArrayList<>();
         TaskExecutor taskExecutor = submittedTasks::add;
-        SimulationLiveCandleListener listener = new SimulationLiveCandleListener(executionService, taskExecutor);
+        SimulationLiveCandleListener listener = new SimulationLiveCandleListener(
+                executionService, taskExecutor, mock(TaskScheduler.class)
+        );
         LiveMinuteCandle candle = candle();
 
         listener.onLiveMinuteCandle(candle);
@@ -35,13 +41,31 @@ class SimulationLiveCandleListenerTest {
     void enqueueSameLiveCandleOnlyOnce() {
         SimulationCandleExecutionService executionService = mock(SimulationCandleExecutionService.class);
         List<Runnable> submittedTasks = new ArrayList<>();
-        SimulationLiveCandleListener listener = new SimulationLiveCandleListener(executionService, submittedTasks::add);
+        SimulationLiveCandleListener listener = new SimulationLiveCandleListener(
+                executionService, submittedTasks::add, mock(TaskScheduler.class)
+        );
         LiveMinuteCandle candle = candle();
 
         listener.onLiveMinuteCandle(candle);
         listener.onLiveMinuteCandle(candle);
 
         org.assertj.core.api.Assertions.assertThat(submittedTasks).hasSize(1);
+    }
+
+    @DisplayName("일시 실행 실패 Candle은 별도 스케줄러로 재시도한다")
+    @Test
+    void scheduleRetryWhenExecutionRequestsRetry() {
+        SimulationCandleExecutionService executionService = mock(SimulationCandleExecutionService.class);
+        TaskScheduler retryScheduler = mock(TaskScheduler.class);
+        SimulationLiveCandleListener listener = new SimulationLiveCandleListener(
+                executionService, Runnable::run, retryScheduler
+        );
+        LiveMinuteCandle candle = candle();
+        given(executionService.handle(candle)).willReturn(true);
+
+        listener.onLiveMinuteCandle(candle);
+
+        then(retryScheduler).should().schedule(any(Runnable.class), any(Instant.class));
     }
 
     private LiveMinuteCandle candle() {

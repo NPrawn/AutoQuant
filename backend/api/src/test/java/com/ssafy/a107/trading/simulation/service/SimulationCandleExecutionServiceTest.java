@@ -1,8 +1,11 @@
 package com.ssafy.a107.trading.simulation.service;
 
 import com.ssafy.a107.asset.repository.AssetRepository;
+import com.ssafy.a107.asset.domain.Exchange;
 import com.ssafy.a107.realtime.domain.LiveMinuteCandle;
 import com.ssafy.a107.strategy.engine.StrategyExecutionPipeline;
+import com.ssafy.a107.strategy.domain.dsl.RebalancePeriod;
+import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import com.ssafy.a107.trading.backtest.engine.BacktestRebalanceSchedule;
 import com.ssafy.a107.trading.backtest.engine.execution.BacktestExecutionPolicyProperties;
 import com.ssafy.a107.trading.backtest.engine.marketdata.BacktestWarmupCandleCountResolver;
@@ -10,8 +13,8 @@ import com.ssafy.a107.trading.backtest.engine.marketdata.HistoricalCandleProvide
 import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestPortfolioOrderExecutionService;
 import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestRebalanceOrderPlanner;
 import com.ssafy.a107.trading.backtest.engine.portfolio.PortfolioValuationCalculator;
-import com.ssafy.a107.trading.simulation.domain.SimulationRun;
 import com.ssafy.a107.trading.simulation.domain.SimulationRunStatus;
+import com.ssafy.a107.trading.simulation.domain.SimulationRun;
 import com.ssafy.a107.trading.simulation.repository.SimulationEquityRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationPositionRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationResultRepository;
@@ -35,6 +38,9 @@ import static org.mockito.Mockito.mock;
 class SimulationCandleExecutionServiceTest {
 
     private final SimulationRunRepository simulationRunRepository = mock(SimulationRunRepository.class);
+    private final SimulationPositionRepository simulationPositionRepository = mock(SimulationPositionRepository.class);
+    private final AssetRepository assetRepository = mock(AssetRepository.class);
+    private final BacktestRebalanceSchedule rebalanceSchedule = mock(BacktestRebalanceSchedule.class);
     private final SimulationMarketPriceCache marketPriceCache = mock(SimulationMarketPriceCache.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     private final SimulationExecutionFailureService failureService = mock(SimulationExecutionFailureService.class);
@@ -54,11 +60,9 @@ class SimulationCandleExecutionServiceTest {
     @DisplayName("일시적인 DB 잠금 오류는 실행을 실패 처리하지 않고 재시도한다")
     @Test
     void retryTransientTransactionFailureWithoutFailingSimulation() {
-        SimulationRun simulationRun = mock(SimulationRun.class);
         UUID simulationId = UUID.fromString("22222222-2222-2222-2222-222222222222");
-        given(simulationRun.getSimulationId()).willReturn(simulationId);
-        given(simulationRunRepository.findAllByStatusAndTimeframe(
-                eq(SimulationRunStatus.RUNNING), any())).willReturn(List.of(simulationRun));
+        given(simulationRunRepository.findSimulationIdsByStatusAndTimeframe(
+                eq(SimulationRunStatus.RUNNING), any(), any())).willReturn(List.of(simulationId));
         given(transactionManager.getTransaction(any())).willThrow(new CannotAcquireLockException("lock"));
 
         executionService.handle(candle(60));
@@ -70,30 +74,57 @@ class SimulationCandleExecutionServiceTest {
     @DisplayName("실행 대상 조회의 일시적인 DB 오류도 재시도한다")
     @Test
     void retryTransientRunningSimulationLookup() {
-        given(simulationRunRepository.findAllByStatusAndTimeframe(
-                eq(SimulationRunStatus.RUNNING), any())).willThrow(new CannotAcquireLockException("lock"));
+        given(simulationRunRepository.findSimulationIdsByStatusAndTimeframe(
+                eq(SimulationRunStatus.RUNNING), any(), any())).willThrow(new CannotAcquireLockException("lock"));
 
         executionService.handle(candle(60));
 
         then(simulationRunRepository).should(org.mockito.Mockito.times(3))
-                .findAllByStatusAndTimeframe(eq(SimulationRunStatus.RUNNING), any());
+                .findSimulationIdsByStatusAndTimeframe(eq(SimulationRunStatus.RUNNING), any(), any());
         then(failureService).shouldHaveNoInteractions();
+    }
+
+    @DisplayName("모의투자는 이전 Candle 종가를 평가하고 다음 Candle 시점에 실행한다")
+    @Test
+    void evaluatePreviousCandleAndExecuteAtNextCandleOpen() {
+        UUID simulationId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        java.time.Instant evaluationCandleOpenAt = java.time.Instant.parse("2026-09-14T09:00:00Z");
+        java.time.Instant executionAt = java.time.Instant.parse("2026-09-14T10:00:00Z");
+        SimulationRun simulationRun = mock(SimulationRun.class);
+        given(simulationRunRepository.findBySimulationIdForUpdate(simulationId)).willReturn(java.util.Optional.of(simulationRun));
+        given(simulationRun.getStatus()).willReturn(SimulationRunStatus.RUNNING);
+        given(simulationRun.getStartedAt()).willReturn(evaluationCandleOpenAt);
+        given(simulationRun.getQuoteCurrency()).willReturn("KRW");
+        given(simulationRun.getRebalanceInterval()).willReturn(RebalancePeriod.DAILY);
+        given(simulationRun.getTimeframe()).willReturn(Timeframe.ONE_HOUR);
+        given(simulationPositionRepository.findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId))
+                .willReturn(List.of());
+        given(rebalanceSchedule.shouldRebalance(RebalancePeriod.DAILY, Timeframe.ONE_HOUR,
+                evaluationCandleOpenAt, true)).willReturn(false);
+
+        executionService.process(simulationId, evaluationCandleOpenAt, executionAt);
+
+        then(assetRepository).should().findAllAvailableAt(Exchange.UPBIT, "KRW", evaluationCandleOpenAt);
+        then(rebalanceSchedule).should().shouldRebalance(
+                RebalancePeriod.DAILY, Timeframe.ONE_HOUR, evaluationCandleOpenAt, true
+        );
+        then(simulationRun).should().beginCandle(executionAt);
     }
 
     private SimulationCandleExecutionService executionService() {
         return new SimulationCandleExecutionService(
                 simulationRunRepository,
-                mock(SimulationPositionRepository.class),
+                simulationPositionRepository,
                 mock(SimulationTradeRepository.class),
                 mock(SimulationEquityRepository.class),
                 mock(SimulationResultRepository.class),
                 mock(SimulationUniverseAssetRepository.class),
-                mock(AssetRepository.class),
+                assetRepository,
                 mock(HistoricalCandleProvider.class),
                 mock(BacktestWarmupCandleCountResolver.class),
                 mock(StrategyExecutionPipeline.class),
                 mock(BacktestRebalanceOrderPlanner.class),
-                mock(BacktestRebalanceSchedule.class),
+                rebalanceSchedule,
                 mock(BacktestPortfolioOrderExecutionService.class),
                 mock(PortfolioValuationCalculator.class),
                 mock(BacktestExecutionPolicyProperties.class),

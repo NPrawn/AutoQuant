@@ -63,6 +63,14 @@ class SimulationRunTest {
         assertThat(simulationRun.beginCandle(candleAt.minusSeconds(1))).isFalse();
     }
 
+    @DisplayName("실행 시작 전 Candle은 처리하지 않는다")
+    @Test
+    void ignoresCandleBeforeSimulationStarts() {
+        SimulationRun simulationRun = runningSimulationRun();
+
+        assertThat(simulationRun.beginCandle(STARTED_AT.minusSeconds(1))).isFalse();
+    }
+
     @DisplayName("실행 중이 아닌 모의투자는 Candle을 처리할 수 없다")
     @Test
     void cannotProcessCandleWhenNotRunning() {
