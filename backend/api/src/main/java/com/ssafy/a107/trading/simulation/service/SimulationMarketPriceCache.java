@@ -15,19 +15,19 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class SimulationMarketPriceCache {
 
-    private final Map<UUID, PriceSnapshot> pricesByAssetId = new ConcurrentHashMap<>();
+    private final Map<PriceKey, PriceSnapshot> pricesByKey = new ConcurrentHashMap<>();
 
     public void update(LiveMinuteCandle candle) {
-        pricesByAssetId.put(candle.assetId(), new PriceSnapshot(
+        pricesByKey.put(new PriceKey(candle.assetId(), candle.intervalMinutes()), new PriceSnapshot(
                 Instant.ofEpochMilli(candle.openTimeUnixMilli()),
                 new BigDecimal(candle.openPrice())
         ));
     }
 
-    public Optional<Map<UUID, BigDecimal>> snapshotAt(Collection<UUID> assetIds, Instant candleAt) {
+    public Optional<Map<UUID, BigDecimal>> snapshotAt(Collection<UUID> assetIds, int intervalMinutes, Instant candleAt) {
         Map<UUID, BigDecimal> prices = new LinkedHashMap<>();
         for (UUID assetId : assetIds) {
-            PriceSnapshot priceSnapshot = pricesByAssetId.get(assetId);
+            PriceSnapshot priceSnapshot = pricesByKey.get(new PriceKey(assetId, intervalMinutes));
             if (priceSnapshot == null || !priceSnapshot.candleOpenTime().equals(candleAt)) {
                 return Optional.empty();
             }
@@ -37,5 +37,8 @@ public class SimulationMarketPriceCache {
     }
 
     private record PriceSnapshot(Instant candleOpenTime, BigDecimal openPrice) {
+    }
+
+    private record PriceKey(UUID assetId, int intervalMinutes) {
     }
 }

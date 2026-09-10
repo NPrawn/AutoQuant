@@ -4,6 +4,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.concurrent.ThreadPoolExecutor;
+
 @Configuration
 public class SimulationExecutionConfig {
 
@@ -14,6 +16,7 @@ public class SimulationExecutionConfig {
         executor.setMaxPoolSize(4);
         executor.setQueueCapacity(1_000);
         executor.setThreadNamePrefix("simulation-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         return executor;
     }

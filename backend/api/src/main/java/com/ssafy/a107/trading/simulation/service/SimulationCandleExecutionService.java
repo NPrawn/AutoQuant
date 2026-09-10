@@ -38,7 +38,11 @@ import com.ssafy.a107.trading.simulation.repository.SimulationResultRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationRunRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationTradeRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationUniverseAssetRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.TransientDataAccessException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -61,8 +65,11 @@ import java.util.stream.Collectors;
 @Service
 public class SimulationCandleExecutionService {
 
+    private static final Logger log = LoggerFactory.getLogger(SimulationCandleExecutionService.class);
     private static final int MONEY_SCALE = 8;
     private static final int RATE_SCALE = 8;
+    private static final int MAX_TRANSIENT_RETRY_ATTEMPTS = 3;
+    private static final Duration TRANSIENT_RETRY_DELAY = Duration.ofMillis(100);
 
     private final SimulationRunRepository simulationRunRepository;
     private final SimulationPositionRepository simulationPositionRepository;
@@ -125,21 +132,58 @@ public class SimulationCandleExecutionService {
 
     public void handle(LiveMinuteCandle candle) {
         marketPriceCache.update(candle);
+        com.ssafy.a107.strategy.domain.dsl.Timeframe timeframe = timeframeForInterval(candle.intervalMinutes());
+        if (timeframe == null) return;
         Instant candleAt = Instant.ofEpochMilli(candle.openTimeUnixMilli());
-        simulationRunRepository.findAllByStatusAndTimeframe(
-                        SimulationRunStatus.RUNNING,
-                        timeframeForInterval(candle.intervalMinutes())
-                )
+        findRunningSimulations(timeframe, candleAt)
                 .forEach(simulationRun -> processInTransaction(simulationRun.getSimulationId(), candleAt));
     }
 
+    private List<SimulationRun> findRunningSimulations(
+            com.ssafy.a107.strategy.domain.dsl.Timeframe timeframe,
+            Instant candleAt
+    ) {
+        for (int attempt = 1; attempt <= MAX_TRANSIENT_RETRY_ATTEMPTS; attempt++) {
+            try {
+                return simulationRunRepository.findAllByStatusAndTimeframe(SimulationRunStatus.RUNNING, timeframe);
+            } catch (RuntimeException exception) {
+                if (!isTransient(exception)) throw exception;
+                if (attempt == MAX_TRANSIENT_RETRY_ATTEMPTS) {
+                    log.warn("Simulation execution skipped after transient run lookup retries: timeframe={}, candleAt={}, error={}",
+                            timeframe, candleAt, exception.getClass().getSimpleName());
+                    return List.of();
+                }
+                log.warn("Retrying simulation run lookup: timeframe={}, candleAt={}, attempt={}, error={}",
+                        timeframe, candleAt, attempt, exception.getClass().getSimpleName());
+                waitBeforeRetry();
+            }
+        }
+        return List.of();
+    }
+
     private void processInTransaction(UUID simulationId, Instant candleAt) {
-        try {
-            transactionTemplate.executeWithoutResult(
-                    transactionStatus -> process(simulationId, candleAt)
-            );
-        } catch (RuntimeException exception) {
-            simulationExecutionFailureService.fail(simulationId, exception);
+        for (int attempt = 1; attempt <= MAX_TRANSIENT_RETRY_ATTEMPTS; attempt++) {
+            try {
+                transactionTemplate.executeWithoutResult(
+                        transactionStatus -> process(simulationId, candleAt)
+                );
+                return;
+            } catch (RuntimeException exception) {
+                if (!isTransient(exception)) {
+                    log.error("Simulation execution failed: simulationId={}, candleAt={}, error={}",
+                            simulationId, candleAt, exception.getClass().getSimpleName());
+                    simulationExecutionFailureService.fail(simulationId, exception);
+                    return;
+                }
+                if (attempt == MAX_TRANSIENT_RETRY_ATTEMPTS) {
+                    log.warn("Simulation execution skipped after transient retries: simulationId={}, candleAt={}, error={}",
+                            simulationId, candleAt, exception.getClass().getSimpleName());
+                    return;
+                }
+                log.warn("Retrying simulation execution: simulationId={}, candleAt={}, attempt={}, error={}",
+                        simulationId, candleAt, attempt, exception.getClass().getSimpleName());
+                waitBeforeRetry();
+            }
         }
     }
 
@@ -165,7 +209,9 @@ public class SimulationCandleExecutionService {
                     .map(targetAssetWeight -> targetAssetWeight.assetId())
                     .toList());
             persistedPositions.forEach(position -> pricedAssetIds.add(position.getAsset().getAssetId()));
-            Map<UUID, BigDecimal> currentPrices = marketPriceCache.snapshotAt(pricedAssetIds, candleAt).orElse(null);
+            Map<UUID, BigDecimal> currentPrices = marketPriceCache
+                    .snapshotAt(pricedAssetIds, simulationRun.getTimeframe().getIntervalMinutes(), candleAt)
+                    .orElse(null);
             if (currentPrices == null || !simulationRun.beginCandle(candleAt)) return;
             BacktestPortfolio portfolio = restorePortfolio(simulationRun, persistedPositions);
             List<VirtualOrder> orders = rebalanceOrderPlanner.plan(portfolio, targetPortfolio, currentPrices).stream()
@@ -278,10 +324,24 @@ public class SimulationCandleExecutionService {
         return assetsById;
     }
 
+    private boolean isTransient(RuntimeException exception) {
+        return exception instanceof TransientDataAccessException
+                || exception instanceof CannotCreateTransactionException;
+    }
+
+    private void waitBeforeRetry() {
+        try {
+            Thread.sleep(TRANSIENT_RETRY_DELAY);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Simulation execution retry was interrupted", exception);
+        }
+    }
+
     private com.ssafy.a107.strategy.domain.dsl.Timeframe timeframeForInterval(int intervalMinutes) {
         return java.util.Arrays.stream(com.ssafy.a107.strategy.domain.dsl.Timeframe.values())
                 .filter(timeframe -> timeframe.getIntervalMinutes() == intervalMinutes)
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unsupported simulation candle interval"));
+                .orElse(null);
     }
 }
