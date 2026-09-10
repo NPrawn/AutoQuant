@@ -10,7 +10,7 @@ fi
 compose_file="$1"
 env_file="$2"
 
-for command in docker curl grep; do
+for command in docker curl grep seq; do
     if ! command -v "$command" >/dev/null 2>&1; then
         echo "Required command is missing: $command" >&2
         exit 1
