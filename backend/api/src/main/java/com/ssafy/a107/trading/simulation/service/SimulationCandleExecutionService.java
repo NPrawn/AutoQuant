@@ -353,10 +353,21 @@ public class SimulationCandleExecutionService {
     private TargetPortfolio executeStrategy(SimulationRun simulationRun, List<Asset> universe, Instant candleAt) {
         List<UUID> assetIds = universe.stream().map(Asset::getAssetId).toList();
         int warmupCount = warmupCandleCountResolver.resolve(simulationRun.getStrategy().getStrategyDsl());
-        Instant fromInclusive = candleAt.minus(Duration.ofMinutes((long) warmupCount * simulationRun.getTimeframe().getIntervalMinutes()));
+        Duration candleDuration = candleDuration(simulationRun.getTimeframe());
+        Instant fromInclusive = candleAt.minus(candleDuration.multipliedBy(warmupCount));
         Map<UUID, List<MinuteCandle>> candlesByAssetId = historicalCandleProvider
                 .load(assetIds, simulationRun.getTimeframe(), fromInclusive, candleAt)
                 .entrySet().stream()
+                .map(entry -> Map.entry(
+                        entry.getKey(),
+                        entry.getValue().stream()
+                                .filter(candle -> {
+                                    Instant openTime = candle.getId().getOpenTime();
+                                    return !openTime.isBefore(fromInclusive)
+                                            && !openTime.plus(candleDuration).isAfter(candleAt);
+                                })
+                                .toList()
+                ))
                 .filter(entry -> entry.getValue().size() >= warmupCount)
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,

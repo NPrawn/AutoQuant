@@ -6,6 +6,7 @@ import com.ssafy.a107.candle.domain.MinuteCandle;
 import com.ssafy.a107.candle.domain.MinuteCandleId;
 import com.ssafy.a107.asset.domain.Exchange;
 import com.ssafy.a107.realtime.domain.LiveMinuteCandle;
+import com.ssafy.a107.strategy.engine.StrategyExecutionContext;
 import com.ssafy.a107.strategy.engine.StrategyExecutionPipeline;
 import com.ssafy.a107.strategy.engine.portfolio.TargetAssetWeight;
 import com.ssafy.a107.strategy.engine.portfolio.TargetPortfolio;
@@ -26,9 +27,14 @@ import com.ssafy.a107.trading.backtest.engine.BacktestRebalanceSchedule;
 import com.ssafy.a107.trading.backtest.engine.execution.BacktestExecutionPolicyProperties;
 import com.ssafy.a107.trading.backtest.engine.marketdata.BacktestWarmupCandleCountResolver;
 import com.ssafy.a107.trading.backtest.engine.marketdata.HistoricalCandleProvider;
+import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestOrderExecutionResult;
 import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestPortfolioOrderExecutionService;
+import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestRebalanceOrder;
 import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestRebalanceOrderPlanner;
 import com.ssafy.a107.trading.backtest.engine.portfolio.PortfolioValuationCalculator;
+import com.ssafy.a107.trading.backtest.engine.execution.VirtualOrder;
+import com.ssafy.a107.trading.backtest.domain.PositionSide;
+import com.ssafy.a107.trading.backtest.domain.TradeSide;
 import com.ssafy.a107.trading.simulation.domain.SimulationRunStatus;
 import com.ssafy.a107.trading.simulation.domain.SimulationRun;
 import com.ssafy.a107.trading.simulation.repository.SimulationEquityRepository;
@@ -39,6 +45,7 @@ import com.ssafy.a107.trading.simulation.repository.SimulationTradeRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationUniverseAssetRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -47,8 +54,10 @@ import java.time.Instant;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
@@ -60,11 +69,19 @@ class SimulationCandleExecutionServiceTest {
 
     private final SimulationRunRepository simulationRunRepository = mock(SimulationRunRepository.class);
     private final SimulationPositionRepository simulationPositionRepository = mock(SimulationPositionRepository.class);
+    private final SimulationTradeRepository simulationTradeRepository = mock(SimulationTradeRepository.class);
+    private final SimulationEquityRepository simulationEquityRepository = mock(SimulationEquityRepository.class);
+    private final SimulationResultRepository simulationResultRepository = mock(SimulationResultRepository.class);
+    private final SimulationUniverseAssetRepository simulationUniverseAssetRepository = mock(SimulationUniverseAssetRepository.class);
     private final AssetRepository assetRepository = mock(AssetRepository.class);
     private final HistoricalCandleProvider historicalCandleProvider = mock(HistoricalCandleProvider.class);
     private final BacktestWarmupCandleCountResolver warmupCandleCountResolver = mock(BacktestWarmupCandleCountResolver.class);
     private final StrategyExecutionPipeline strategyExecutionPipeline = mock(StrategyExecutionPipeline.class);
     private final BacktestRebalanceSchedule rebalanceSchedule = mock(BacktestRebalanceSchedule.class);
+    private final BacktestRebalanceOrderPlanner rebalanceOrderPlanner = mock(BacktestRebalanceOrderPlanner.class);
+    private final BacktestPortfolioOrderExecutionService portfolioOrderExecutionService = mock(BacktestPortfolioOrderExecutionService.class);
+    private final PortfolioValuationCalculator portfolioValuationCalculator = mock(PortfolioValuationCalculator.class);
+    private final BacktestExecutionPolicyProperties executionPolicyProperties = mock(BacktestExecutionPolicyProperties.class);
     private final SimulationMarketPriceCache marketPriceCache = mock(SimulationMarketPriceCache.class);
     private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     private final SimulationExecutionFailureService failureService = mock(SimulationExecutionFailureService.class);
@@ -133,6 +150,126 @@ class SimulationCandleExecutionServiceTest {
                 RebalancePeriod.DAILY, Timeframe.ONE_HOUR, evaluationCandleOpenAt, true
         );
         then(simulationRun).should().beginCandle(executionAt);
+    }
+
+    @DisplayName("모의투자는 완료된 이전 Candle 종가로 평가하고 현재 Candle 시가로 체결한다")
+    @Test
+    void evaluateCompletedCandleAndExecuteAtCurrentCandleOpen() {
+        UUID simulationId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        UUID assetId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+        Instant evaluationCandleOpenAt = Instant.parse("2026-09-14T09:00:00Z");
+        Instant executionAt = Instant.parse("2026-09-14T10:00:00Z");
+        SimulationRun simulationRun = mock(SimulationRun.class);
+        Strategy strategy = mock(Strategy.class);
+        Asset asset = mock(Asset.class);
+        StrategyDsl strategyDsl = strategyDsl();
+        MinuteCandle completedCandle = candle(
+                assetId,
+                evaluationCandleOpenAt,
+                "100",
+                "110"
+        );
+        MinuteCandle currentCandle = candle(
+                assetId,
+                executionAt,
+                "120",
+                "130"
+        );
+
+        given(simulationRunRepository.findBySimulationIdForUpdate(simulationId))
+                .willReturn(Optional.of(simulationRun));
+        given(simulationRun.getSimulationId()).willReturn(simulationId);
+        given(simulationRun.getStatus()).willReturn(SimulationRunStatus.RUNNING);
+        given(simulationRun.getStartedAt()).willReturn(evaluationCandleOpenAt);
+        given(simulationRun.getQuoteCurrency()).willReturn("KRW");
+        given(simulationRun.getRebalanceInterval()).willReturn(RebalancePeriod.DAILY);
+        given(simulationRun.getTimeframe()).willReturn(Timeframe.ONE_HOUR);
+        given(simulationRun.getStrategy()).willReturn(strategy);
+        given(simulationRun.getCashBalance()).willReturn(BigDecimal.valueOf(1_000));
+        given(simulationRun.getInitialCapital()).willReturn(BigDecimal.valueOf(1_000));
+        given(simulationRun.getFeeRate()).willReturn(BigDecimal.ZERO);
+        given(simulationRun.getSlippageBps()).willReturn(BigDecimal.ZERO);
+        given(simulationRun.beginCandle(executionAt)).willReturn(true);
+        given(strategy.getStrategyDsl()).willReturn(strategyDsl);
+        given(asset.getAssetId()).willReturn(assetId);
+        given(assetRepository.findAllAvailableAt(Exchange.UPBIT, "KRW", evaluationCandleOpenAt))
+                .willReturn(List.of(asset));
+        given(simulationPositionRepository.findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId))
+                .willReturn(List.of());
+        given(rebalanceSchedule.shouldRebalance(
+                RebalancePeriod.DAILY,
+                Timeframe.ONE_HOUR,
+                evaluationCandleOpenAt,
+                true
+        )).willReturn(true);
+        given(warmupCandleCountResolver.resolve(strategyDsl)).willReturn(1);
+        given(historicalCandleProvider.load(
+                any(),
+                eq(Timeframe.ONE_HOUR),
+                eq(evaluationCandleOpenAt),
+                eq(executionAt)
+        )).willReturn(Map.of(assetId, List.of(
+                completedCandle,
+                currentCandle
+        )));
+        given(strategyExecutionPipeline.execute(any(StrategyExecutionContext.class)))
+                .willReturn(new TargetPortfolio(
+                        List.of(new TargetAssetWeight(assetId, BigDecimal.ONE)),
+                        BigDecimal.ZERO
+                ));
+        given(marketPriceCache.snapshotAt(any(), eq(60), eq(executionAt)))
+                .willReturn(Optional.of(Map.of(assetId, BigDecimal.valueOf(120))));
+        given(rebalanceOrderPlanner.plan(any(), any(), any()))
+                .willReturn(List.of(new BacktestRebalanceOrder(
+                        assetId,
+                        TradeSide.BUY,
+                        BigDecimal.valueOf(100)
+                )));
+        given(portfolioOrderExecutionService.execute(any(), any(), any()))
+                .willReturn(new BacktestOrderExecutionResult(List.of(), List.of()));
+        given(executionPolicyProperties.minimumOrderAmount()).willReturn(BigDecimal.ONE);
+        given(executionPolicyProperties.priceTickSize()).willReturn(BigDecimal.ONE);
+        given(executionPolicyProperties.quantityStepSize()).willReturn(BigDecimal.ONE);
+        given(portfolioValuationCalculator.calculateTotalAssetValue(any(), any()))
+                .willReturn(BigDecimal.valueOf(1_000));
+        given(simulationEquityRepository.findMaximumTotalAssetValueBySimulationId(simulationId))
+                .willReturn(null);
+        given(simulationTradeRepository.countBySimulationRunSimulationId(simulationId))
+                .willReturn(0L);
+        given(simulationTradeRepository.sumFeeAmountBySimulationId(simulationId))
+                .willReturn(BigDecimal.ZERO);
+        given(simulationResultRepository.findById(simulationId)).willReturn(Optional.empty());
+
+        executionService.process(simulationId, evaluationCandleOpenAt, executionAt);
+
+        ArgumentCaptor<StrategyExecutionContext> contextCaptor = ArgumentCaptor.forClass(
+                StrategyExecutionContext.class
+        );
+        then(strategyExecutionPipeline).should().execute(contextCaptor.capture());
+        then(rebalanceOrderPlanner).should().plan(
+                any(),
+                any(),
+                eq(Map.of(assetId, BigDecimal.valueOf(110)))
+        );
+        then(portfolioOrderExecutionService).should().execute(
+                any(),
+                eq(List.of(new VirtualOrder(
+                        assetId,
+                        PositionSide.LONG,
+                        TradeSide.BUY,
+                        executionAt,
+                        executionAt,
+                        BigDecimal.valueOf(120),
+                        BigDecimal.valueOf(100)
+                ))),
+                any()
+        );
+
+        StrategyExecutionContext context = contextCaptor.getValue();
+        assertThat(context.evaluationAt()).isEqualTo(executionAt);
+        assertThat(context.candlesByAssetId().get(assetId))
+                .extracting(candle -> candle.getId().getOpenTime())
+                .containsExactly(evaluationCandleOpenAt);
     }
 
     @DisplayName("재시작 뒤 누락한 Candle은 다음 실시간 Candle보다 먼저 복구한다")
@@ -228,19 +365,19 @@ class SimulationCandleExecutionServiceTest {
         return new SimulationCandleExecutionService(
                 simulationRunRepository,
                 simulationPositionRepository,
-                mock(SimulationTradeRepository.class),
-                mock(SimulationEquityRepository.class),
-                mock(SimulationResultRepository.class),
-                mock(SimulationUniverseAssetRepository.class),
+                simulationTradeRepository,
+                simulationEquityRepository,
+                simulationResultRepository,
+                simulationUniverseAssetRepository,
                 assetRepository,
                 historicalCandleProvider,
                 warmupCandleCountResolver,
                 strategyExecutionPipeline,
-                mock(BacktestRebalanceOrderPlanner.class),
+                rebalanceOrderPlanner,
                 rebalanceSchedule,
-                mock(BacktestPortfolioOrderExecutionService.class),
-                mock(PortfolioValuationCalculator.class),
-                mock(BacktestExecutionPolicyProperties.class),
+                portfolioOrderExecutionService,
+                portfolioValuationCalculator,
+                executionPolicyProperties,
                 marketPriceCache,
                 transactionManager,
                 failureService
