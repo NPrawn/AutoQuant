@@ -140,6 +140,9 @@ public class SimulationRun extends BaseEntity {
     public boolean beginCandle(Instant candleAt) {
         ensureRunning();
         Objects.requireNonNull(candleAt);
+        if (candleAt.isBefore(startedAt)) {
+            return false;
+        }
         if (lastCandleAt != null && !candleAt.isAfter(lastCandleAt)) {
             return false;
         }

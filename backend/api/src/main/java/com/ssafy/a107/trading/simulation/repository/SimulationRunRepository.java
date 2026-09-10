@@ -1,8 +1,8 @@
 package com.ssafy.a107.trading.simulation.repository;
 
+import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import com.ssafy.a107.trading.simulation.domain.SimulationRun;
 import com.ssafy.a107.trading.simulation.domain.SimulationRunStatus;
-import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,9 +35,12 @@ public interface SimulationRunRepository extends JpaRepository<SimulationRun, UU
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = "strategy")
-    java.util.List<SimulationRun> findAllByStatusAndTimeframe(
-            SimulationRunStatus status,
-            Timeframe timeframe
+    @Query("select simulationRun.simulationId from SimulationRun simulationRun "
+            + "where simulationRun.status = :status and simulationRun.timeframe = :timeframe "
+            + "order by simulationRun.simulationId")
+    java.util.List<UUID> findSimulationIdsByStatusAndTimeframe(
+            @Param("status") SimulationRunStatus status,
+            @Param("timeframe") Timeframe timeframe,
+            Pageable pageable
     );
 }
