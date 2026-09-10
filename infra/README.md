@@ -1,5 +1,7 @@
 # infra
 
+운영 상태 점검: [운영 서비스 검증](OPERATIONS.md)
+
 > 로컬 개발용 Kafka · Redis · PostgreSQL.
 
 ## 명령
