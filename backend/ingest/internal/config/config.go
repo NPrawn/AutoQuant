@@ -46,6 +46,13 @@ type BackfillConfig struct {
 	HistoryRequestBudget int
 }
 
+// HealthcheckConfig contains the dependency settings required by cmd/healthcheck.
+type HealthcheckConfig struct {
+	DatabaseURL           string
+	KafkaBootstrapServers []string
+	RedisAddress          string
+}
+
 // Load reads and validates producer settings from environment variables.
 func Load() (Config, error) {
 	databaseURL, err := loadDatabaseURL()
@@ -174,6 +181,33 @@ func LoadBackfill() (BackfillConfig, error) {
 		UpbitRESTTimeout:     restTimeout,
 		HistoryFrom:          historyFrom,
 		HistoryRequestBudget: historyBudget,
+	}, nil
+}
+
+// LoadHealthcheck reads the database and Redis settings, and optionally Kafka
+// settings when the running ingest role depends on Kafka.
+func LoadHealthcheck() (HealthcheckConfig, error) {
+	databaseURL, err := loadDatabaseURL()
+	if err != nil {
+		return HealthcheckConfig{}, err
+	}
+	redisAddress, err := loadRedisAddress()
+	if err != nil {
+		return HealthcheckConfig{}, err
+	}
+
+	var kafkaBootstrapServers []string
+	if os.Getenv("KAFKA_BOOTSTRAP_SERVERS") != "" {
+		kafkaBootstrapServers, err = requiredEnvironmentList("KAFKA_BOOTSTRAP_SERVERS")
+		if err != nil {
+			return HealthcheckConfig{}, err
+		}
+	}
+
+	return HealthcheckConfig{
+		DatabaseURL:           databaseURL,
+		KafkaBootstrapServers: kafkaBootstrapServers,
+		RedisAddress:          redisAddress,
 	}, nil
 }
 
