@@ -53,7 +53,16 @@ for container in \
     fi
 done
 
-for container in a107-postgres a107-redis a107-kafka a107-rabbitmq a107-ai a107-frontend; do
+for container in \
+    a107-postgres \
+    a107-redis \
+    a107-kafka \
+    a107-rabbitmq \
+    a107-ai \
+    a107-frontend \
+    a107-ingest-producer \
+    a107-ingest-consumer \
+    a107-ingest-backfill; do
     for attempt in $(seq 1 12); do
         health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "$container")
 
