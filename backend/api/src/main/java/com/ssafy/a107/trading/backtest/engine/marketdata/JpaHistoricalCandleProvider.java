@@ -2,7 +2,7 @@ package com.ssafy.a107.trading.backtest.engine.marketdata;
 
 import com.ssafy.a107.candle.domain.MinuteCandle;
 import com.ssafy.a107.strategy.domain.dsl.Timeframe;
-import com.ssafy.a107.trading.backtest.repository.MinuteCandleRepository;
+import com.ssafy.a107.trading.backtest.repository.BacktestMinuteCandleRepository;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
@@ -11,10 +11,10 @@ import java.util.*;
 @Component
 public class JpaHistoricalCandleProvider implements HistoricalCandleProvider {
 
-    private final MinuteCandleRepository minuteCandleRepository;
+    private final BacktestMinuteCandleRepository minuteCandleRepository;
 
     public JpaHistoricalCandleProvider(
-            MinuteCandleRepository minuteCandleRepository
+            BacktestMinuteCandleRepository minuteCandleRepository
     ) {
         this.minuteCandleRepository = minuteCandleRepository;
     }
