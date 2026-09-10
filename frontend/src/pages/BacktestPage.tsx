@@ -3,16 +3,19 @@ import { Link, useLocation, useSearchParams } from 'react-router'
 
 import { routes } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
+import { Pager } from '../components/Pager'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { BacktestResult } from '../backtest/BacktestResult'
 import { BacktestRunForm } from '../backtest/BacktestRunForm'
-import { statusMeta } from '../backtest/labels'
-import { useBacktestRun, useCreateBacktestRun } from '../backtest/queries'
+import { formatKrw, statusMeta } from '../backtest/labels'
+import { useBacktestRun, useBacktestRuns, useCreateBacktestRun } from '../backtest/queries'
 import { describeFailedRun, describeRunError } from '../backtest/runErrorMessage'
 import { createRunForm, setStrategyId, toCreateRequest, validateRunForm } from '../backtest/runForm'
+import { RunHistoryTable } from '../backtest/RunHistoryTable'
 import { StrategyPicker } from '../backtest/StrategyPicker'
 import { readBacktestEntry } from '../strategy/backtestEntry'
 import { useStrategies } from '../strategy/queries'
+import type { Strategy } from '../strategy/types'
 
 /* 대기가 이 시간을 넘기면 워커가 집어가지 못하고 있다는 뜻이라 사용자에게 알린다. */
 const longQueueWarningMs = 30_000
@@ -119,9 +122,51 @@ export function BacktestPage() {
               />
             </div>
           </div>
+
+          {runId === null && !create.isError && (
+            <RecentRuns strategies={strategies.data} onOpen={(backtestId) => setSearchParams({ run: backtestId })} />
+          )}
         </>
       )}
     </section>
+  )
+}
+
+type RecentRunsProps = {
+  strategies: Strategy[]
+  onOpen: (backtestId: string) => void
+}
+
+/*
+ * 실행 전 상태 아래의 최근 실행 이력. 주소의 run 파라미터를 잃어도 여기서 결과로 돌아간다.
+ * 이력이 없으면 안내 패널만 남기고 표를 그리지 않는다.
+ */
+function RecentRuns({ strategies, onOpen }: RecentRunsProps) {
+  const [page, setPage] = useState(0)
+  const runs = useBacktestRuns(page)
+  const strategyNames = new Map(strategies.map((strategy) => [strategy.id, strategy.name]))
+
+  if (runs.isPending) {
+    return <LoadingState label="실행 이력을 불러오는 중…" />
+  }
+  if (runs.isError) {
+    return <ErrorState title="실행 이력을 불러오지 못했습니다" error={runs.error} onRetry={() => runs.refetch()} />
+  }
+  if (runs.data.totalElements === 0) {
+    return null
+  }
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div className="sec-head">
+        <div>
+          <div className="sec-title">최근 실행</div>
+          <div className="sec-sub">전체 {formatKrw(runs.data.totalElements)}건 · 행을 누르면 그 결과를 다시 봅니다</div>
+        </div>
+      </div>
+      <RunHistoryTable runs={runs.data.content} strategyNames={strategyNames} onOpen={onOpen} />
+      <Pager page={page} totalPages={runs.data.totalPages} disabled={runs.isPlaceholderData} onPageChange={setPage} />
+    </div>
   )
 }
 

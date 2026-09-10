@@ -110,8 +110,10 @@ RequireAuth → GET /api/members/me → 200 이면 셸 렌더, 401 이면 /login
 ## 전략 목록·상세
 
 ```text
-/strategies              GET /api/strategies → 표. 상태·수익률·낙폭은 백테스트 결과 API 가 없어 초안·빈 값
-/strategies/:id[/tab]    GET /api/strategies/:id → 성과(빈 상태) · 전략 구성(DSL 문장) · 전략 코드(JSON)
+/strategies              GET /api/strategies → 표. 상태·수익률·낙폭은 전략별 요약 API 가 없어 초안·빈 값
+/strategies/:id[/tab]    GET /api/strategies/:id → 성과 · 전략 구성(DSL 문장) · 전략 코드(JSON)
+성과 탭                  GET /api/backtests 전체를 받아 strategyId 로 거른다 → 최근 완료 실행의 /result KPI + 실행 이력 표
+                         완료 실행이 없으면 빈 상태, 행을 누르면 /backtest?run={id}
 /strategies/:id/edit     같은 조회로 초안을 만들어 StrategyEditor 를 수정 모드로. 저장은 새 전략 생성
 삭제                     ConfirmDialog → DELETE /api/strategies/:id → 목록
 ```
@@ -122,11 +124,14 @@ RequireAuth → GET /api/members/me → 200 이면 셸 렌더, 401 이면 /login
 
 ```text
 /backtest                POST /api/backtests → 202, backtestId 를 주소의 run 파라미터에 둔다
+                         실행 전 상태 아래에 GET /api/backtests 최근 실행 이력 표(20건 페이지), 행을 누르면 run 파라미터를 채운다
 /backtest?run={id}       GET /api/backtests/{id} 2초 폴링, QUEUED → RUNNING → COMPLETED 또는 FAILED
 COMPLETED                /result 지표, /equity 자산 곡선, /trades 거래 내역
 ```
 
-실행 식별자가 주소에 있어 화면을 떠났다 돌아오거나 새로고침해도 진행 중인 계산을 이어서 본다. 폴링은 다른 탭을 보는 동안에도 이어진다.
+실행 식별자가 주소에 있어 화면을 떠났다 돌아오거나 새로고침해도 진행 중인 계산을 이어서 본다. 폴링은 다른 탭을 보는 동안에도 이어진다. 주소를 잃어도 이력 표에서 결과로 돌아갈 수 있다. 이력은 진행 중인 실행이 있을 때만 5초마다 갱신하고, 새 실행을 접수하면 목록 캐시를 무효화한다.
+
+목록 응답에는 전략 이름이 없어 전략 목록으로 맞추고, 지워진 전략은 식별자로 보인다. 전략별 필터도 없어 성과 탭은 앞에서부터 최대 5페이지(500건)를 받아 화면이 거른다. 서버 필터가 생기면 `src/backtest/history.ts` 호출처만 바뀐다.
 
 봉 주기와 리밸런싱 주기는 요청 필드가 아니다. 백엔드가 전략 DSL 에서 가져가므로 화면은 읽기 전용으로 보여 준다. 기준 통화, 수수료율, 슬리피지, 체결가 규칙은 서비스 고정값이다. 엔진과 시장 데이터 버전은 서버가 아는 값인데 요청 필드로 열려 있어 상수로 보내고 있다.
 

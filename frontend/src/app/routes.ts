@@ -29,5 +29,7 @@ export const to = {
   strategyDetail: (strategyId: string, tab?: StrategyDetailTab) =>
     tab ? `/strategies/${strategyId}/${tab}` : `/strategies/${strategyId}`,
   strategyEdit: (strategyId: string) => `/strategies/${strategyId}/edit`,
+  /* 백테스트 결과는 주소의 run 파라미터가 가리킨다. 이력에서 결과로 갈 때 쓴다. */
+  backtestRun: (backtestId: string) => `${routes.backtest}?run=${encodeURIComponent(backtestId)}`,
   simulationLive: (simulationId: string) => `/simulations/${simulationId}`,
 } as const

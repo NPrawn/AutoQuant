@@ -4,8 +4,9 @@ import { to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/StateBlock'
 import { EquityChart } from './EquityChart'
-import { blank, formatDate, formatDrawdown, formatKrw, formatRate, formatRatio, trendClass } from './labels'
+import { blank, formatDate, formatRate } from './labels'
 import { useBacktestEquityCurve, useBacktestResult } from './queries'
+import { ResultKpis } from './ResultKpis'
 import { TradeTable } from './TradeTable'
 import type { BacktestRun, EquityPoint } from './types'
 
@@ -37,9 +38,7 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
   }
 
   const metrics = result.data
-  const profit = metrics.finalAssetValue - run.initialCapital
   const points = equity.data ?? []
-  const drawdownAt = peakDrawdownAt(points)
 
   return (
     <div className="bt-res on">
@@ -48,38 +47,7 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
         <b>{strategyName}</b>
       </div>
 
-      <div className="bt-result-kpis">
-        <div className="live-kpi">
-          <span>최종 평가자산</span>
-          <strong className="mono">{formatKrw(metrics.finalAssetValue)}</strong>
-          <small>KRW</small>
-        </div>
-        <div className="live-kpi">
-          <span>누적 평가손익</span>
-          <strong className={`mono ${trendClass(profit)}`}>
-            {profit > 0 ? '+' : ''}
-            {formatKrw(profit)}
-          </strong>
-          <small>{formatRate(metrics.cumulativeReturn, { signed: true })}</small>
-        </div>
-        <div className="live-kpi">
-          <span>최대 낙폭</span>
-          <strong className="mono dd-val">{formatDrawdown(metrics.mdd)}</strong>
-          <small>{drawdownAt === null ? '기간 중 최대' : formatDate(drawdownAt)}</small>
-        </div>
-        <div className="live-kpi">
-          <span>Sharpe</span>
-          <strong className="mono">{formatRatio(metrics.sharpeRatio)}</strong>
-          <small>연 변동성 {formatRate(metrics.volatility)}</small>
-        </div>
-        <div className="live-kpi">
-          <span>전체 체결</span>
-          <strong className="mono">{formatKrw(metrics.tradeCount)}</strong>
-          <small>
-            승률 {formatRate(metrics.winRate)} · 수수료 {formatKrw(metrics.totalFee)} KRW
-          </small>
-        </div>
-      </div>
+      <ResultKpis metrics={metrics} initialCapital={run.initialCapital} drawdownAt={peakDrawdownAt(points)} />
 
       <section className="card card--lead perf-stack">
         <div className="perf-head">

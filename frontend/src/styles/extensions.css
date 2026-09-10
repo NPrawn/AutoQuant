@@ -155,8 +155,8 @@
   cursor: default;
 }
 
-/* 거래 내역 페이지 이동. 목업에는 표 페이지가 없다. */
-.backtest-pager {
+/* 표 아래 페이지 이동. 목업에는 표 페이지가 없다. 거래 내역과 실행 이력이 같이 쓴다. */
+.pager {
   display: flex;
   align-items: center;
   justify-content: flex-end;
