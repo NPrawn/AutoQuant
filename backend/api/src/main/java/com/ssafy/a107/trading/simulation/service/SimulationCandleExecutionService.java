@@ -62,6 +62,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -183,10 +184,9 @@ public class SimulationCandleExecutionService {
     private boolean processInTransaction(UUID simulationId, Instant evaluationCandleOpenAt, Instant executionAt) {
         for (int attempt = 1; attempt <= MAX_TRANSIENT_RETRY_ATTEMPTS; attempt++) {
             try {
-                transactionTemplate.executeWithoutResult(
+                return Boolean.TRUE.equals(transactionTemplate.execute(
                         transactionStatus -> process(simulationId, evaluationCandleOpenAt, executionAt)
-                );
-                return false;
+                ));
             } catch (RuntimeException exception) {
                 if (!isTransient(exception)) {
                     log.error("Simulation execution failed: simulationId={}, candleAt={}, error={}",
@@ -207,47 +207,103 @@ public class SimulationCandleExecutionService {
         return true;
     }
 
-    public void process(UUID simulationId, Instant evaluationCandleOpenAt, Instant executionAt) {
+    public boolean process(UUID simulationId, Instant evaluationCandleOpenAt, Instant executionAt) {
         SimulationRun simulationRun = simulationRunRepository.findBySimulationIdForUpdate(simulationId).orElse(null);
-        if (simulationRun == null || simulationRun.getStatus() != SimulationRunStatus.RUNNING) return;
-        if (executionAt.isBefore(simulationRun.getStartedAt())) return;
+        if (simulationRun == null || simulationRun.getStatus() != SimulationRunStatus.RUNNING) return false;
+        if (executionAt.isBefore(simulationRun.getStartedAt())) return false;
+        if (recoverMissedCandles(simulationRun, executionAt)) return true;
+        return processCandle(
+                simulationRun,
+                evaluationCandleOpenAt,
+                executionAt,
+                assetIds -> marketPriceCache.snapshotAt(
+                        assetIds,
+                        simulationRun.getTimeframe().getIntervalMinutes(),
+                        executionAt
+                )
+        ) == CandleProcessResult.NOT_READY;
+    }
+
+    private boolean recoverMissedCandles(SimulationRun simulationRun, Instant currentExecutionAt) {
+        Instant lastCandleAt = simulationRun.getLastCandleAt();
+        if (lastCandleAt == null) return false;
+
+        Duration candleDuration = candleDuration(simulationRun.getTimeframe());
+        Instant recoveryExecutionAt = firstRecoveryCandleAt(lastCandleAt, simulationRun.getStartedAt(), candleDuration);
+        while (recoveryExecutionAt.isBefore(currentExecutionAt)) {
+            Instant recoveryCandleAt = recoveryExecutionAt;
+            Instant recoveryEvaluationCandleOpenAt = recoveryCandleAt.minus(candleDuration);
+            CandleProcessResult result = processCandle(
+                    simulationRun,
+                    recoveryEvaluationCandleOpenAt,
+                    recoveryCandleAt,
+                    assetIds -> loadOpenPrices(
+                            assetIds,
+                            simulationRun.getTimeframe(),
+                            recoveryCandleAt,
+                            recoveryCandleAt.plus(candleDuration)
+                    )
+            );
+            if (result == CandleProcessResult.NOT_READY) return true;
+            recoveryExecutionAt = recoveryExecutionAt.plus(candleDuration);
+        }
+        return false;
+    }
+
+    private Instant firstRecoveryCandleAt(Instant lastCandleAt, Instant startedAt, Duration candleDuration) {
+        Instant recoveryExecutionAt = lastCandleAt.plus(candleDuration);
+        if (!recoveryExecutionAt.isBefore(startedAt)) return recoveryExecutionAt;
+
+        long millisecondsToSkip = Duration.between(recoveryExecutionAt, startedAt).toMillis();
+        long candleDurationMillis = candleDuration.toMillis();
+        long skippedCandleCount = (millisecondsToSkip + candleDurationMillis - 1) / candleDurationMillis;
+        return recoveryExecutionAt.plus(candleDuration.multipliedBy(skippedCandleCount));
+    }
+
+    private CandleProcessResult processCandle(
+            SimulationRun simulationRun,
+            Instant evaluationCandleOpenAt,
+            Instant executionAt,
+            Function<Collection<UUID>, java.util.Optional<Map<UUID, BigDecimal>>> executionPriceLoader
+    ) {
         List<Asset> universe = assetRepository.findAllAvailableAt(
                 Exchange.UPBIT, simulationRun.getQuoteCurrency(), evaluationCandleOpenAt
         );
-            List<SimulationPosition> persistedPositions = simulationPositionRepository
-                    .findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId);
-            if (!rebalanceSchedule.shouldRebalance(
-                    simulationRun.getRebalanceInterval(),
-                    simulationRun.getTimeframe(),
-                    evaluationCandleOpenAt,
-                    simulationRun.getLastRebalanceAt() == null
-            )) {
-                simulationRun.beginCandle(executionAt);
-                return;
-            }
+        List<SimulationPosition> persistedPositions = simulationPositionRepository
+                .findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationRun.getSimulationId());
+        if (!rebalanceSchedule.shouldRebalance(
+                simulationRun.getRebalanceInterval(),
+                simulationRun.getTimeframe(),
+                evaluationCandleOpenAt,
+                simulationRun.getLastRebalanceAt() == null
+        )) {
+            return simulationRun.beginCandle(executionAt)
+                    ? CandleProcessResult.ADVANCED
+                    : CandleProcessResult.IGNORED;
+        }
 
-            TargetPortfolio targetPortfolio = executeStrategy(simulationRun, universe, executionAt);
-            Map<UUID, Asset> assetsById = assetsById(universe, persistedPositions);
-            Set<UUID> pricedAssetIds = new java.util.HashSet<>(targetPortfolio.assetWeights().stream()
-                    .map(targetAssetWeight -> targetAssetWeight.assetId())
-                    .toList());
-            persistedPositions.forEach(position -> pricedAssetIds.add(position.getAsset().getAssetId()));
-            Map<UUID, BigDecimal> evaluationPrices = loadClosePrices(
-                    pricedAssetIds, simulationRun.getTimeframe(), evaluationCandleOpenAt, executionAt
-            ).orElse(null);
-            Map<UUID, BigDecimal> executionPrices = marketPriceCache
-                    .snapshotAt(pricedAssetIds, simulationRun.getTimeframe().getIntervalMinutes(), executionAt)
-                    .orElse(null);
-            if (evaluationPrices == null || executionPrices == null || !simulationRun.beginCandle(executionAt)) return;
-            BacktestPortfolio portfolio = restorePortfolio(simulationRun, persistedPositions);
-            List<VirtualOrder> orders = rebalanceOrderPlanner.plan(portfolio, targetPortfolio, evaluationPrices).stream()
-                    .map(order -> virtualOrder(order, executionAt, executionPrices))
-                    .toList();
-            BacktestOrderExecutionResult executionResult = portfolioOrderExecutionService.execute(
-                    portfolio, orders, executionPolicy(simulationRun)
-            );
+        TargetPortfolio targetPortfolio = executeStrategy(simulationRun, universe, executionAt);
+        Map<UUID, Asset> assetsById = assetsById(universe, persistedPositions);
+        Set<UUID> pricedAssetIds = new java.util.HashSet<>(targetPortfolio.assetWeights().stream()
+                .map(targetAssetWeight -> targetAssetWeight.assetId())
+                .toList());
+        persistedPositions.forEach(position -> pricedAssetIds.add(position.getAsset().getAssetId()));
+        Map<UUID, BigDecimal> evaluationPrices = loadClosePrices(
+                pricedAssetIds, simulationRun.getTimeframe(), evaluationCandleOpenAt, executionAt
+        ).orElse(null);
+        Map<UUID, BigDecimal> executionPrices = executionPriceLoader.apply(pricedAssetIds).orElse(null);
+        if (evaluationPrices == null || executionPrices == null) return CandleProcessResult.NOT_READY;
+        if (!simulationRun.beginCandle(executionAt)) return CandleProcessResult.IGNORED;
+        BacktestPortfolio portfolio = restorePortfolio(simulationRun, persistedPositions);
+        List<VirtualOrder> orders = rebalanceOrderPlanner.plan(portfolio, targetPortfolio, evaluationPrices).stream()
+                .map(order -> virtualOrder(order, executionAt, executionPrices))
+                .toList();
+        BacktestOrderExecutionResult executionResult = portfolioOrderExecutionService.execute(
+                portfolio, orders, executionPolicy(simulationRun)
+        );
 
         persistLedger(simulationRun, executionAt, universe, targetPortfolio, assetsById, portfolio, executionResult, executionPrices);
+        return CandleProcessResult.ADVANCED;
     }
 
     private java.util.Optional<Map<UUID, BigDecimal>> loadClosePrices(
@@ -270,6 +326,28 @@ public class SimulationCandleExecutionService {
             closePrices.put(assetId, candle.getClosePrice());
         }
         return java.util.Optional.of(Map.copyOf(closePrices));
+    }
+
+    private java.util.Optional<Map<UUID, BigDecimal>> loadOpenPrices(
+            Collection<UUID> assetIds,
+            Timeframe timeframe,
+            Instant executionCandleOpenAt,
+            Instant toExclusive
+    ) {
+        if (assetIds.isEmpty()) return java.util.Optional.of(Map.of());
+        Map<UUID, List<MinuteCandle>> candlesByAssetId = historicalCandleProvider.load(
+                assetIds, timeframe, executionCandleOpenAt, toExclusive
+        );
+        Map<UUID, BigDecimal> openPrices = new HashMap<>();
+        for (UUID assetId : assetIds) {
+            MinuteCandle candle = candlesByAssetId.getOrDefault(assetId, List.of()).stream()
+                    .filter(candidate -> candidate.getId().getOpenTime().equals(executionCandleOpenAt))
+                    .findFirst()
+                    .orElse(null);
+            if (candle == null) return java.util.Optional.empty();
+            openPrices.put(assetId, candle.getOpenPrice());
+        }
+        return java.util.Optional.of(Map.copyOf(openPrices));
     }
 
     private TargetPortfolio executeStrategy(SimulationRun simulationRun, List<Asset> universe, Instant candleAt) {
@@ -402,5 +480,11 @@ public class SimulationCandleExecutionService {
     }
 
     private record RunLookup(List<UUID> simulationIds, boolean retryRequired) {
+    }
+
+    private enum CandleProcessResult {
+        ADVANCED,
+        IGNORED,
+        NOT_READY
     }
 }
