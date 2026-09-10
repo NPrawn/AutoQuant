@@ -44,8 +44,9 @@ src/
 │   └── layout/           AppShell, Sidebar, Topbar, AccountMenu, LogoutConfirmModal
 ├── api/                  request 함수, ApiError
 ├── auth/                 인증 API, 회원 모델, useCurrentMember, RequireAuth, GuestOnly, 세션 만료 처리
-├── backtest/             백테스트 API·상태 폴링, 실행 조건(순수 함수), 결과·자산 곡선·거래 내역
-├── components/           LoadingState, EmptyState, ErrorState, ConfirmDialog
+├── backtest/             백테스트 API·상태 폴링, 실행 조건·이력 선별(순수 함수), 결과 KPI·거래 내역·실행 이력 표
+├── simulation/           모의투자 API·쿼리, 시작 조건·보유 종목 평가(순수 함수), 현재가 스트림, 카드·모달·표 부품
+├── components/           LoadingState, EmptyState, ErrorState, ConfirmDialog, Pager, EquityChart
 ├── strategy/             전략 DSL 계약 타입, 표시 문구, 빌더 편집 상태(순수 함수), 빌더 진입 상태
 │   ├── builder/          StrategyEditor(빌더 본체)와 블록 컴포넌트(조건·순위·재선정·요약 카드)
 │   └── assistant/        전략봇 패널과 대화 상태
@@ -136,6 +137,22 @@ COMPLETED                /result 지표, /equity 자산 곡선, /trades 거래 �
 봉 주기와 리밸런싱 주기는 요청 필드가 아니다. 백엔드가 전략 DSL 에서 가져가므로 화면은 읽기 전용으로 보여 준다. 기준 통화, 수수료율, 슬리피지, 체결가 규칙은 서비스 고정값이다. 엔진과 시장 데이터 버전은 서버가 아는 값인데 요청 필드로 열려 있어 상수로 보내고 있다.
 
 자산 곡선은 페이지로 오므로 앞에서부터 최대 20페이지까지만 이어 받는다. 목업 12 의 종목별 기여도와 비용 비교 카드는 응답에 없어 거래 내역 표로 대체했다.
+
+## 모의투자
+
+```text
+/simulations             GET /api/simulations 실행 카드(12건 페이지). 카드마다 /result 평가자산·수익률, /positions 보유 종목
+시작                     패널에서 전략·초기 모의자산 → ConfirmDialog 동의 → POST /api/simulations → POST …/{id}/start → /simulations/{id}
+/simulations/:id         GET /api/simulations/{id} RUNNING 이면 15초 폴링. /positions, /equity, /result, /trades 도 같은 주기
+                         정지 POST …/stop, 재시작 POST …/start (STOPPED·CREATED 에서만). 409 는 상태가 낡았다는 뜻이라 새로 고침 안내
+STOPPED · FAILED         목업 25 의 상태 블록. FAILED 는 failureReason 을 그대로 보이고 같은 전략으로 새로 시작할 수 있다
+```
+
+보유 종목의 현재가는 `/ws` 체결 스트림(`src/simulation/priceStream.ts`)에서 온다. 종목마다 체결 토픽만 연결 하나로 구독하고 파싱은 차트의 `market/model.ts`를 그대로 쓴다. 현재가가 없는 종목은 평가액과 수익률을 비우고, 하나라도 비면 총 평가자산은 서버가 준 마지막 봉 기준 `result.assetValue`로 대신한다. 반쯤 맞는 숫자를 보이지 않기 위해서다.
+
+종목은 응답에 `assetId`만 있어 `GET /api/assets`로 마켓 코드와 이름을 맞춘다(`src/simulation/assetLookup.ts`). 생성과 시작은 한 뮤테이션으로 이어 부르며, 시작이 409 로 실패하면 CREATED 실행이 목록에 "시작 전"으로 남아 거기서 시작할 수 있다.
+
+목업 18 의 랭킹 보드, 전략 활동 피드, 종목 캔들 차트와 목업 16 의 전략 간 최근 체결 표는 대응 API 가 없어 두지 않았다. 리밸런싱 카운트다운은 서버가 다음 재선정 시각을 주지 않아 마지막 재선정 시각과 주기로 대신한다.
 ## 백엔드 호출
 
 ```
