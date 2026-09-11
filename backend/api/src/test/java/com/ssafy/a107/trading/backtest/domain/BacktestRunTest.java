@@ -43,6 +43,7 @@ class BacktestRunTest {
         assertThat(backtestRun.getQuoteCurrency()).isEqualTo("KRW");
         assertThat(backtestRun.getInitialCapital()).isEqualByComparingTo("1000000");
         assertThat(backtestRun.getQueuedAt()).isEqualTo(QUEUED_AT);
+        assertThat(backtestRun.getFailureCode()).isNull();
     }
 
     @DisplayName("QUEUED 백테스트 실행은 RUNNING으로 전이한다")
@@ -72,9 +73,13 @@ class BacktestRunTest {
     void failBacktestRun() {
         BacktestRun backtestRun = runningBacktestRun();
 
-        backtestRun.fail("시장 데이터가 부족합니다.");
+        backtestRun.fail(
+                BacktestFailureCode.INSUFFICIENT_CANDLES,
+                "시장 데이터가 부족합니다."
+        );
 
         assertThat(backtestRun.getStatus()).isEqualTo(BacktestRunStatus.FAILED);
+        assertThat(backtestRun.getFailureCode()).isEqualTo(BacktestFailureCode.INSUFFICIENT_CANDLES);
         assertThat(backtestRun.getFailureReason()).isEqualTo("시장 데이터가 부족합니다.");
     }
 
@@ -85,7 +90,10 @@ class BacktestRunTest {
         backtestRun.complete(COMPLETED_AT);
 
         assertThatIllegalStateException()
-                .isThrownBy(() -> backtestRun.fail("실패 원인"));
+                .isThrownBy(() -> backtestRun.fail(
+                        BacktestFailureCode.ENGINE_ERROR,
+                        "실패 원인"
+                ));
     }
 
     @DisplayName("백테스트 기간은 종료 시각이 시작 시각보다 이후여야 한다")

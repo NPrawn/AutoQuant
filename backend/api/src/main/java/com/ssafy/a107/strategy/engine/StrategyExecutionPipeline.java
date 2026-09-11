@@ -223,7 +223,7 @@ public class StrategyExecutionPipeline {
                     .toList();
 
             if (!missingFactors.isEmpty()) {
-                throw new StrategyExecutionException(
+                throw new InsufficientCandleDataException(
                         "Insufficient candle data for asset "
                                 + assetFactorValueEntry.getKey()
                                 + ": "

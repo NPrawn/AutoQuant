@@ -7,6 +7,7 @@ import com.ssafy.a107.strategy.engine.StrategyExecutionPipeline;
 import com.ssafy.a107.strategy.engine.portfolio.TargetAssetWeight;
 import com.ssafy.a107.strategy.engine.portfolio.TargetPortfolio;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
+import com.ssafy.a107.trading.backtest.domain.BacktestFailureCode;
 import com.ssafy.a107.trading.backtest.domain.BacktestUniverseAsset;
 import com.ssafy.a107.trading.backtest.domain.BacktestUniverseAssetId;
 import com.ssafy.a107.trading.backtest.engine.execution.BacktestExecutionPolicyResolver;
@@ -107,7 +108,10 @@ public class DefaultBacktestEngine implements BacktestEngine {
                 .resolveCandidates(backtestRun);
         Map<UUID, Asset> assets = assetsById(candidateUniverse);
         if (assets.isEmpty()) {
-            throw new IllegalArgumentException("Backtest universe must not be empty");
+            throw new BacktestExecutionException(
+                    BacktestFailureCode.EMPTY_UNIVERSE,
+                    "Backtest universe must not be empty"
+            );
         }
 
         BacktestCandleWindow candleWindow = backtestCandleWindowProvider.load(
@@ -118,7 +122,10 @@ public class DefaultBacktestEngine implements BacktestEngine {
                 candleWindow
         );
         if (candleTimeline.evaluationCandleOpenTimes().isEmpty()) {
-            throw new IllegalArgumentException("Backtest evaluation candles must not be empty");
+            throw new BacktestExecutionException(
+                    BacktestFailureCode.INSUFFICIENT_CANDLES,
+                    "Backtest evaluation candles must not be empty"
+            );
         }
 
         BacktestPortfolio portfolio = new BacktestPortfolio(

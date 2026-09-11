@@ -1,7 +1,10 @@
 package com.ssafy.a107.trading.backtest.service;
 
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
+import com.ssafy.a107.trading.backtest.domain.BacktestFailureCode;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
+import com.ssafy.a107.strategy.engine.InsufficientCandleDataException;
+import com.ssafy.a107.trading.backtest.engine.BacktestExecutionException;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -36,8 +39,22 @@ public class BacktestJobFailureService {
             return false;
         }
 
-        backtestRun.fail(failureReason(throwable));
+        backtestRun.fail(failureCode(throwable), failureReason(throwable));
         return true;
+    }
+
+    private BacktestFailureCode failureCode(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof BacktestExecutionException backtestExecutionException) {
+                return backtestExecutionException.getFailureCode();
+            }
+            if (current instanceof InsufficientCandleDataException) {
+                return BacktestFailureCode.INSUFFICIENT_CANDLES;
+            }
+            current = current.getCause();
+        }
+        return BacktestFailureCode.ENGINE_ERROR;
     }
 
     private String failureReason(Throwable throwable) {
