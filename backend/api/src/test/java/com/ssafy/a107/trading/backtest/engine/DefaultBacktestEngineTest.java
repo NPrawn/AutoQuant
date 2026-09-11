@@ -118,7 +118,7 @@ class DefaultBacktestEngineTest {
                 any(Instant.class),
                 any()
         )).thenReturn(mock(StrategyExecutionContext.class));
-        when(strategyExecutionPipeline.execute(any(StrategyExecutionContext.class)))
+        when(strategyExecutionPipeline.executeExcludingInsufficientCandleAssets(any(StrategyExecutionContext.class)))
                 .thenReturn(new TargetPortfolio(List.of(), BigDecimal.ONE));
         when(rebalanceSchedule.shouldRebalance(
                 any(), any(), any(), anyBoolean()

@@ -287,7 +287,7 @@ public class DefaultBacktestEngine implements BacktestEngine {
                         .toList()
         );
 
-        return strategyExecutionPipeline.execute(context);
+        return strategyExecutionPipeline.executeExcludingInsufficientCandleAssets(context);
     }
 
     private List<BacktestUniverseAsset> snapshotUniverse(
