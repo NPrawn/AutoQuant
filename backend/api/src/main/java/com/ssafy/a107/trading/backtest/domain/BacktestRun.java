@@ -113,6 +113,10 @@ public class BacktestRun extends BaseEntity {
     @Column(name = "failure_reason", columnDefinition = "TEXT")
     private String failureReason;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "failure_code", length = 30)
+    private BacktestFailureCode failureCode;
+
     protected BacktestRun() {
     }
 
@@ -161,13 +165,17 @@ public class BacktestRun extends BaseEntity {
         this.status = BacktestRunStatus.COMPLETED;
     }
 
-    public void fail(String failureReason) {
+    public void fail(
+            BacktestFailureCode failureCode,
+            String failureReason
+    ) {
         if (status != BacktestRunStatus.QUEUED
                 && status != BacktestRunStatus.RUNNING) {
             throw new IllegalStateException(
                     "Backtest run must be queued or running"
             );
         }
+        this.failureCode = Objects.requireNonNull(failureCode);
         this.failureReason = requireNonBlank(failureReason, Integer.MAX_VALUE, "Failure reason");
         this.status = BacktestRunStatus.FAILED;
     }
@@ -314,5 +322,9 @@ public class BacktestRun extends BaseEntity {
 
     public String getFailureReason() {
         return failureReason;
+    }
+
+    public BacktestFailureCode getFailureCode() {
+        return failureCode;
     }
 }

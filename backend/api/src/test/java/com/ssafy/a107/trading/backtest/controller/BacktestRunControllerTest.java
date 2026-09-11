@@ -463,7 +463,8 @@ class BacktestRunControllerTest {
                 fieldWithPath("marketDataVersion").type(JsonFieldType.STRING).description("시장 데이터 버전"),
                 fieldWithPath("queuedAt").type(JsonFieldType.STRING).description("대기 등록 시각"),
                 fieldWithPath("startedAt").type(JsonFieldType.STRING).description("실행 시작 시각").optional(),
-                fieldWithPath("completedAt").type(JsonFieldType.STRING).description("실행 완료 시각").optional()
+                fieldWithPath("completedAt").type(JsonFieldType.STRING).description("실행 완료 시각").optional(),
+                fieldWithPath("failureCode").type(JsonFieldType.STRING).description("실패 분류 코드").optional()
         };
     }
 
@@ -487,6 +488,7 @@ class BacktestRunControllerTest {
                 fieldWithPath("content[].queuedAt").type(JsonFieldType.STRING).description("대기 등록 시각"),
                 fieldWithPath("content[].startedAt").type(JsonFieldType.STRING).description("실행 시작 시각").optional(),
                 fieldWithPath("content[].completedAt").type(JsonFieldType.STRING).description("실행 완료 시각").optional(),
+                fieldWithPath("content[].failureCode").type(JsonFieldType.STRING).description("실패 분류 코드").optional(),
                 fieldWithPath("page").type(JsonFieldType.NUMBER).description("현재 페이지 번호"),
                 fieldWithPath("size").type(JsonFieldType.NUMBER).description("페이지 크기"),
                 fieldWithPath("totalElements").type(JsonFieldType.NUMBER).description("전체 실행 수"),

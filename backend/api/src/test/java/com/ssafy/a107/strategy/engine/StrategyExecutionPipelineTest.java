@@ -130,6 +130,57 @@ class StrategyExecutionPipelineTest {
     }
 
     @Test
+    @DisplayName("백테스트는 캔들이 부족한 종목을 제외하고 계산 가능한 종목으로 실행한다")
+    void excludeAssetsWithInsufficientCandlesForBacktest() {
+        UUID availableAssetId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID insufficientAssetId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
+        TargetPortfolio targetPortfolio = pipeline.executeExcludingInsufficientCandleAssets(
+                strategyExecutionContext(
+                        strategyDsl(1),
+                        Map.of(
+                                availableAssetId, candles(availableAssetId, "100", "110", "121"),
+                                insufficientAssetId, candles(insufficientAssetId, "100")
+                        )
+                )
+        );
+
+        assertThat(targetPortfolio.assetWeights())
+                .extracting(weight -> weight.assetId())
+                .containsExactly(availableAssetId);
+    }
+
+    @Test
+    @DisplayName("백테스트 후보 전체의 캔들이 부족하면 실행 오류를 알린다")
+    void rejectBacktestWhenAllCandidateAssetsHaveInsufficientCandles() {
+        UUID firstAssetId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID secondAssetId = UUID.fromString("00000000-0000-0000-0000-000000000002");
+
+        assertThatThrownBy(() -> pipeline.executeExcludingInsufficientCandleAssets(
+                strategyExecutionContext(
+                        strategyDsl(1),
+                        Map.of(
+                                firstAssetId, candles(firstAssetId, "100"),
+                                secondAssetId, candles(secondAssetId, "100")
+                        )
+                )
+        ))
+                .isInstanceOf(InsufficientCandleDataException.class)
+                .hasMessage("Insufficient candle data for all candidate assets");
+    }
+
+    @Test
+    @DisplayName("백테스트 리밸런싱 후보가 없으면 현금만 보유한다")
+    void returnCashOnlyPortfolioWhenBacktestUniverseIsEmpty() {
+        TargetPortfolio targetPortfolio = pipeline.executeExcludingInsufficientCandleAssets(
+                strategyExecutionContext(strategyDsl(1), Map.of())
+        );
+
+        assertThat(targetPortfolio.assetWeights()).isEmpty();
+        assertThat(targetPortfolio.cashWeight()).isEqualByComparingTo(BigDecimal.ONE);
+    }
+
+    @Test
     @DisplayName("지원하지 않는 전략 DSL 구성은 실행 오류로 식별한다")
     void rejectUnsupportedStrategyDsl() {
         // given
