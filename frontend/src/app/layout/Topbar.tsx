@@ -20,11 +20,11 @@ function useCurrentTitle(): string | undefined {
 
 type TopbarProps = {
   member: { displayName: string; emailAddress: string }
-  session: { runningSimulations: number; hasUnsavedEdits: boolean }
+  runningSimulations: number
   onLogout?: () => void
 }
 
-export function Topbar({ member, session, onLogout }: TopbarProps) {
+export function Topbar({ member, runningSimulations, onLogout }: TopbarProps) {
   const title = useCurrentTitle()
 
   return (
@@ -40,12 +40,10 @@ export function Topbar({ member, session, onLogout }: TopbarProps) {
             <path d="M10 21h4" />
           </svg>
         </Link>
-        <span className="tag">데모 데이터</span>
         <AccountMenu
           displayName={member.displayName}
           emailAddress={member.emailAddress}
-          runningSimulations={session.runningSimulations}
-          hasUnsavedEdits={session.hasUnsavedEdits}
+          runningSimulations={runningSimulations}
           onLogout={onLogout}
         />
       </div>

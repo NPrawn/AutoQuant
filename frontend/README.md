@@ -53,8 +53,7 @@ src/
 │   (api.ts 변환·저장·조회·삭제 호출, queries.ts 쿼리·뮤테이션, summary.ts DSL 요약 문장, *ErrorMessage.ts 실패 문구)
 ├── pages/                화면, 목업 번호와 1:1
 ├── market/               종목·봉 API, 쿼리, STOMP 연결, 데이터 검증·병합, 1분봉 렌더러
-├── styles/               디자인 시스템
-└── mocks/                API 연동 전 표시용 더미
+└── styles/               디자인 시스템
 ```
 
 로그인은 사이드바가 없어 `AppShell` 바깥에 있고, 나머지 화면은 셸 안의 `<Outlet />`에 그려진다. 960px 이하에서 사이드바가 접히는 규칙은 목업 CSS 가 그대로 담당한다.

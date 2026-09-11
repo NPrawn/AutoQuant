@@ -5,19 +5,12 @@ import { LogoutConfirmModal } from './LogoutConfirmModal'
 type AccountMenuProps = {
   displayName: string
   emailAddress: string
+  /* 운용 중인 모의투자 수. 로그아웃 확인 모달이 계속 실행된다고 알린다. */
   runningSimulations: number
-  hasUnsavedEdits: boolean
-  /* 실제 로그아웃 호출은 인증 연동 작업이 공급한다. */
   onLogout?: () => void
 }
 
-export function AccountMenu({
-  displayName,
-  emailAddress,
-  runningSimulations,
-  hasUnsavedEdits,
-  onLogout,
-}: AccountMenuProps) {
+export function AccountMenu({ displayName, emailAddress, runningSimulations, onLogout }: AccountMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -100,13 +93,7 @@ export function AccountMenu({
         </div>
       )}
 
-      <LogoutConfirmModal
-        open={confirmOpen}
-        runningSimulations={runningSimulations}
-        hasUnsavedEdits={hasUnsavedEdits}
-        onCancel={cancelConfirm}
-        onConfirm={confirmLogout}
-      />
+      <LogoutConfirmModal open={confirmOpen} runningSimulations={runningSimulations} onCancel={cancelConfirm} onConfirm={confirmLogout} />
     </div>
   )
 }
