@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router'
 
 import { useCurrentMember, useLogout } from '../../auth/queries'
-import { demoSession } from '../../mocks/member'
+import { useRunningSimulationCount } from '../../simulation/queries'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 
@@ -12,6 +12,8 @@ import { Topbar } from './Topbar'
 export function AppShell() {
   const { data } = useCurrentMember()
   const logout = useLogout()
+  /* 아직 못 읽었으면 0 으로 두어 모달이 "계속 실행된다"는 말을 근거 없이 하지 않게 한다. */
+  const runningSimulations = useRunningSimulationCount()
 
   if (!data?.member) {
     return null
@@ -21,7 +23,7 @@ export function AppShell() {
     <div className="shell">
       <Sidebar />
       <div className="col">
-        <Topbar member={data.member} session={demoSession} onLogout={() => logout.mutate()} />
+        <Topbar member={data.member} runningSimulations={runningSimulations.data ?? 0} onLogout={() => logout.mutate()} />
         <main className="wrap">
           <Outlet />
         </main>

@@ -51,6 +51,21 @@ export function useSimulationRuns(page: number) {
   })
 }
 
+/*
+ * 운용 중인 실행 수. 로그아웃 확인 모달이 "계속 실행된다"고 알릴 때 쓴다. 상태 필터 API 가 없어
+ * 첫 페이지 최대치를 받아 세므로 100건을 넘는 회원은 그 이상은 세지 않는다.
+ */
+export const runningSimulationCountQueryKey = [...simulationListQueryKey, 'running-count'] as const
+
+export function useRunningSimulationCount() {
+  return useQuery({
+    queryKey: runningSimulationCountQueryKey,
+    queryFn: () => fetchSimulationRuns(0, maxPageSize),
+    select: (response) => response.content.filter((run) => run.status === 'RUNNING').length,
+    staleTime: 60_000,
+  })
+}
+
 export function useSimulationRun(simulationId: string | undefined) {
   return useQuery({
     queryKey: simulationRunQueryKey(simulationId ?? ''),
