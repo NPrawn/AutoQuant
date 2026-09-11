@@ -11,7 +11,8 @@ export type BacktestRunForm = {
   initialCapital: number
 }
 
-export type PresetRange = 'all' | '3y' | '1y'
+/* 기간 프리셋. 운영 캔들이 몇 달치라 연 단위 대신 월 단위로 둔다. */
+export type PresetRange = 'all' | '3m' | '1m'
 
 /* 서비스 고정 정책. 목업이 명시한 값이라 화면에서 바꾸지 않는다. */
 export const quoteCurrency = 'KRW'
@@ -27,8 +28,11 @@ export const universeSize = 30
 export const engineVersion = 'v0.9.2'
 export const marketDataVersion = 'v1.4'
 
-/* 업비트 KRW 상장 초기 구간. 목업의 전체 프리셋이 쓰는 시작일이다. */
-export const earliestPeriodStart = '2018-01-01'
+/*
+ * 캔들 보유 시작일을 아직 모를 때 쓰는 하한. 업비트 KRW 상장 초기 구간이다.
+ * 보유 구간을 읽으면 그 시작일이 이 값을 대신한다.
+ */
+export const fallbackPeriodStart = '2018-01-01'
 
 export const defaultInitialCapital = 3_000_000
 
@@ -36,37 +40,66 @@ export function toDateInput(value: Date): string {
   return new Date(value.getTime() - value.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 10)
 }
 
+/*
+ * 캔들 보유 구간. 서버에 구간 API 가 없어 한 종목의 일봉을 받아 첫·마지막 시각으로 잰다.
+ * 봉이 없으면 null 이고 화면은 하한 없이 동작한다.
+ */
+export type CandleCoverage = {
+  start: string
+  end: string
+}
+
+export function coverageFromOpenTimes(openTimesUnixMilli: readonly number[]): CandleCoverage | null {
+  if (openTimesUnixMilli.length === 0) {
+    return null
+  }
+  let min = openTimesUnixMilli[0]
+  let max = openTimesUnixMilli[0]
+  for (const time of openTimesUnixMilli) {
+    if (time < min) min = time
+    if (time > max) max = time
+  }
+  return { start: toDateInput(new Date(min)), end: toDateInput(new Date(max)) }
+}
+
+/* 보유 시작일이 있으면 그 날, 없으면 하한이다. 프리셋과 검증이 같은 값을 쓴다. */
+export function periodFloor(coverage: CandleCoverage | null): string {
+  return coverage?.start ?? fallbackPeriodStart
+}
+
 /* 종료일은 오늘까지다. 아직 오지 않은 구간은 캔들이 없어 계산할 수 없다. */
-export function createRunForm(strategyId: string, today: Date): BacktestRunForm {
+export function createRunForm(strategyId: string, today: Date, coverage: CandleCoverage | null): BacktestRunForm {
   return {
     strategyId,
-    periodStart: earliestPeriodStart,
+    periodStart: periodFloor(coverage),
     periodEnd: toDateInput(today),
     initialCapital: defaultInitialCapital,
   }
 }
 
-function shiftYears(value: Date, years: number): Date {
+function shiftMonths(value: Date, months: number): Date {
   const shifted = new Date(value)
-  shifted.setFullYear(shifted.getFullYear() + years)
+  shifted.setMonth(shifted.getMonth() + months)
   return shifted
 }
 
-export function applyPreset(form: BacktestRunForm, preset: PresetRange, today: Date): BacktestRunForm {
+/* 프리셋은 시작일만 옮기고 보유 시작일 아래로는 내려가지 않는다. */
+export function applyPreset(form: BacktestRunForm, preset: PresetRange, today: Date, coverage: CandleCoverage | null): BacktestRunForm {
+  const floor = periodFloor(coverage)
   const end = toDateInput(today)
   if (preset === 'all') {
-    return { ...form, periodStart: earliestPeriodStart, periodEnd: end }
+    return { ...form, periodStart: floor, periodEnd: end }
   }
-  const start = toDateInput(shiftYears(today, preset === '3y' ? -3 : -1))
-  return { ...form, periodStart: start < earliestPeriodStart ? earliestPeriodStart : start, periodEnd: end }
+  const start = toDateInput(shiftMonths(today, preset === '3m' ? -3 : -1))
+  return { ...form, periodStart: start < floor ? floor : start, periodEnd: end }
 }
 
 /* 지금 값이 어떤 프리셋과 같은지 알려 준다. 직접 고친 구간은 어느 프리셋도 켜지 않는다. */
-export function detectPreset(form: BacktestRunForm, today: Date): PresetRange | null {
-  const presets: PresetRange[] = ['all', '3y', '1y']
+export function detectPreset(form: BacktestRunForm, today: Date, coverage: CandleCoverage | null): PresetRange | null {
+  const presets: PresetRange[] = ['all', '3m', '1m']
   return (
     presets.find((preset) => {
-      const applied = applyPreset(form, preset, today)
+      const applied = applyPreset(form, preset, today, coverage)
       return applied.periodStart === form.periodStart && applied.periodEnd === form.periodEnd
     }) ?? null
   )
@@ -93,17 +126,21 @@ export type RunFormIssue = {
   message: string
 }
 
-/* 백엔드 Bean Validation 과 같은 규칙에 기간 순서와 상장 구간을 더해 화면에서 먼저 알린다. */
-export function validateRunForm(form: BacktestRunForm, today: Date): RunFormIssue[] {
+/* 백엔드 Bean Validation 과 같은 규칙에 기간 순서와 보유 구간을 더해 화면에서 먼저 알린다. */
+export function validateRunForm(form: BacktestRunForm, today: Date, coverage: CandleCoverage | null): RunFormIssue[] {
   const issues: RunFormIssue[] = []
+  const floor = periodFloor(coverage)
 
   if (form.strategyId === '') {
     issues.push({ field: 'strategyId', message: '백테스트할 전략을 선택해 주세요.' })
   }
   if (form.periodStart === '') {
     issues.push({ field: 'periodStart', message: '시작일을 입력해 주세요.' })
-  } else if (form.periodStart < earliestPeriodStart) {
-    issues.push({ field: 'periodStart', message: `시작일은 ${earliestPeriodStart} 이후여야 합니다.` })
+  } else if (form.periodStart < floor) {
+    issues.push({
+      field: 'periodStart',
+      message: coverage === null ? `시작일은 ${floor} 이후여야 합니다.` : `캔들이 ${floor}부터 있어 그 이후만 평가할 수 있습니다.`,
+    })
   }
   if (form.periodEnd === '') {
     issues.push({ field: 'periodEnd', message: '종료일을 입력해 주세요.' })

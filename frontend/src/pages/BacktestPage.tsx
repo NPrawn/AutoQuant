@@ -8,9 +8,9 @@ import { EmptyState, ErrorState } from '../components/StateBlock'
 import { BacktestResult } from '../backtest/BacktestResult'
 import { BacktestRunForm } from '../backtest/BacktestRunForm'
 import { formatKrw, statusMeta } from '../backtest/labels'
-import { useBacktestRun, useBacktestRuns, useCreateBacktestRun } from '../backtest/queries'
+import { useBacktestRun, useBacktestRuns, useCandleCoverage, useCreateBacktestRun } from '../backtest/queries'
 import { describeFailedRun, describeRunError } from '../backtest/runErrorMessage'
-import { createRunForm, setStrategyId, toCreateRequest, validateRunForm } from '../backtest/runForm'
+import { applyPreset, createRunForm, fallbackPeriodStart, setStrategyId, toCreateRequest, validateRunForm } from '../backtest/runForm'
 import { RunHistoryTable } from '../backtest/RunHistoryTable'
 import { StrategyPicker } from '../backtest/StrategyPicker'
 import { readBacktestEntry } from '../strategy/backtestEntry'
@@ -31,24 +31,34 @@ export function BacktestPage() {
   const entry = readBacktestEntry(location.state)
 
   const strategies = useStrategies()
+  const coverage = useCandleCoverage()
   const [today] = useState(() => new Date())
-  const [form, setForm] = useState(() => createRunForm(entry?.strategyId ?? '', today))
+  const [form, setForm] = useState(() => createRunForm(entry?.strategyId ?? '', today, null))
+  const [coverageApplied, setCoverageApplied] = useState(false)
   const [showIssues, setShowIssues] = useState(false)
   const [tradePage, setTradePage] = useState(0)
 
   const create = useCreateBacktestRun()
   const run = useBacktestRun(runId)
+  const knownCoverage = coverage.data ?? null
 
   /* 전략 목록이 도착하면 선택이 비어 있을 때만 첫 전략을 채운다. */
   if (form.strategyId === '' && strategies.data !== undefined && strategies.data.length > 0) {
     setForm(setStrategyId(form, strategies.data[0].id))
+  }
+  /* 보유 구간이 도착하면 한 번만 기본 기간을 그 시작일로 옮긴다. 사용자가 고친 뒤에는 건드리지 않는다. */
+  if (!coverageApplied && coverage.isSuccess) {
+    setCoverageApplied(true)
+    if (form.periodStart === fallbackPeriodStart) {
+      setForm(applyPreset(form, 'all', today, knownCoverage))
+    }
   }
 
   const selectedStrategy = strategies.data?.find((strategy) => strategy.id === form.strategyId) ?? null
 
   const startRun = () => {
     setShowIssues(true)
-    if (validateRunForm(form, today).length > 0) {
+    if (validateRunForm(form, today, knownCoverage).length > 0) {
       return
     }
     setTradePage(0)
@@ -104,6 +114,7 @@ export function BacktestPage() {
               form={form}
               strategy={selectedStrategy}
               today={today}
+              coverage={coverage.isPending ? undefined : knownCoverage}
               pending={create.isPending || runId !== null}
               showIssues={showIssues}
               onChange={setForm}

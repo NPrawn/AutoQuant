@@ -14,6 +14,7 @@ import {
   universeSize,
   validateRunForm,
   type BacktestRunForm as RunForm,
+  type CandleCoverage,
   type PresetRange,
 } from './runForm'
 
@@ -21,6 +22,8 @@ type BacktestRunFormProps = {
   form: RunForm
   strategy: Strategy | null
   today: Date
+  /* 캔들 보유 구간. 아직 읽는 중이면 undefined, 봉이 없으면 null 이다. */
+  coverage: CandleCoverage | null | undefined
   pending: boolean
   showIssues: boolean
   onChange: (form: RunForm) => void
@@ -28,16 +31,17 @@ type BacktestRunFormProps = {
 }
 
 const presets: Array<{ id: PresetRange; label: string }> = [
-  { id: 'all', label: '전체' },
-  { id: '3y', label: '최근 3년' },
-  { id: '1y', label: '최근 1년' },
+  { id: 'all', label: '보유 전체' },
+  { id: '3m', label: '최근 3개월' },
+  { id: '1m', label: '최근 1개월' },
 ]
 
 /* 목업 10 의 좌측 카드. 봉 주기는 전략 DSL 에서 정해져 오므로 읽기 전용으로 보여 준다. */
-export function BacktestRunForm({ form, strategy, today, pending, showIssues, onChange, onSubmit }: BacktestRunFormProps) {
+export function BacktestRunForm({ form, strategy, today, coverage, pending, showIssues, onChange, onSubmit }: BacktestRunFormProps) {
   const id = useId()
-  const issues = validateRunForm(form, today)
-  const activePreset = detectPreset(form, today)
+  const knownCoverage = coverage ?? null
+  const issues = validateRunForm(form, today, knownCoverage)
+  const activePreset = detectPreset(form, today, knownCoverage)
   const issueFor = (field: string) => (showIssues ? issues.find((issue) => issue.field === field) : undefined)
   const periodIssue = issueFor('periodStart') ?? issueFor('periodEnd')
   const capitalIssue = issueFor('initialCapital')
@@ -59,7 +63,7 @@ export function BacktestRunForm({ form, strategy, today, pending, showIssues, on
               className={preset.id === activePreset ? 'on' : undefined}
               aria-pressed={preset.id === activePreset}
               disabled={pending}
-              onClick={() => onChange(applyPreset(form, preset.id, today))}
+              onClick={() => onChange(applyPreset(form, preset.id, today, knownCoverage))}
             >
               {preset.label}
             </button>
@@ -87,7 +91,17 @@ export function BacktestRunForm({ form, strategy, today, pending, showIssues, on
             onChange={(event) => onChange(setPeriodEnd(form, event.target.value))}
           />
         </div>
-        {periodIssue && <p className="field-note crit">{periodIssue.message}</p>}
+        {periodIssue ? (
+          <p className="field-note crit">{periodIssue.message}</p>
+        ) : (
+          <p className="field-note">
+            {coverage === undefined
+              ? '캔들 보유 구간을 확인하는 중…'
+              : coverage === null
+                ? '보유 캔들을 확인할 수 없어 기간 하한 없이 실행합니다.'
+                : `캔들은 ${coverage.start} ~ ${coverage.end} 구간에 있습니다. 그 밖은 평가되지 않습니다.`}
+          </p>
+        )}
       </div>
 
       <div className="fld">
