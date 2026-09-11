@@ -7,6 +7,7 @@ import com.ssafy.a107.strategy.domain.dsl.RebalancePeriod;
 import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import com.ssafy.a107.strategy.engine.StrategyExecutionContext;
 import com.ssafy.a107.strategy.engine.StrategyExecutionPipeline;
+import com.ssafy.a107.strategy.engine.portfolio.TargetAssetWeight;
 import com.ssafy.a107.strategy.engine.portfolio.TargetPortfolio;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.engine.execution.BacktestExecutionPolicyResolver;
@@ -54,6 +55,9 @@ class DefaultBacktestEngineTest {
     );
     private static final UUID ASSET_ID = UUID.fromString(
             "22222222-2222-2222-2222-222222222222"
+    );
+    private static final UUID INSUFFICIENT_CANDLE_ASSET_ID = UUID.fromString(
+            "33333333-3333-3333-3333-333333333333"
     );
     private static final Instant PERIOD_START = Instant.parse(
             "2026-01-02T00:00:00Z"
@@ -103,13 +107,16 @@ class DefaultBacktestEngineTest {
         );
         BacktestRun backtestRun = backtestRun();
         Asset asset = mock(Asset.class);
+        Asset insufficientCandleAsset = mock(Asset.class);
         BacktestCandleWindow candleWindow = candleWindow();
 
         when(asset.getAssetId()).thenReturn(ASSET_ID);
+        when(insufficientCandleAsset.getAssetId())
+                .thenReturn(INSUFFICIENT_CANDLE_ASSET_ID);
         when(universeResolver.resolveCandidates(backtestRun))
-                .thenReturn(List.of(asset));
+                .thenReturn(List.of(asset, insufficientCandleAsset));
         when(universeResolver.resolve(any(BacktestRun.class), any(Instant.class)))
-                .thenReturn(List.of(asset));
+                .thenReturn(List.of(asset, insufficientCandleAsset));
         when(candleWindowProvider.load(any(BacktestRun.class), any()))
                 .thenReturn(candleWindow);
         when(contextFactory.create(
@@ -119,7 +126,10 @@ class DefaultBacktestEngineTest {
                 any()
         )).thenReturn(mock(StrategyExecutionContext.class));
         when(strategyExecutionPipeline.executeExcludingInsufficientCandleAssets(any(StrategyExecutionContext.class)))
-                .thenReturn(new TargetPortfolio(List.of(), BigDecimal.ONE));
+                .thenReturn(new TargetPortfolio(
+                        List.of(new TargetAssetWeight(ASSET_ID, BigDecimal.ONE)),
+                        BigDecimal.ZERO
+                ));
         when(rebalanceSchedule.shouldRebalance(
                 any(), any(), any(), anyBoolean()
         )).thenAnswer(invocation -> invocation.getArgument(3));
@@ -156,13 +166,21 @@ class DefaultBacktestEngineTest {
         then(reportCalculator).should().calculate(inputCaptor.capture());
 
         assertThat(result.fills()).isEmpty();
-        assertThat(result.assets()).containsEntry(ASSET_ID, asset);
-        assertThat(result.universeAssets()).singleElement()
-                .satisfies(universeAsset -> {
-                    assertThat(universeAsset.getId().getRebalanceAt())
-                            .isEqualTo(Instant.parse("2026-01-02T01:00:00Z"));
-                    assertThat(universeAsset.isSelected()).isFalse();
-                });
+        assertThat(result.assets()).containsEntry(ASSET_ID, asset)
+                .containsEntry(INSUFFICIENT_CANDLE_ASSET_ID, insufficientCandleAsset);
+        assertThat(result.universeAssets()).hasSize(2)
+                .allSatisfy(universeAsset -> assertThat(
+                        universeAsset.getId().getRebalanceAt()
+                ).isEqualTo(Instant.parse("2026-01-02T01:00:00Z")));
+        assertThat(result.universeAssets()).anySatisfy(universeAsset -> {
+            assertThat(universeAsset.getId().getAssetId()).isEqualTo(ASSET_ID);
+            assertThat(universeAsset.isSelected()).isTrue();
+        });
+        assertThat(result.universeAssets()).anySatisfy(universeAsset -> {
+            assertThat(universeAsset.getId().getAssetId())
+                    .isEqualTo(INSUFFICIENT_CANDLE_ASSET_ID);
+            assertThat(universeAsset.isSelected()).isFalse();
+        });
         assertThat(inputCaptor.getValue().equitySnapshots()).hasSize(3);
         assertThat(inputCaptor.getValue().fills()).isEmpty();
     }
