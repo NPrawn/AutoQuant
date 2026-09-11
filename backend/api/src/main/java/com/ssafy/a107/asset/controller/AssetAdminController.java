@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/admin/assets")
+@RequestMapping("/admin/assets")
 public class AssetAdminController {
 
     private final AssetRegistrationFacade assetRegistrationFacade;

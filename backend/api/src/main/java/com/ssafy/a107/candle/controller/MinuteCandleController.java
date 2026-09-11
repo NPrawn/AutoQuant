@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/assets/{assetId}/candles")
+@RequestMapping("/assets/{assetId}/candles")
 public class MinuteCandleController {
 
     private final RecentMinuteCandleFacade facade;

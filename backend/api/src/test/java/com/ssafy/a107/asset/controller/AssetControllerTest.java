@@ -52,7 +52,7 @@ class AssetControllerTest {
         ReflectionTestUtils.setField(bitcoin, "assetId", assetId);
         given(service.findChartAssets()).willReturn(List.of(bitcoin));
 
-        RestAssuredMockMvc.given().when().get("/api/assets").then()
+        RestAssuredMockMvc.given().when().get("/assets").then()
                 .apply(document("assets-chart-list", resource(ResourceSnippetParameters.builder()
                         .tag("자산").summary("차트 종목 목록 조회")
                         .description("JWT 인증 필요. 등록된 Upbit KRW 종목 중 TRADING 상태를 마켓 코드 오름차순으로 반환합니다. 수집 연결 또는 봉 존재를 보장하지 않습니다. 없으면 빈 배열입니다.")
@@ -70,6 +70,6 @@ class AssetControllerTest {
     @DisplayName("등록된 차트 종목이 없으면 빈 배열을 반환한다")
     void emptyAssets() {
         given(service.findChartAssets()).willReturn(List.of());
-        RestAssuredMockMvc.given().when().get("/api/assets").then().statusCode(200).body("", hasSize(0));
+        RestAssuredMockMvc.given().when().get("/assets").then().statusCode(200).body("", hasSize(0));
     }
 }
