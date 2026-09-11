@@ -43,7 +43,7 @@ import static org.springframework.restdocs.request.RequestDocumentation.paramete
 @ExtendWith({MockitoExtension.class, RestDocumentationExtension.class})
 class MinuteCandleControllerTest {
 
-    private static final String PATH = "/api/assets/{assetId}/candles/{intervalMinutes}m";
+    private static final String PATH = "/assets/{assetId}/candles/{intervalMinutes}m";
     @Mock
     private RecentMinuteCandleFacade facade;
 

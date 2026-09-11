@@ -101,7 +101,7 @@ class AssetAdminControllerTest {
                         }
                         """)
                 .when()
-                .post("/api/admin/assets")
+                .post("/admin/assets")
                 .then()
                 .apply(document(
                         "assets-create",
@@ -170,7 +170,7 @@ class AssetAdminControllerTest {
                         }
                         """)
                 .when()
-                .post("/api/admin/assets")
+                .post("/admin/assets")
                 .then()
                 .apply(document(
                         "assets-create-invalid-request",
@@ -196,7 +196,7 @@ class AssetAdminControllerTest {
                         }
                         """)
                 .when()
-                .post("/api/admin/assets")
+                .post("/admin/assets")
                 .then()
                 .apply(document(
                         "assets-create-duplicated",
@@ -261,7 +261,7 @@ class AssetAdminControllerTest {
                         }
                         """.formatted(exchangeMarketCode))
                 .when()
-                .post("/api/admin/assets")
+                .post("/admin/assets")
                 .then();
     }
 

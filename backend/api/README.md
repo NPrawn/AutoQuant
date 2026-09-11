@@ -98,7 +98,7 @@ SSAFY OAuth2 Authorization Code로 로그인한다. `client_secret`을 가진 �
 ## 종목 등록 API
 
 ```http
-POST /api/admin/assets
+POST /admin/assets
 ```
 
 요청에는 `exchange`와 `exchangeMarketCode`만 받는다. API가 Upbit 공개 페어 목록에서 실제 거래지원 여부와 종목명을 검증한 뒤 `reference.asset`과 `ops.market_data_collection_target`을 함께 저장한다.
@@ -107,12 +107,12 @@ POST /api/admin/assets
 
 ## 최근 확정 봉 조회
 
-차트 종목 선택은 JWT 인증이 필요한 `GET /api/assets`를 사용한다. 등록된 Upbit KRW 종목 중 `TRADING` 상태를 마켓 코드 오름차순으로 반환한다. 응답은 `[{"assetId":"UUID","marketCode":"KRW-BTC","koreanName":"비트코인"}]`이며 없으면 빈 배열이다. 수집 연결·봉 존재를 보장하는 목록은 아니다. Controller → AssetReadService → AssetRepository로 조회하며 REST Docs/OpenAPI에 포함한다.
+차트 종목 선택은 JWT 인증이 필요한 `GET /assets`를 사용한다(브라우저는 `/api/assets`로 부르고 프록시가 접두사를 뗀다). 등록된 Upbit KRW 종목 중 `TRADING` 상태를 마켓 코드 오름차순으로 반환한다. 응답은 `[{"assetId":"UUID","marketCode":"KRW-BTC","koreanName":"비트코인"}]`이며 없으면 빈 배열이다. 수집 연결·봉 존재를 보장하는 목록은 아니다. Controller → AssetReadService → AssetRepository로 조회하며 REST Docs/OpenAPI에 포함한다.
 
 ```http
-GET /api/assets/{assetId}/candles/1m?limit=1000
-GET /api/assets/{assetId}/candles/5m?limit=1000
-GET /api/assets/{assetId}/candles/1440m?limit=1000
+GET /assets/{assetId}/candles/1m?limit=1000
+GET /assets/{assetId}/candles/5m?limit=1000
+GET /assets/{assetId}/candles/1440m?limit=1000
 ```
 
 기존 JWT 쿠키 또는 Bearer 인증으로 호출한다. `assetId`는 종목의 UUID이며, `limit`은 1~1,000(생략 시 1,000)이다. 최신 봉을 선택한 뒤 **봉 시작 시간 오름차순**으로 반환한다.

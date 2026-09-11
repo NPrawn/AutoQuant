@@ -182,7 +182,7 @@ Kafka · Redis · DB에 직접 접근하지 않는다. 모든 데이터는 API�
 - 가격·수량은 문자열로 표시하고 64비트 순번도 문자열로 보존한다. 차트 좌표만 숫자로 변환한다. 차트는 TradingView Lightweight Charts™를 사용하며 출처 링크를 표시한다.
 - 지표·호가·임의 간격·과거 페이지네이션은 범위 밖이다. 원본 이력이 부족하면 요청 개수보다 적게 표시한다.
 
-Vite와 운영 `infra/nginx/j15a107.p.ssafy.io.conf`는 `/api/assets`의 접두사를 유지하고 `/ws` Upgrade를 전달한다. 기존 나머지 REST 프록시 규칙은 그대로다. 운영 Nginx 파일 변경은 배포 시 적용해야 한다.
+Vite와 운영 `infra/nginx/j15a107.p.ssafy.io.conf`는 `/api/` 아래 모든 요청의 접두사를 떼서 넘기고 `/ws` Upgrade를 전달한다. 종목·봉 API 도 다른 API 와 같은 규칙이라 경로별 예외가 없다.
 
 ## 실행 명령
 
