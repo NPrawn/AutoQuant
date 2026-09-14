@@ -53,6 +53,10 @@ com.ssafy.a107
 - 간격은 `candle/domain/CandleIntervals`의 1·2·5·15·60·240·1440분만 지원한다. UTC 버킷이며 `/candles/{intervalMinutes}m`으로 조회한다. 기존 `/1m`도 유지한다.
 - `candle:{intervalMinutes}m:recent:{assetId}`는 Go의 snake_case JSON과 시작 시간 millisecond score를 사용한다. Spring은 DB 조회 결과로 빈 시간대만 원자적으로 보충하고 종목·간격별 최신 1,000개를 유지한다. 기존 값의 보정·갱신은 Go가 담당한다.
 - 캐시가 없거나 요청 개수보다 적거나 손상/장애가 있으면 DB의 해당 종목·간격 최대 1,000개를 조회한다. Spring에서 1분봉 재집계는 하지 않는다. 진행 봉은 REST 응답에 포함하지 않는다.
+- `GET /assets/{assetId}/factors`는 전략 엔진이 쓰는 `Ta4jFactorCalculator`를 그대로 불러 화면에 같은 값을 준다. 표시용 지표를 여기에 넣지 않는다.
+- 팩터 기간은 `AssetFactorReadService`가 정한다. 요청으로 바꿀 수 없고 응답에 실어 화면이 기간을 다시 정의하지 않게 한다.
+- 팩터 조회는 ta4j BarSeries 가 필요해 `MinuteCandleReadService.findRecentCandles`로 엔티티를 읽는다. 표시용 스냅샷 캐시 경로와 섞지 않는다.
+- 봉이 기간을 채우지 못한 팩터는 값을 비워 반환한다. 조회는 실패가 아니며 전체를 오류로 만들지 않는다.
 - `AssetTradingStatus`는 거래소 거래지원 상태이고 `MarketDataCollectionStatus`는 우리 서비스의 수집 희망 상태다. 두 상태를 합치지 않는다.
 - 종목 등록 API의 `ENABLED`는 실제 Go WebSocket 구독 완료를 의미하지 않는다.
 - `GET /assets`는 AssetReadService의 읽기 전용 트랜잭션으로 등록된 Upbit KRW TRADING 종목을 조회한다. `assetId`·`marketCode`·한글명만 응답하며 실제 수집 연결 여부는 판단하지 않는다.

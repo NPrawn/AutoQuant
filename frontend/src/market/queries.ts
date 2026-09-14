@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { fetchCandles, fetchChartAssets, fetchRecentCandles } from './api'
+import { fetchAssetFactors, fetchCandles, fetchChartAssets, fetchRecentCandles } from './api'
 import { appendTrade, mergeCandles, upsertLive } from './model'
 import type { CandleInterval } from './model'
 import { connectPriceStream } from './priceStream'
@@ -9,6 +9,7 @@ import { summarizeDay, tickerFromDailyCandles } from './ticker'
 import type { Ticker } from './ticker'
 import { toCandle, toChartAsset } from './types'
 import type { ChartAsset, LiveCandle, Trade } from './types'
+import type { Timeframe } from '../strategy/types'
 
 export function useChartAssets() {
   return useQuery({ queryKey: ['chart-assets'], queryFn: ({ signal }) => fetchChartAssets(signal), select: (items) => items.map(toChartAsset) })
@@ -113,4 +114,13 @@ export function useLivePrices(assets: readonly ChartAsset[]) {
   )
 
   return { prices, connected }
+}
+
+/* 종목의 현재 팩터 값. 봉이 바뀌어야 값이 바뀌므로 1분마다 다시 읽는다. */
+export function useAssetFactors(assetId: string, timeframe: Timeframe) {
+  return useQuery({
+    queryKey: ['asset-factors', assetId, timeframe],
+    queryFn: ({ signal }) => fetchAssetFactors(assetId, timeframe, signal),
+    refetchInterval: 60_000,
+  })
 }

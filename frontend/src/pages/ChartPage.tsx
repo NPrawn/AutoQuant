@@ -3,6 +3,8 @@ import { lazy, Suspense, useMemo, useState } from 'react'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { CoinList } from '../market/CoinList'
+import { FactorCard } from '../market/FactorCard'
+import { factorTimeframe } from '../market/factors'
 import {
   bollingerMultiplier,
   bollingerPeriod,
@@ -207,6 +209,7 @@ function MarketChartCard({ asset, interval, ticker, livePrice, indicators, onInt
       </div>
 
       <div>
+        <FactorCard assetId={asset.id} timeframe={factorTimeframe(interval)} />
         <section className="card pad">
           <div className="sec-title" style={{ marginBottom: 2 }}>최근 체결</div>
           <div className="sec-sub" style={{ marginBottom: 12 }}>현재 연결에서 수신한 최근 30건</div>
