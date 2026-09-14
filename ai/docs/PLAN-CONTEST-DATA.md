@@ -2,7 +2,7 @@
 
 - 상태: 검토 대기
 - 날짜: 2026-09-14
-- 결정 기록: [docs/adr](../../docs/adr/README.md) ADR-0001 ~ ADR-0012
+- 결정 기록: [docs/adr](../../docs/adr/README.md) ADR-0001 ~ ADR-0013
 
 ## 1. 목표
 
@@ -21,7 +21,7 @@
 | 이번에 만든다 | 만들지 않는다 |
 |---|---|
 | 생성기, 검증기, 채점기 (`ai/contest/`) | `contest` 스키마 migration, 대회용 `HistoricalCandleProvider` (백엔드, ADR-0006) |
-| 로컬 시뮬레이션 실행기와 검증 실험 (`ai/scripts/contest_sim/`) | 대회 참가·제출 API, 대회 화면 |
+| 로컬 시뮬레이션 실행기와 검증 실험 (`ai/scripts/contest_sim/`) | 대회 참가·제출 API, 제출 시 팩터 기간 검증, 대회 화면 |
 | 단계별 검증 리포트 (`ai/docs/contest-validation/`) | 운영 배치 (Jenkins job) |
 
 ## 3. 결정 요약
@@ -38,6 +38,7 @@
 | 0010 | 대회를 열 때 한 번 만들어 마감까지 고정, 마감 후 공개 |
 | 0011 | 실제 과거의 한 주들을 뽑아 새 순서로 잇는다 (제안) |
 | 0012 | 4단계 검증을 통과해야 0011을 확정 |
+| 0013 | 팩터 기간은 워밍업 안으로 제한 (1H 839, 4H 209, 1D 34), 초과 전략은 제출 시 차단 |
 
 ## 4. 데이터
 
@@ -70,10 +71,10 @@
 | `GENERAL` | 일반장. 실제 전이 비율대로 주를 이음 |
 | `BULL` / `BEAR` / `SIDEWAYS` | 평가 구간을 한 라벨의 주로만 채움 |
 
-- 각 18주(워밍업 5 + 평가 13)다. 종목당 1시간봉 3,024개, 4시간봉 756개, 일봉 126개다.
+- 각 18주(워밍업 5 + 평가 13)다. 종목당 1시간봉 최대 3,024개, 4시간봉 756개, 일봉 126개다.
 - 출력은 데이터셋마다 두 파일이다.
   - `candles.csv.gz`: `asset_id, interval_minutes, open_time, open_price, high_price, low_price, close_price, trade_volume, trade_amount`
-  - `manifest.json`: `kind`, `seed`, `params`, `generator_version`, `source_sha256`, `weeks`(뽑은 주 시작일과 순서), `period_start`, `period_end`, 간격별 행 수, `candles_sha256`
+  - `manifest.json`: `kind`, `seed`, `params`, `generator_version`, `source_sha256`, `weeks`(뽑은 주 시작일과 순서), `period_start`, `period_end`, `max_factor_period`(timeframe별 상한, ADR-0013), 간격별 행 수, `candles_sha256`
 
 ## 5. 생성 알고리즘 (ADR-0011)
 
@@ -83,7 +84,7 @@
 |---|---|---|
 | `BLOCK_DAYS` | 7 | 블록 길이 |
 | `BLOCK_START` | `MON` | 블록을 자르는 요일. `THU`와 4단계에서 비교 |
-| `WARMUP_WEEKS` | 5 | 워밍업 주 수 |
+| `WARMUP_WEEKS` | 5 | 워밍업 주 수. 팩터 기간 상한을 함께 정한다 (ADR-0013) |
 | `EVAL_WEEKS` | 13 | 평가 주 수 |
 | `CANDIDATES` | 1,000 | 장세 후보 수 |
 | `TARGET_BULL` | +20% ~ +30% | 평가 13주 universe 균등 보유 수익률 |
@@ -145,11 +146,11 @@
 | 묶음 | 수 | 만드는 방법 |
 |---|---|---|
 | 유형별 기본 | 20 | 추세추종(RETURN 상위), 평균회귀(RSI 낮은 순), 저변동성(VOLATILITY 낮은 순), 거래량(VOLUME_RATIO 상위), 추세 필터(SMA_DISPARITY > 0) × timeframe·기간 변형 4개씩 |
-| 과적합 | 5 | 실제 8년 1D 데이터에서 기간, 기준값, 상위 N, 리밸런싱 조합 약 300개를 엔진으로 돌려 수익률 상위 5개 |
+| 과적합 | 5 | 실제 8년 1D 데이터에서 기간(2~34), 기준값, 상위 N, 리밸런싱 조합 약 300개를 엔진으로 돌려 수익률 상위 5개 |
 | 견고 | 5 | 같은 300개 중 기간 ±20% 이웃 조합과 성적 차이가 가장 작은 5개 |
 | 규칙 확인 | 2 | 현금 대기(통과하지 못하는 필터), 1종목 몰빵(상위 1개) |
 
-과적합 탐색의 기간 범위는 워밍업 상한(12장 1번)을 넘지 않게 잡는다.
+모든 전략의 팩터 기간은 상한(1H 839, 4H 209, 1D 34, ADR-0013) 안에서 잡는다.
 
 ### 6.5 엔진 규모
 
@@ -184,8 +185,8 @@
 - **종목.** universe 종목을 `reference.asset`에 넣는다. `trading_support_started_at`과 `trading_support_ended_at`은 비워 둔다. 엔진의 종목 조회는 두 값이 비어 있으면 기간과 무관하게 후보로 본다.
 - **적재.** 데이터셋마다 `market_data.minute_candle`을 비우고 `docker compose exec`로 `psql \copy`를 실행해 1H·4H·1D를 넣는다. 롤업 트리거는 1분봉 insert에만 걸려 있어 동작하지 않는다.
 - **실행.**
-  - `POST /strategies`: DSL은 `app/core/schema.py` 모델로 만들고 검증한다.
-  - `POST /backtests`: 기간은 평가 13주, `marketDataVersion`은 데이터셋 이름과 시드, `engineVersion`은 `local-sim`, 초기 자본 1,000만 원, 수수료 0.0005, 슬리피지 10bps, `NEXT_CANDLE_OPEN`
+  - `POST /strategies`: DSL은 `app/core/schema.py` 모델로 만들고 검증한다. 팩터 기간이 상한을 넘으면 실행기가 제출 전에 거부한다 (운영의 제출 검증을 대신함).
+  - `POST /backtests`: 기간은 평가 13주(`VIRTUAL_START + 5주`부터), `marketDataVersion`은 데이터셋 이름과 시드, `engineVersion`은 `local-sim`, 초기 자본 1,000만 원, 수수료 0.0005, 슬리피지 10bps, `NEXT_CANDLE_OPEN`
   - 완료될 때까지 폴링하고 `result`와 `equity`를 받는다.
 - **결과.** (데이터셋, 전략)마다 상태, 누적수익률, MDD, 평균 투자 비중, 거래 수를 CSV로 모은다.
 
@@ -203,7 +204,7 @@ ai/scripts/contest_sim/
   README.md          # 로컬 환경 준비와 실행 순서
   jwt_token.py       # 로컬 토큰 발급 (표준 모듈 token과 이름이 겹치지 않게)
   load.py            # 종목·캔들 적재
-  strategies.py      # 전략 세트
+  strategies.py      # 전략 세트, 팩터 기간 상한 검사
   run.py             # 백테스트 제출, 폴링, 결과 수집
   experiments.py     # 3·4단계 실험, 대회 리허설
 ai/tests/
@@ -240,14 +241,15 @@ ai/tests/
 
 ## 12. 미결 사항
 
-1. **워밍업 상한.** 워밍업 5주면 팩터 기간 최대가 1H 839, 4H 209, 1D 34다. 일봉 50·120·200일 이동평균 같은 전략은 캔들 부족으로 빠진다. 워밍업을 늘릴지(예: 30주면 1D 209, 데이터셋 43주), 대회 규칙에 기간 상한을 둘지 정해야 한다.
-2. **원본 위치.** 2018~2025 데이터가 있는 DB를 확인해야 한다.
-3. **`w`와 투자 비중 하한.** 리허설 뒤에 정한다.
-4. **블록 자르는 요일.** 4단계에서 정한다.
-5. **가상 날짜.** 2030년 시각을 쓸 때 백엔드 검증에 걸리는 곳이 없는지 로컬에서 확인한다. 백테스트 요청 DTO와 `trading.backtest_run` 제약에는 미래 날짜를 막는 규칙이 없다.
-6. **화면 설계.** `30-대회 목록`, `31-대회 상세`의 연습용 장세 영역을 고쳐 달라고 요청한다.
-7. **백엔드 요청.** ADR-0006의 migration, 대회용 provider, 캔들 변환 팩토리.
+1. **원본 위치.** 2018~2025 데이터가 있는 DB를 확인해야 한다.
+2. **`w`와 투자 비중 하한.** 리허설 뒤에 정한다.
+3. **블록 자르는 요일.** 4단계에서 정한다.
+4. **가상 날짜.** 2030년 시각을 쓸 때 백엔드 검증에 걸리는 곳이 없는지 로컬에서 확인한다. 백테스트 요청 DTO와 `trading.backtest_run` 제약에는 미래 날짜를 막는 규칙이 없다.
+5. **화면 설계.** `30-대회 목록`, `31-대회 상세`의 연습용 장세 영역을 고치고, 팩터 기간 상한을 보여 달라고 요청한다.
+6. **백엔드 요청.** ADR-0006의 migration, 대회용 provider, 캔들 변환 팩토리와 ADR-0013의 제출 시 팩터 기간 검증.
 
 ## 13. 대회 규칙 문구 (초안)
 
 > 채점 데이터는 실제 과거의 한 주들을 뽑아 새 순서로 이어 붙인 시장입니다. 한 주 안의 움직임은 실제 그대로이고, 상승 주 다음에 상승 주가 오는 비율 같은 흐름은 실제 과거를 따릅니다. 상승장은 실제 상승 주들만 모은 것입니다. 채점 데이터는 마감 후 공개합니다.
+>
+> 대회 데이터에는 평가 시작 전 35일치만 제공합니다. 지표 기간은 1시간봉 839, 4시간봉 209, 일봉 34까지 쓸 수 있고, 이보다 긴 기간을 쓴 전략은 제출할 수 없습니다.
