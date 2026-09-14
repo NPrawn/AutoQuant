@@ -2,7 +2,7 @@ package com.ssafy.a107.trading.backtest.engine.universe;
 
 import com.ssafy.a107.asset.domain.Asset;
 import com.ssafy.a107.asset.domain.Exchange;
-import com.ssafy.a107.asset.repository.AssetRepository;
+import com.ssafy.a107.asset.service.CollectedAssetReadService;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import org.springframework.stereotype.Component;
 
@@ -13,10 +13,10 @@ import java.util.Objects;
 @Component
 public class BacktestUniverseResolver {
 
-    private final AssetRepository assetRepository;
+    private final CollectedAssetReadService collectedAssetReadService;
 
-    public BacktestUniverseResolver(AssetRepository assetRepository) {
-        this.assetRepository = assetRepository;
+    public BacktestUniverseResolver(CollectedAssetReadService collectedAssetReadService) {
+        this.collectedAssetReadService = collectedAssetReadService;
     }
 
     public List<Asset> resolve(
@@ -33,7 +33,7 @@ public class BacktestUniverseResolver {
             );
         }
 
-        return List.copyOf(assetRepository.findAllAvailableAt(
+        return List.copyOf(collectedAssetReadService.findAvailableAt(
                 Exchange.UPBIT,
                 backtestRun.getQuoteCurrency(),
                 evaluationAt
@@ -43,7 +43,7 @@ public class BacktestUniverseResolver {
     public List<Asset> resolveCandidates(BacktestRun backtestRun) {
         Objects.requireNonNull(backtestRun);
 
-        return List.copyOf(assetRepository.findAllAvailableDuring(
+        return List.copyOf(collectedAssetReadService.findAvailableDuring(
                 Exchange.UPBIT,
                 backtestRun.getQuoteCurrency(),
                 backtestRun.getPeriodStart(),

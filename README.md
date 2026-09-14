@@ -62,7 +62,7 @@ cd frontend && npm install && npm run dev  # :5173
 cd backend/ingest
 go run ./cmd/producer                    # Upbit → Kafka
 go run ./cmd/consumer                    # Kafka → Redis + DB
-CANDLE_HISTORY_FROM=2025-01-01T00:00:00Z go run ./cmd/backfill # 과거 적재·1분봉 주기 검증
+CANDLE_HISTORY_FROM=2024-01-01T00:00:00Z go run ./cmd/backfill # 과거 적재·1분봉 주기 검증
 ```
 
 > API 서버를 먼저 한 번 띄워 Flyway 마이그레이션을 적용해야 한다. Go 쪽은 스키마를 생성하지 않고 INSERT만 한다.

@@ -10,6 +10,7 @@ import { ResultKpis } from '../backtest/ResultKpis'
 import { RunHistoryTable } from '../backtest/RunHistoryTable'
 import { TradeChart } from '../backtest/TradeChart'
 import type { BacktestRun } from '../backtest/types'
+import { useUniverseSize } from '../market/universe'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
@@ -26,8 +27,6 @@ type DetailTab = 'overview' | StrategyDetailTab
 /* sv-SE 로케일은 로컬 시간 기준 YYYY-MM-DD 를 준다. 목업의 날짜 표기와 같다. */
 const dateFormat = new Intl.DateTimeFormat('sv-SE')
 
-/* 서비스 고정 정책. 빌더 요약 카드와 같은 값이다. */
-const universeSize = 30
 
 /*
  * 전략 상세(목업 07·08·09). 목업은 공개 전략을 기준으로 그렸지만 지금은 내 전략만 있으므로
@@ -296,6 +295,7 @@ function LatestResult({ run }: { run: BacktestRun }) {
 
 /* 전략 구성 탭. DSL 을 판단 순서대로 문장으로 읽어 준다. */
 function StrategyPane({ strategy }: { strategy: Strategy }) {
+  const universeSize = useUniverseSize()
   const { dsl } = strategy
   const filters = summarizeFilters(dsl)
   const weight = (100 / dsl.selection.topN).toFixed(1)
@@ -399,6 +399,7 @@ function StrategyPane({ strategy }: { strategy: Strategy }) {
 
 /* 전략 코드 탭. 백엔드에 저장된 DSL 그대로다. 사용자는 코드를 쓰지 않고 빌더에서 고른다. */
 function CodePane({ strategy }: { strategy: Strategy }) {
+  const universeSize = useUniverseSize()
   const [copied, setCopied] = useState(false)
   const copiedTimer = useRef<number | null>(null)
   useEffect(() => () => {

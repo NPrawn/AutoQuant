@@ -2,7 +2,7 @@ package com.ssafy.a107.trading.simulation.service;
 
 import com.ssafy.a107.asset.domain.Asset;
 import com.ssafy.a107.asset.domain.Exchange;
-import com.ssafy.a107.asset.repository.AssetRepository;
+import com.ssafy.a107.asset.service.CollectedAssetReadService;
 import com.ssafy.a107.candle.domain.MinuteCandle;
 import com.ssafy.a107.realtime.domain.LiveMinuteCandle;
 import com.ssafy.a107.strategy.engine.StrategyExecutionContext;
@@ -81,7 +81,7 @@ public class SimulationCandleExecutionService {
     private final SimulationEquityRepository simulationEquityRepository;
     private final SimulationResultRepository simulationResultRepository;
     private final SimulationUniverseAssetRepository simulationUniverseAssetRepository;
-    private final AssetRepository assetRepository;
+    private final CollectedAssetReadService collectedAssetReadService;
     private final HistoricalCandleProvider historicalCandleProvider;
     private final BacktestWarmupCandleCountResolver warmupCandleCountResolver;
     private final StrategyExecutionPipeline strategyExecutionPipeline;
@@ -101,7 +101,7 @@ public class SimulationCandleExecutionService {
             SimulationEquityRepository simulationEquityRepository,
             SimulationResultRepository simulationResultRepository,
             SimulationUniverseAssetRepository simulationUniverseAssetRepository,
-            AssetRepository assetRepository,
+            CollectedAssetReadService collectedAssetReadService,
             HistoricalCandleProvider historicalCandleProvider,
             BacktestWarmupCandleCountResolver warmupCandleCountResolver,
             StrategyExecutionPipeline strategyExecutionPipeline,
@@ -120,7 +120,7 @@ public class SimulationCandleExecutionService {
         this.simulationEquityRepository = simulationEquityRepository;
         this.simulationResultRepository = simulationResultRepository;
         this.simulationUniverseAssetRepository = simulationUniverseAssetRepository;
-        this.assetRepository = assetRepository;
+        this.collectedAssetReadService = collectedAssetReadService;
         this.historicalCandleProvider = historicalCandleProvider;
         this.warmupCandleCountResolver = warmupCandleCountResolver;
         this.strategyExecutionPipeline = strategyExecutionPipeline;
@@ -266,7 +266,7 @@ public class SimulationCandleExecutionService {
             Instant executionAt,
             Function<Collection<UUID>, java.util.Optional<Map<UUID, BigDecimal>>> executionPriceLoader
     ) {
-        List<Asset> universe = assetRepository.findAllAvailableAt(
+        List<Asset> universe = collectedAssetReadService.findAvailableAt(
                 Exchange.UPBIT, simulationRun.getQuoteCurrency(), evaluationCandleOpenAt
         );
         List<SimulationPosition> persistedPositions = simulationPositionRepository

@@ -1,4 +1,5 @@
 import type { DraftIssue, StrategyDraft } from '../draft'
+import { useUniverseSize } from '../../market/universe'
 import { describeCondition, describeRanking, logicLabels, rebalanceMeta } from '../labels'
 
 type StrategySummaryCardProps = {
@@ -10,13 +11,13 @@ type StrategySummaryCardProps = {
 }
 
 /* 서비스 고정 정책. 후보 유니버스와 매도 규칙은 화면에서 바꾸지 않는다. */
-const universeSize = 30
 
 /*
  * 우측 요약 카드. 블록의 값을 문장으로 다시 읽어 준다. 통과 종목 수는 시세 데이터가
  * 필요해 백테스트에서 계산되므로 여기서는 자리만 둔다.
  */
 export function StrategySummaryCard({ draft, goal, issues, changed = false }: StrategySummaryCardProps) {
+  const universeSize = useUniverseSize()
   const simpleConditions = draft.conditions.filter((condition) => condition.kind === 'simple')
   const rawCount = draft.conditions.length - simpleConditions.length
   const weight = draft.topN > 0 ? (100 / draft.topN).toFixed(1) : '—'
