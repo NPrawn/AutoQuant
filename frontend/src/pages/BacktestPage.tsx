@@ -77,6 +77,25 @@ export function BacktestPage() {
     })
   }
 
+  /*
+   * 캔들이 모자라 멈춘 실행의 복구. 하한으로 시작일을 옮기고 같은 조건으로 다시 접수한다.
+   * 하한을 아직 못 읽었거나 이미 하한이면 되돌릴 여지가 없어 버튼을 내지 않는다.
+   */
+  const retryFromEarliest =
+    coverage.isSuccess && form.periodStart > bounds.earliestStart
+      ? {
+          from: bounds.earliestStart,
+          run: () => {
+            const next = clampPeriodStart({ ...form, periodStart: bounds.earliestStart }, bounds)
+            setForm(next)
+            setTradePage(0)
+            create.mutate(toCreateRequest(next), {
+              onSuccess: (created) => setSearchParams({ run: created.backtestId }),
+            })
+          },
+        }
+      : null
+
   const clearRun = () => {
     create.reset()
     setSearchParams({})
@@ -141,6 +160,7 @@ export function BacktestPage() {
                 tradePage={tradePage}
                 onTradePageChange={setTradePage}
                 onClear={clearRun}
+                onRetryFromEarliest={retryFromEarliest}
               />
             </div>
           </div>
@@ -200,10 +220,12 @@ type RunPanelProps = {
   tradePage: number
   onTradePageChange: (page: number) => void
   onClear: () => void
+  /* 캔들 부족으로 멈춘 실행만 쓰는 복구 동작. 되돌릴 여지가 없으면 null 이다. */
+  onRetryFromEarliest: { from: string; run: () => void } | null
 }
 
 /* 실행 전, 접수 실패, 계산 중, 완료, 실패 다섯 상태를 고른다. */
-function RunPanel({ runId, run, strategyName, createError, tradePage, onTradePageChange, onClear }: RunPanelProps) {
+function RunPanel({ runId, run, strategyName, createError, tradePage, onTradePageChange, onClear, onRetryFromEarliest }: RunPanelProps) {
   if (createError !== null) {
     const view = describeRunError(createError)
     return <ErrorState title={view.title} description={view.description} details={view.details} error={createError} />
@@ -242,15 +264,24 @@ function RunPanel({ runId, run, strategyName, createError, tradePage, onTradePag
   const { status, queuedAt } = run.data
 
   if (status === 'FAILED') {
-    const view = describeFailedRun()
+    const view = describeFailedRun(run.data.failureCode)
+    /* 캔들이 모자라 멈춘 실행은 가능한 시작일을 알고 있으므로 그 날짜로 바로 다시 돌릴 수 있게 한다. */
+    const canRetryFromEarliest = run.data.failureCode === 'INSUFFICIENT_CANDLES' && onRetryFromEarliest !== null
     return (
       <ErrorState
         title={view.title}
         description={view.description}
         actions={
-          <button className="btn primary" type="button" onClick={onClear}>
-            조건 다시 설정
-          </button>
+          <>
+            {canRetryFromEarliest && (
+              <button className="btn primary" type="button" onClick={onRetryFromEarliest.run}>
+                {onRetryFromEarliest.from}부터 다시 실행
+              </button>
+            )}
+            <button className={canRetryFromEarliest ? 'btn' : 'btn primary'} type="button" onClick={onClear}>
+              조건 다시 설정
+            </button>
+          </>
         }
       />
     )

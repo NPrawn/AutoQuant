@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
-import { AreaSeries, CandlestickSeries, ColorType, HistogramSeries, LineSeries, LineStyle, createChart, createTextWatermark } from 'lightweight-charts'
-import type { IChartApi, ISeriesApi, ITextWatermarkPluginApi, Time, UTCTimestamp } from 'lightweight-charts'
+import { AreaSeries, CandlestickSeries, ColorType, HistogramSeries, LineSeries, LineStyle, createChart, createSeriesMarkers, createTextWatermark } from 'lightweight-charts'
+import type { IChartApi, ISeriesApi, ISeriesMarkersPluginApi, ITextWatermarkPluginApi, Time, UTCTimestamp } from 'lightweight-charts'
 
 import { movingAveragePeriods, rsiPeriod, type IndicatorData, type IndicatorKey, type IndicatorPoint } from './indicators'
+import type { TradeMarker } from '../backtest/tradeMarkers'
 import type { Candle } from './types'
 
 type MinuteCandleChartProps = {
@@ -11,6 +12,8 @@ type MinuteCandleChartProps = {
   data: IndicatorData
   /* 켜 둔 지표. 꺼진 지표는 시리즈를 비워 두고 패널도 접는다. */
   indicators: ReadonlySet<IndicatorKey>
+  /* 봉 위에 찍을 체결. 지난 실행을 되짚는 화면만 넘긴다. */
+  markers?: readonly TradeMarker[]
 }
 
 const toTime = (time: number) => time as UTCTimestamp
@@ -24,6 +27,9 @@ const barSpacing = 10
 
 /* RSI 과매수, 과매도 기준선. 값이 아니라 읽는 기준이다. */
 const strengthGuides = [70, 30]
+
+/* 체결 구간 앞뒤로 남길 최소 여백. 첫 체결과 마지막 체결이 화면 끝에 붙지 않게 한다. */
+const dayInSeconds = 86_400
 
 /* 토큰은 16진수라 투명도를 붙이려면 rgba 로 바꿔야 한다. */
 function withAlpha(color: string, alpha: number): string {
@@ -39,7 +45,7 @@ function withAlpha(color: string, alpha: number): string {
  * 봉 차트와 보조지표. 지표는 같은 창의 별도 패널에 둔다. 거래량과 RSI 는 가격과 축이 달라
  * 같은 패널에 그리면 봉이 눌린다.
  */
-export function MinuteCandleChart({ candles, data, indicators }: MinuteCandleChartProps) {
+export function MinuteCandleChart({ candles, data, indicators, markers }: MinuteCandleChartProps) {
   const container = useRef<HTMLDivElement>(null)
   const chart = useRef<IChartApi>(null)
   const price = useRef<ISeriesApi<'Candlestick'>>(null)
@@ -49,6 +55,7 @@ export function MinuteCandleChart({ candles, data, indicators }: MinuteCandleCha
   const volume = useRef<ISeriesApi<'Histogram'>>(null)
   const strength = useRef<ISeriesApi<'Line'>>(null)
   const paneLabels = useRef<ITextWatermarkPluginApi<Time>[]>([])
+  const tradeMarkers = useRef<ISeriesMarkersPluginApi<Time>>(null)
 
   useEffect(() => {
     if (!container.current) return
@@ -73,6 +80,7 @@ export function MinuteCandleChart({ candles, data, indicators }: MinuteCandleCha
     )
 
     price.current = created.addSeries(CandlestickSeries, { borderVisible: false })
+    tradeMarkers.current = createSeriesMarkers(price.current, [])
     averages.current = movingAveragePeriods.map(() => created.addSeries(LineSeries, { lineWidth: 1, priceLineVisible: false, lastValueVisible: false }))
     bands.current = [0, 1, 2].map(() => created.addSeries(LineSeries, { lineWidth: 1, priceLineVisible: false, lastValueVisible: false }))
     /* 패널 1 은 거래량, 패널 2 는 RSI 다. 순서를 바꾸면 축 눈금이 뒤섞인다. */
@@ -128,8 +136,10 @@ export function MinuteCandleChart({ candles, data, indicators }: MinuteCandleCha
       averages.current = []
       bands.current = []
       bandFill.current = []
+      tradeMarkers.current = null
     }
   }, [])
+
 
   useEffect(() => {
     price.current?.setData(
@@ -162,6 +172,39 @@ export function MinuteCandleChart({ candles, data, indicators }: MinuteCandleCha
     panes[1]?.setHeight(showVol ? 88 : 1)
     panes[2]?.setHeight(showRsi ? 88 : 1)
   }, [data, indicators])
+
+  useEffect(() => {
+    const style = getComputedStyle(document.documentElement)
+    const token = (name: string) => style.getPropertyValue(name).trim()
+    /* 색 계약대로 매수는 상승색, 매도는 하락색이다. 화살표는 봉을 가리지 않게 바깥에 붙인다. */
+    tradeMarkers.current?.setMarkers(
+      (markers ?? []).map((marker) => ({
+        time: toTime(marker.time),
+        position: marker.side === 'BUY' ? ('belowBar' as const) : ('aboveBar' as const),
+        color: token(marker.side === 'BUY' ? '--up' : '--down'),
+        shape: marker.side === 'BUY' ? ('arrowUp' as const) : ('arrowDown' as const),
+        text: marker.side === 'BUY' ? '매수' : '매도',
+      })),
+    )
+
+    /*
+     * 체결을 보여 주려고 그린 차트이므로 체결이 있는 구간을 첫 화면에 맞춘다.
+     * 최근 구간만 보이면 지난 실행의 마커가 화면 밖에 있어 아무것도 없는 것처럼 보인다.
+     */
+    const first = markers?.at(0)
+    const last = markers?.at(-1)
+    const oldest = candles.at(0)
+    const newest = candles.at(-1)
+    /* 보관 중인 봉 밖의 구간은 맞출 수 없다. 그럴 때는 기본 위치를 그대로 둔다. */
+    if (first !== undefined && last !== undefined && oldest !== undefined && newest !== undefined) {
+      const pad = Math.max(dayInSeconds, (last.time - first.time) * 0.05)
+      const from = Math.max(first.time - pad, oldest.time)
+      const to = Math.min(last.time + pad, newest.time)
+      if (from < to) {
+        chart.current?.timeScale().setVisibleRange({ from: toTime(from), to: toTime(to) })
+      }
+    }
+  }, [markers, candles])
 
   /* id 는 목업이 정한 차트 자리다. base.css 의 #view-chart #candle 이 크기를 맡는다. */
   return <div ref={container} id="candle" role="img" aria-label="선택 종목의 봉 차트" />

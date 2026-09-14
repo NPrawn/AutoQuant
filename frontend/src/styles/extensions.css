@@ -212,3 +212,13 @@
 #view-chart .chart-shell > div:last-child > .card + .card {
   margin-top: 10px;
 }
+
+/* 모의투자 실시간의 보유 종목 차트. 목업 04 의 #candle 크기 규칙은 차트 화면에만 걸려 있다. */
+.sim-live-stack #candle {
+  height: 320px;
+}
+
+/* 전략 체결 차트. 목업 04 의 #candle 크기 규칙은 차트 화면에만 걸려 있다. */
+.shared-market-card #candle {
+  height: 340px;
+}

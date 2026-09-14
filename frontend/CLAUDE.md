@@ -51,6 +51,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 차트 책임은 `src/market`의 API·queries, STOMP 연결(선택 종목은 `stream.ts`, 여러 종목 현재가는 `priceStream.ts`), 데이터 검증·병합(`model.ts`), 표시값 계산(`ticker.ts`), 차트 렌더러로 나눈다. `ChartPage`는 종목 선택과 표시만 한다.
 - 차트 화면은 목업 04 의 클래스(`.chart-shell` `.coin-list` `.coin-row` `.tick-stats` `.tfs` `.inds` `.chart-legend` `.tr-head` `.trr`)를 쓴다. 이미 `base.css`에 있으므로 같은 목적의 클래스를 새로 만들지 않는다.
 - 보조지표 계산은 `src/market/indicators.ts` 의 순수 함수에만 두고 차트는 그린 결과만 받는다. 값은 한 번 계산해 범례와 차트가 함께 쓴다. 기간이 채워지기 전 구간은 값을 만들지 않는다.
+- `MinuteCandleChart` 는 차트, 모의투자 실시간, 전략 상세가 함께 쓴다. 크기는 화면마다 다르므로 `#candle` 높이 규칙을 `extensions.css` 에 두고 컴포넌트는 크기를 정하지 않는다.- 체결 마커는 표시 전용이다. 종목 선택과 좌표 변환은 `backtest/tradeMarkers.ts` 의 순수 함수에 두고 차트는 받은 것만 찍는다. 마커가 있으면 그 구간에 화면을 맞춘다.
 - 화면 표시용 지표와 전략이 쓰는 팩터를 섞지 않는다. 전자는 프론트가 계산하고 후자는 서버가 계산한 값을 그대로 받는다. 둘이 어긋나면 사용자가 본 숫자와 전략 판단이 달라진다.
 - 팩터 값은 `GET /assets/{assetId}/factors` 로 받아 `src/market/factors.ts` 가 표기만 만든다. 기간은 서버가 정하므로 화면에 기간을 적어 두지 않는다. 단위와 소수 자리는 `strategy/labels.ts` 의 `factorMeta` 하나로 빌더와 맞춘다.
 - 가격·수량과 int64 체결 순번은 문자열로 보존하며 차트 좌표만 number로 변환한다. 진행 봉은 확정 봉을 덮어쓰지 않고 최대 1,000개, 체결은 최대 30건만 유지한다.

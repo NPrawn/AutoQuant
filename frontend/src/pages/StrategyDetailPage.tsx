@@ -8,6 +8,7 @@ import { formatDate, formatDateTime, formatKrw } from '../backtest/labels'
 import { useBacktestHistory, useBacktestResult } from '../backtest/queries'
 import { ResultKpis } from '../backtest/ResultKpis'
 import { RunHistoryTable } from '../backtest/RunHistoryTable'
+import { TradeChart } from '../backtest/TradeChart'
 import type { BacktestRun } from '../backtest/types'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { LoadingState } from '../components/LoadingState'
@@ -18,7 +19,7 @@ import { draftFromDsl } from '../strategy/draft'
 import { describeRanking, directionLabels, factorMeta, rebalanceMeta, timeframeLabels } from '../strategy/labels'
 import { useDeleteStrategy, useStrategy } from '../strategy/queries'
 import { summarizeFilters } from '../strategy/summary'
-import type { Strategy } from '../strategy/types'
+import type { Strategy, Timeframe } from '../strategy/types'
 
 type DetailTab = 'overview' | StrategyDetailTab
 
@@ -235,6 +236,13 @@ function OverviewPane({ strategy, onBacktest }: OverviewPaneProps) {
           완료된 백테스트가 아직 없습니다.{' '}
           {unsettled > 0 ? `${unsettled}건이 계산 중이라 끝나면 여기에 결과가 표시됩니다.` : '실패한 실행만 있어 다시 실행해 주세요.'}
         </p>
+      )}
+
+      {latest !== null && (
+        <section className="card pad shared-market-card" style={{ marginBottom: 20 }}>
+          <div className="sec-title" style={{ marginBottom: 2 }}>전략 체결 차트</div>
+          <TradeChart backtestId={latest.id} timeframe={latest.timeframe as Timeframe} />
+        </section>
       )}
 
       <div className="sec-head">

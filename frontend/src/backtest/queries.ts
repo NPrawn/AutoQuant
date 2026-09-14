@@ -13,7 +13,7 @@ import { fetchChartAssets, fetchRecentCandles } from '../market/api'
 import { hasUnsettledRun } from './history'
 import { coverageFromOpenTimes, type CandleCoverage } from './periodBounds'
 import { toBacktestResult, toBacktestRun, toBacktestTrade, toEquityPoint } from './types'
-import type { BacktestRunResponse, BacktestRunStatus, EquityPoint } from './types'
+import type { BacktestRunResponse, BacktestRunStatus, BacktestTrade, EquityPoint } from './types'
 
 export const backtestsQueryKey = ['backtests'] as const
 export const backtestRunQueryKey = (backtestId: string) => [...backtestsQueryKey, backtestId] as const
@@ -164,6 +164,34 @@ export function useCandleCoverage() {
 
 /* 거래 내역은 사용자가 넘겨 보므로 페이지를 그대로 노출한다. */
 export const tradePageSize = 20
+
+/*
+ * 체결 차트가 쓰는 전량 조회. 마커를 한두 페이지만 찍으면 실제보다 드물게 거래한 것처럼 보여
+ * 앞에서부터 정해진 페이지 수까지 이어 받는다. 표의 페이지 조회와 캐시를 나눠 쓴다.
+ */
+const maxTradePages = 10
+
+async function fetchAllTrades(backtestId: string): Promise<BacktestTrade[]> {
+  const trades: BacktestTrade[] = []
+  let page = 0
+  let totalPages = 1
+  while (page < totalPages && page < maxTradePages) {
+    const response = await fetchBacktestTrades(backtestId, page, maxPageSize)
+    trades.push(...response.content.map(toBacktestTrade))
+    totalPages = response.totalPages
+    page += 1
+  }
+  return trades
+}
+
+export function useBacktestTradeMarkers(backtestId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: [...backtestTradesQueryKey(backtestId ?? '', 0), 'all'],
+    queryFn: () => fetchAllTrades(backtestId ?? ''),
+    enabled: backtestId !== null && enabled,
+    staleTime: Infinity,
+  })
+}
 
 export function useBacktestTrades(backtestId: string | null, page: number, enabled: boolean) {
   return useQuery({
