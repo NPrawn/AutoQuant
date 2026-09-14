@@ -11,7 +11,7 @@ import {
 } from './api'
 import { fetchChartAssets, fetchRecentCandles } from '../market/api'
 import { hasUnsettledRun } from './history'
-import { coverageFromOpenTimes, type CandleCoverage } from './runForm'
+import { coverageFromOpenTimes, type CandleCoverage } from './periodBounds'
 import { toBacktestResult, toBacktestRun, toBacktestTrade, toEquityPoint } from './types'
 import type { BacktestRunResponse, BacktestRunStatus, EquityPoint } from './types'
 
@@ -135,19 +135,23 @@ export function useBacktestEquityCurve(backtestId: string | null, enabled: boole
 }
 
 /*
- * 캔들 보유 구간. 서버에 구간 API 가 없어 첫 종목의 일봉(최대 1,000개)을 받아 첫·마지막 날로 잰다.
- * 롤업이 모든 종목을 같은 시점부터 만들어 한 종목으로 충분하다. 일봉이 1,000개를 넘는 날이 오면
- * 시작일이 실제보다 늦게 잡히므로 그 전에 백엔드 구간 API 로 바꾼다.
+ * 캔들 보유 구간. 서버에 구간 API 가 없어 종목 몇 개의 일봉(최대 1,000개)을 받아 첫·마지막 날로 잰다.
+ * 종목마다 상장 시점이 달라 한 종목만 보면 첫 날이 실제보다 늦게 잡힌다. 표본을 늘릴수록 정확하지만
+ * 종목당 응답이 100KB 에 가까워 앞의 몇 개만 본다. 일봉이 1,000개를 넘는 날이 오면 첫 날이 잘리므로
+ * 그 전에 백엔드 구간 API 로 바꾼다.
  */
 export const candleCoverageQueryKey = ['candle-coverage'] as const
 
+const coverageSampleSize = 5
+
 async function fetchCandleCoverage(signal: AbortSignal): Promise<CandleCoverage | null> {
   const assets = await fetchChartAssets(signal)
-  if (assets.length === 0) {
+  const sample = assets.slice(0, coverageSampleSize)
+  if (sample.length === 0) {
     return null
   }
-  const daily = await fetchRecentCandles(assets[0].assetId, 1440, signal)
-  return coverageFromOpenTimes(daily.candles.map((candle) => candle.openTimeUnixMilli))
+  const responses = await Promise.all(sample.map((asset) => fetchRecentCandles(asset.assetId, 1440, signal)))
+  return coverageFromOpenTimes(responses.flatMap((response) => response.candles.map((candle) => candle.openTimeUnixMilli)))
 }
 
 export function useCandleCoverage() {

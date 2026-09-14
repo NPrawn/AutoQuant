@@ -39,6 +39,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 인증이 필요한 화면은 `RequireAuth` 아래에, 로그인 화면은 `GuestOnly` 아래에 둔다.
 - API 응답 타입(`XxxResponse`)과 화면 모델은 `src/{feature}/types.ts`에서 분리하고 변환 함수를 거친다.
 - 백테스트 실행 조건 편집과 검증은 `src/backtest/runForm.ts` 의 순수 함수에만 두고 화면은 그 결과를 표시한다. 실행 식별자는 주소의 `run` 파라미터가 소유하며 상태 폴링은 `queries.ts` 가 맡는다. 실행 이력 선별은 `src/backtest/history.ts` 에 둔다.
+- 백테스트 기간 경계는 `src/backtest/periodBounds.ts` 가 정한다. 워밍업 봉 수 계산은 백엔드 `BacktestWarmupCandleCountResolver` 와 같은 규칙이라 한쪽이 바뀌면 다른 쪽도 바꾼다. 하한을 계산에 쓰는 곳은 프리셋, 시작일 검증, 기본 기간 셋뿐이고 컴포넌트가 날짜를 직접 계산하지 않는다.
 - 모의투자 시작 조건은 `src/simulation/startForm.ts`, 보유 종목 평가는 `src/simulation/positions.ts` 의 순수 함수에만 둔다. 현재가가 없는 값은 비우고 추정하지 않는다. 종목 이름은 `assetLookup.ts` 로 맞추고 컴포넌트가 `/assets` 를 따로 부르지 않는다.
 - 전략 DSL 계약 타입은 `src/strategy/types.ts`, 열거형 문구·단위는 `src/strategy/labels.ts`, 빌더 편집 동작은 `src/strategy/draft.ts`의 순수 함수에만 둔다. 컴포넌트가 DSL 을 직접 조립하지 않는다.
 - 오류 코드는 `src/api/errorCodes.ts`의 상수만 쓰고 `'AUTH-401-…'` 문자열을 화면 코드에 직접 쓰지 않는다.
