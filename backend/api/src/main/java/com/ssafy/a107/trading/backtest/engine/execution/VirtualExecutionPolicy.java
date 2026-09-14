@@ -6,7 +6,6 @@ public record VirtualExecutionPolicy(
         BigDecimal feeRate,
         BigDecimal slippageBps,
         BigDecimal minimumOrderAmount,
-        BigDecimal priceTickSize,
         BigDecimal quantityStepSize
 ) {
 
@@ -18,10 +17,6 @@ public record VirtualExecutionPolicy(
         minimumOrderAmount = requirePositive(
                 minimumOrderAmount,
                 "Minimum order amount must be greater than zero"
-        );
-        priceTickSize = requirePositive(
-                priceTickSize,
-                "Price tick size must be greater than zero"
         );
         quantityStepSize = requirePositive(
                 quantityStepSize,

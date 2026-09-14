@@ -82,7 +82,6 @@ auth:
 backtest:
   execution:
     minimum-order-amount: ${BACKTEST_MINIMUM_ORDER_AMOUNT:5000}
-    price-tick-size: ${BACKTEST_PRICE_TICK_SIZE:1}
     quantity-step-size: ${BACKTEST_QUANTITY_STEP_SIZE:0.00000001}
   job:
     exchange: ${BACKTEST_JOB_EXCHANGE:backtest.exchange}

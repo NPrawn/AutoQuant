@@ -228,7 +228,6 @@ class SimulationCandleExecutionServiceTest {
         given(portfolioOrderExecutionService.execute(any(), any(), any()))
                 .willReturn(new BacktestOrderExecutionResult(List.of(), List.of()));
         given(executionPolicyProperties.minimumOrderAmount()).willReturn(BigDecimal.ONE);
-        given(executionPolicyProperties.priceTickSize()).willReturn(BigDecimal.ONE);
         given(executionPolicyProperties.quantityStepSize()).willReturn(BigDecimal.ONE);
         given(portfolioValuationCalculator.calculateTotalAssetValue(any(), any()))
                 .willReturn(BigDecimal.valueOf(1_000));

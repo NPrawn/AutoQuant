@@ -10,13 +10,21 @@ import java.util.Objects;
 @Component
 public class OrderPrecisionCalculator {
 
+    private final KrwPriceTickSizeResolver krwPriceTickSizeResolver;
+
+    public OrderPrecisionCalculator(
+            KrwPriceTickSizeResolver krwPriceTickSizeResolver
+    ) {
+        this.krwPriceTickSizeResolver = Objects.requireNonNull(
+                krwPriceTickSizeResolver
+        );
+    }
+
     public BigDecimal roundPrice(
             BigDecimal price,
-            BigDecimal tickSize,
             TradeSide side
     ) {
         requirePositive(price, "Price must be greater than zero");
-        requirePositive(tickSize, "Tick size must be greater than zero");
         Objects.requireNonNull(side);
 
         RoundingMode roundingMode = switch (side) {
@@ -26,7 +34,7 @@ public class OrderPrecisionCalculator {
 
         BigDecimal roundedPrice = roundToStep(
                 price,
-                tickSize,
+                krwPriceTickSizeResolver.resolve(price),
                 roundingMode
         );
 

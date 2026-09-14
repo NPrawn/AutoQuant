@@ -19,7 +19,6 @@ class BacktestExecutionPolicyResolverTest {
                 new BacktestExecutionPolicyResolver(
                         new BacktestExecutionPolicyProperties(
                                 BigDecimal.valueOf(5_000),
-                                BigDecimal.ONE,
                                 new BigDecimal("0.00000001")
                         )
                 );
@@ -32,7 +31,6 @@ class BacktestExecutionPolicyResolverTest {
         assertThat(policy.feeRate()).isEqualByComparingTo("0.0005");
         assertThat(policy.slippageBps()).isEqualByComparingTo("10");
         assertThat(policy.minimumOrderAmount()).isEqualByComparingTo("5000");
-        assertThat(policy.priceTickSize()).isEqualByComparingTo("1");
         assertThat(policy.quantityStepSize()).isEqualByComparingTo("0.00000001");
     }
 }

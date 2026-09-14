@@ -96,7 +96,6 @@ public class VirtualExecutionCalculator {
 
         BigDecimal executedPrice = orderPrecisionCalculator.roundPrice(
                 slippedPrice,
-                policy.priceTickSize(),
                 order.side()
         );
 

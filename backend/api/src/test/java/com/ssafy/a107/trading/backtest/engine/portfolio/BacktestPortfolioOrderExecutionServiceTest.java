@@ -2,6 +2,7 @@ package com.ssafy.a107.trading.backtest.engine.portfolio;
 
 import com.ssafy.a107.trading.backtest.domain.PositionSide;
 import com.ssafy.a107.trading.backtest.domain.TradeSide;
+import com.ssafy.a107.trading.backtest.engine.execution.KrwPriceTickSizeResolver;
 import com.ssafy.a107.trading.backtest.engine.execution.OrderPrecisionCalculator;
 import com.ssafy.a107.trading.backtest.engine.execution.SlippageAmountCalculator;
 import com.ssafy.a107.trading.backtest.engine.execution.SlippagePriceCalculator;
@@ -36,7 +37,9 @@ class BacktestPortfolioOrderExecutionServiceTest {
             new BacktestPortfolioOrderExecutionService(
                     new VirtualExecutionCalculator(
                             new SlippagePriceCalculator(),
-                            new OrderPrecisionCalculator(),
+                            new OrderPrecisionCalculator(
+                                    new KrwPriceTickSizeResolver()
+                            ),
                             new TradeFeeCalculator(),
                             new SlippageAmountCalculator()
                     )
@@ -140,7 +143,6 @@ class BacktestPortfolioOrderExecutionServiceTest {
         return new VirtualExecutionPolicy(
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
-                BigDecimal.ONE,
                 BigDecimal.ONE,
                 BigDecimal.ONE
         );

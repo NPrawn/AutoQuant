@@ -25,7 +25,6 @@ public class BacktestExecutionPolicyResolver {
                 backtestRun.getFeeRate(),
                 backtestRun.getSlippageBps(),
                 properties.minimumOrderAmount(),
-                properties.priceTickSize(),
                 properties.quantityStepSize()
         );
     }
