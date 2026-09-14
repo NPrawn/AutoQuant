@@ -21,10 +21,10 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class AssetFactorReadService {
 
-    // 기간은 서버가 정한다. 화면은 고르지 않고 응답에 실린 기간을 그대로 보인다.
+    // 기간과 순서는 서버가 정한다. 화면은 받은 차례대로 그리고 기간을 다시 정의하지 않는다.
     private static final List<FactorOperand> DEFAULT_FACTORS = List.of(
-            new FactorOperand(FactorType.RETURN, 20),
             new FactorOperand(FactorType.RSI, 14),
+            new FactorOperand(FactorType.RETURN, 20),
             new FactorOperand(FactorType.SMA_DISPARITY, 20),
             new FactorOperand(FactorType.VOLATILITY, 20),
             new FactorOperand(FactorType.VOLUME_RATIO, 20),

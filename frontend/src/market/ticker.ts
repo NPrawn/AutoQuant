@@ -9,6 +9,8 @@ export type Ticker = {
   previousClose: number | null
   /* 마지막 일봉의 종가. 체결이 아직 안 왔을 때 현재가 대신 쓴다. */
   lastClose: string | null
+  /* 마지막 일봉의 거래대금. 종목 사이 순위를 매기는 데 쓴다. */
+  tradeAmount: number | null
 }
 
 export function tickerFromDailyCandles(candles: readonly CandleResponse[]): Ticker {
@@ -17,6 +19,7 @@ export function tickerFromDailyCandles(candles: readonly CandleResponse[]): Tick
   return {
     previousClose: previous === null ? null : Number(previous.closePrice),
     lastClose: last?.closePrice ?? null,
+    tradeAmount: last === undefined ? null : Number(last.tradeAmount),
   }
 }
 
@@ -93,4 +96,14 @@ export function matchesQuery(asset: { marketCode: string; name: string }, query:
     return true
   }
   return asset.marketCode.toLowerCase().includes(trimmed) || asset.name.toLowerCase().includes(trimmed)
+}
+
+/* 목업은 마켓을 BTC/KRW 로 읽는다. 응답의 KRW-BTC 를 화면 표기로 바꾸는 곳은 여기뿐이다. */
+export function marketSymbol(marketCode: string): string {
+  return marketCode.split('-').at(-1) ?? marketCode
+}
+
+export function displayMarket(marketCode: string): string {
+  const [quote, base] = marketCode.split('-')
+  return base === undefined ? marketCode : `${base}/${quote}`
 }

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { AreaSeries, CandlestickSeries, ColorType, HistogramSeries, LineSeries, LineStyle, createChart } from 'lightweight-charts'
-import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
+import { AreaSeries, CandlestickSeries, ColorType, HistogramSeries, LineSeries, LineStyle, createChart, createTextWatermark } from 'lightweight-charts'
+import type { IChartApi, ISeriesApi, ITextWatermarkPluginApi, Time, UTCTimestamp } from 'lightweight-charts'
 
-import { movingAveragePeriods, type IndicatorData, type IndicatorKey, type IndicatorPoint } from './indicators'
+import { movingAveragePeriods, rsiPeriod, type IndicatorData, type IndicatorKey, type IndicatorPoint } from './indicators'
 import type { Candle } from './types'
 
 type MinuteCandleChartProps = {
@@ -48,6 +48,7 @@ export function MinuteCandleChart({ candles, data, indicators }: MinuteCandleCha
   const bands = useRef<ISeriesApi<'Line'>[]>([])
   const volume = useRef<ISeriesApi<'Histogram'>>(null)
   const strength = useRef<ISeriesApi<'Line'>>(null)
+  const paneLabels = useRef<ITextWatermarkPluginApi<Time>[]>([])
 
   useEffect(() => {
     if (!container.current) return
@@ -78,10 +79,23 @@ export function MinuteCandleChart({ candles, data, indicators }: MinuteCandleCha
     volume.current = created.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceLineVisible: false }, 1)
     strength.current = created.addSeries(LineSeries, { lineWidth: 1, priceLineVisible: false }, 2)
 
+    /* 아래 두 패널은 축이 달라 무엇을 그린 것인지 이름을 붙여야 읽힌다. 목업도 좌상단에 적는다. */
+    const paneTitles = ['거래량', `RSI ${rsiPeriod}`]
+    const panes = created.panes()
+    paneLabels.current = paneTitles
+      .map((text, index) => [panes[index + 1], text] as const)
+      .filter(([pane]) => pane !== undefined)
+      .map(([pane]) => createTextWatermark(pane, { horzAlign: 'left', vertAlign: 'top' }))
+
     const applyTheme = () => {
       const style = getComputedStyle(document.documentElement)
       const token = (name: string) => style.getPropertyValue(name).trim()
       const panel = token('--panel')
+      paneLabels.current.forEach((label, index) =>
+        label.applyOptions({
+          lines: [{ text: paneTitles[index], color: token('--ink-3'), fontSize: 10, fontFamily: '"IBM Plex Mono", monospace' }],
+        }),
+      )
       created.applyOptions({
         layout: { background: { type: ColorType.Solid, color: panel }, textColor: token('--ink-2'), attributionLogo: true },
         /* 목업은 가로선만 그린다. 세로선은 봉을 가린다. */
@@ -104,6 +118,8 @@ export function MinuteCandleChart({ candles, data, indicators }: MinuteCandleCha
 
     return () => {
       observer.disconnect()
+      for (const label of paneLabels.current) label.detach()
+      paneLabels.current = []
       created.remove()
       chart.current = null
       price.current = null
@@ -143,8 +159,8 @@ export function MinuteCandleChart({ candles, data, indicators }: MinuteCandleCha
 
     /* 꺼진 패널은 높이를 0 으로 접어 봉이 넓게 보이게 한다. */
     const panes = chart.current?.panes() ?? []
-    panes[1]?.setHeight(showVol ? 72 : 1)
-    panes[2]?.setHeight(showRsi ? 72 : 1)
+    panes[1]?.setHeight(showVol ? 88 : 1)
+    panes[2]?.setHeight(showRsi ? 88 : 1)
   }, [data, indicators])
 
   /* id 는 목업이 정한 차트 자리다. base.css 의 #view-chart #candle 이 크기를 맡는다. */

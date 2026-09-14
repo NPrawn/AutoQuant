@@ -171,8 +171,8 @@ GET /assets/{assetId}/factors?timeframe=1D
   "timeframe": "1D",
   "asOf": "2026-09-13T00:00:00Z",
   "factors": [
-    { "factor": "RETURN", "period": 20, "value": 4.1 },
     { "factor": "RSI", "period": 14, "value": 62.1 },
+    { "factor": "RETURN", "period": 20, "value": 4.1 },
     { "factor": "SMA_DISPARITY", "period": 20, "value": -1.8 },
     { "factor": "VOLATILITY", "period": 20, "value": 3.42 },
     { "factor": "VOLUME_RATIO", "period": 20, "value": 1.237 },
@@ -181,7 +181,7 @@ GET /assets/{assetId}/factors?timeframe=1D
 }
 ```
 
-- 기간은 서버가 정한다. RSI 14, 낙폭 60, 나머지 20이며 요청으로 바꿀 수 없다. 응답에 실어 화면이 기간을 다시 정의하지 않게 한다.
+- 기간과 순서는 서버가 정한다. RSI 14, 낙폭 60, 나머지 20이며 요청으로 바꿀 수 없다. 응답에 실어 화면이 기간과 차례를 다시 정의하지 않게 한다.
 - 값의 단위는 전략 DSL과 같다. 수익률, SMA 이격률, 변동성, 낙폭은 백분율(4.1 = 4.1%)이고 거래량 비율은 배수다. 빌더에서 입력하는 조건 값과 같은 축이라 그대로 비교할 수 있다.
 - 봉이 기간을 채우지 못한 팩터는 `value`가 `null`이다. 오류가 아니며 나머지 팩터는 그대로 반환한다.
 - `asOf`는 값을 만든 마지막 확정 봉의 시작 시각이다. 봉이 하나도 없으면 `null`이고 모든 값도 `null`이다. 봉 조회와 같이 종목 존재를 따로 확인하지 않아 미등록 UUID도 같은 모양으로 응답한다.
