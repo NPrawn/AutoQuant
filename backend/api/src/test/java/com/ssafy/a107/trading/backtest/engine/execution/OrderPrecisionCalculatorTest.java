@@ -11,18 +11,19 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 
 class OrderPrecisionCalculatorTest {
 
-    private final OrderPrecisionCalculator calculator = new OrderPrecisionCalculator();
+    private final OrderPrecisionCalculator calculator = new OrderPrecisionCalculator(
+            new KrwPriceTickSizeResolver()
+    );
 
     @DisplayName("매수 가격은 가격 주문 단위로 올림한다")
     @Test
     void roundBuyPriceUpToTickSize() {
         BigDecimal roundedPrice = calculator.roundPrice(
                 BigDecimal.valueOf(100_050),
-                BigDecimal.valueOf(1_000),
                 TradeSide.BUY
         );
 
-        assertThat(roundedPrice).isEqualByComparingTo("101000");
+        assertThat(roundedPrice).isEqualByComparingTo("100100");
     }
 
     @DisplayName("매도 가격은 가격 주문 단위로 내림한다")
@@ -30,7 +31,6 @@ class OrderPrecisionCalculatorTest {
     void roundSellPriceDownToTickSize() {
         BigDecimal roundedPrice = calculator.roundPrice(
                 BigDecimal.valueOf(100_050),
-                BigDecimal.valueOf(1_000),
                 TradeSide.SELL
         );
 
@@ -65,7 +65,6 @@ class OrderPrecisionCalculatorTest {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> calculator.roundPrice(
                         BigDecimal.ZERO,
-                        BigDecimal.ONE,
                         TradeSide.BUY
                 ));
     }
@@ -80,14 +79,14 @@ class OrderPrecisionCalculatorTest {
                 ));
     }
 
-    @DisplayName("주문 단위 적용 후 매도 가격은 0보다 커야 한다")
+    @DisplayName("저가 종목의 매도 가격은 원화 마켓 호가 단위로 내림한다")
     @Test
-    void rejectRoundedSellPriceOfZero() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> calculator.roundPrice(
-                        BigDecimal.valueOf(500),
-                        BigDecimal.valueOf(1_000),
-                        TradeSide.SELL
-                ));
+    void roundLowPriceSellWithKrwTickSize() {
+        BigDecimal roundedPrice = calculator.roundPrice(
+                new BigDecimal("0.01559"),
+                TradeSide.SELL
+        );
+
+        assertThat(roundedPrice).isEqualByComparingTo("0.0155");
     }
 }

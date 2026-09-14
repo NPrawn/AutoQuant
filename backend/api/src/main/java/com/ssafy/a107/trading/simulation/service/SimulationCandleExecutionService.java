@@ -397,8 +397,7 @@ public class SimulationCandleExecutionService {
 
     private VirtualExecutionPolicy executionPolicy(SimulationRun simulationRun) {
         return new VirtualExecutionPolicy(simulationRun.getFeeRate(), simulationRun.getSlippageBps(),
-                executionPolicyProperties.minimumOrderAmount(), executionPolicyProperties.priceTickSize(),
-                executionPolicyProperties.quantityStepSize());
+                executionPolicyProperties.minimumOrderAmount(), executionPolicyProperties.quantityStepSize());
     }
 
     private void persistLedger(SimulationRun simulationRun, Instant candleAt, List<Asset> universe,

@@ -13,8 +13,6 @@ public record BacktestExecutionPolicyProperties(
         @NotNull @DecimalMin(value = "0", inclusive = false)
         BigDecimal minimumOrderAmount,
         @NotNull @DecimalMin(value = "0", inclusive = false)
-        BigDecimal priceTickSize,
-        @NotNull @DecimalMin(value = "0", inclusive = false)
         BigDecimal quantityStepSize
 ) {
 }

@@ -256,7 +256,6 @@ class DefaultBacktestEngineTest {
                 BigDecimal.ZERO,
                 BigDecimal.ZERO,
                 BigDecimal.ONE,
-                BigDecimal.ONE,
                 BigDecimal.ONE
         );
     }
