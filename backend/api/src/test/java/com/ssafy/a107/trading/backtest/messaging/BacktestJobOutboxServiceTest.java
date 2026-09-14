@@ -1,5 +1,6 @@
 package com.ssafy.a107.trading.backtest.messaging;
 
+import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -18,6 +19,16 @@ import static org.mockito.Mockito.mock;
 class BacktestJobOutboxServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-09-09T00:00:00Z");
+
+    @Test
+    @DisplayName("작업 발행은 새로운 트랜잭션에서 수행한다")
+    void publishUsesNewTransaction() throws NoSuchMethodException {
+        Transactional transactional = BacktestJobOutboxService.class
+                .getMethod("publish", UUID.class)
+                .getAnnotation(Transactional.class);
+
+        assertThat(transactional.value()).isEqualTo(Transactional.TxType.REQUIRES_NEW);
+    }
 
     @Test
     @DisplayName("미발행 작업을 발행한 뒤 발행 완료로 기록한다")
