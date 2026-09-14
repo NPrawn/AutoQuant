@@ -1,3 +1,5 @@
+import type { FactorType, Timeframe } from '../strategy/types'
+
 export type ChartAssetResponse = { assetId: string; marketCode: string; koreanName: string }
 export type ChartAsset = { id: string; marketCode: string; name: string }
 
@@ -37,3 +39,7 @@ export function toCandle(response: CandleResponse): Candle {
     volume: Number(response.tradeVolume),
   }
 }
+
+/* 팩터 값은 전략 엔진이 쓰는 계산기가 만든 그대로다. 기간도 서버가 정해 함께 온다. */
+export type FactorValueResponse = { factor: FactorType; period: number; value: number | null }
+export type AssetFactorsResponse = { assetId: string; timeframe: Timeframe; asOf: string | null; factors: FactorValueResponse[] }

@@ -207,3 +207,8 @@
     box-shadow: inset 0 0 0 1px var(--section, var(--cat-neutral));
   }
 }
+
+/* 차트 우측 열은 목업에 체결 카드 하나뿐이라 카드가 이어질 때의 간격이 없다. */
+#view-chart .chart-shell > div:last-child > .card + .card {
+  margin-top: 10px;
+}
