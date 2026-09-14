@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -182,6 +183,35 @@ class BacktestPortfolioTest {
         assertThat(result.allocatedCostBasis()).isEqualByComparingTo("100050.00000000");
         assertThat(result.netProceeds()).isEqualByComparingTo("119940.00000000");
         assertThat(result.realizedProfitLoss()).isEqualByComparingTo("19890.00000000");
+    }
+
+    @DisplayName("부분 매도 후 잔여 원가가 8자리보다 작아도 포지션을 유지한다")
+    @Test
+    void retainSubMoneyScaleCostBasisAfterPartialSell() {
+        BacktestPortfolio portfolio = new BacktestPortfolio(
+                BigDecimal.ZERO,
+                List.of(new BacktestPosition(
+                        ASSET_ID,
+                        PositionSide.LONG,
+                        new BigDecimal("0.00000000001"),
+                        BigDecimal.valueOf(1_000),
+                        new BigDecimal("0.00000001")
+                ))
+        );
+
+        RealizedTradeResult result = portfolio.applySell(fill(
+                PositionSide.LONG,
+                TradeSide.SELL,
+                BigDecimal.valueOf(1_000),
+                new BigDecimal("0.0000000000099"),
+                new BigDecimal("0.0000000099"),
+                BigDecimal.ZERO
+        ));
+
+        BacktestPosition position = portfolio.findPosition(ASSET_ID).orElseThrow();
+        assertThat(position.quantity()).isEqualByComparingTo("0.0000000000001");
+        assertThat(position.costBasis()).isEqualByComparingTo("0.0000000001");
+        assertThat(result.allocatedCostBasis()).isEqualByComparingTo("0.0000000099");
     }
 
     @DisplayName("전량 매도 체결은 포지션을 제거한다")
