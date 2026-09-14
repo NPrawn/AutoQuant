@@ -162,11 +162,9 @@ public class BacktestPortfolio {
                     .divide(
                             currentPosition.quantity(),
                             MathContext.DECIMAL128
-                    )
-                    .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+                    );
             allocatedCostBasis = currentPosition.costBasis()
-                    .subtract(remainingCostBasis)
-                    .setScale(MONEY_SCALE, RoundingMode.HALF_UP);
+                    .subtract(remainingCostBasis);
 
             positions.put(
                     assetId,

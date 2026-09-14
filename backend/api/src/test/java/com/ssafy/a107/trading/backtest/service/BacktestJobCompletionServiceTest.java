@@ -11,6 +11,7 @@ import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -31,6 +32,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,9 +50,9 @@ class BacktestJobCompletionServiceTest {
     @Mock
     private BacktestRun backtestRun;
 
-    @DisplayName("결과 저장 후 백테스트 작업을 완료 상태로 전이한다")
+    @DisplayName("백테스트 작업을 완료 상태로 전이한 후 결과를 저장한다")
     @Test
-    void completeBacktestJobAfterPersistingResult() {
+    void completeBacktestJobBeforePersistingResult() {
         BacktestExecutionResult executionResult = executionResult();
         given(backtestRunRepository.findByBacktestIdForUpdate(BACKTEST_ID))
                 .willReturn(Optional.of(backtestRun));
@@ -59,19 +61,23 @@ class BacktestJobCompletionServiceTest {
         boolean completed = service().complete(BACKTEST_ID, executionResult);
 
         assertThat(completed).isTrue();
-        then(backtestResultPersistenceService).should().persist(
+        InOrder inOrder = inOrder(
+                backtestRun,
+                backtestResultPersistenceService
+        );
+        then(backtestRun).should(inOrder).complete(NOW);
+        then(backtestResultPersistenceService).should(inOrder).persist(
                 backtestRun,
                 executionResult.performanceReport(),
                 executionResult.fills(),
                 executionResult.assets(),
                 executionResult.universeAssets()
         );
-        then(backtestRun).should().complete(NOW);
     }
 
-    @DisplayName("결과 저장에 실패하면 백테스트 작업을 완료 처리하지 않는다")
+    @DisplayName("결과 저장에 실패하면 예외를 전파한다")
     @Test
-    void doNotCompleteBacktestJobWhenPersistingResultFails() {
+    void propagatePersistenceFailureAfterCompletingBacktestJob() {
         BacktestExecutionResult executionResult = executionResult();
         given(backtestRunRepository.findByBacktestIdForUpdate(BACKTEST_ID))
                 .willReturn(Optional.of(backtestRun));
@@ -88,7 +94,7 @@ class BacktestJobCompletionServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Result persistence failed");
 
-        then(backtestRun).should(never()).complete(any(Instant.class));
+        then(backtestRun).should().complete(NOW);
     }
 
     @DisplayName("이미 완료된 백테스트 작업은 결과를 중복 저장하지 않는다")
