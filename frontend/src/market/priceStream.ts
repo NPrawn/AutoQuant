@@ -1,7 +1,7 @@
 import { Client } from '@stomp/stompjs'
 
-import { parseTrade } from '../market/model'
-import type { ChartAsset, Trade } from '../market/types'
+import { parseTrade } from './model'
+import type { ChartAsset, Trade } from './types'
 
 type Callbacks = {
   onConnected: () => void

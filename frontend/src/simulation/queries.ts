@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { maxPageSize } from '../backtest/api'
 import { toEquityPoint } from '../backtest/types'
 import type { EquityPoint } from '../backtest/types'
-import type { ChartAsset } from '../market/types'
 import {
   createSimulationRun,
   fetchSimulationEquities,
@@ -16,7 +14,6 @@ import {
   startSimulationRun,
   stopSimulationRun,
 } from './api'
-import { connectPriceStream } from './priceStream'
 import { toSimulationPosition, toSimulationResult, toSimulationRun, toSimulationTrade } from './types'
 import type { CreateSimulationRunRequest, SimulationRunResponse } from './types'
 
@@ -167,33 +164,5 @@ export function useStopSimulation() {
   return useTransition(stopSimulationRun)
 }
 
-export type LivePrice = {
-  price: number
-  at: Date
-}
-
-/*
- * 보유 종목의 현재가. 배열 참조가 바뀔 때 연결을 다시 만드므로 호출자가 useMemo 로 고정한
- * 배열을 넘긴다. 연결이 없으면 빈 맵이고, 화면은 그때 서버가 준 마지막 봉 기준 값만 보인다.
- */
-export function useLivePrices(assets: readonly ChartAsset[]) {
-  const [prices, setPrices] = useState<ReadonlyMap<string, LivePrice>>(new Map())
-  const [connected, setConnected] = useState(false)
-
-  useEffect(
-    () =>
-      connectPriceStream(assets, {
-        onConnected: () => setConnected(true),
-        onDisconnected: () => setConnected(false),
-        onTrade: (trade) =>
-          setPrices((previous) => {
-            const next = new Map(previous)
-            next.set(trade.assetId, { price: Number(trade.price), at: new Date(trade.tradedAtUnixMilli) })
-            return next
-          }),
-      }),
-    [assets],
-  )
-
-  return { prices, connected }
-}
+/* 보유 종목 현재가는 차트와 같은 구독을 쓴다. 모의투자 화면이 쓰던 이름 그대로 다시 내보낸다. */
+export { useLivePrices, type LivePrice } from '../market/queries'

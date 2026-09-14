@@ -91,7 +91,8 @@ function LiveView({ run, strategy, lookup }: LiveViewProps) {
   }, [live, positions.data, lookup])
   const { prices, connected } = useLivePrices(heldAssets)
 
-  const priceMap = new Map(Array.from(prices, ([assetId, quote]) => [assetId, quote.price]))
+  /* 체결가는 정밀도 때문에 문자열로 온다. 평가 계산에는 숫자가 필요해 여기서 바꾼다. */
+  const priceMap = new Map(Array.from(prices, ([assetId, quote]) => [assetId, Number(quote.price)]))
   const valuations = valuePositions(positions.data ?? [], priceMap)
   const liveEquity = live ? totalEquity(run.cashBalance, valuations) : null
   const metrics = result.data ?? null
