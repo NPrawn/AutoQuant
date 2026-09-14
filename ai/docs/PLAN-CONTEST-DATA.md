@@ -235,7 +235,7 @@ ai/tests/
 
 ## 11. 작업 관리
 
-- 코드가 들어가므로 에픽 [S15P21A107-215](https://ssafy.atlassian.net/browse/S15P21A107-215) `[AI] 대회 데이터 생성과 검증` 아래에 스토리 티켓을 만들고, Jira 자동화가 만든 브랜치에서 작업한다 (`ai/CLAUDE.md`). 스토리는 1) 생성기와 1·2단계 검증, 2) 로컬 시뮬레이션 환경, 3) 3·4단계 검증과 리허설, 세 개다.
+- 코드가 들어가므로 에픽 [S15P21A107-215](https://ssafy.atlassian.net/browse/S15P21A107-215) `[AI] 대회 데이터 생성과 검증` 아래에 스토리 티켓을 만들고, Jira 자동화가 만든 브랜치에서 작업한다 (`ai/CLAUDE.md`). 목표를 "조작한 데이터로 로컬에서 대회를 한 번 테스트"로 좁혀 스토리를 셋으로 나눴다: [S15P21A107-216](https://ssafy.atlassian.net/browse/S15P21A107-216) 생성기, [S15P21A107-217](https://ssafy.atlassian.net/browse/S15P21A107-217) 확인과 check·build 명령, [S15P21A107-218](https://ssafy.atlassian.net/browse/S15P21A107-218) 로컬 대회 실행과 채점. 3·4단계 실험과 운영 배치는 이번 에픽 범위 밖이다.
 - 이 문서와 ADR은 `docs/contest-adr` 브랜치에 둔다.
 - 완료 보고에는 커밋 SHA를 넣는다.
 
