@@ -26,7 +26,7 @@ export type Trade = {
   tradedAtUnixMilli: number
   sequenceId: string
 }
-export type Candle = { time: number; open: number; high: number; low: number; close: number }
+export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number }
 
 // 그리기에만 number를 사용한다. 체결 표시와 원본 응답의 금액은 문자열 그대로 유지한다.
 export function toCandle(response: CandleResponse): Candle {
@@ -34,5 +34,6 @@ export function toCandle(response: CandleResponse): Candle {
     time: response.openTimeUnixMilli / 1000,
     open: Number(response.openPrice), high: Number(response.highPrice),
     low: Number(response.lowPrice), close: Number(response.closePrice),
+    volume: Number(response.tradeVolume),
   }
 }
