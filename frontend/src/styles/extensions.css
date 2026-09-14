@@ -3,19 +3,20 @@
  * 변형만 두고 새 컴포넌트 계층을 만들지 않는다.
  */
 
-.market-chart-page { display: grid; gap: 12px; }
-.market-chart-shell { grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); }
-.market-chart-shell > .card { min-width: 0; }
-.market-chart-page select { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); padding: 8px; border-radius: var(--r-s); }
-.market-candle-chart { height: 440px; width: 100%; }
-.market-chart-note { padding: 8px 20px; color: var(--ink-3); font-size: 12px; }
-.market-trades { padding: 16px; }
-.market-trades h2 { font-size: 15px; }
-.market-trades p { color: var(--ink-3); font-size: 12px; margin: 8px 0; }
-.market-trade-scroll { overflow: auto; max-height: 520px; }
-.market-trades table { width: 100%; font-size: 11px; white-space: nowrap; }
-.market-trades th, .market-trades td { text-align: right; padding: 6px; }
-@media (max-width: 1100px) { .market-chart-shell { grid-template-columns: minmax(0, 1fr); } }
+/*
+ * 차트의 레이아웃과 종목 목록, 봉 간격 버튼은 base.css 의 목업 클래스를 그대로 쓴다.
+ * 여기에는 목업이 정하지 않은 두 가지만 둔다. 하나는 차트 자리의 상태 표시가
+ * 카드 높이를 채우게 하는 것이고, 다른 하나는 키보드로 고를 수 있는 종목 행의 초점 표시다.
+ */
+.chart-area > .bt-load,
+.chart-area > .state-block {
+  flex: 1;
+  align-self: center;
+}
+.coin-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
 
 /* 오류 콜아웃. 색 계약상 오류는 주황(--crit)이다. 빨강은 상승에 배정돼 있다. */
 .callout.crit {

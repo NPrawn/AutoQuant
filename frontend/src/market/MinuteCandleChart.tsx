@@ -36,5 +36,6 @@ export function MinuteCandleChart({ candles }: { candles: Candle[] }) {
     if (candles.length > 0 && !fitted.current) { fit.current(); fitted.current = true }
   }, [candles])
 
-  return <div ref={container} className="market-candle-chart" role="img" aria-label="선택 종목의 최근 1분봉 차트" />
+  /* id 는 목업이 정한 차트 자리다. base.css 의 #view-chart #candle 이 크기를 맡는다. */
+  return <div ref={container} id="candle" role="img" aria-label="선택 종목의 봉 차트" />
 }
