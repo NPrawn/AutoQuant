@@ -44,6 +44,7 @@ public class BacktestJobCompletionService {
             return false;
         }
 
+        backtestRun.complete(Instant.now(clock));
         backtestResultPersistenceService.persist(
                 backtestRun,
                 executionResult.performanceReport(),
@@ -51,7 +52,6 @@ public class BacktestJobCompletionService {
                 executionResult.assets(),
                 executionResult.universeAssets()
         );
-        backtestRun.complete(Instant.now(clock));
         return true;
     }
 }
