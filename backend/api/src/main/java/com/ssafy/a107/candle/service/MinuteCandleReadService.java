@@ -1,5 +1,6 @@
 package com.ssafy.a107.candle.service;
 
+import com.ssafy.a107.candle.domain.MinuteCandle;
 import com.ssafy.a107.candle.domain.MinuteCandleSnapshot;
 import com.ssafy.a107.candle.repository.MinuteCandleRepository;
 import com.ssafy.a107.candle.service.port.RecentMinuteCandleCache;
@@ -18,6 +19,13 @@ public class MinuteCandleReadService {
 
     public MinuteCandleReadService(MinuteCandleRepository repository) {
         this.repository = repository;
+    }
+
+    // 팩터 계산은 ta4j BarSeries 를 만들어야 해 표시용 스냅샷이 아닌 엔티티를 시간 오름차순으로 준다.
+    public List<MinuteCandle> findRecentCandles(UUID assetId, int intervalMinutes, int limit) {
+        return repository.findByIdAssetIdAndIdIntervalMinutesOrderByIdOpenTimeDesc(
+                        assetId, (short) intervalMinutes, PageRequest.of(0, limit))
+                .reversed();
     }
 
     public List<MinuteCandleSnapshot> findRecent(UUID assetId, int intervalMinutes) {
