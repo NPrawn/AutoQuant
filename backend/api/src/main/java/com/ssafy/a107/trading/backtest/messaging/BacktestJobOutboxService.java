@@ -31,7 +31,7 @@ public class BacktestJobOutboxService {
         backtestJobOutboxRepository.save(new BacktestJobOutbox(message));
     }
 
-    @Transactional
+    @Transactional(Transactional.TxType.REQUIRES_NEW)
     public boolean publish(UUID jobId) {
         Objects.requireNonNull(jobId);
 
