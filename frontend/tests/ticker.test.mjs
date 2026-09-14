@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  changeClass, changeRate, formatChangeRate, formatPrice, matchesQuery, summarizeDay, tickerFromDailyCandles,
+  changeClass, changeRate, displayMarket, formatChangeRate, formatPrice, marketSymbol, matchesQuery,
+  summarizeDay, tickerFromDailyCandles,
 } from '../src/market/ticker.ts'
 
 const candle = (open, high, low, close, volume) => ({
@@ -11,10 +12,10 @@ const candle = (open, high, low, close, volume) => ({
 
 test('전일 종가는 마지막에서 두 번째 봉이고 봉이 하나면 비교할 대상이 없다', () => {
   assert.deepEqual(tickerFromDailyCandles([candle('1', '1', '1', '100', '1'), candle('1', '1', '1', '110', '1')]), {
-    previousClose: 100, lastClose: '110',
+    previousClose: 100, lastClose: '110', tradeAmount: 0,
   })
-  assert.deepEqual(tickerFromDailyCandles([candle('1', '1', '1', '110', '1')]), { previousClose: null, lastClose: '110' })
-  assert.deepEqual(tickerFromDailyCandles([]), { previousClose: null, lastClose: null })
+  assert.deepEqual(tickerFromDailyCandles([candle('1', '1', '1', '110', '1')]), { previousClose: null, lastClose: '110', tradeAmount: 0 })
+  assert.deepEqual(tickerFromDailyCandles([]), { previousClose: null, lastClose: null, tradeAmount: null })
 })
 
 test('기준가가 없거나 0 이면 등락을 계산하지 않는다', () => {
@@ -57,4 +58,11 @@ test('검색은 마켓 코드와 한글명 모두에서 대소문자 없이 찾�
   assert.equal(matchesQuery(asset, 'btc'), true)
   assert.equal(matchesQuery(asset, '비트'), true)
   assert.equal(matchesQuery(asset, 'eth'), false)
+})
+
+test('마켓 코드는 화면에서 BTC/KRW 로 읽는다', () => {
+  assert.equal(displayMarket('KRW-BTC'), 'BTC/KRW')
+  assert.equal(marketSymbol('KRW-BTC'), 'BTC')
+  // 모양이 다른 값은 건드리지 않고 그대로 보인다
+  assert.equal(displayMarket('BTC'), 'BTC')
 })

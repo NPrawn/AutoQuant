@@ -4,7 +4,8 @@ import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { CoinList } from '../market/CoinList'
 import { FactorCard } from '../market/FactorCard'
-import { factorTimeframe } from '../market/factors'
+import { factorTimeframe, tradeAmountRank } from '../market/factors'
+import type { TradeAmountRank } from '../market/factors'
 import {
   bollingerMultiplier,
   bollingerPeriod,
@@ -18,7 +19,7 @@ import type { IndicatorData, IndicatorKey } from '../market/indicators'
 import { CANDLE_INTERVALS, intervalLabel } from '../market/model'
 import type { CandleInterval } from '../market/model'
 import { useChartAssets, useDayStats, useLivePrices, useMarketFeed, useMarketTickers } from '../market/queries'
-import { changeClass, changeRate, formatChangeRate, formatPrice, formatVolume } from '../market/ticker'
+import { changeClass, changeRate, displayMarket, formatChangeRate, formatPrice, formatVolume, marketSymbol } from '../market/ticker'
 import type { Ticker } from '../market/ticker'
 import type { CandleResponse, ChartAsset, Trade } from '../market/types'
 
@@ -88,6 +89,7 @@ export function ChartPage() {
           asset={selected}
           interval={interval}
           ticker={tickers.data?.get(selected.id)}
+          rank={tradeAmountRank(tickers.data, selected.id)}
           livePrice={prices.get(selected.id)?.price ?? null}
           indicators={indicators}
           onIntervalChange={setInterval}
@@ -109,13 +111,14 @@ type MarketChartCardProps = {
   asset: ChartAsset
   interval: CandleInterval
   ticker: Ticker | undefined
+  rank: TradeAmountRank | null
   livePrice: string | null
   indicators: ReadonlySet<IndicatorKey>
   onIntervalChange: (interval: CandleInterval) => void
   onToggleIndicator: (key: IndicatorKey) => void
 }
 
-function MarketChartCard({ asset, interval, ticker, livePrice, indicators, onIntervalChange, onToggleIndicator }: MarketChartCardProps) {
+function MarketChartCard({ asset, interval, ticker, rank, livePrice, indicators, onIntervalChange, onToggleIndicator }: MarketChartCardProps) {
   const { history, connected, candles, rawCandles, trades } = useMarketFeed(asset, interval)
   const dayStats = useDayStats(asset.id)
   const indicatorData = useMemo(() => computeIndicators(candles), [candles])
@@ -130,13 +133,16 @@ function MarketChartCard({ asset, interval, ticker, livePrice, indicators, onInt
         <div className="tick-head">
           <div>
             <div className="tick-name">
-              <b>{asset.marketCode}</b>
+              <b>{displayMarket(asset.marketCode)}</b>
               <span>{asset.name}</span>
             </div>
             <div className={`tick-px ${changeClass(rate)}`}>{formatPrice(price)}</div>
             <div className={`tick-ch ${changeClass(rate)}`}>
               {formatChangeRate(rate)}
-              <span style={{ color: 'var(--ink-3)', marginLeft: 8 }}>{connected ? '실시간 연결됨' : '연결 중 · 끊기면 자동 재연결'}</span>
+              {/* 연결은 정상일 때 좌측 하단이 이미 알린다. 여기서는 끊겼을 때만 말한다. */}
+              {!connected && (
+                <span style={{ color: 'var(--ink-3)', marginLeft: 8 }}>연결 중 · 끊기면 자동 재연결</span>
+              )}
             </div>
           </div>
           <div className="tick-stats">
@@ -150,7 +156,8 @@ function MarketChartCard({ asset, interval, ticker, livePrice, indicators, onInt
             </div>
             <div className="it">
               <span className="k">24h 거래량</span>
-              <span className="v">{dayStats.data ? formatVolume(dayStats.data.volume) : '—'}</span>
+              {/* 수량만 적으면 무엇의 수량인지 읽히지 않는다. 목업처럼 코인 심볼을 붙인다. */}
+              <span className="v">{dayStats.data ? `${formatVolume(dayStats.data.volume)} ${marketSymbol(asset.marketCode)}` : '—'}</span>
             </div>
           </div>
         </div>
@@ -209,7 +216,7 @@ function MarketChartCard({ asset, interval, ticker, livePrice, indicators, onInt
       </div>
 
       <div>
-        <FactorCard assetId={asset.id} timeframe={factorTimeframe(interval)} />
+        <FactorCard assetId={asset.id} timeframe={factorTimeframe(interval)} rank={rank} />
         <section className="card pad">
           <div className="sec-title" style={{ marginBottom: 2 }}>최근 체결</div>
           <div className="sec-sub" style={{ marginBottom: 12 }}>현재 연결에서 수신한 최근 30건</div>
@@ -228,12 +235,12 @@ function MarketChartCard({ asset, interval, ticker, livePrice, indicators, onInt
 /* 범례 첫 줄. 지표 값을 보이는 둘째 줄은 지표 작업에서 붙인다. */
 function ChartLegend({ asset, interval, candle }: { asset: ChartAsset; interval: CandleInterval; candle: CandleResponse | null }) {
   if (candle === null) {
-    return <b>{asset.marketCode}</b>
+    return <b>{displayMarket(asset.marketCode)}</b>
   }
   const rate = changeRate(candle.closePrice, Number(candle.openPrice))
   return (
     <>
-      <b>{asset.marketCode}</b> · {intervalLabel(interval)} &nbsp; 시<span className={changeClass(rate)}>{formatPrice(candle.openPrice)}</span>
+      <b>{displayMarket(asset.marketCode)}</b> · {intervalLabel(interval)} &nbsp; 시<span className={changeClass(rate)}>{formatPrice(candle.openPrice)}</span>
       {' '}고<span className={changeClass(rate)}>{formatPrice(candle.highPrice)}</span>
       {' '}저<span className={changeClass(rate)}>{formatPrice(candle.lowPrice)}</span>
       {' '}종<span className={changeClass(rate)}>{formatPrice(candle.closePrice)}</span>

@@ -2,6 +2,7 @@ import { factorMeta, formatFactorValue } from '../strategy/labels.ts'
 import type { FactorType, Timeframe } from '../strategy/types'
 import type { CandleInterval } from './model'
 import { changeClass } from './ticker.ts'
+import type { Ticker } from './ticker'
 import type { AssetFactorsResponse } from './types'
 
 /*
@@ -28,8 +29,19 @@ export type FactorRow = {
   tone: string
 }
 
-/* 부호가 방향을 뜻하는 팩터에만 색을 준다. RSI, 변동성, 거래량 비율은 크기만 뜻한다. */
-const signedFactors: ReadonlySet<FactorType> = new Set<FactorType>(['RETURN', 'SMA_DISPARITY', 'DRAWDOWN'])
+/* 부호가 방향을 뜻하는 팩터에만 등락 색을 준다. RSI, 변동성, 거래량 비율은 크기만 뜻한다. */
+const signedFactors: ReadonlySet<FactorType> = new Set<FactorType>(['RETURN', 'SMA_DISPARITY'])
+
+/* 낙폭은 늘 0 이하라 등락이 아니다. 색 계약대로 낙폭 색을 쓴다. */
+function tone(factor: FactorType, value: number | null): string {
+  if (value === null) {
+    return ''
+  }
+  if (factor === 'DRAWDOWN') {
+    return 'dd-val'
+  }
+  return signedFactors.has(factor) ? changeClass(value) : ''
+}
 
 export function factorRows(response: AssetFactorsResponse | undefined): FactorRow[] {
   if (response === undefined) {
@@ -37,9 +49,9 @@ export function factorRows(response: AssetFactorsResponse | undefined): FactorRo
   }
   return response.factors.map((entry) => ({
     factor: entry.factor,
-    label: `${factorMeta[entry.factor].short} ${entry.period}`,
+    label: `${factorMeta[entry.factor].short} (${entry.period})`,
     text: entry.value === null ? '—' : formatFactorValue(entry.factor, entry.value),
-    tone: entry.value === null || !signedFactors.has(entry.factor) ? '' : changeClass(entry.value),
+    tone: tone(entry.factor, entry.value),
   }))
 }
 
@@ -51,4 +63,35 @@ export function missingFactorNote(response: AssetFactorsResponse | undefined): s
   }
   const names = missing.map((entry) => `${factorMeta[entry.factor].short} ${entry.period}`).join(', ')
   return `봉이 기간을 채우지 못해 아직 값이 없습니다: ${names}`
+}
+
+export type TradeAmountRank = {
+  position: number
+  total: number
+}
+
+/*
+ * 후보군이 거래대금 상위 종목이라 이 종목이 어디쯤인지 함께 보인다.
+ * 전략 DSL 의 팩터가 아니라 후보군 맥락이며, 목록이 이미 받은 일봉 거래대금으로 센다.
+ */
+export function tradeAmountRank(tickers: ReadonlyMap<string, Ticker> | undefined, assetId: string): TradeAmountRank | null {
+  if (tickers === undefined) {
+    return null
+  }
+  const amounts: number[] = []
+  let own: number | null = null
+  for (const [id, ticker] of tickers) {
+    if (ticker.tradeAmount === null) {
+      continue
+    }
+    amounts.push(ticker.tradeAmount)
+    if (id === assetId) {
+      own = ticker.tradeAmount
+    }
+  }
+  if (own === null) {
+    return null
+  }
+  const mine = own
+  return { position: amounts.filter((amount) => amount > mine).length + 1, total: amounts.length }
 }

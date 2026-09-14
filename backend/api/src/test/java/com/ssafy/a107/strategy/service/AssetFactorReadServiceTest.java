@@ -54,8 +54,8 @@ class AssetFactorReadServiceTest {
         assertThat(snapshot.values())
                 .extracting(AssetFactorValue::factor, AssetFactorValue::period)
                 .containsExactly(
-                        tuple(FactorType.RETURN, 20),
                         tuple(FactorType.RSI, 14),
+                        tuple(FactorType.RETURN, 20),
                         tuple(FactorType.SMA_DISPARITY, 20),
                         tuple(FactorType.VOLATILITY, 20),
                         tuple(FactorType.VOLUME_RATIO, 20),
@@ -100,7 +100,7 @@ class AssetFactorReadServiceTest {
                 .extracting(AssetFactorValue::factor)
                 .containsExactly(FactorType.RETURN, FactorType.SMA_DISPARITY,
                         FactorType.VOLATILITY, FactorType.VOLUME_RATIO, FactorType.DRAWDOWN);
-        assertThat(snapshot.values().get(1).value()).isNotNull();
+        assertThat(snapshot.values().getFirst().value()).isNotNull();
     }
 
     @Test
