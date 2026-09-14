@@ -124,3 +124,14 @@ export function useAssetFactors(assetId: string, timeframe: Timeframe) {
     refetchInterval: 60_000,
   })
 }
+
+/* 지난 구간을 되짚는 화면용. 실시간 구독 없이 확정 봉만 받는다. */
+export function useCandleHistory(assetId: string | null, interval: CandleInterval) {
+  return useQuery({
+    queryKey: ['market-candle-history', assetId, interval],
+    queryFn: ({ signal }) => fetchRecentCandles(assetId ?? '', interval, signal),
+    enabled: assetId !== null,
+    select: (response) => response.candles.map(toCandle),
+    staleTime: 60_000,
+  })
+}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router'
 
 import { isApiError } from '../api/error'
@@ -7,7 +7,11 @@ import { blank, formatDateTime, formatKrw, formatRate, trendClass } from '../bac
 import { EquityChart } from '../components/EquityChart'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState, type ErrorDetailRow } from '../components/StateBlock'
+import { computeIndicators, indicatorKeys } from '../market/indicators'
+import type { CandleInterval } from '../market/model'
+import { useMarketFeed } from '../market/queries'
 import type { ChartAsset } from '../market/types'
+import type { Timeframe } from '../strategy/types'
 import { useAssetLookup, type AssetLookup } from '../simulation/assetLookup'
 import { describeTransitionError } from '../simulation/errorMessage'
 import { formatTime, statusMeta } from '../simulation/labels'
@@ -34,6 +38,14 @@ import type { Strategy } from '../strategy/types'
  * 모의투자 실시간(목업 18)과 정지(목업 25). 실행 상태는 15초 폴링으로, 보유 종목의 현재가는
  * 체결 스트림으로 받는다. 랭킹 보드와 전략 활동 피드는 대응 API 가 없어 두지 않는다.
  */
+const MinuteCandleChart = lazy(() => import('../market/MinuteCandleChart').then((module) => ({ default: module.MinuteCandleChart })))
+
+/* 전략이 판단하는 봉 주기로 차트를 맞춘다. 다른 주기를 보여 주면 재선정 근거와 어긋나 보인다. */
+const simulationIntervals: Record<Timeframe, CandleInterval> = { '1H': 60, '4H': 240, '1D': 1440 }
+
+/* 보유 근거를 읽는 차트라 지표는 모두 켜 둔다. 여기서는 토글을 두지 않는다. */
+const liveIndicators = new Set(indicatorKeys)
+
 export function SimulationLivePage() {
   const { simulationId } = useParams<{ simulationId: string }>()
   const run = useSimulationRun(simulationId)
@@ -83,6 +95,8 @@ function LiveView({ run, strategy, lookup }: LiveViewProps) {
   const start = useStartSimulation()
   const [tradePage, setTradePage] = useState(0)
   const [transitionError, setTransitionError] = useState<string | null>(null)
+  /* 차트에 띄울 보유 종목. 고르기 전에는 첫 종목을 보여 준다. */
+  const [chartAssetId, setChartAssetId] = useState<string | null>(null)
 
   /* 운용 중일 때만 보유 종목의 체결을 구독한다. 정지된 실행은 마지막 봉 값으로 충분하다. */
   const heldAssets = useMemo(() => {
@@ -94,6 +108,9 @@ function LiveView({ run, strategy, lookup }: LiveViewProps) {
   /* 체결가는 정밀도 때문에 문자열로 온다. 평가 계산에는 숫자가 필요해 여기서 바꾼다. */
   const priceMap = new Map(Array.from(prices, ([assetId, quote]) => [assetId, Number(quote.price)]))
   const valuations = valuePositions(positions.data ?? [], priceMap)
+  /* 고른 종목이 재선정으로 빠졌으면 남아 있는 첫 종목으로 되돌린다. */
+  const chartAsset = lookup.get(chartAssetId ?? '') ?? lookup.get(valuations[0]?.assetId ?? '')
+  const chartInterval = simulationIntervals[run.timeframe]
   const liveEquity = live ? totalEquity(run.cashBalance, valuations) : null
   const metrics = result.data ?? null
   const equityValue = liveEquity ?? metrics?.assetValue ?? null
@@ -204,9 +221,21 @@ function LiveView({ run, strategy, lookup }: LiveViewProps) {
             ) : positions.isError ? (
               <ErrorState title="보유 종목을 불러오지 못했습니다" error={positions.error} onRetry={() => positions.refetch()} />
             ) : (
-              <PositionsTable valuations={valuations} lookup={lookup} />
+              <PositionsTable valuations={valuations} lookup={lookup} selectedId={chartAsset?.id ?? null} onSelect={setChartAssetId} />
             )}
           </section>
+
+          {chartAsset !== undefined && (
+            <section className="card pad">
+              <div className="live-section-head">
+                <div>
+                  <h3>{chartAsset.marketCode} 차트</h3>
+                </div>
+                <span className="live-note">행을 누르면 그 종목 차트로 전환됩니다</span>
+              </div>
+              <HoldingChart key={chartAsset.id + ":" + chartInterval} asset={chartAsset} interval={chartInterval} />
+            </section>
+          )}
 
           <section className="card pad">
             <div className="live-section-head">
@@ -314,5 +343,29 @@ function HaltedBlock({ run, metrics, pending, onStart }: HaltedBlockProps) {
         }
       />
     </div>
+  )
+}
+
+/*
+ * 보유 종목의 봉. 차트 화면과 같은 구독과 병합을 쓰고 지표만 고정으로 켠다.
+ * 종목이나 주기가 바뀌면 키로 다시 만들어 이전 구독과 버퍼를 남기지 않는다.
+ */
+function HoldingChart({ asset, interval }: { asset: ChartAsset; interval: CandleInterval }) {
+  const { history, candles } = useMarketFeed(asset, interval)
+  const data = useMemo(() => computeIndicators(candles), [candles])
+
+  if (history.isPending) {
+    return <LoadingState label="봉을 불러오는 중…" />
+  }
+  if (history.isError) {
+    return <ErrorState title="봉을 불러오지 못했습니다" error={history.error} onRetry={() => void history.refetch()} />
+  }
+  if (candles.length === 0) {
+    return <p className="goal-note" style={{ margin: 0 }}>아직 이 종목의 봉이 없습니다.</p>
+  }
+  return (
+    <Suspense fallback={<LoadingState label="차트를 준비하는 중…" />}>
+      <MinuteCandleChart candles={candles} data={data} indicators={liveIndicators} />
+    </Suspense>
   )
 }
