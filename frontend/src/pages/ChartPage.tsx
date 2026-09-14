@@ -3,6 +3,16 @@ import { lazy, Suspense, useMemo, useState } from 'react'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { CoinList } from '../market/CoinList'
+import {
+  bollingerMultiplier,
+  bollingerPeriod,
+  computeIndicators,
+  indicatorKeys,
+  lastValue,
+  movingAveragePeriods,
+  rsiPeriod,
+} from '../market/indicators'
+import type { IndicatorData, IndicatorKey } from '../market/indicators'
 import { CANDLE_INTERVALS, intervalLabel } from '../market/model'
 import type { CandleInterval } from '../market/model'
 import { useChartAssets, useDayStats, useLivePrices, useMarketFeed, useMarketTickers } from '../market/queries'
@@ -11,6 +21,14 @@ import type { Ticker } from '../market/ticker'
 import type { CandleResponse, ChartAsset, Trade } from '../market/types'
 
 const MinuteCandleChart = lazy(() => import('../market/MinuteCandleChart').then((module) => ({ default: module.MinuteCandleChart })))
+
+/* 지표 토글. 색은 목업이 정한 토큰을 그대로 쓴다. */
+const indicatorMeta: ReadonlyArray<{ key: IndicatorKey; label: string; token: string }> = [
+  { key: 'ma', label: `MA ${movingAveragePeriods.join('·')}`, token: '--ma20' },
+  { key: 'bb', label: '볼린저밴드', token: '--bb' },
+  { key: 'vol', label: '거래량', token: '--ink-2' },
+  { key: 'rsi', label: `RSI ${rsiPeriod}`, token: '--accent' },
+]
 
 /*
  * 차트(목업 04). 좌측에서 종목을 고르고 가운데에서 봉을, 우측에서 체결을 본다.
@@ -22,6 +40,8 @@ export function ChartPage() {
   const [selectedId, setSelectedId] = useState('')
   const [interval, setInterval] = useState<CandleInterval>(60)
   const [query, setQuery] = useState('')
+  /* 지표 선택은 종목·간격을 바꿔도 유지한다. 차트 카드는 키로 다시 만들어져 여기에 둔다. */
+  const [indicators, setIndicators] = useState<ReadonlySet<IndicatorKey>>(() => new Set(indicatorKeys))
 
   const list = useMemo(() => assets.data ?? [], [assets.data])
   const tickers = useMarketTickers(list)
@@ -67,7 +87,16 @@ export function ChartPage() {
           interval={interval}
           ticker={tickers.data?.get(selected.id)}
           livePrice={prices.get(selected.id)?.price ?? null}
+          indicators={indicators}
           onIntervalChange={setInterval}
+          onToggleIndicator={(key) =>
+            setIndicators((previous) => {
+              const next = new Set(previous)
+              if (next.has(key)) next.delete(key)
+              else next.add(key)
+              return next
+            })
+          }
         />
       </div>
     </section>
@@ -79,12 +108,15 @@ type MarketChartCardProps = {
   interval: CandleInterval
   ticker: Ticker | undefined
   livePrice: string | null
+  indicators: ReadonlySet<IndicatorKey>
   onIntervalChange: (interval: CandleInterval) => void
+  onToggleIndicator: (key: IndicatorKey) => void
 }
 
-function MarketChartCard({ asset, interval, ticker, livePrice, onIntervalChange }: MarketChartCardProps) {
+function MarketChartCard({ asset, interval, ticker, livePrice, indicators, onIntervalChange, onToggleIndicator }: MarketChartCardProps) {
   const { history, connected, candles, rawCandles, trades } = useMarketFeed(asset, interval)
   const dayStats = useDayStats(asset.id)
+  const indicatorData = useMemo(() => computeIndicators(candles), [candles])
 
   const latestCandle = rawCandles.at(-1) ?? null
   const price = livePrice ?? latestCandle?.closePrice ?? ticker?.lastClose ?? null
@@ -135,13 +167,29 @@ function MarketChartCard({ asset, interval, ticker, livePrice, onIntervalChange 
               </button>
             ))}
           </div>
-          <span style={{ color: 'var(--ink-3)', fontSize: 11 }}>최근 최대 1,000개 · UTC 기준</span>
+          <div className="inds" role="group" aria-label="보조지표">
+            {indicatorMeta.map((meta) => (
+              <button
+                key={meta.key}
+                type="button"
+                className={indicators.has(meta.key) ? 'ind on' : 'ind'}
+                aria-pressed={indicators.has(meta.key)}
+                onClick={() => onToggleIndicator(meta.key)}
+              >
+                <i style={{ background: `var(${meta.token})` }} />
+                {meta.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="chart-area">
           <div className="chart-legend">
             <div className="l1">
               <ChartLegend asset={asset} interval={interval} candle={latestCandle} />
+            </div>
+            <div className="l2">
+              <IndicatorLegend data={indicatorData} indicators={indicators} />
             </div>
           </div>
           {history.isPending ? (
@@ -152,7 +200,7 @@ function MarketChartCard({ asset, interval, ticker, livePrice, onIntervalChange 
             <EmptyState title="아직 봉 데이터가 없습니다" description="진행 봉이 도착하면 차트가 표시됩니다." />
           ) : (
             <Suspense fallback={<LoadingState label="차트를 준비하는 중…" />}>
-              <MinuteCandleChart candles={candles} />
+              <MinuteCandleChart candles={candles} data={indicatorData} indicators={indicators} />
             </Suspense>
           )}
         </div>
@@ -189,6 +237,54 @@ function ChartLegend({ asset, interval, candle }: { asset: ChartAsset; interval:
       {' '}<span className={changeClass(rate)}>{formatChangeRate(rate)}</span>
     </>
   )
+}
+
+/* 범례 둘째 줄. 켜 둔 지표의 마지막 값만 보인다. 값이 아직 없으면 그 지표는 적지 않는다. */
+function IndicatorLegend({ data, indicators }: { data: IndicatorData; indicators: ReadonlySet<IndicatorKey> }) {
+  const entries: Array<{ key: string; token: string; text: string }> = []
+
+  if (indicators.has('bb')) {
+    const upper = lastValue(data.bands.upper)
+    const middle = lastValue(data.bands.middle)
+    const lower = lastValue(data.bands.lower)
+    if (upper !== null && middle !== null && lower !== null) {
+      entries.push({
+        key: 'bb',
+        token: '--bb',
+        text: `BB ${bollingerPeriod} ${bollingerMultiplier} ${formatIndicator(upper)} / ${formatIndicator(middle)} / ${formatIndicator(lower)}`,
+      })
+    }
+  }
+  if (indicators.has('ma')) {
+    movingAveragePeriods.forEach((period, index) => {
+      const value = lastValue(data.averages[index])
+      if (value !== null) {
+        entries.push({ key: `ma${period}`, token: `--ma${period}`, text: `MA${period} ${formatIndicator(value)}` })
+      }
+    })
+  }
+  if (indicators.has('rsi')) {
+    const value = lastValue(data.strength)
+    if (value !== null) {
+      entries.push({ key: 'rsi', token: '--accent', text: `RSI ${value.toFixed(1)}` })
+    }
+  }
+
+  return (
+    <>
+      {entries.map((entry) => (
+        <span key={entry.key} style={{ color: `var(${entry.token})` }}>
+          {entry.text}
+        </span>
+      ))}
+    </>
+  )
+}
+
+const indicatorFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 2 })
+
+function formatIndicator(value: number): string {
+  return indicatorFormat.format(value)
 }
 
 function TradeList({ trades }: { trades: Trade[] }) {
