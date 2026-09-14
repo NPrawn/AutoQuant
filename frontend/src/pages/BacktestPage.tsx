@@ -8,9 +8,10 @@ import { EmptyState, ErrorState } from '../components/StateBlock'
 import { BacktestResult } from '../backtest/BacktestResult'
 import { BacktestRunForm } from '../backtest/BacktestRunForm'
 import { formatKrw, statusMeta } from '../backtest/labels'
+import { periodBounds } from '../backtest/periodBounds'
 import { useBacktestRun, useBacktestRuns, useCandleCoverage, useCreateBacktestRun } from '../backtest/queries'
 import { describeFailedRun, describeRunError } from '../backtest/runErrorMessage'
-import { applyPreset, createRunForm, fallbackPeriodStart, setStrategyId, toCreateRequest, validateRunForm } from '../backtest/runForm'
+import { applyPreset, clampPeriodStart, createRunForm, setStrategyId, toCreateRequest, validateRunForm } from '../backtest/runForm'
 import { RunHistoryTable } from '../backtest/RunHistoryTable'
 import { StrategyPicker } from '../backtest/StrategyPicker'
 import { readBacktestEntry } from '../strategy/backtestEntry'
@@ -19,6 +20,9 @@ import type { Strategy } from '../strategy/types'
 
 /* 대기가 이 시간을 넘기면 워커가 집어가지 못하고 있다는 뜻이라 사용자에게 알린다. */
 const longQueueWarningMs = 30_000
+
+/* 보유 구간과 전략을 아직 모를 때의 경계. 첫 렌더의 초안 기간에만 쓰인다. */
+const unknownBounds = (today: Date) => periodBounds(null, null, today)
 
 /*
  * 백테스트(목업 10, 11, 12, 24). 실행 식별자를 주소의 run 파라미터에 두어 화면을 떠났다 돌아와도
@@ -33,32 +37,38 @@ export function BacktestPage() {
   const strategies = useStrategies()
   const coverage = useCandleCoverage()
   const [today] = useState(() => new Date())
-  const [form, setForm] = useState(() => createRunForm(entry?.strategyId ?? '', today, null))
-  const [coverageApplied, setCoverageApplied] = useState(false)
+  const [form, setForm] = useState(() => createRunForm(entry?.strategyId ?? '', today, unknownBounds(today)))
+  /* 하한을 이미 반영한 전략. 전략이 바뀐 순간에만 시작일을 끌어올리려고 기억한다. */
+  const [clampedFor, setClampedFor] = useState<string | null>(null)
   const [showIssues, setShowIssues] = useState(false)
   const [tradePage, setTradePage] = useState(0)
 
   const create = useCreateBacktestRun()
   const run = useBacktestRun(runId)
-  const knownCoverage = coverage.data ?? null
 
   /* 전략 목록이 도착하면 선택이 비어 있을 때만 첫 전략을 채운다. */
   if (form.strategyId === '' && strategies.data !== undefined && strategies.data.length > 0) {
     setForm(setStrategyId(form, strategies.data[0].id))
   }
-  /* 보유 구간이 도착하면 한 번만 기본 기간을 그 시작일로 옮긴다. 사용자가 고친 뒤에는 건드리지 않는다. */
-  if (!coverageApplied && coverage.isSuccess) {
-    setCoverageApplied(true)
-    if (form.periodStart === fallbackPeriodStart) {
-      setForm(applyPreset(form, 'all', today, knownCoverage))
-    }
-  }
 
   const selectedStrategy = strategies.data?.find((strategy) => strategy.id === form.strategyId) ?? null
+  /* 하한은 보유 구간과 전략이 함께 정한다. 전략마다 필요한 워밍업 봉 수가 다르다. */
+  const bounds = periodBounds(coverage.data ?? null, selectedStrategy?.dsl ?? null, today)
+
+  /*
+   * 하한이 정해지면 기본 기간을 거기에 맞춘다. 그 뒤 전략을 바꿔 워밍업이 늘어나면 그때 한 번만
+   * 시작일을 끌어올린다. 매 렌더마다 끌어올리면 사용자가 이른 날짜를 고를 수도, 왜 안 되는지
+   * 알 수도 없다. 직접 고른 날짜는 그대로 두고 검증이 이유를 말한다.
+   */
+  if (coverage.isSuccess && selectedStrategy !== null && clampedFor !== selectedStrategy.id) {
+    const first = clampedFor === null
+    setClampedFor(selectedStrategy.id)
+    setForm(first ? applyPreset(form, 'all', today, bounds) : clampPeriodStart(form, bounds))
+  }
 
   const startRun = () => {
     setShowIssues(true)
-    if (validateRunForm(form, today, knownCoverage).length > 0) {
+    if (validateRunForm(form, today, bounds).length > 0) {
       return
     }
     setTradePage(0)
@@ -114,7 +124,8 @@ export function BacktestPage() {
               form={form}
               strategy={selectedStrategy}
               today={today}
-              coverage={coverage.isPending ? undefined : knownCoverage}
+              bounds={bounds}
+              loadingCoverage={coverage.isPending}
               pending={create.isPending || runId !== null}
               showIssues={showIssues}
               onChange={setForm}
