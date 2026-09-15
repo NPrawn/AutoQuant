@@ -1,6 +1,17 @@
+import csv
+
 import pytest
 
+from contest.blocks import parse_time
+from contest.sampling import Params
+from contest.stitch import LOAD_COLUMNS
 from scripts.contest_sim.fairness import neighbors, ranks, spearman, stage3, stage4
+from scripts.contest_sim.run_contest import load_strategies
+from scripts.contest_sim.validate import grid_keys, grid_strategies, prepare
+from tests.contest_fixtures import WEEK, random_walk_series, write_source_csv
+
+CAPS = {"1H": 839, "4H": 209, "1D": 34}
+STRATEGIES = "scripts/contest_sim/strategies.json"
 
 CONTEST = ["equal-weight-hold", "momentum-7d", "momentum-24h", "rsi-reversion", "trend-filter",
            "low-volatility", "volume-surge", "all-in-one", "cash-only", "drawdown-dip"]
@@ -79,3 +90,35 @@ def test_stage4_fails_a_type_the_generated_data_pushes_down():
 
     assert verdict["types"]["추세추종"]["passed"] is False
     assert verdict["passed"] is False
+
+
+def test_grid_strategies_cover_every_momentum_setting_within_the_cap():
+    grid = grid_strategies(load_strategies(STRATEGIES, CAPS))
+
+    assert len(grid) == 24 == len({name for name, _, _ in grid})
+    settings = {(s.ranking.period, s.selection.topN, s.rebalance.period.value) for _, _, s in grid}
+    assert settings == set(grid_keys().values())
+    assert max(s.ranking.period for _, _, s in grid) <= CAPS["1H"]
+
+
+def test_prepare_writes_real_monday_and_thursday_datasets(tmp_path):
+    series = random_walk_series(assets=3, weeks=40, seed=0)
+    source = str(tmp_path / "source.csv.gz")
+    write_source_csv(source, series)
+    universe = tmp_path / "universe.txt"
+    universe.write_text("".join(f"{asset}\n" for asset in series), encoding="utf-8")
+
+    manifest = prepare(source, str(universe), 1, str(tmp_path / "data"), Params(warmup_weeks=2, eval_weeks=3),
+                       window_weeks=30, min_assets=2)
+
+    names = [f"{group}-{i}" for group in ("real", "gen", "thu") for i in range(1, 6)]
+    assert list(manifest["datasets"]) == names
+    for name, dataset in manifest["datasets"].items():
+        assert dataset["group"] == name.split("-")[0] and len(dataset["weeks"]) == 5
+        with open(tmp_path / "data" / f"{name}.csv", encoding="utf-8", newline="") as file:
+            assert next(csv.reader(file)) == LOAD_COLUMNS
+    real_starts = [parse_time(week) for i in range(1, 6) for week in manifest["datasets"][f"real-{i}"]["weeks"]]
+    assert real_starts == [real_starts[0] + i * WEEK for i in range(25)]
+    assert manifest["datasets"]["gen-1"]["period_start"] == "2030-01-21T00:00:00Z"
+    assert manifest["datasets"]["thu-1"]["period_start"] == "2030-01-17T00:00:00Z"
+    assert (tmp_path / "data" / "manifest.json").exists()
