@@ -7,7 +7,7 @@ from contest.sampling import (
     BEAR, BULL, GENERAL, SIDEWAYS, GenerationError, Params, max_factor_period, regime_hit_rate,
     sample_general, sample_regime, sample_sequence, stitched_return,
 )
-from tests.contest_fixtures import MONDAY, WEEK, patterned_series, weekly_track
+from tests.contest_fixtures import MONDAY, PATTERN_TARGETS, WEEK, patterned_series, weekly_track
 
 CYCLE = {UP: DOWN, DOWN: FLAT, FLAT: UP}
 CYCLE_MATRIX = {
@@ -70,15 +70,16 @@ def test_stitched_return_is_equal_weight_buy_and_hold():
     assert ret == pytest.approx(0.01)
 
 
-def test_sample_regime_fills_evaluation_with_the_regime_label():
+def test_sample_regime_mixes_labels_and_keeps_the_evaluation_return_inside_the_target():
     series, universe, weeks, matrix = _patterned()
-    params = Params(warmup_weeks=2, eval_weeks=4, candidates=50)
+    params = Params(warmup_weeks=2, eval_weeks=4, candidates=50, targets=PATTERN_TARGETS)
 
-    sequence = sample_regime(BULL, weeks, matrix, series, universe, params, random.Random(3))
+    for kind, (low, high) in PATTERN_TARGETS.items():
+        sequence = sample_regime(kind, weeks, matrix, series, universe, params, random.Random(3))
 
-    assert len(sequence) == 6
-    assert len({week.start for week in sequence}) == 6
-    assert all(week.label == UP for week in sequence[2:])
+        assert len({week.start for week in sequence}) == 6
+        assert len({week.label for week in sequence[2:]}) > 1
+        assert low <= stitched_return(series, universe, [week.start for week in sequence[2:]], WEEK) <= high
 
 
 def test_sample_regime_raises_when_target_is_unreachable():
@@ -91,10 +92,10 @@ def test_sample_regime_raises_when_target_is_unreachable():
 
 def test_regime_hit_rate_counts_candidates_inside_target():
     series, universe, weeks, matrix = _patterned()
-    reachable = Params(warmup_weeks=2, eval_weeks=4, candidates=20)
-    unreachable = Params(warmup_weeks=2, eval_weeks=4, candidates=20, targets=UNREACHABLE)
+    reachable = Params(warmup_weeks=2, eval_weeks=4, candidates=30, targets=PATTERN_TARGETS)
+    unreachable = Params(warmup_weeks=2, eval_weeks=4, candidates=30, targets=UNREACHABLE)
 
-    assert regime_hit_rate(BULL, weeks, matrix, series, universe, reachable, random.Random(1)) == 1.0
+    assert 0.0 < regime_hit_rate(BULL, weeks, matrix, series, universe, reachable, random.Random(1)) < 1.0
     assert regime_hit_rate(BULL, weeks, matrix, series, universe, unreachable, random.Random(1)) == 0.0
 
 

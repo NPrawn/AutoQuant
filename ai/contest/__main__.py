@@ -8,7 +8,7 @@ import sys
 
 from contest.blocks import build_pool, format_time, label_weeks, load_source, transition_matrix
 from contest.checks import check_bars, feasibility, stage2
-from contest.sampling import KINDS, Params, max_factor_period, sample_sequence
+from contest.sampling import KINDS, Params, evaluation_return, max_factor_period, sample_sequence
 from contest.stitch import aggregate, stitch, tick_table, write_load_csv
 
 BLOCK_START = {"MON": 0, "THU": 3}
@@ -76,8 +76,10 @@ def _build(args: argparse.Namespace) -> int:
         if problems:
             raise SystemExit(f"{kind}: {len(problems)} bar check failures, first: {problems[:5]}")
         write_load_csv(os.path.join(args.out, f"{kind}.csv"), bars)
-        summary["datasets"][kind] = [{"source_start": format_time(week.start), "label": week.label}
-                                     for week in sequence]
+        summary["datasets"][kind] = {
+            "evaluation_return": evaluation_return(sequence, series, universe, params),
+            "weeks": [{"source_start": format_time(week.start), "label": week.label} for week in sequence],
+        }
     with open(os.path.join(args.out, "weeks.json"), "w", encoding="utf-8", newline="\n") as file:
         json.dump(summary, file, ensure_ascii=False, indent=2)
         file.write("\n")

@@ -9,7 +9,7 @@ from decimal import Decimal
 from contest.blocks import (
     DAY, HOUR, LABELS, Series, build_pool, label_weeks, period_return, real_windows, transition_matrix,
 )
-from contest.sampling import BEAR, BULL, SIDEWAYS, Params, regime_hit_rate, sample_general
+from contest.sampling import BEAR, BULL, SIDEWAYS, GenerationError, Params, regime_hit_rate, sample_general
 from contest.stitch import Bar, aggregate, stitch, tick_for, tick_table
 
 MIN_WEEKS_PER_LABEL = 30
@@ -77,9 +77,13 @@ def feasibility(series: Series, universe: list[str], params: Params, seed: int,
     matrix = transition_matrix(weeks, params.span)
     rng = random.Random(seed)
     result["matrix"] = matrix
-    result["hit_rates"] = {
-        kind: regime_hit_rate(kind, weeks, matrix, series, universe, params, rng) for kind in (BULL, BEAR, SIDEWAYS)
-    }
+    try:
+        result["hit_rates"] = {
+            kind: regime_hit_rate(kind, weeks, matrix, series, universe, params, rng) for kind in (BULL, BEAR, SIDEWAYS)
+        }
+    except GenerationError as error:
+        result["reason"] = str(error)
+        return result
     unreachable = [kind for kind, rate in result["hit_rates"].items() if rate == 0]
     result["passed"] = not unreachable
     result["reason"] = f"목표 범위에 닿지 못한 장세: {', '.join(unreachable)}" if unreachable else "통과"

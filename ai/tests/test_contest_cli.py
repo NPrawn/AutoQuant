@@ -2,7 +2,7 @@ import csv
 import json
 
 from contest.__main__ import main
-from contest.sampling import KINDS
+from contest.sampling import KINDS, Params
 from contest.stitch import LOAD_COLUMNS
 from tests.contest_fixtures import patterned_series, random_walk_series, write_source_csv
 
@@ -16,7 +16,8 @@ def _write(tmp_path, series) -> tuple[str, str]:
 
 
 def test_build_writes_four_load_csvs_and_week_list(tmp_path, capsys):
-    source, universe = _write(tmp_path, patterned_series(assets=2, cycles=10, up=1.06, down=0.96))
+    # up·down = 1, so 4 chained weeks return +22%, 0% or -18%: every default regime target is reachable
+    source, universe = _write(tmp_path, patterned_series(assets=2, cycles=10, up=1 / 0.82, down=0.82))
     out = tmp_path / "datasets"
 
     code = main(["build", "--source", source, "--universe", universe, "--seed", "7", "--out", str(out),
@@ -30,7 +31,9 @@ def test_build_writes_four_load_csvs_and_week_list(tmp_path, capsys):
         assert len(rows) - 1 == 2 * 6 * (168 + 42 + 7)
     weeks = json.loads((out / "weeks.json").read_text(encoding="utf-8"))
     assert list(weeks["datasets"]) == list(KINDS)
-    assert all(week["label"] == "UP" for week in weeks["datasets"]["BULL"][2:])
+    for kind, (low, high) in Params().targets.items():
+        assert low <= weeks["datasets"][kind]["evaluation_return"] <= high
+        assert len(weeks["datasets"][kind]["weeks"]) == 6
     assert weeks["period_start"] == "2030-01-21T00:00:00Z"
     assert json.loads(capsys.readouterr().out)["max_factor_period"] == {"1H": 335, "4H": 83, "1D": 13}
 
