@@ -62,6 +62,7 @@ def test_stage3_flags_a_winner_that_only_wins_on_real_data():
     assert verdict["overfit"]["strategy"] == names[0]
     assert verdict["overfit"]["drop"] == pytest.approx(100.0)
     assert verdict["robust"]["strategy"] != names[0]
+    assert verdict["held_out_real_drop"] == pytest.approx(0.0)
     assert verdict["passed"] is True
     assert steady["overfit"]["drop"] == pytest.approx(0.0) and steady["passed"] is False
 
@@ -78,7 +79,7 @@ def test_stage4_passes_when_generated_ranks_stay_inside_the_real_range():
     verdict = stage4(_stage4_results(same), ["r1", "r2", "r3"], ["g1", "g2", "g3"], ["t1", "t2", "t3"], CONTEST)
 
     assert verdict["passed"] is True
-    assert verdict["luck"]["generated_mean"] == pytest.approx(1.0)
+    assert verdict["luck"]["generated_mean"] == pytest.approx(1.0) == verdict["luck"]["real_mean"]
     assert verdict["failed_backtests"] == {name: 0 for name in ["r1", "r2", "r3", "g1", "g2", "g3", "t1", "t2", "t3"]}
 
 

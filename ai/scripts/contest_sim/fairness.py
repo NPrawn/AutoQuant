@@ -78,6 +78,15 @@ def stage3(results: dict[str, dict[str, dict]], real: list[str], generated: list
     robust = min((name for name in names if name != overfit), key=neighborhood)
     median_drop = statistics.median(drop.values())
 
+    def held_out_drop(held: str) -> float:
+        """Control: pick the winner on the other real datasets and move it to this real one instead."""
+        train = [dataset for dataset in real if dataset != held]
+        train_rank = _mean(_tables(results, train, names), names)
+        best = min(names, key=lambda name: train_rank[name])
+        return percentile(train_rank[best]) - percentile(ranks({name: results[held][name] for name in names})[best])
+
+    held_out = statistics.fmean(held_out_drop(held) for held in real) if len(real) > 1 else None
+
     def row(name: str) -> dict:
         return {"strategy": name, "real_rank": real_rank[name], "generated_rank": generated_rank[name],
                 "drop": drop[name]}
@@ -86,6 +95,7 @@ def stage3(results: dict[str, dict[str, dict]], real: list[str], generated: list
         "overfit": row(overfit),
         "robust": {**row(robust), "neighborhood_rank": neighborhood(robust)},
         "median_drop": median_drop,
+        "held_out_real_drop": held_out,
         "rank_correlation": spearman(real_rank, generated_rank),
         "passed": drop[overfit] > drop[robust] and drop[overfit] > median_drop,
     }
@@ -109,7 +119,7 @@ def stage4(results: dict[str, dict[str, dict]], real: list[str], generated: list
 
     real_pairs = [spearman(a, b) for a, b in itertools.combinations(real_tables, 2)]
     generated_mean = statistics.fmean(spearman(a, b) for a, b in itertools.combinations(generated_tables, 2))
-    luck = {**bounds(real_pairs), "generated_mean": generated_mean,
+    luck = {**bounds(real_pairs), "real_mean": statistics.fmean(real_pairs), "generated_mean": generated_mean,
             "passed": min(real_pairs) <= generated_mean <= max(real_pairs)}
 
     seams = {}

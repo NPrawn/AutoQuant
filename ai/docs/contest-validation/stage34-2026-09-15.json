@@ -19,6 +19,7 @@
       "neighborhood_rank": 9.2
     },
     "median_drop": -3.4782608695652186,
+    "held_out_real_drop": 34.78260869565217,
     "rank_correlation": -0.11780132742583371,
     "passed": true
   },
@@ -52,6 +53,7 @@
     "luck": {
       "real_min": -0.36969696969696986,
       "real_max": 0.9030303030303032,
+      "real_mean": 0.27878787878787886,
       "generated_mean": 0.09333333333333337,
       "passed": true
     },
