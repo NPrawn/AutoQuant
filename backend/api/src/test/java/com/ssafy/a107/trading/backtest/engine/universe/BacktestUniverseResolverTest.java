@@ -2,7 +2,7 @@ package com.ssafy.a107.trading.backtest.engine.universe;
 
 import com.ssafy.a107.asset.domain.Asset;
 import com.ssafy.a107.asset.domain.Exchange;
-import com.ssafy.a107.asset.repository.AssetRepository;
+import com.ssafy.a107.asset.service.CollectedAssetReadService;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ class BacktestUniverseResolverTest {
     private static final Instant EVALUATION_AT = Instant.parse("2026-01-15T00:00:00Z");
 
     @Mock
-    private AssetRepository assetRepository;
+    private CollectedAssetReadService collectedAssetReadService;
 
     @Mock
     private BacktestRun backtestRun;
@@ -42,7 +42,7 @@ class BacktestUniverseResolverTest {
         given(backtestRun.getPeriodStart()).willReturn(PERIOD_START);
         given(backtestRun.getPeriodEnd()).willReturn(PERIOD_END);
         given(backtestRun.getQuoteCurrency()).willReturn("KRW");
-        given(assetRepository.findAllAvailableAt(Exchange.UPBIT, "KRW", EVALUATION_AT))
+        given(collectedAssetReadService.findAvailableAt(Exchange.UPBIT, "KRW", EVALUATION_AT))
                 .willReturn(new ArrayList<>(List.of(asset)));
 
         List<Asset> universe = resolver().resolve(backtestRun, EVALUATION_AT);
@@ -62,7 +62,7 @@ class BacktestUniverseResolverTest {
                 .isThrownBy(() -> resolver().resolve(backtestRun, PERIOD_END))
                 .withMessage("Universe evaluation time must be within backtest period");
 
-        then(assetRepository).shouldHaveNoInteractions();
+        then(collectedAssetReadService).shouldHaveNoInteractions();
     }
 
     @DisplayName("백테스트 기간 중 거래 지원 이력이 있는 종목을 후보 유니버스로 조회한다")
@@ -71,7 +71,7 @@ class BacktestUniverseResolverTest {
         given(backtestRun.getQuoteCurrency()).willReturn("KRW");
         given(backtestRun.getPeriodStart()).willReturn(PERIOD_START);
         given(backtestRun.getPeriodEnd()).willReturn(PERIOD_END);
-        given(assetRepository.findAllAvailableDuring(
+        given(collectedAssetReadService.findAvailableDuring(
                 Exchange.UPBIT,
                 "KRW",
                 PERIOD_START,
@@ -86,6 +86,6 @@ class BacktestUniverseResolverTest {
     }
 
     private BacktestUniverseResolver resolver() {
-        return new BacktestUniverseResolver(assetRepository);
+        return new BacktestUniverseResolver(collectedAssetReadService);
     }
 }

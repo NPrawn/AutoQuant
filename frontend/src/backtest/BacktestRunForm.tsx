@@ -1,5 +1,6 @@
 import { useId } from 'react'
 
+import { useUniverseSize } from '../market/universe'
 import { timeframeLabels } from '../strategy/labels'
 import type { Strategy } from '../strategy/types'
 import { formatKrw } from './labels'
@@ -12,7 +13,6 @@ import {
   setPeriodEnd,
   setPeriodStart,
   slippageBps,
-  universeSize,
   validateRunForm,
   type BacktestRunForm as RunForm,
   type PresetRange,
@@ -39,6 +39,7 @@ const presets: Array<{ id: PresetRange; label: string }> = [
 
 /* 목업 10 의 좌측 카드. 봉 주기는 전략 DSL 에서 정해져 오므로 읽기 전용으로 보여 준다. */
 export function BacktestRunForm({ form, strategy, today, bounds, loadingCoverage, pending, showIssues, onChange, onSubmit }: BacktestRunFormProps) {
+  const universeSize = useUniverseSize()
   const id = useId()
   const issues = validateRunForm(form, today, bounds)
   const activePreset = detectPreset(form, today, bounds)

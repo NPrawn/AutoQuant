@@ -1,6 +1,6 @@
 package com.ssafy.a107.trading.simulation.service;
 
-import com.ssafy.a107.asset.repository.AssetRepository;
+import com.ssafy.a107.asset.service.CollectedAssetReadService;
 import com.ssafy.a107.asset.domain.Asset;
 import com.ssafy.a107.candle.domain.MinuteCandle;
 import com.ssafy.a107.candle.domain.MinuteCandleId;
@@ -73,7 +73,7 @@ class SimulationCandleExecutionServiceTest {
     private final SimulationEquityRepository simulationEquityRepository = mock(SimulationEquityRepository.class);
     private final SimulationResultRepository simulationResultRepository = mock(SimulationResultRepository.class);
     private final SimulationUniverseAssetRepository simulationUniverseAssetRepository = mock(SimulationUniverseAssetRepository.class);
-    private final AssetRepository assetRepository = mock(AssetRepository.class);
+    private final CollectedAssetReadService collectedAssetReadService = mock(CollectedAssetReadService.class);
     private final HistoricalCandleProvider historicalCandleProvider = mock(HistoricalCandleProvider.class);
     private final BacktestWarmupCandleCountResolver warmupCandleCountResolver = mock(BacktestWarmupCandleCountResolver.class);
     private final StrategyExecutionPipeline strategyExecutionPipeline = mock(StrategyExecutionPipeline.class);
@@ -145,7 +145,7 @@ class SimulationCandleExecutionServiceTest {
 
         executionService.process(simulationId, evaluationCandleOpenAt, executionAt);
 
-        then(assetRepository).should().findAllAvailableAt(Exchange.UPBIT, "KRW", evaluationCandleOpenAt);
+        then(collectedAssetReadService).should().findAvailableAt(Exchange.UPBIT, "KRW", evaluationCandleOpenAt);
         then(rebalanceSchedule).should().shouldRebalance(
                 RebalancePeriod.DAILY, Timeframe.ONE_HOUR, evaluationCandleOpenAt, true
         );
@@ -192,7 +192,7 @@ class SimulationCandleExecutionServiceTest {
         given(simulationRun.beginCandle(executionAt)).willReturn(true);
         given(strategy.getStrategyDsl()).willReturn(strategyDsl);
         given(asset.getAssetId()).willReturn(assetId);
-        given(assetRepository.findAllAvailableAt(Exchange.UPBIT, "KRW", evaluationCandleOpenAt))
+        given(collectedAssetReadService.findAvailableAt(Exchange.UPBIT, "KRW", evaluationCandleOpenAt))
                 .willReturn(List.of(asset));
         given(simulationPositionRepository.findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId))
                 .willReturn(List.of());
@@ -288,7 +288,7 @@ class SimulationCandleExecutionServiceTest {
         given(simulationRun.getRebalanceInterval()).willReturn(RebalancePeriod.DAILY);
         given(simulationRun.getTimeframe()).willReturn(Timeframe.ONE_HOUR);
         given(simulationRun.beginCandle(org.mockito.ArgumentMatchers.any())).willReturn(true);
-        given(assetRepository.findAllAvailableAt(any(), any(), any())).willReturn(List.of());
+        given(collectedAssetReadService.findAvailableAt(any(), any(), any())).willReturn(List.of());
         given(simulationPositionRepository.findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId))
                 .willReturn(List.of());
         given(rebalanceSchedule.shouldRebalance(any(), any(), any(), anyBoolean())).willReturn(false);
@@ -331,7 +331,7 @@ class SimulationCandleExecutionServiceTest {
         given(simulationRun.beginCandle(org.mockito.ArgumentMatchers.any())).willReturn(false);
         given(strategy.getStrategyDsl()).willReturn(strategyDsl);
         given(asset.getAssetId()).willReturn(assetId);
-        given(assetRepository.findAllAvailableAt(any(), any(), any())).willReturn(List.of(asset));
+        given(collectedAssetReadService.findAvailableAt(any(), any(), any())).willReturn(List.of(asset));
         given(simulationPositionRepository.findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId))
                 .willReturn(List.of());
         given(rebalanceSchedule.shouldRebalance(any(), any(), any(), anyBoolean())).willAnswer(invocation ->
@@ -368,7 +368,7 @@ class SimulationCandleExecutionServiceTest {
                 simulationEquityRepository,
                 simulationResultRepository,
                 simulationUniverseAssetRepository,
-                assetRepository,
+                collectedAssetReadService,
                 historicalCandleProvider,
                 warmupCandleCountResolver,
                 strategyExecutionPipeline,

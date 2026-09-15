@@ -42,6 +42,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 백테스트 기간 경계는 `src/backtest/periodBounds.ts` 가 정한다. 워밍업 봉 수 계산은 백엔드 `BacktestWarmupCandleCountResolver` 와 같은 규칙이라 한쪽이 바뀌면 다른 쪽도 바꾼다. 하한을 계산에 쓰는 곳은 프리셋, 시작일 검증, 기본 기간 셋뿐이고 컴포넌트가 날짜를 직접 계산하지 않는다.
 - 모의투자 시작 조건은 `src/simulation/startForm.ts`, 보유 종목 평가는 `src/simulation/positions.ts` 의 순수 함수에만 둔다. 현재가가 없는 값은 비우고 추정하지 않는다. 종목 이름은 `assetLookup.ts` 로 맞추고 컴포넌트가 `/assets` 를 따로 부르지 않는다.
 - 전략 DSL 계약 타입은 `src/strategy/types.ts`, 열거형 문구·단위는 `src/strategy/labels.ts`, 빌더 편집 동작은 `src/strategy/draft.ts`의 순수 함수에만 둔다. 컴포넌트가 DSL 을 직접 조립하지 않는다.
+- 후보군 종목 수는 `market/universe.ts` 의 `useUniverseSize()` 하나로 읽는다. 서버가 준 `/assets` 길이가 곧 후보군 크기라 화면이 숫자를 따로 적어 두지 않는다.
 - 오류 코드는 `src/api/errorCodes.ts`의 상수만 쓰고 `'AUTH-401-…'` 문자열을 화면 코드에 직접 쓰지 않는다.
 - 401 은 화면이 처리하지 않는다. `QueryClient` 캐시의 `onError`가 회원 쿼리를 "로그인 안 됨"으로 바꾸고 `RequireAuth`가 이유를 붙여 로그인 화면으로 보낸다.
 - 로딩·빈·오류 상태는 `src/components`의 `LoadingState`, `EmptyState`, `ErrorState`를 쓴다. 화면이 같은 구조를 다시 그리지 않는다.

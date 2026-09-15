@@ -21,7 +21,6 @@ export const quoteCurrency = 'KRW'
 export const feeRate = 0.0005
 export const slippageBps = 5
 export const executionPriceRule: ExecutionPriceRule = 'NEXT_CANDLE_OPEN'
-export const universeSize = 30
 
 /*
  * 엔진과 시장 데이터 버전은 서버가 아는 값인데 요청 필드로 열려 있다.
