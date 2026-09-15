@@ -1,0 +1,111 @@
+{
+  "window": {
+    "start": "2019-10-07T00:00:00Z",
+    "end": "2021-10-04T00:00:00Z"
+  },
+  "universe": [
+    "88516978-74fb-5cfb-a018-25f06666cec8",
+    "c69e3749-081e-51b5-803b-6d67edaa22fd",
+    "854477b1-a78a-5bd1-9497-5510c68748b4",
+    "4fee4c85-0cd4-5084-b5dd-040427936e5c",
+    "481fe15b-92b0-5c42-8b74-beba1ab269f5",
+    "5404d663-3a1c-5b9b-aad9-f7ca2c0e8621",
+    "4b351895-2d7f-5fec-a149-2d1830e29ad3",
+    "4296a5cd-29bc-543d-aec6-1ba06320baff",
+    "e1c4cde7-29b7-53d9-bd0c-be46bbacf11f",
+    "f03f099d-8128-518f-a2d5-efd813581422"
+  ],
+  "stage1": {
+    "assets": 10,
+    "pool_weeks": 104,
+    "label_weeks": {
+      "UP": 34,
+      "FLAT": 36,
+      "DOWN": 34
+    },
+    "matrix": {
+      "UP": {
+        "UP": 0.38235294117647056,
+        "FLAT": 0.35294117647058826,
+        "DOWN": 0.2647058823529412
+      },
+      "FLAT": {
+        "UP": 0.3142857142857143,
+        "FLAT": 0.4,
+        "DOWN": 0.2857142857142857
+      },
+      "DOWN": {
+        "UP": 0.29411764705882354,
+        "FLAT": 0.2647058823529412,
+        "DOWN": 0.4411764705882353
+      }
+    },
+    "hit_rates": {
+      "BULL": 0.033,
+      "BEAR": 0.017666666666666667,
+      "SIDEWAYS": 0.011333333333333334
+    },
+    "passed": true,
+    "reason": "통과"
+  },
+  "stage2": {
+    "real_windows": 87,
+    "generated": 200,
+    "seam_datasets": 50,
+    "violations": 0,
+    "metrics": {
+      "weekly_autocorr": {
+        "real_n": 87,
+        "generated_n": 200,
+        "real_median": 0.07468480427834377,
+        "generated_median": 0.07598405878736081,
+        "ks": 0.15454022988505745,
+        "tolerance": 0.37315010570824525,
+        "passed": true,
+        "reason": ""
+      },
+      "monthly_vol": {
+        "real_n": 87,
+        "generated_n": 200,
+        "real_median": 0.3119440868558086,
+        "generated_median": 0.2257938121633235,
+        "ks": 0.34517241379310337,
+        "tolerance": 0.63107822410148,
+        "passed": true,
+        "reason": ""
+      },
+      "max_drawdown": {
+        "real_n": 87,
+        "generated_n": 200,
+        "real_median": 0.33797409984565674,
+        "generated_median": 0.2878524322722716,
+        "ks": 0.26666666666666666,
+        "tolerance": 0.34883720930232553,
+        "passed": true,
+        "reason": ""
+      },
+      "vol_jump": {
+        "real_n": 1030,
+        "generated_n": 8500,
+        "real_median": 0.05313047970969356,
+        "generated_median": 0.09174445765414393,
+        "ks": 0.08404797258709318,
+        "tolerance": 0.07184466019417474,
+        "passed": false,
+        "reason": ""
+      },
+      "volume_jump": {
+        "real_n": 1030,
+        "generated_n": 8500,
+        "real_median": 0.20363998819059898,
+        "generated_median": 0.2421609666868471,
+        "ks": 0.14503141062250147,
+        "tolerance": 0.1029126213592233,
+        "passed": false,
+        "reason": ""
+      }
+    },
+    "passed": false
+  },
+  "passed": false
+}

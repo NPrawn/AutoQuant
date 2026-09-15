@@ -125,3 +125,12 @@ def test_sample_sequence_general_uses_warmup_plus_evaluation_weeks():
     params = Params(warmup_weeks=2, eval_weeks=3)
 
     assert len(sample_sequence(GENERAL, weeks, matrix, series, universe, params, random.Random(1))) == 5
+
+
+def test_sample_general_can_keep_the_volatility_level_of_the_previous_week():
+    weeks = [Week(i * WEEK, (UP, FLAT, DOWN)[i % 3], 0.0, calm=i % 2 == 0) for i in range(30)]
+    matrix = {label: {UP: 1 / 3, FLAT: 1 / 3, DOWN: 1 / 3} for label in (UP, FLAT, DOWN)}
+
+    sequence = sample_general(weeks, matrix, 5, random.Random(5), match_volatility=True)
+
+    assert len({week.calm for week in sequence}) == 1

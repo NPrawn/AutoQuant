@@ -4,7 +4,7 @@ import random
 import pytest
 
 from contest.blocks import (
-    DAY, DOWN, FLAT, HOUR, UP, Week, build_pool, choose_window, first_week_start, label_weeks,
+    DAY, DOWN, FLAT, HOUR, UP, Candle, Track, Week, build_pool, choose_window, first_week_start, label_weeks,
     load_source, parse_time, real_windows, transition_matrix,
 )
 from tests.contest_fixtures import MONDAY, SOURCE_COLUMNS, WEEK, weekly_track, write_source_csv
@@ -118,3 +118,23 @@ def test_real_windows_slide_over_consecutive_runs():
         [0, WEEK, 2 * WEEK],
         [WEEK, 2 * WEEK, 3 * WEEK],
     ]
+
+
+def _swinging_track(swings: list[float]) -> Track:
+    """Week i alternates hourly between 100 and 100 + swings[i]."""
+    track = Track("KRW-V")
+    for week, swing in enumerate(swings):
+        for hour in range(7 * 24):
+            price = 100.0 + (swing if hour % 2 else 0.0)
+            track.candles.append(Candle(MONDAY + week * WEEK + hour * HOUR, price, price, price, price, 1.0, price))
+    track.finish()
+    return track
+
+
+def test_label_weeks_marks_weeks_below_the_median_hourly_volatility_as_calm():
+    series = {"a": _swinging_track([0.0, 5.0, 0.0, 5.0, 0.0, 5.0, 0.0])}
+    pool = build_pool(series, ["a"], weekday=0)
+
+    calm = {(week.start - MONDAY) // WEEK: week.calm for week in label_weeks(series, ["a"], pool, WEEK)}
+
+    assert calm == {1: False, 2: True, 3: False, 4: True, 5: False}
