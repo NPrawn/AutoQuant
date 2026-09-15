@@ -1,0 +1,101 @@
+{
+  "seed": 20260915,
+  "window": {
+    "start": "2019-10-07T00:00:00Z",
+    "end": "2021-10-04T00:00:00Z"
+  },
+  "stage3": {
+    "overfit": {
+      "strategy": "momentum-720h-top5-weekly",
+      "real_rank": 7.6,
+      "generated_rank": 14.6,
+      "drop": 30.43478260869565
+    },
+    "robust": {
+      "strategy": "momentum-720h-top5-daily",
+      "real_rank": 10.8,
+      "generated_rank": 10.4,
+      "drop": -1.7391304347826093,
+      "neighborhood_rank": 9.2
+    },
+    "median_drop": -3.4782608695652186,
+    "rank_correlation": -0.11780132742583371,
+    "passed": true
+  },
+  "stage4": {
+    "types": {
+      "추세추종": {
+        "real_min": 5.0,
+        "real_max": 8.25,
+        "generated": 6.1,
+        "passed": true
+      },
+      "평균회귀": {
+        "real_min": 4.0,
+        "real_max": 5.0,
+        "generated": 5.0,
+        "passed": true
+      },
+      "저변동성": {
+        "real_min": 2.0,
+        "real_max": 5.0,
+        "generated": 3.8,
+        "passed": true
+      },
+      "거래량": {
+        "real_min": 4.000000000000001,
+        "real_max": 7.0,
+        "generated": 5.8,
+        "passed": true
+      }
+    },
+    "luck": {
+      "real_min": -0.36969696969696986,
+      "real_max": 0.9030303030303032,
+      "generated_mean": 0.09333333333333337,
+      "passed": true
+    },
+    "seam_weekday": {
+      "momentum-7d": {
+        "real_min": 2.999999999999999,
+        "real_max": 6.0,
+        "monday": 5.2,
+        "thursday": 5.0,
+        "passed": true
+      },
+      "low-volatility": {
+        "real_min": 2.0,
+        "real_max": 5.0,
+        "monday": 3.8,
+        "thursday": 4.2,
+        "passed": true
+      },
+      "drawdown-dip": {
+        "real_min": 1.0,
+        "real_max": 9.0,
+        "monday": 2.4,
+        "thursday": 3.4,
+        "passed": true
+      }
+    },
+    "failed_backtests": {
+      "real-1": 0,
+      "real-2": 0,
+      "real-3": 0,
+      "real-4": 0,
+      "real-5": 0,
+      "gen-1": 0,
+      "gen-2": 0,
+      "gen-3": 0,
+      "gen-4": 0,
+      "gen-5": 0,
+      "thu-1": 0,
+      "thu-2": 0,
+      "thu-3": 0,
+      "thu-4": 0,
+      "thu-5": 0
+    },
+    "passed": true
+  },
+  "passed": true
+}
