@@ -3,11 +3,10 @@
 import random
 from dataclasses import dataclass, field
 
-from contest.blocks import DAY, DOWN, FLAT, LABELS, UP, Series, Week, first_week_start, parse_time, period_return
+from contest.blocks import DAY, LABELS, Series, Week, first_week_start, parse_time, period_return
 
 GENERAL, BULL, BEAR, SIDEWAYS = "GENERAL", "BULL", "BEAR", "SIDEWAYS"
 KINDS = (GENERAL, BULL, BEAR, SIDEWAYS)
-REGIME_LABEL = {BULL: UP, BEAR: DOWN, SIDEWAYS: FLAT}
 
 
 class GenerationError(RuntimeError):
@@ -23,6 +22,7 @@ class Params:
     candidates: int = 1000
     volume_ref_weeks: int = 4
     virtual_from: int = parse_time("2030-01-01T00:00:00Z")
+    window: tuple[int, int] | None = None     # source weeks come only from here (None = whole history)
     targets: dict[str, tuple[float, float]] = field(default_factory=lambda: {
         BULL: (0.20, 0.30),
         BEAR: (-0.20, -0.10),
@@ -75,28 +75,25 @@ def stitched_return(series: Series, universe: list[str], starts: list[int], span
     return total / len(universe) - 1
 
 
-def _regime_candidate(kind: str, weeks: list[Week], matrix: dict[str, dict[str, float]],
-                      params: Params, rng: random.Random) -> list[Week]:
-    warmup = sample_general(weeks, matrix, params.warmup_weeks, rng)
-    used = {week.start for week in warmup}
-    label = REGIME_LABEL[kind]
-    pool = [week for week in weeks if week.label == label and week.start not in used]
-    if len(pool) < params.eval_weeks:
-        raise GenerationError(f"{kind}: only {len(pool)} unused {label} weeks")
-    return warmup + rng.sample(pool, params.eval_weeks)
-
-
-def _evaluation_return(sequence: list[Week], series: Series, universe: list[str], params: Params) -> float:
+def evaluation_return(sequence: list[Week], series: Series, universe: list[str], params: Params) -> float:
     starts = [week.start for week in sequence[params.warmup_weeks:]]
     return stitched_return(series, universe, starts, params.span)
+
+
+def _regime_candidates(weeks: list[Week], matrix: dict[str, dict[str, float]], series: Series,
+                       universe: list[str], params: Params, rng: random.Random):
+    """A regime is a general sequence whose evaluation return lands in the target. Filling the evaluation
+    with one label only overshoots: 13 chained UP weeks of coins return +100% or more."""
+    for _ in range(params.candidates):
+        sequence = sample_general(weeks, matrix, params.warmup_weeks + params.eval_weeks, rng)
+        yield sequence, evaluation_return(sequence, series, universe, params)
 
 
 def sample_regime(kind: str, weeks: list[Week], matrix: dict[str, dict[str, float]], series: Series,
                   universe: list[str], params: Params, rng: random.Random) -> list[Week]:
     low, high = params.targets[kind]
-    for _ in range(params.candidates):
-        sequence = _regime_candidate(kind, weeks, matrix, params, rng)
-        if low <= _evaluation_return(sequence, series, universe, params) <= high:
+    for sequence, ret in _regime_candidates(weeks, matrix, series, universe, params, rng):
+        if low <= ret <= high:
             return sequence
     raise GenerationError(f"{kind}: no candidate within {low:+.0%}..{high:+.0%} after {params.candidates} tries")
 
@@ -104,10 +101,7 @@ def sample_regime(kind: str, weeks: list[Week], matrix: dict[str, dict[str, floa
 def regime_hit_rate(kind: str, weeks: list[Week], matrix: dict[str, dict[str, float]], series: Series,
                     universe: list[str], params: Params, rng: random.Random) -> float:
     low, high = params.targets[kind]
-    hits = 0
-    for _ in range(params.candidates):
-        sequence = _regime_candidate(kind, weeks, matrix, params, rng)
-        hits += low <= _evaluation_return(sequence, series, universe, params) <= high
+    hits = sum(low <= ret <= high for _, ret in _regime_candidates(weeks, matrix, series, universe, params, rng))
     return hits / params.candidates
 
 

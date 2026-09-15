@@ -3,6 +3,7 @@
 import bisect
 import csv
 import gzip
+import random
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -92,18 +93,43 @@ def first_week_start(t: int, weekday: int) -> int:
     return (day + (weekday - (day + 3)) % 7) * DAY  # 1970-01-01 was a Thursday
 
 
-def build_pool(series: Series, universe: list[str], weekday: int, block_days: int = 7) -> list[int]:
-    """Week starts where every universe asset traded before the week and after it ends."""
+def build_pool(series: Series, universe: list[str], weekday: int, block_days: int = 7,
+               window: tuple[int, int] | None = None) -> list[int]:
+    """Week starts where every universe asset traded before the week and after it ends, inside `window`."""
     span = block_days * DAY
     tracks = [series[asset] for asset in universe]
     start = first_week_start(min(track.times[0] for track in tracks), weekday)
     last = max(track.times[-1] for track in tracks)
     pool = []
     while start + span <= last:
-        if all(track.times[0] < start and track.times[-1] >= start + span for track in tracks):
+        inside = window is None or (window[0] <= start and start + span <= window[1])
+        if inside and all(track.times[0] < start and track.times[-1] >= start + span for track in tracks):
             pool.append(start)
         start += span
     return pool
+
+
+def choose_window(series: Series, candidates: list[str], weekday: int, block_days: int, weeks: int,
+                  min_assets: int, rng: random.Random) -> tuple[tuple[int, int], list[str]]:
+    """A random `weeks`-block window and the candidates that trade through all of it.
+
+    Candidates list today's most traded coins, so older windows hold fewer of them; windows with fewer than
+    `min_assets` are never picked."""
+    span = block_days * DAY
+    length = weeks * span
+    start = first_week_start(min(series[asset].times[0] for asset in candidates), weekday)
+    last = max(series[asset].times[-1] for asset in candidates)
+    options = []
+    while start + length <= last:
+        alive = [asset for asset in candidates
+                 if series[asset].times[0] < start and series[asset].times[-1] >= start + length]
+        if len(alive) >= min_assets:
+            options.append((start, alive))
+        start += span
+    if not options:
+        raise ValueError(f"no {weeks}-week window where {min_assets} or more assets trade throughout")
+    start, alive = rng.choice(options)
+    return (start, start + length), alive
 
 
 def period_return(track: Track, start: int, length: int) -> float:

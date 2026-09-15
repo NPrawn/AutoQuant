@@ -9,7 +9,7 @@ from decimal import Decimal
 from contest.blocks import (
     DAY, HOUR, LABELS, Series, build_pool, label_weeks, period_return, real_windows, transition_matrix,
 )
-from contest.sampling import BEAR, BULL, SIDEWAYS, Params, regime_hit_rate, sample_general
+from contest.sampling import BEAR, BULL, SIDEWAYS, GenerationError, Params, regime_hit_rate, sample_general
 from contest.stitch import Bar, aggregate, stitch, tick_for, tick_table
 
 MIN_WEEKS_PER_LABEL = 30
@@ -67,7 +67,7 @@ def feasibility(series: Series, universe: list[str], params: Params, seed: int,
     if len(universe) < 2:
         result["reason"] = "종목이 2개 미만"
         return result
-    pool = build_pool(series, universe, params.block_start, params.block_days)
+    pool = build_pool(series, universe, params.block_start, params.block_days, params.window)
     weeks = label_weeks(series, universe, pool, params.span)
     result["pool_weeks"] = len(pool)
     result["label_weeks"] = {label: sum(week.label == label for week in weeks) for label in LABELS}
@@ -77,9 +77,13 @@ def feasibility(series: Series, universe: list[str], params: Params, seed: int,
     matrix = transition_matrix(weeks, params.span)
     rng = random.Random(seed)
     result["matrix"] = matrix
-    result["hit_rates"] = {
-        kind: regime_hit_rate(kind, weeks, matrix, series, universe, params, rng) for kind in (BULL, BEAR, SIDEWAYS)
-    }
+    try:
+        result["hit_rates"] = {
+            kind: regime_hit_rate(kind, weeks, matrix, series, universe, params, rng) for kind in (BULL, BEAR, SIDEWAYS)
+        }
+    except GenerationError as error:
+        result["reason"] = str(error)
+        return result
     unreachable = [kind for kind, rate in result["hit_rates"].items() if rate == 0]
     result["passed"] = not unreachable
     result["reason"] = f"목표 범위에 닿지 못한 장세: {', '.join(unreachable)}" if unreachable else "통과"
@@ -191,7 +195,7 @@ def stage2(series: Series, universe: list[str], params: Params, seed: int,
            generated: int = 200, seam_datasets: int = 50) -> dict:
     span = params.span
     length = params.warmup_weeks + params.eval_weeks
-    pool = build_pool(series, universe, params.block_start, params.block_days)
+    pool = build_pool(series, universe, params.block_start, params.block_days, params.window)
     weeks = label_weeks(series, universe, pool, span)
     matrix = transition_matrix(weeks, span)
     real = [[week.start for week in window] for window in real_windows(weeks, length, span)]

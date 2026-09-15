@@ -11,7 +11,7 @@ from contest.checks import (
 )
 from contest.sampling import BEAR, BULL, SIDEWAYS, Params
 from contest.stitch import Bar, aggregate
-from tests.contest_fixtures import MONDAY, WEEK, patterned_series, random_walk_series, weekly_track
+from tests.contest_fixtures import MONDAY, PATTERN_TARGETS, WEEK, patterned_series, random_walk_series, weekly_track
 
 VIRTUAL = parse_time("2030-01-07T00:00:00Z")
 TICKS = {2: Decimal("0.01")}
@@ -69,13 +69,21 @@ def test_detects_open_time_off_the_interval_boundary():
 
 def test_feasibility_passes_when_every_regime_reaches_its_target():
     series = patterned_series(assets=2, cycles=10, up=1.06, down=0.96)
-    params = Params(warmup_weeks=2, eval_weeks=4, candidates=20)
+    params = Params(warmup_weeks=2, eval_weeks=4, candidates=30, targets=PATTERN_TARGETS)
 
     result = feasibility(series, list(series), params, seed=1, min_weeks=5)
 
     assert result["passed"] is True
     assert result["label_weeks"] == {UP: 10, FLAT: 10, DOWN: 10}
-    assert result["hit_rates"] == {BULL: 1.0, BEAR: 1.0, SIDEWAYS: 1.0}
+    assert all(0.0 < rate < 1.0 for rate in result["hit_rates"].values())
+
+
+def test_feasibility_reports_a_pool_too_short_for_one_dataset_as_a_failure():
+    series = patterned_series(assets=2, cycles=10, up=1.06, down=0.96)
+
+    result = feasibility(series, list(series), Params(warmup_weeks=20, eval_weeks=20), seed=1, min_weeks=1)
+
+    assert result["passed"] is False and "ran out" in result["reason"]
 
 
 def test_feasibility_fails_on_too_few_weeks_or_unreachable_targets():
