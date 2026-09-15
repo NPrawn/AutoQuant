@@ -5,9 +5,12 @@ import gzip
 import random
 
 from contest.blocks import DAY, HOUR, Candle, Series, Track, format_time
+from contest.sampling import BEAR, BULL, SIDEWAYS
 
 MONDAY = 1514764800  # 2018-01-01T00:00:00Z, a Monday
 WEEK = 7 * DAY
+# 4 chained weeks of patterned_series(up=1.06, down=0.96) return +7.9%, +1.8% or -2.3%
+PATTERN_TARGETS = {BULL: (0.05, 0.10), SIDEWAYS: (0.0, 0.03), BEAR: (-0.03, 0.0)}
 SOURCE_COLUMNS = [
     "market_code", "asset_id", "open_time", "open_price", "high_price",
     "low_price", "close_price", "trade_volume", "trade_amount",

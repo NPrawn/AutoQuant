@@ -1,9 +1,10 @@
 import csv
+import random
 
 import pytest
 
 from contest.blocks import (
-    DAY, DOWN, FLAT, HOUR, UP, Week, build_pool, first_week_start, label_weeks,
+    DAY, DOWN, FLAT, HOUR, UP, Week, build_pool, choose_window, first_week_start, label_weeks,
     load_source, parse_time, real_windows, transition_matrix,
 )
 from tests.contest_fixtures import MONDAY, SOURCE_COLUMNS, WEEK, weekly_track, write_source_csv
@@ -57,6 +58,32 @@ def test_build_pool_needs_a_candle_before_and_after_each_week():
     }
 
     assert build_pool(series, ["a", "b"], weekday=0) == [MONDAY + 2 * WEEK, MONDAY + 3 * WEEK]
+
+
+def test_build_pool_keeps_only_weeks_inside_the_window():
+    series = {"a": weekly_track("KRW-A", MONDAY, [1.0] * 8)}
+
+    pool = build_pool(series, ["a"], weekday=0, window=(MONDAY + 2 * WEEK, MONDAY + 5 * WEEK))
+
+    assert pool == [MONDAY + 2 * WEEK, MONDAY + 3 * WEEK, MONDAY + 4 * WEEK]
+
+
+def test_choose_window_picks_a_window_where_enough_assets_trade_throughout():
+    series = {
+        "a": weekly_track("KRW-A", MONDAY, [1.0] * 12),
+        "b": weekly_track("KRW-B", MONDAY + 4 * WEEK, [1.0] * 8),
+        "c": weekly_track("KRW-C", MONDAY + 8 * WEEK, [1.0] * 4),
+    }
+    starts = set()
+
+    for seed in range(20):
+        (start, end), universe = choose_window(series, ["a", "b", "c"], 0, 7, 4, 2, random.Random(seed))
+        assert universe == ["a", "b"] and end == start + 4 * WEEK
+        starts.add((start - MONDAY) // WEEK)
+
+    assert starts == {5, 6, 7}
+    with pytest.raises(ValueError):
+        choose_window(series, ["a", "b", "c"], 0, 7, 4, 3, random.Random(0))
 
 
 def test_label_weeks_splits_equal_weight_returns_into_terciles():

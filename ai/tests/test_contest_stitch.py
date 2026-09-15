@@ -2,7 +2,7 @@ import csv
 from decimal import Decimal
 
 from contest.blocks import HOUR, UP, Candle, Track, Week, parse_time
-from contest.stitch import LOAD_COLUMNS, Bar, aggregate, snap, stitch, tick_table, write_load_csv
+from contest.stitch import LOAD_COLUMNS, Bar, aggregate, fill_gaps, snap, stitch, tick_table, write_load_csv
 from tests.contest_fixtures import MONDAY, WEEK, weekly_track
 
 VIRTUAL = parse_time("2030-01-07T00:00:00Z")
@@ -25,6 +25,23 @@ def test_snap_rounds_half_up_and_borrows_the_nearest_decade():
     assert snap(1.235, table) == Decimal("1.24")
     assert snap(123.0, table) == Decimal("125")
     assert snap(12.34, table) == Decimal("12.3")
+
+
+def test_fill_gaps_repeats_the_previous_close_with_zero_volume():
+    one, two = Decimal("100.00"), Decimal("101.00")
+    hourly = [
+        Bar("a", 60, VIRTUAL, one, one, one, one, Decimal(2), one * 2),
+        Bar("a", 60, VIRTUAL + 3 * HOUR, two, two, two, two, Decimal(1), two),
+        Bar("b", 60, VIRTUAL, one, one, one, one, Decimal(1), one),
+    ]
+
+    filled, added = fill_gaps(hourly)
+
+    assert added == 2
+    a = [bar for bar in filled if bar.asset == "a"]
+    assert [bar.t for bar in a] == [VIRTUAL + i * HOUR for i in range(4)]
+    assert all(bar.o == bar.h == bar.l == bar.c == one and bar.v == 0 and bar.a == 0 for bar in a[1:3])
+    assert len(filled) == 5
 
 
 def test_stitch_chains_prices_so_each_week_keeps_its_return():
