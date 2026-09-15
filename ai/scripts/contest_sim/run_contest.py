@@ -1,0 +1,188 @@
+"""Run one local contest against the local backend.
+
+    python -m scripts.contest_sim.run_contest seed --config .contest/sim.json --universe U --assets A
+    python -m scripts.contest_sim.run_contest run --config .contest/sim.json --datasets D --strategies S --out O
+
+Local development only: HTTP to the local Spring API, `docker exec psql` to the local Postgres container.
+Settings come from a JSON file, never from environment variables (ai/CLAUDE.md).
+"""
+
+import argparse
+import csv
+import json
+import os
+import subprocess
+import sys
+import time
+import urllib.error
+import urllib.request
+
+from app.core.schema import Condition, FactorOperand, FilterGroup, Strategy
+from contest.sampling import KINDS
+from scripts.contest_sim.jwt_token import issue
+from scripts.contest_sim.scoring import score
+
+LOAD_SQL = (
+    "\\copy market_data.minute_candle (asset_id, interval_minutes, open_time, open_price, high_price, low_price, "
+    "close_price, trade_volume, trade_amount, last_event_time) FROM STDIN WITH (FORMAT csv, HEADER true)"
+)
+
+
+def load_strategies(path: str, caps: dict[str, int]) -> list[tuple[str, str, Strategy]]:
+    """Validate every DSL with the schema and reject factor periods longer than the warmup (ADR-0013)."""
+    with open(path, encoding="utf-8") as file:
+        items = json.load(file)
+    strategies = []
+    for item in items:
+        strategy = Strategy.model_validate(item["dsl"])
+        periods = [strategy.ranking.period]
+        nodes = [strategy.filters]
+        while nodes:
+            node = nodes.pop()
+            if isinstance(node, FilterGroup):
+                nodes.extend(node.children)
+            elif isinstance(node, Condition):
+                periods += [side.period for side in (node.left, node.right) if isinstance(side, FactorOperand)]
+        cap = caps[strategy.timeframe.value]
+        if max(periods) > cap:
+            raise ValueError(f"{item['name']}: factor period {max(periods)} exceeds {cap} for {strategy.timeframe.value}")
+        strategies.append((item["name"], item.get("description", ""), strategy))
+    return strategies
+
+
+def _psql(config: dict, args: list[str], stdin: bytes) -> None:
+    command = ["docker", "exec", "-i", config["postgres_container"], "psql", "-v", "ON_ERROR_STOP=1",
+               "-U", config["db_user"], "-d", config["db_name"], *args]
+    subprocess.run(command, input=stdin, check=True)
+
+
+def _literal(value: str) -> str:
+    return "NULL" if value == "" else "'" + value.replace("'", "''") + "'"
+
+
+def seed(config: dict, universe_path: str, assets_path: str) -> None:
+    with open(universe_path, encoding="utf-8") as file:
+        universe = {line.strip() for line in file if line.strip()}
+    statements = [
+        "INSERT INTO account.member (member_id, login_provider, login_provider_member_id, email_address, "
+        f"display_name, member_status) VALUES ({_literal(config['member_id'])}, 'SSAFY', 'local-contest', "
+        "'contest@local.test', 'local contest', 'ACTIVE') ON CONFLICT (member_id) DO NOTHING;"
+    ]
+    with open(assets_path, encoding="utf-8", newline="") as file:
+        for row in csv.DictReader(file):
+            if row["asset_id"] not in universe:
+                continue
+            # the engine only picks assets that are listed during the (virtual 2030) period
+            row.update(trading_status="TRADING", trading_support_started_at="", trading_support_ended_at="")
+            statements.append(
+                f"INSERT INTO reference.asset ({', '.join(row)}) VALUES ({', '.join(map(_literal, row.values()))}) "
+                "ON CONFLICT (asset_id) DO NOTHING;"
+            )
+    _psql(config, [], "\n".join(statements).encode("utf-8"))
+    print(f"seeded member and {len(statements) - 1} assets")
+
+
+class Api:
+    def __init__(self, base_url: str, token: str):
+        self.base_url = base_url.rstrip("/")
+        self.token = token
+
+    def call(self, method: str, path: str, body: dict | None = None) -> dict:
+        data = None if body is None else json.dumps(body).encode("utf-8")
+        request = urllib.request.Request(self.base_url + path, data=data, method=method, headers={
+            "Authorization": f"Bearer {self.token}", "Content-Type": "application/json",
+        })
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                return json.loads(response.read() or b"null")
+        except urllib.error.HTTPError as error:
+            raise RuntimeError(f"{method} {path} -> {error.code}: {error.read().decode('utf-8', 'replace')}") from error
+
+
+def _collect(api: Api, backtest_id: str, poll_seconds: float) -> dict:
+    while True:
+        run = api.call("GET", f"/backtests/{backtest_id}")
+        if run["status"] in ("COMPLETED", "FAILED"):
+            break
+        time.sleep(poll_seconds)
+    if run["status"] == "FAILED":
+        return {"status": "FAILED", "failure": run.get("failureCode"), "return": None, "mdd": None, "exposure": None}
+    result = api.call("GET", f"/backtests/{backtest_id}/result")
+    exposures, page = [], 0
+    while True:
+        equity = api.call("GET", f"/backtests/{backtest_id}/equity?page={page}&size=100")
+        exposures += [1 - float(point["cashBalance"]) / float(point["totalAssetValue"])
+                      for point in equity["content"] if float(point["totalAssetValue"]) > 0]
+        page += 1
+        if page >= equity["totalPages"]:
+            break
+    return {"status": "COMPLETED", "return": float(result["cumulativeReturn"]), "mdd": float(result["mdd"]),
+            "exposure": sum(exposures) / len(exposures) if exposures else 0.0, "trades": result["tradeCount"]}
+
+
+def run(config: dict, datasets_dir: str, strategies_path: str, out_path: str, poll_seconds: float = 5) -> dict:
+    with open(os.path.join(datasets_dir, "weeks.json"), encoding="utf-8") as file:
+        summary = json.load(file)
+    strategies = load_strategies(strategies_path, summary["max_factor_period"])
+    api = Api(config["api"], issue(config["member_id"], config["jwt_secret"], config.get("jwt_issuer", "a107")))
+    strategy_ids = {
+        name: api.call("POST", "/strategies", {
+            "name": name, "description": description, "strategyDsl": strategy.model_dump(mode="json"),
+        })["strategyId"]
+        for name, description, strategy in strategies
+    }
+    results: dict[str, dict[str, dict]] = {name: {} for name in strategy_ids}
+    for kind in KINDS:
+        _psql(config, ["-c", "DELETE FROM market_data.minute_candle"], b"")
+        with open(os.path.join(datasets_dir, f"{kind}.csv"), "rb") as file:
+            _psql(config, ["-c", LOAD_SQL], file.read())
+        backtests = {
+            name: api.call("POST", "/backtests", {
+                "strategyId": strategy_id, "periodStart": summary["period_start"], "periodEnd": summary["period_end"],
+                "quoteCurrency": "KRW", "initialCapital": 10_000_000, "feeRate": 0.0005, "slippageBps": 10,
+                "executionPriceRule": "NEXT_CANDLE_OPEN", "engineVersion": "local-sim",
+                "marketDataVersion": f"{kind}-seed{summary['seed']}",
+            })["backtestId"]
+            for name, strategy_id in strategy_ids.items()
+        }
+        for name, backtest_id in backtests.items():
+            results[name][kind] = _collect(api, backtest_id, poll_seconds)
+            print(kind, name, results[name][kind], flush=True)
+    report = {"seed": summary["seed"], "results": results, "scores": score(results)}
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    with open(out_path, "w", encoding="utf-8", newline="\n") as file:
+        json.dump(report, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+    for row in report["scores"]:
+        if row["disqualified"]:
+            print(f"{row['strategy']}: 실격 - {row['disqualified']}")
+        else:
+            print(f"{row['strategy']}: 총점 {row['total']:.1f} (수익률 {row['return_score']:.1f}, "
+                  f"안정성 {row['stability_score']:.1f})")
+    return report
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="python -m scripts.contest_sim.run_contest")
+    commands = parser.add_subparsers(dest="command", required=True)
+    seed_parser = commands.add_parser("seed", help="로컬 DB에 테스트 회원과 universe 종목을 넣는다")
+    seed_parser.add_argument("--config", required=True)
+    seed_parser.add_argument("--universe", required=True)
+    seed_parser.add_argument("--assets", required=True, help="reference.asset을 CSV로 내보낸 파일")
+    run_parser = commands.add_parser("run", help="데이터셋 4벌에 전략을 모두 백테스트하고 채점한다")
+    run_parser.add_argument("--config", required=True)
+    run_parser.add_argument("--datasets", required=True)
+    run_parser.add_argument("--strategies", required=True)
+    run_parser.add_argument("--out", required=True)
+    args = parser.parse_args(argv)
+    with open(args.config, encoding="utf-8") as file:
+        config = json.load(file)
+    if args.command == "seed":
+        seed(config, args.universe, args.assets)
+    else:
+        run(config, args.datasets, args.strategies, args.out)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
