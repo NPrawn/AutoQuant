@@ -22,6 +22,7 @@ class Params:
     candidates: int = 1000
     volume_ref_weeks: int = 4
     virtual_from: int = parse_time("2030-01-01T00:00:00Z")
+    window: tuple[int, int] | None = None     # source weeks come only from here (None = whole history)
     targets: dict[str, tuple[float, float]] = field(default_factory=lambda: {
         BULL: (0.20, 0.30),
         BEAR: (-0.20, -0.10),

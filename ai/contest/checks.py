@@ -67,7 +67,7 @@ def feasibility(series: Series, universe: list[str], params: Params, seed: int,
     if len(universe) < 2:
         result["reason"] = "종목이 2개 미만"
         return result
-    pool = build_pool(series, universe, params.block_start, params.block_days)
+    pool = build_pool(series, universe, params.block_start, params.block_days, params.window)
     weeks = label_weeks(series, universe, pool, params.span)
     result["pool_weeks"] = len(pool)
     result["label_weeks"] = {label: sum(week.label == label for week in weeks) for label in LABELS}
@@ -195,7 +195,7 @@ def stage2(series: Series, universe: list[str], params: Params, seed: int,
            generated: int = 200, seam_datasets: int = 50) -> dict:
     span = params.span
     length = params.warmup_weeks + params.eval_weeks
-    pool = build_pool(series, universe, params.block_start, params.block_days)
+    pool = build_pool(series, universe, params.block_start, params.block_days, params.window)
     weeks = label_weeks(series, universe, pool, span)
     matrix = transition_matrix(weeks, span)
     real = [[week.start for week in window] for window in real_windows(weeks, length, span)]
