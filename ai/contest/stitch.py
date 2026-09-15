@@ -6,7 +6,7 @@ import statistics
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Context, Decimal, localcontext
 
-from contest.blocks import Series, Track, Week, format_time
+from contest.blocks import HOUR, Series, Track, Week, format_time
 
 PRICE_PLACES = Decimal("1e-12")
 VOLUME_PLACES = Decimal("1e-18")
@@ -105,6 +105,24 @@ def stitch(series: Series, universe: list[str], sequence: list[Week], span: int,
             generated_volumes.append(volumes)
             generated_close = k * track.last_close_before(week.start + span)
     return bars
+
+
+def fill_gaps(hourly: list[Bar]) -> tuple[list[Bar], int]:
+    """Repeat the previous close with zero volume for hours without trades, between each asset's first and last bar.
+
+    ponytail: local-contest workaround. ADR-0005 keeps no-trade hours empty, but the backtest engine cannot value
+    a held coin in an hour without a candle. Drop this once the engine carries the last close forward."""
+    by_asset: dict[str, list[Bar]] = {}
+    for bar in sorted(hourly, key=lambda item: (item.asset, item.t)):
+        by_asset.setdefault(bar.asset, []).append(bar)
+    filled: list[Bar] = []
+    for bars in by_asset.values():
+        for previous, following in zip(bars, bars[1:]):
+            filled.append(previous)
+            filled += [Bar(previous.asset, 60, t, previous.c, previous.c, previous.c, previous.c, Decimal(0), Decimal(0))
+                       for t in range(previous.t + HOUR, following.t, HOUR)]
+        filled.append(bars[-1])
+    return filled, len(filled) - len(hourly)
 
 
 def aggregate(bars: list[Bar], interval: int) -> list[Bar]:

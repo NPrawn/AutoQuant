@@ -10,7 +10,7 @@ from dataclasses import replace
 from contest.blocks import build_pool, choose_window, format_time, label_weeks, load_source, transition_matrix
 from contest.checks import check_bars, feasibility, stage2
 from contest.sampling import KINDS, Params, evaluation_return, max_factor_period, sample_sequence
-from contest.stitch import aggregate, stitch, tick_table, write_load_csv
+from contest.stitch import aggregate, fill_gaps, stitch, tick_table, write_load_csv
 
 BLOCK_START = {"MON": 0, "THU": 3}
 
@@ -93,6 +93,9 @@ def _build(args: argparse.Namespace) -> int:
     for kind in KINDS:
         sequence = sample_sequence(kind, weeks, matrix, series, universe, params, rng)
         hourly = stitch(series, universe, sequence, params.span, params.volume_ref_weeks, params.virtual_start, ticks)
+        filled = 0
+        if args.fill_gaps:
+            hourly, filled = fill_gaps(hourly)
         bars = hourly + aggregate(hourly, 240) + aggregate(hourly, 1440)
         problems = check_bars(bars, ticks)
         if problems:
@@ -100,6 +103,7 @@ def _build(args: argparse.Namespace) -> int:
         write_load_csv(os.path.join(args.out, f"{kind}.csv"), bars)
         summary["datasets"][kind] = {
             "evaluation_return": evaluation_return(sequence, series, universe, params),
+            "filled_hours": filled,
             "weeks": [{"source_start": format_time(week.start), "label": week.label} for week in sequence],
         }
     with open(os.path.join(args.out, "weeks.json"), "w", encoding="utf-8", newline="\n") as file:
@@ -134,6 +138,10 @@ def main(argv: list[str] | None = None) -> int:
     commands.choices["check"].add_argument("--seam-datasets", type=int, default=50)
     commands.choices["check"].add_argument("--out", help="결과 JSON을 저장할 경로")
     commands.choices["build"].add_argument("--out", required=True, help="CSV 4개와 weeks.json을 쓸 디렉터리")
+    commands.choices["build"].add_argument(
+        "--fill-gaps", action="store_true",
+        help="거래 없는 시간을 직전 종가·거래량 0 봉으로 채운다. 엔진이 빈 시간을 처리하기 전까지 쓰는 임시 옵션",
+    )
 
     args = parser.parse_args(argv)
     return {"check": _check, "build": _build}[args.command](args)
