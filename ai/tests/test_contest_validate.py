@@ -1,4 +1,5 @@
 import csv
+import json
 
 import pytest
 
@@ -7,7 +8,7 @@ from contest.sampling import Params
 from contest.stitch import LOAD_COLUMNS
 from scripts.contest_sim.fairness import neighbors, ranks, spearman, stage3, stage4
 from scripts.contest_sim.run_contest import load_strategies
-from scripts.contest_sim.validate import grid_keys, grid_strategies, prepare
+from scripts.contest_sim.validate import grid_keys, grid_strategies, prepare, report
 from tests.contest_fixtures import WEEK, random_walk_series, write_source_csv
 
 CAPS = {"1H": 839, "4H": 209, "1D": 34}
@@ -122,3 +123,31 @@ def test_prepare_writes_real_monday_and_thursday_datasets(tmp_path):
     assert manifest["datasets"]["gen-1"]["period_start"] == "2030-01-21T00:00:00Z"
     assert manifest["datasets"]["thu-1"]["period_start"] == "2030-01-17T00:00:00Z"
     assert (tmp_path / "data" / "manifest.json").exists()
+
+
+def test_report_needs_every_backtest_and_writes_both_stages(tmp_path):
+    data = tmp_path / "data"
+    data.mkdir()
+    datasets = {f"{group}-{i}": {"group": group, "period_start": "2030-02-11T00:00:00Z",
+                                 "period_end": "2030-05-13T00:00:00Z"}
+                for group in ("real", "gen", "thu") for i in range(1, 6)}
+    (data / "manifest.json").write_text(json.dumps(
+        {"seed": 1, "window": None, "max_factor_period": CAPS, "datasets": datasets}), encoding="utf-8")
+    contest = [name for name, _, _ in load_strategies(STRATEGIES, CAPS)]
+    rows = []
+    for name, dataset in datasets.items():
+        strategies = contest + ([] if dataset["group"] == "thu" else list(grid_keys()))
+        rows += [{"dataset": name, "strategy": strategy, "status": "COMPLETED", "return": 1 - i * 0.01}
+                 for i, strategy in enumerate(strategies)]
+    out = tmp_path / "report.json"
+
+    (data / "results.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows[1:]), encoding="utf-8")
+    with pytest.raises(SystemExit, match="1 backtests missing"):
+        report(str(data), STRATEGIES, str(out))
+
+    (data / "results.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+    verdict = report(str(data), STRATEGIES, str(out))
+
+    assert set(verdict) == {"seed", "window", "stage3", "stage4", "passed"}
+    assert verdict["stage4"]["passed"] is True and verdict["stage3"]["passed"] is False
+    assert json.loads(out.read_text(encoding="utf-8")) == verdict

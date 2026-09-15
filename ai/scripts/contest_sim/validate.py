@@ -21,6 +21,10 @@ from contest.blocks import (
 )
 from contest.sampling import Params, max_factor_period, sample_general
 from contest.stitch import tick_table, write_load_csv
+from scripts.contest_sim.fairness import stage3, stage4
+from scripts.contest_sim.run_contest import (
+    connect, create_strategies, load_candles, load_strategies, read_config, run_backtests,
+)
 
 REAL, GENERATED, THURSDAY = "real", "gen", "thu"
 PER_GROUP = 5
@@ -103,6 +107,84 @@ def prepare(source: str, universe_path: str, seed: int, out: str, params: Params
     return manifest
 
 
+def _read_manifest(data: str) -> dict:
+    with open(os.path.join(data, "manifest.json"), encoding="utf-8") as file:
+        return json.load(file)
+
+
+def _read_results(data: str) -> dict[str, dict[str, dict]]:
+    results: dict[str, dict[str, dict]] = {}
+    path = os.path.join(data, "results.jsonl")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as file:
+            for line in file:
+                row = json.loads(line)
+                results.setdefault(row["dataset"], {})[row["strategy"]] = row
+    return results
+
+
+def _expected(manifest: dict, contest_names: list[str]) -> dict[str, list[str]]:
+    """The contest strategies run everywhere; the momentum grid runs on real and Monday-cut data."""
+    grid = list(grid_keys())
+    return {name: contest_names + ([] if dataset["group"] == THURSDAY else grid)
+            for name, dataset in manifest["datasets"].items()}
+
+
+def run(config: dict, data: str, strategies_path: str, poll_seconds: float = 5) -> None:
+    """Backtest every dataset in manifest order. Results already in results.jsonl are skipped, so a stopped run
+    resumes where it left off."""
+    manifest = _read_manifest(data)
+    contest = load_strategies(strategies_path, manifest["max_factor_period"])
+    api = connect(config)
+    ids_path = os.path.join(data, "strategy_ids.json")
+    if os.path.exists(ids_path):
+        with open(ids_path, encoding="utf-8") as file:
+            strategy_ids = json.load(file)
+    else:
+        strategy_ids = create_strategies(api, contest + grid_strategies(contest))
+        with open(ids_path, "w", encoding="utf-8", newline="\n") as file:
+            json.dump(strategy_ids, file, indent=2)
+            file.write("\n")
+    done = _read_results(data)
+    expected = _expected(manifest, [name for name, _, _ in contest])
+    for name, dataset in manifest["datasets"].items():
+        todo = {strategy: strategy_ids[strategy] for strategy in expected[name]
+                if strategy not in done.get(name, {})}
+        if not todo:
+            continue
+        load_candles(config, os.path.join(data, f"{name}.csv"))
+        runs = run_backtests(api, todo, dataset["period_start"], dataset["period_end"],
+                             f"{name}-seed{manifest['seed']}", poll_seconds)
+        with open(os.path.join(data, "results.jsonl"), "a", encoding="utf-8", newline="\n") as file:
+            for strategy, result in runs.items():
+                file.write(json.dumps({"dataset": name, "strategy": strategy, **result}, ensure_ascii=False) + "\n")
+
+
+def report(data: str, strategies_path: str, out: str) -> dict:
+    manifest = _read_manifest(data)
+    contest_names = [name for name, _, _ in load_strategies(strategies_path, manifest["max_factor_period"])]
+    results = _read_results(data)
+    missing = [(name, strategy) for name, strategies in _expected(manifest, contest_names).items()
+               for strategy in strategies if strategy not in results.get(name, {})]
+    if missing:
+        raise SystemExit(f"{len(missing)} backtests missing, first: {missing[:3]}")
+    groups = {group: [name for name, dataset in manifest["datasets"].items() if dataset["group"] == group]
+              for group in (REAL, GENERATED, THURSDAY)}
+    verdict = {
+        "seed": manifest["seed"],
+        "window": manifest["window"],
+        "stage3": stage3(results, groups[REAL], groups[GENERATED], grid_keys()),
+        "stage4": stage4(results, groups[REAL], groups[GENERATED], groups[THURSDAY], contest_names),
+    }
+    verdict["passed"] = verdict["stage3"]["passed"] and verdict["stage4"]["passed"]
+    text = json.dumps(verdict, ensure_ascii=False, indent=2)
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    with open(out, "w", encoding="utf-8", newline="\n") as file:
+        file.write(text + "\n")
+    print(text)
+    return verdict
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m scripts.contest_sim.validate")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -113,8 +195,21 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser.add_argument("--out", required=True)
     prepare_parser.add_argument("--window-weeks", type=int, default=104)
     prepare_parser.add_argument("--min-assets", type=int, default=10)
+    run_parser = commands.add_parser("run", help="데이터셋마다 캔들을 바꿔 넣고 백테스트한다. 이미 있는 결과는 건너뛴다")
+    run_parser.add_argument("--config", required=True)
+    run_parser.add_argument("--data", required=True)
+    run_parser.add_argument("--strategies", default="scripts/contest_sim/strategies.json")
+    report_parser = commands.add_parser("report", help="3·4단계 판정 JSON을 만든다")
+    report_parser.add_argument("--data", required=True)
+    report_parser.add_argument("--strategies", default="scripts/contest_sim/strategies.json")
+    report_parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
-    prepare(args.source, args.universe, args.seed, args.out, Params(), args.window_weeks, args.min_assets)
+    if args.command == "prepare":
+        prepare(args.source, args.universe, args.seed, args.out, Params(), args.window_weeks, args.min_assets)
+    elif args.command == "run":
+        run(read_config(args.config), args.data, args.strategies)
+    else:
+        report(args.data, args.strategies, args.out)
     return 0
 
 
