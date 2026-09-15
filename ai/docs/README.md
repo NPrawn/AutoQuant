@@ -17,12 +17,15 @@ AI 서버 문서. 코드와 같은 저장소에 두어 함께 버전 관리한�
 | [REVIEW-MOCKUP.md](REVIEW-MOCKUP.md) | 화면 시안 피드백 (AI 서버 관점) | 기획과 계약을 맞출 때 |
 | [REVIEW-STRATEGY-MVP.md](REVIEW-STRATEGY-MVP.md) | 전략팀 MVP 문서 검토 (AI 서버 관점) | 전략 도메인 스펙과 계약을 맞출 때 |
 | [PROPOSAL-FACTORS.md](PROPOSAL-FACTORS.md) | Factor 18개 제안 (ta4j 기준) | 팩터를 늘릴 때, 엔진에 지표를 붙일 때 |
-| [PLAN-CONTEST-DATA.md](PLAN-CONTEST-DATA.md) | 대회 데이터 생성·검증·로컬 리허설 설계 (결정은 `../../docs/adr/`) | 대회 데이터 코드를 만들거나 검증 결과를 볼 때 |
+| [PLAN-CONTEST-DATA.md](PLAN-CONTEST-DATA.md) | 대회 데이터 생성·검증·로컬 적재 설계 (결정은 `adr/`와 `../../docs/adr/`) | 대회 데이터 코드를 만들거나 검증 결과를 볼 때 |
+| [adr/](adr/) | 대회 데이터 생성기 내부 결정: 조작 방식(0008·0009·0011)과 검증(0012) | 생성·검증 방식을 바꿀 때 |
 | [contest-validation/](contest-validation/) | 대회 데이터 1·2단계 확인과 로컬 대회 결과 JSON | 조작 데이터가 어디까지 검증됐는지 볼 때 |
 
 ## 문서 경계
 
 **결정과 트레이드오프는 한 파일이다.** `DECISIONS.md`에 선택지·근거·확정이 같이 있다. 트레이드오프만 따로 빼면 결정과 근거가 갈라져서 나중에 어느 쪽이 최신인지 알 수 없게 된다.
+
+**대회 데이터 결정은 ADR로 남기고 위치를 나눈다.** 생성기 안에서 끝나는 결정(조작 방식, 검증)은 `adr/`에, 백엔드·화면과 맞물린 결정(채점, 저장, 제출 규칙)은 루트 `docs/adr/`에 둔다. 번호와 형식은 루트 [ADR 목록](../../docs/adr/README.md) 하나를 따른다.
 
 **DSL 스펙 문서를 손으로 쓰지 않는다.** 필드명과 허용값은 `app/core/schema.py` 한 곳에만 적는다. 백엔드에 넘길 계약 문서(OpenAPI 명세, DSL JSON Schema, 예시)는 L-3에서 스크립트로 코드에서 뽑는다. 손으로 쓴 스펙은 코드와 갈라지는 순간 거짓말이 된다.
 
