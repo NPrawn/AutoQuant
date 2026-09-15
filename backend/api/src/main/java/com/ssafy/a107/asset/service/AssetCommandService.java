@@ -10,6 +10,8 @@ import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -31,7 +33,8 @@ public class AssetCommandService {
             Exchange exchange,
             UpbitMarketInformation marketInformation,
             String baseCurrencyCode,
-            String quoteCurrencyCode
+            String quoteCurrencyCode,
+            Instant tradingSupportStartedAt
     ) {
         if (assetRepository.existsByExchangeAndExchangeMarketCode(
                 exchange,
@@ -47,7 +50,7 @@ public class AssetCommandService {
                 quoteCurrencyCode,
                 marketInformation.koreanName(),
                 marketInformation.englishName(),
-                null
+                tradingSupportStartedAt
         );
         Asset savedAsset = saveAsset(asset);
 

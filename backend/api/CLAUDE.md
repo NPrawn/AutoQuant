@@ -61,6 +61,7 @@ com.ssafy.a107
 - 백테스트와 모의투자가 같은 후보군을 쓴다. 한쪽만 규칙을 바꾸지 않는다.
 - 수집 목록을 바꾸면 과거 구간 결과도 달라진다. 오늘 고른 종목으로 과거를 재는 생존 편향이 생기는 것을 알고 쓴다.
 - `AssetTradingStatus`는 거래소 거래지원 상태이고 `MarketDataCollectionStatus`는 우리 서비스의 수집 희망 상태다. 두 상태를 합치지 않는다.
+- 거래지원 시작일은 Upbit 가 주지 않아 가장 오래된 일봉 날짜로 갈음한다. 등록 때 채우고 실패하면 비워 둔다. 이 값이 비면 과거 수집이 상장 전 구간을 계속 요청하고 백테스트 후보군이 상장 전에도 그 종목을 넣는다.
 - 종목 등록 API의 `ENABLED`는 실제 Go WebSocket 구독 완료를 의미하지 않는다.
 - `GET /assets`는 AssetReadService의 읽기 전용 트랜잭션으로 등록된 Upbit KRW TRADING 종목을 조회한다. `assetId`·`marketCode`·한글명만 응답하며 실제 수집 연결 여부는 판단하지 않는다.
 - `realtime`은 Redis 수신 이벤트를 WebSocket으로 중계한다. DB 조회·쓰기와 봉 집계를 하지 않는다.

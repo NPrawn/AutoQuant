@@ -96,7 +96,7 @@ Consumer 실행에는 동일한 DB·Kafka·Redis 설정이 필요하다. Consume
 
 Kafka Poll은 최대 1초마다 반환되어 파티션별 진행 봉의 만료를 검사한다. 분 종료 후 5초가 지난 봉은 다음 체결이 없어도 PostgreSQL에 UPSERT한 뒤 Redis 진행 Hash에서 제거하고 최근 1,000개 캐시에 반영한다. 이 확정은 이미 커밋된 체결 상태를 닫는 작업이므로 Kafka offset을 추가로 커밋하지 않는다. 리밸런싱으로 새 파티션을 받으면 Redis 체크포인트를 먼저 복구하고 이미 만료된 봉을 즉시 확정한다. 체결이 전혀 없었던 분의 빈 봉은 생성하지 않는다. 최근 캐시와 Pub/Sub 실패는 필수 저장·커밋 결과를 되돌리지 않으며, 초기 캐시 miss는 향후 Spring 조회 API가 PostgreSQL에서 복구한다.
 
-Backfill 실행에는 DB·Redis 설정과 `CANDLE_HISTORY_FROM`이 필요하다. 신규 종목은 현재 시각의 직전 1분을 제외한 시점을 빈 검증 구간으로 시작하고, 최신 미검증 구간을 먼저 처리한 뒤 과거 방향으로 최대 200분씩 확장한다. 종목별 검증 완료 범위 `[verified_from, verified_to)`는 `ops.minute_candle_sync_state`에 저장하므로 완료 구간은 다시 조회하지 않는다. 과거 수집은 `CANDLE_HISTORY_FROM`과 종목 거래지원 시작 시각 중 늦은 시점에서 멈춘다. 값은 2024-01-01 이며, 백테스트가 상장이 오래된 종목까지 같은 기준으로 비교할 수 있도록 잡았다. 앞당기면 받을 구간이 비례해 늘어나고, 대부분 종목은 상장일에서 먼저 멈춘다. 기본 과거 요청 예산은 실행당 240회다.
+Backfill 실행에는 DB·Redis 설정과 `CANDLE_HISTORY_FROM`이 필요하다. 신규 종목은 현재 시각의 직전 1분을 제외한 시점을 빈 검증 구간으로 시작하고, 최신 미검증 구간을 먼저 처리한 뒤 과거 방향으로 최대 200분씩 확장한다. 종목별 검증 완료 범위 `[verified_from, verified_to)`는 `ops.minute_candle_sync_state`에 저장하므로 완료 구간은 다시 조회하지 않는다. 과거 수집은 `CANDLE_HISTORY_FROM`과 종목 거래지원 시작 시각 중 늦은 시점에서 멈춘다. 값은 2018-01-01 이다. 대회 데이터가 2018~2025 1시간봉을 원본으로 쓰기 때문이다(ADR-0005). 대부분 종목은 그보다 늦게 상장해 거래지원 시작일에서 먼저 멈춘다. 기본 과거 요청 예산은 실행당 240회다.
 
 Upbit 봉과 같은 `open_time`의 PostgreSQL 봉은 REST 값으로 교체하고 `verified_at`을 기록한다. Redis Sorted Set도 같은 score의 값을 교체한 뒤 최신 1,000개만 남긴다. DB에만 존재하는 봉은 자동 삭제하지 않고 해당 구간의 검증 상태를 이동하지 않는다. Redis 갱신 실패는 정본 저장을 되돌리지 않는다. 동시에 실행된 Backfill은 PostgreSQL advisory lock으로 한 개만 처리된다. 바이너리는 시작 직후 한 번 처리하고 `CANDLE_SYNC_INTERVAL`마다 반복하며 기본값은 5분이다.
 
@@ -107,5 +107,5 @@ go build ./...            # 3개 바이너리 컴파일 확인
 go vet ./...
 go run ./cmd/producer
 go run ./cmd/consumer
-CANDLE_HISTORY_FROM=2024-01-01T00:00:00Z go run ./cmd/backfill
+CANDLE_HISTORY_FROM=2018-01-01T00:00:00Z go run ./cmd/backfill
 ```

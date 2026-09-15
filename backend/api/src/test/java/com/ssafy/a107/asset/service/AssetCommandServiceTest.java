@@ -28,6 +28,8 @@ import static org.mockito.BDDMockito.then;
 @ExtendWith(MockitoExtension.class)
 class AssetCommandServiceTest {
 
+    private static final Instant LISTED_AT = Instant.parse("2017-09-25T00:00:00Z");
+
     private static final UUID ASSET_ID = UUID.fromString("b7ced58c-00e9-4617-9658-4f576ea2f6fe");
     private static final Instant CREATED_AT = Instant.parse("2026-08-31T00:00:00Z");
 
@@ -56,7 +58,8 @@ class AssetCommandServiceTest {
                 Exchange.UPBIT,
                 information,
                 "BTC",
-                "KRW"
+                "KRW",
+                LISTED_AT
         );
 
         assertThat(result.assetId()).isEqualTo(ASSET_ID);
@@ -82,7 +85,8 @@ class AssetCommandServiceTest {
                 Exchange.UPBIT,
                 bitcoinMarketInformation(),
                 "BTC",
-                "KRW"
+                "KRW",
+                LISTED_AT
         ))
                 .isInstanceOfSatisfying(ApiException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.ASSET_ALREADY_EXISTS)
@@ -102,7 +106,8 @@ class AssetCommandServiceTest {
                 Exchange.UPBIT,
                 bitcoinMarketInformation(),
                 "BTC",
-                "KRW"
+                "KRW",
+                LISTED_AT
         ))
                 .isInstanceOfSatisfying(ApiException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.ASSET_ALREADY_EXISTS)

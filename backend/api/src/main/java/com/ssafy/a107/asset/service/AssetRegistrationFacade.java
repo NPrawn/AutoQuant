@@ -7,6 +7,8 @@ import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+
 @Service
 public class AssetRegistrationFacade {
 
@@ -37,11 +39,17 @@ public class AssetRegistrationFacade {
                 .findMarket(exchangeMarketCode)
                 .orElseThrow(() -> new ApiException(ApiErrorCode.ASSET_NOT_SUPPORTED_BY_EXCHANGE));
 
+        /* 상장일은 조회에 실패해도 등록을 막지 않는다. 비어 있으면 지금까지처럼 null 로 남는다. */
+        Instant tradingSupportStartedAt = upbitMarketClient
+                .findTradingSupportStartedAt(exchangeMarketCode)
+                .orElse(null);
+
         return assetCommandService.createAsset(
                 exchange,
                 marketInformation,
                 baseCurrencyCode,
-                quoteCurrencyCode
+                quoteCurrencyCode,
+                tradingSupportStartedAt
         );
     }
 
