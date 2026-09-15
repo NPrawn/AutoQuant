@@ -205,7 +205,7 @@ def stage2(series: Series, universe: list[str], params: Params, seed: int,
     matrix = transition_matrix(weeks, span)
     real = [[week.start for week in window] for window in real_windows(weeks, length, span)]
     rng = random.Random(seed)
-    sampled = [sample_general(weeks, matrix, length, rng, params.match_volatility) for _ in range(generated)]
+    sampled = [sample_general(weeks, matrix, length, rng) for _ in range(generated)]
 
     metrics = {}
     for name, metric in WINDOW_METRICS.items():

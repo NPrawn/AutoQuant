@@ -100,7 +100,7 @@ def prepare(source: str, universe_path: str, seed: int, out: str, params: Params
                 write(f"{REAL}-{index + 1}", REAL, cut, real[index * length])
         for index in range(PER_GROUP):
             write(f"{group}-{index + 1}", group, cut,
-                  sample_general(weeks, matrix, length, random.Random(seed + index + 1), cut.match_volatility))
+                  sample_general(weeks, matrix, length, random.Random(seed + index + 1)))
     with open(os.path.join(out, "manifest.json"), "w", encoding="utf-8", newline="\n") as file:
         json.dump(manifest, file, ensure_ascii=False, indent=2)
         file.write("\n")
@@ -195,8 +195,6 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser.add_argument("--out", required=True)
     prepare_parser.add_argument("--window-weeks", type=int, default=104)
     prepare_parser.add_argument("--min-assets", type=int, default=10)
-    prepare_parser.add_argument("--match-volatility", action=argparse.BooleanOptionalAction,
-                                default=Params().match_volatility)
     run_parser = commands.add_parser("run", help="데이터셋마다 캔들을 바꿔 넣고 백테스트한다. 이미 있는 결과는 건너뛴다")
     run_parser.add_argument("--config", required=True)
     run_parser.add_argument("--data", required=True)
@@ -207,8 +205,7 @@ def main(argv: list[str] | None = None) -> int:
     report_parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
     if args.command == "prepare":
-        prepare(args.source, args.universe, args.seed, args.out, Params(match_volatility=args.match_volatility),
-                args.window_weeks, args.min_assets)
+        prepare(args.source, args.universe, args.seed, args.out, Params(), args.window_weeks, args.min_assets)
     elif args.command == "run":
         run(read_config(args.config), args.data, args.strategies)
     else:

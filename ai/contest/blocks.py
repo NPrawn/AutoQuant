@@ -5,7 +5,6 @@ import csv
 import gzip
 import random
 import re
-import statistics
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -54,7 +53,6 @@ class Week:
     start: int
     label: str
     ret: float
-    calm: bool | None = None   # hourly volatility below the pool median; None when not measured
 
 
 def parse_time(text: str) -> int:
@@ -142,16 +140,6 @@ def week_return(series: Series, universe: list[str], start: int, span: int) -> f
     return sum(period_return(series[asset], start, span) for asset in universe) / len(universe)
 
 
-def week_volatility(series: Series, universe: list[str], start: int, span: int) -> float:
-    """Mean over assets of the standard deviation of hourly close-to-close returns inside the week."""
-    total = 0.0
-    for asset in universe:
-        closes = [candle.c for candle in series[asset].between(start, start + span)]
-        returns = [later / earlier - 1 for earlier, later in zip(closes, closes[1:]) if earlier > 0]
-        total += statistics.pstdev(returns) if len(returns) >= 2 else 0.0
-    return total / len(universe)
-
-
 def label_weeks(series: Series, universe: list[str], pool: list[int], span: int) -> list[Week]:
     scored = sorted((week_return(series, universe, start, span), start) for start in pool)
     third = len(scored) // 3
@@ -159,9 +147,7 @@ def label_weeks(series: Series, universe: list[str], pool: list[int], span: int)
     for rank, (_, start) in enumerate(scored):
         labels[start] = DOWN if rank < third else UP if rank >= len(scored) - third else FLAT
     returns = {start: ret for ret, start in scored}
-    volatility = {start: week_volatility(series, universe, start, span) for start in pool}
-    calm_line = statistics.median(volatility.values()) if volatility else 0.0
-    return [Week(start, labels[start], returns[start], volatility[start] < calm_line) for start in pool]
+    return [Week(start, labels[start], returns[start]) for start in pool]
 
 
 def transition_matrix(weeks: list[Week], span: int) -> dict[str, dict[str, float]]:

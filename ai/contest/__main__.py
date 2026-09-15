@@ -25,8 +25,7 @@ def read_universe(path: str) -> list[str]:
 
 def _params(args: argparse.Namespace) -> Params:
     return Params(block_start=BLOCK_START[args.block_start], block_days=args.block_days,
-                  warmup_weeks=args.warmup_weeks, eval_weeks=args.eval_weeks, candidates=args.candidates,
-                  match_volatility=args.match_volatility)
+                  warmup_weeks=args.warmup_weeks, eval_weeks=args.eval_weeks, candidates=args.candidates)
 
 
 def _load(args: argparse.Namespace):
@@ -149,9 +148,6 @@ def main(argv: list[str] | None = None) -> int:
                              help="과거에서 랜덤하게 고를 구간 길이(주). 0이면 전체 기간을 쓴다")
         command.add_argument("--min-assets", type=int, default=10,
                              help="구간 내내 거래된 종목이 이 수 이상인 구간만 고른다")
-        command.add_argument("--match-volatility", action=argparse.BooleanOptionalAction,
-                             default=Params().match_volatility,
-                             help="다음 주를 직전 주와 변동성 수준이 같은 주에서 고른다 (ADR-0015 이음매 조정)")
     commands.choices["check"].add_argument("--min-weeks", type=int, default=30)
     commands.choices["check"].add_argument("--generated", type=int, default=200)
     commands.choices["check"].add_argument("--seam-datasets", type=int, default=50)

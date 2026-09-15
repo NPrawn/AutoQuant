@@ -23,7 +23,6 @@ class Params:
     volume_ref_weeks: int = 4
     virtual_from: int = parse_time("2030-01-01T00:00:00Z")
     window: tuple[int, int] | None = None     # source weeks come only from here (None = whole history)
-    match_volatility: bool = False            # join weeks of the same volatility level (ADR-0015)
     targets: dict[str, tuple[float, float]] = field(default_factory=lambda: {
         BULL: (0.20, 0.30),
         BEAR: (-0.20, -0.10),
@@ -46,7 +45,7 @@ def max_factor_period(params: Params) -> dict[str, int]:
 
 
 def sample_general(weeks: list[Week], matrix: dict[str, dict[str, float]], n: int,
-                   rng: random.Random, match_volatility: bool = False) -> list[Week]:
+                   rng: random.Random) -> list[Week]:
     by_label = {label: [week for week in weeks if week.label == label] for label in LABELS}
     used: set[int] = set()
     sequence: list[Week] = []
@@ -59,8 +58,6 @@ def sample_general(weeks: list[Week], matrix: dict[str, dict[str, float]], n: in
         options = [week for week in by_label[label] if week.start not in used]
         if not options:
             raise GenerationError(f"ran out of unused {label} weeks")
-        if match_volatility and sequence:
-            options = [week for week in options if week.calm == sequence[-1].calm] or options
         week = rng.choice(options)
         used.add(week.start)
         sequence.append(week)
@@ -106,7 +103,7 @@ def _regime_candidates(weeks: list[Week], matrix: dict[str, dict[str, float]], s
     Filling the evaluation with one label only overshoots (13 chained UP weeks of coins return +100% or more), and a
     held basket alone can be lifted by one or two coins that a rebalancing strategy never feels."""
     for _ in range(params.candidates):
-        sequence = sample_general(weeks, matrix, params.warmup_weeks + params.eval_weeks, rng, params.match_volatility)
+        sequence = sample_general(weeks, matrix, params.warmup_weeks + params.eval_weeks, rng)
         yield sequence, evaluation_returns(sequence, series, universe, params)
 
 
@@ -131,5 +128,5 @@ def regime_hit_rate(kind: str, weeks: list[Week], matrix: dict[str, dict[str, fl
 def sample_sequence(kind: str, weeks: list[Week], matrix: dict[str, dict[str, float]], series: Series,
                     universe: list[str], params: Params, rng: random.Random) -> list[Week]:
     if kind == GENERAL:
-        return sample_general(weeks, matrix, params.warmup_weeks + params.eval_weeks, rng, params.match_volatility)
+        return sample_general(weeks, matrix, params.warmup_weeks + params.eval_weeks, rng)
     return sample_regime(kind, weeks, matrix, series, universe, params, rng)
