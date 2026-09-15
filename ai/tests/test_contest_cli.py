@@ -34,6 +34,7 @@ def test_build_writes_four_load_csvs_and_week_list(tmp_path, capsys):
     assert list(weeks["datasets"]) == list(KINDS)
     for kind, (low, high) in Params().targets.items():
         assert low <= weeks["datasets"][kind]["evaluation_return"] <= high
+        assert low <= weeks["datasets"][kind]["rebalanced_return"] <= high
         assert len(weeks["datasets"][kind]["weeks"]) == 6
     window = weeks["window"]
     assert all(window["start"] <= week["source_start"] < window["end"]

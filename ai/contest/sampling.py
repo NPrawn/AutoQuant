@@ -19,7 +19,7 @@ class Params:
     block_start: int = 0                      # Monday=0 ... Thursday=3
     warmup_weeks: int = 5
     eval_weeks: int = 13
-    candidates: int = 1000
+    candidates: int = 3000
     volume_ref_weeks: int = 4
     virtual_from: int = parse_time("2030-01-01T00:00:00Z")
     window: tuple[int, int] | None = None     # source weeks come only from here (None = whole history)
@@ -75,33 +75,53 @@ def stitched_return(series: Series, universe: list[str], starts: list[int], span
     return total / len(universe) - 1
 
 
-def evaluation_return(sequence: list[Week], series: Series, universe: list[str], params: Params) -> float:
+def rebalanced_return(series: Series, universe: list[str], starts: list[int], span: int) -> float:
+    """Equal-weight return of the chained weeks when weights are reset every day at 00:00 UTC."""
+    level = 1.0
+    for start in starts:
+        for day in range(0, span, DAY):
+            level *= 1 + sum(period_return(series[asset], start + day, DAY) for asset in universe) / len(universe)
+    return level - 1
+
+
+def evaluation_returns(sequence: list[Week], series: Series, universe: list[str],
+                       params: Params) -> tuple[float, float]:
+    """(buy-and-hold, daily-rebalanced) equal-weight returns of the evaluation weeks."""
     starts = [week.start for week in sequence[params.warmup_weeks:]]
-    return stitched_return(series, universe, starts, params.span)
+    return (stitched_return(series, universe, starts, params.span),
+            rebalanced_return(series, universe, starts, params.span))
+
+
+def in_target(kind: str, returns: tuple[float, ...], params: Params) -> bool:
+    low, high = params.targets[kind]
+    return all(low <= value <= high for value in returns)
 
 
 def _regime_candidates(weeks: list[Week], matrix: dict[str, dict[str, float]], series: Series,
                        universe: list[str], params: Params, rng: random.Random):
-    """A regime is a general sequence whose evaluation return lands in the target. Filling the evaluation
-    with one label only overshoots: 13 chained UP weeks of coins return +100% or more."""
+    """A regime is a general sequence whose evaluation returns land in the target both held and rebalanced daily.
+    Filling the evaluation with one label only overshoots (13 chained UP weeks of coins return +100% or more), and a
+    held basket alone can be lifted by one or two coins that a rebalancing strategy never feels."""
     for _ in range(params.candidates):
         sequence = sample_general(weeks, matrix, params.warmup_weeks + params.eval_weeks, rng)
-        yield sequence, evaluation_return(sequence, series, universe, params)
+        yield sequence, evaluation_returns(sequence, series, universe, params)
 
 
 def sample_regime(kind: str, weeks: list[Week], matrix: dict[str, dict[str, float]], series: Series,
                   universe: list[str], params: Params, rng: random.Random) -> list[Week]:
     low, high = params.targets[kind]
-    for sequence, ret in _regime_candidates(weeks, matrix, series, universe, params, rng):
-        if low <= ret <= high:
+    for sequence, returns in _regime_candidates(weeks, matrix, series, universe, params, rng):
+        if in_target(kind, returns, params):
             return sequence
-    raise GenerationError(f"{kind}: no candidate within {low:+.0%}..{high:+.0%} after {params.candidates} tries")
+    raise GenerationError(
+        f"{kind}: no candidate held and rebalanced within {low:+.0%}..{high:+.0%} after {params.candidates} tries"
+    )
 
 
 def regime_hit_rate(kind: str, weeks: list[Week], matrix: dict[str, dict[str, float]], series: Series,
                     universe: list[str], params: Params, rng: random.Random) -> float:
-    low, high = params.targets[kind]
-    hits = sum(low <= ret <= high for _, ret in _regime_candidates(weeks, matrix, series, universe, params, rng))
+    hits = sum(in_target(kind, returns, params)
+               for _, returns in _regime_candidates(weeks, matrix, series, universe, params, rng))
     return hits / params.candidates
 
 

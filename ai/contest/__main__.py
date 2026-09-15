@@ -9,7 +9,7 @@ from dataclasses import replace
 
 from contest.blocks import build_pool, choose_window, format_time, label_weeks, load_source, transition_matrix
 from contest.checks import check_bars, feasibility, stage2
-from contest.sampling import KINDS, Params, evaluation_return, max_factor_period, sample_sequence
+from contest.sampling import KINDS, Params, evaluation_returns, max_factor_period, sample_sequence
 from contest.stitch import aggregate, fill_gaps, stitch, tick_table, write_load_csv
 
 BLOCK_START = {"MON": 0, "THU": 3}
@@ -101,8 +101,10 @@ def _build(args: argparse.Namespace) -> int:
         if problems:
             raise SystemExit(f"{kind}: {len(problems)} bar check failures, first: {problems[:5]}")
         write_load_csv(os.path.join(args.out, f"{kind}.csv"), bars)
+        held, rebalanced = evaluation_returns(sequence, series, universe, params)
         summary["datasets"][kind] = {
-            "evaluation_return": evaluation_return(sequence, series, universe, params),
+            "evaluation_return": held,
+            "rebalanced_return": rebalanced,
             "filled_hours": filled,
             "weeks": [{"source_start": format_time(week.start), "label": week.label} for week in sequence],
         }
@@ -128,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--block-days", type=int, default=7)
         command.add_argument("--warmup-weeks", type=int, default=5)
         command.add_argument("--eval-weeks", type=int, default=13)
-        command.add_argument("--candidates", type=int, default=1000)
+        command.add_argument("--candidates", type=int, default=Params().candidates)
         command.add_argument("--window-weeks", type=int, default=104,
                              help="과거에서 랜덤하게 고를 구간 길이(주). 0이면 전체 기간을 쓴다")
         command.add_argument("--min-assets", type=int, default=10,
