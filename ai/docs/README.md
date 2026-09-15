@@ -17,6 +17,7 @@ AI 서버 문서. 코드와 같은 저장소에 두어 함께 버전 관리한�
 | [REVIEW-MOCKUP.md](REVIEW-MOCKUP.md) | 화면 시안 피드백 (AI 서버 관점) | 기획과 계약을 맞출 때 |
 | [REVIEW-STRATEGY-MVP.md](REVIEW-STRATEGY-MVP.md) | 전략팀 MVP 문서 검토 (AI 서버 관점) | 전략 도메인 스펙과 계약을 맞출 때 |
 | [PROPOSAL-FACTORS.md](PROPOSAL-FACTORS.md) | Factor 18개 제안 (ta4j 기준) | 팩터를 늘릴 때, 엔진에 지표를 붙일 때 |
+| [PLAN-CONTEST-DATA.md](PLAN-CONTEST-DATA.md) | 대회 데이터 생성·검증·로컬 리허설 설계 (결정은 `../../docs/adr/`) | 대회 데이터 코드를 만들거나 검증 결과를 볼 때 |
 
 ## 문서 경계
 
@@ -28,7 +29,7 @@ AI 서버 문서. 코드와 같은 저장소에 두어 함께 버전 관리한�
 
 ## Jira
 
-프로젝트 `S15P21A107`, 에픽 [S15P21A107-12](https://ssafy.atlassian.net/browse/S15P21A107-12).
+프로젝트 `S15P21A107`. AI 에픽은 [S15P21A107-12](https://ssafy.atlassian.net/browse/S15P21A107-12)(완료), [S15P21A107-131](https://ssafy.atlassian.net/browse/S15P21A107-131)(완료), [S15P21A107-215](https://ssafy.atlassian.net/browse/S15P21A107-215)(대회 데이터, 진행 중)이다. 목록과 규칙은 [../CLAUDE.md](../CLAUDE.md) Jira 절에 있다.
 
 티켓 요약은 `TASKS.md`의 작업 ID로 시작한다 (예: `A-1 프로젝트 초기화`). 보드와 문서가 갈라지지 않게 하려는 것이다.
 
