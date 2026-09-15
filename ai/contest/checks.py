@@ -1,4 +1,4 @@
-"""Bar invariants and ADR-0012 stage 1 (feasibility) / stage 2 (realism) checks."""
+"""Bar invariants and ADR-0012 stage 1 (feasibility) / stage 2 (realism, ADR-0015 tolerance) checks."""
 
 import bisect
 import math
@@ -106,10 +106,6 @@ def ks_statistic(a: list[float], b: list[float]) -> float:
     return distance
 
 
-def ks_critical(n: int, m: int, alpha: float = 0.01) -> float:
-    return math.sqrt(-math.log(alpha / 2) / 2) * math.sqrt((n + m) / (n * m))
-
-
 def _equal_weight(series: Series, universe: list[str], start: int, length: int) -> float:
     return sum(period_return(series[asset], start, length) for asset in universe) / len(universe)
 
@@ -164,10 +160,11 @@ def _hourly_sd(rows: list[Point]) -> float:
 
 
 def seam_values(points: dict[str, list[Point]], boundaries: list[int], hours: int = 24) -> dict[str, list[float]]:
+    """Log change of hourly volatility and of median volume across each boundary, in boundary order."""
     values: dict[str, list[float]] = {"vol_jump": [], "volume_jump": []}
-    for rows in points.values():
-        times = [row[0] for row in rows]
-        for boundary in boundaries:
+    indexed = [(rows, [row[0] for row in rows]) for rows in points.values()]
+    for boundary in boundaries:
+        for rows, times in indexed:
             before = rows[bisect.bisect_left(times, boundary - hours * HOUR):bisect.bisect_left(times, boundary)]
             after = rows[bisect.bisect_left(times, boundary):bisect.bisect_left(times, boundary + hours * HOUR)]
             sd_before, sd_after = _hourly_sd(before), _hourly_sd(after)
@@ -181,14 +178,22 @@ def seam_values(points: dict[str, list[Point]], boundaries: list[int], hours: in
     return values
 
 
-def compare(real: list[float], generated: list[float], alpha: float = 0.01) -> dict:
+def halves_distance(values: list[float]) -> float:
+    """KS distance between the first and second half of time-ordered real values: how much real data differs
+    from itself (ADR-0015)."""
+    half = len(values) // 2
+    return ks_statistic(values[:half], values[half:])
+
+
+def compare(real: list[float], generated: list[float]) -> dict:
+    """`real` must be in time order. Passes when generated data is no farther from real than real is from itself."""
     summary = {"real_n": len(real), "generated_n": len(generated)}
-    if len(real) < 2 or len(generated) < 2:
+    if len(real) < 4 or len(generated) < 2:
         return {**summary, "passed": False, "reason": "표본 부족"}
     distance = ks_statistic(real, generated)
-    critical = ks_critical(len(real), len(generated), alpha)
+    tolerance = halves_distance(real)
     return {**summary, "real_median": statistics.median(real), "generated_median": statistics.median(generated),
-            "ks": distance, "critical": critical, "passed": distance <= critical, "reason": ""}
+            "ks": distance, "tolerance": tolerance, "passed": distance <= tolerance, "reason": ""}
 
 
 def stage2(series: Series, universe: list[str], params: Params, seed: int,
