@@ -1,14 +1,14 @@
 """Run one local contest against the local backend.
 
-    python -m scripts.contest_sim.run_contest seed --config .contest/sim.json --universe U --assets A
+    python -m scripts.contest_sim.run_contest seed --config .contest/sim.json --datasets D
     python -m scripts.contest_sim.run_contest run --config .contest/sim.json --datasets D --strategies S --out O
 
-Local development only: HTTP to the local Spring API, `docker exec psql` to the local Postgres container.
-Settings come from a JSON file, never from environment variables (ai/CLAUDE.md).
+Local development only: HTTP to the local Spring API, `docker exec psql` to a contest-only database in the local
+Postgres container (`run` replaces every candle in it). Settings come from a JSON file, never from environment
+variables (ai/CLAUDE.md).
 """
 
 import argparse
-import csv
 import json
 import os
 import subprocess
@@ -60,26 +60,25 @@ def _literal(value: str) -> str:
     return "NULL" if value == "" else "'" + value.replace("'", "''") + "'"
 
 
-def seed(config: dict, universe_path: str, assets_path: str) -> None:
-    with open(universe_path, encoding="utf-8") as file:
-        universe = {line.strip() for line in file if line.strip()}
+def seed(config: dict, datasets_dir: str) -> None:
+    """Insert the test member and the dataset's assets, listed as trading (the engine only picks listed assets)."""
+    with open(os.path.join(datasets_dir, "weeks.json"), encoding="utf-8") as file:
+        markets = json.load(file)["markets"]
     statements = [
         "INSERT INTO account.member (member_id, login_provider, login_provider_member_id, email_address, "
         f"display_name, member_status) VALUES ({_literal(config['member_id'])}, 'SSAFY', 'local-contest', "
         "'contest@local.test', 'local contest', 'ACTIVE') ON CONFLICT (member_id) DO NOTHING;"
     ]
-    with open(assets_path, encoding="utf-8", newline="") as file:
-        for row in csv.DictReader(file):
-            if row["asset_id"] not in universe:
-                continue
-            # the engine only picks assets that are listed during the (virtual 2030) period
-            row.update(trading_status="TRADING", trading_support_started_at="", trading_support_ended_at="")
-            statements.append(
-                f"INSERT INTO reference.asset ({', '.join(row)}) VALUES ({', '.join(map(_literal, row.values()))}) "
-                "ON CONFLICT (asset_id) DO NOTHING;"
-            )
+    for asset_id, market in markets.items():
+        quote, base = market.split("-", 1)
+        statements.append(
+            "INSERT INTO reference.asset (asset_id, exchange, exchange_market_code, base_currency_code, "
+            "quote_currency_code, korean_name, english_name, trading_status) VALUES "
+            f"({_literal(asset_id)}, 'UPBIT', {_literal(market)}, {_literal(base)}, {_literal(quote)}, "
+            f"{_literal(base)}, {_literal(base)}, 'TRADING') ON CONFLICT DO NOTHING;"
+        )
     _psql(config, [], "\n".join(statements).encode("utf-8"))
-    print(f"seeded member and {len(statements) - 1} assets")
+    print(f"seeded member and {len(markets)} assets")
 
 
 class Api:
@@ -148,7 +147,7 @@ def run(config: dict, datasets_dir: str, strategies_path: str, out_path: str, po
         for name, backtest_id in backtests.items():
             results[name][kind] = _collect(api, backtest_id, poll_seconds)
             print(kind, name, results[name][kind], flush=True)
-    report = {"seed": summary["seed"], "results": results, "scores": score(results)}
+    report = {"seed": summary["seed"], "window": summary.get("window"), "results": results, "scores": score(results)}
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     with open(out_path, "w", encoding="utf-8", newline="\n") as file:
         json.dump(report, file, ensure_ascii=False, indent=2)
@@ -165,10 +164,9 @@ def run(config: dict, datasets_dir: str, strategies_path: str, out_path: str, po
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m scripts.contest_sim.run_contest")
     commands = parser.add_subparsers(dest="command", required=True)
-    seed_parser = commands.add_parser("seed", help="로컬 DB에 테스트 회원과 universe 종목을 넣는다")
+    seed_parser = commands.add_parser("seed", help="대회 전용 DB에 테스트 회원과 데이터셋 종목을 넣는다")
     seed_parser.add_argument("--config", required=True)
-    seed_parser.add_argument("--universe", required=True)
-    seed_parser.add_argument("--assets", required=True, help="reference.asset을 CSV로 내보낸 파일")
+    seed_parser.add_argument("--datasets", required=True, help="python -m contest build 출력 디렉터리")
     run_parser = commands.add_parser("run", help="데이터셋 4벌에 전략을 모두 백테스트하고 채점한다")
     run_parser.add_argument("--config", required=True)
     run_parser.add_argument("--datasets", required=True)
@@ -177,8 +175,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     with open(args.config, encoding="utf-8") as file:
         config = json.load(file)
+    if "contest" not in config["db_name"]:
+        raise SystemExit(f"db_name {config['db_name']!r} must name a contest-only database: run replaces every candle")
     if args.command == "seed":
-        seed(config, args.universe, args.assets)
+        seed(config, args.datasets)
     else:
         run(config, args.datasets, args.strategies, args.out)
     return 0
