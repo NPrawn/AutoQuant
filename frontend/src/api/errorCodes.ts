@@ -15,6 +15,13 @@ export const errorCodes = {
   aiTranslationInvalidResponse: 'AI-502-001',
   aiTranslationUnavailable: 'AI-503-001',
   aiTranslationTimeout: 'AI-504-001',
+  strategyNotFound: 'STRATEGY-404-001',
+  contestFactorPeriodTooLong: 'CONTEST-400-001',
+  contestRoundNotFound: 'CONTEST-404-001',
+  contestEntryNotFound: 'CONTEST-404-002',
+  contestSubmissionClosed: 'CONTEST-409-001',
+  contestSubmissionLimitExceeded: 'CONTEST-409-002',
+  contestResultNotPublished: 'CONTEST-409-003',
 } as const
 
 export type ErrorCode = (typeof errorCodes)[keyof typeof errorCodes]
