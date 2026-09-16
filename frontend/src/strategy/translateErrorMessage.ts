@@ -15,6 +15,24 @@ const messagesByCode: Record<string, string> = {
 
 const fallbackMessage = '변환 요청에 실패했습니다. 잠시 후 다시 시도해 주세요.'
 
+/*
+ * 공개·복제 실패를 알리는 문장. 두 동작 모두 없는 전략이면 같은 404 로 오므로
+ * 무엇을 하려다 실패했는지에 따라 다르게 읽힌다.
+ */
+export function describeVisibilityError(error: unknown): string {
+  if (isApiError(error) && error.status === 404) {
+    return '전략을 찾을 수 없습니다. 삭제되었을 수 있습니다.'
+  }
+  return '공개 여부를 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요.'
+}
+
+export function describeCopyError(error: unknown): string {
+  if (isApiError(error) && error.status === 404) {
+    return '복제할 전략을 찾을 수 없습니다. 삭제되었거나 비공개로 바뀌었을 수 있습니다.'
+  }
+  return '전략을 복제하지 못했습니다. 잠시 후 다시 시도해 주세요.'
+}
+
 export function describeTranslateError(error: unknown): string {
   if (!isApiError(error)) {
     return fallbackMessage

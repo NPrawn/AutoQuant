@@ -1,6 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { createStrategy, deleteStrategy, fetchStrategies, fetchStrategy, translateStrategy } from './api'
+import {
+  changeStrategyVisibility,
+  copyStrategy,
+  createStrategy,
+  deleteStrategy,
+  fetchStrategies,
+  fetchStrategy,
+  translateStrategy,
+} from './api'
 import { toStrategy } from './types'
 
 /* 전략 목록·상세 쿼리의 키 뿌리. 저장·삭제가 성공하면 이 키 아래를 무효화한다. */
@@ -38,6 +46,26 @@ export function useCreateStrategy() {
 
   return useMutation({
     mutationFn: createStrategy,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: strategiesQueryKey }),
+  })
+}
+
+export function useChangeStrategyVisibility() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ strategyId, published }: { strategyId: string; published: boolean }) =>
+      changeStrategyVisibility(strategyId, published),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: strategiesQueryKey }),
+  })
+}
+
+/* 복제본은 새 전략이라 목록도 바뀐다. 호출한 화면이 응답의 식별자로 옮겨 간다. */
+export function useCopyStrategy() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: copyStrategy,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: strategiesQueryKey }),
   })
 }
