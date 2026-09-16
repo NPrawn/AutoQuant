@@ -9,6 +9,7 @@ import org.hibernate.annotations.Immutable;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Objects;
 
 @Entity
 @Immutable
@@ -40,6 +41,32 @@ public class MinuteCandle extends BaseEntity {
     private Instant lastEventTime;
 
     protected MinuteCandle() {
+    }
+
+    /*
+     * market_data 에 없는 캔들을 엔진에 넘길 때 쓴다. 대회 데이터셋 캔들이 그 경우다 (ADR-0014).
+     * 영속화하지 않는 읽기 전용 값이며, 저장은 Go Consumer 만 한다.
+     */
+    public static MinuteCandle detached(
+            MinuteCandleId id,
+            BigDecimal openPrice,
+            BigDecimal highPrice,
+            BigDecimal lowPrice,
+            BigDecimal closePrice,
+            BigDecimal tradeVolume,
+            BigDecimal tradeAmount,
+            Instant lastEventTime
+    ) {
+        MinuteCandle candle = new MinuteCandle();
+        candle.id = Objects.requireNonNull(id);
+        candle.openPrice = Objects.requireNonNull(openPrice);
+        candle.highPrice = Objects.requireNonNull(highPrice);
+        candle.lowPrice = Objects.requireNonNull(lowPrice);
+        candle.closePrice = Objects.requireNonNull(closePrice);
+        candle.tradeVolume = Objects.requireNonNull(tradeVolume);
+        candle.tradeAmount = Objects.requireNonNull(tradeAmount);
+        candle.lastEventTime = Objects.requireNonNull(lastEventTime);
+        return candle;
     }
 
     public MinuteCandleId getId() {
