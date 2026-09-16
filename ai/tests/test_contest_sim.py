@@ -10,7 +10,7 @@ from scripts.contest_sim.run_contest import load_strategies
 from scripts.contest_sim.scoring import percentiles, score
 
 SECRET = "local-contest-secret-at-least-32-bytes"
-CAPS = {"1H": 839, "4H": 209, "1D": 34}
+CAPS = {"1H": 5039, "4H": 1259, "1D": 209}
 
 
 def _decode(part: str) -> dict:
@@ -70,14 +70,14 @@ def test_sample_strategies_are_valid_and_fit_the_default_warmup():
 
 def test_load_strategies_rejects_a_period_longer_than_the_warmup(tmp_path):
     path = tmp_path / "too_long.json"
-    path.write_text(json.dumps([{"name": "sma200", "dsl": {
+    path.write_text(json.dumps([{"name": "sma210", "dsl": {
         "timeframe": "1D",
-        "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "SMA_DISPARITY", "period": 200},
+        "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "SMA_DISPARITY", "period": 210},
                     "operator": "GT", "right": {"type": "VALUE", "value": 0}},
         "ranking": {"factor": "RETURN", "period": 20, "direction": "DESC"},
         "selection": {"topN": 5},
         "rebalance": {"period": "WEEKLY"},
     }}]), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="exceeds 34"):
+    with pytest.raises(ValueError, match="exceeds 209"):
         load_strategies(str(path), CAPS)

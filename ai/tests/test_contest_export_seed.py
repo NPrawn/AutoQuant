@@ -44,7 +44,7 @@ def _write_datasets(directory: str, hours: int = 3, weeks: int = 3) -> dict:
         "markets": MARKETS,
         "period_start": "2030-01-14T00:00:00Z",
         "period_end": "2030-01-28T00:00:00Z",
-        "max_factor_period": 839,
+        "max_factor_period": 5039,
         "datasets": {},
     }
     for kind in KINDS:
@@ -148,3 +148,37 @@ def test_a_csv_asset_missing_from_weeks_json_is_named(tmp_path):
     with pytest.raises(KeyError, match="asset-gone"):
         export(str(datasets), ROUND_ID, "1회차", "2026-09-16T00:00:00Z", "2026-10-16T00:00:00Z",
                5, "contest-2026-09-15", str(tmp_path / "out.sql"))
+
+
+def test_replace_mode_clears_the_round_before_inserting(tmp_path):
+    datasets = tmp_path / "datasets"
+    datasets.mkdir(parents=True)
+    _write_datasets(str(datasets))
+    out = tmp_path / "V99__reseed.sql"
+
+    export(str(datasets), ROUND_ID, "1회차", "2026-09-16T00:00:00Z", "2026-10-16T00:00:00Z",
+           5, "contest-2026-09-16", str(out), replace=True)
+    sql = out.read_text(encoding="utf-8")
+
+    deletes = [line for line in sql.splitlines() if line.startswith("DELETE FROM")]
+    assert [line.split()[2] for line in deletes] == [
+        "contest.contest_result",
+        "contest.contest_evaluation",
+        "trading.backtest_run",
+        "contest.contest_entry",
+        "contest.market_candle",
+        "contest.market_dataset_asset",
+        "contest.market_dataset",
+        "contest.contest_round",
+    ]
+    # 지우는 블록이 넣는 블록보다 앞이어야 한다
+    assert sql.index("DELETE FROM contest.contest_round") < sql.index("INSERT INTO contest.contest_round")
+    assert all(ROUND_ID in line for line in deletes)
+
+
+def test_warmup_weeks_ride_along_in_the_report(tmp_path):
+    _, report = _export(tmp_path, weeks=3)
+
+    # 뽑은 주 3주 − 평가 2주 = 워밍업 1주
+    assert report["warmup_weeks"] == 1
+    assert report["replace"] is False

@@ -37,8 +37,13 @@ def _dataset_ids(round_id: str) -> dict[str, str]:
     return {kind: str(uuid.uuid5(uuid.UUID(round_id), kind)) for kind in KINDS}
 
 
+def _warmup_weeks(summary: dict) -> int:
+    """워밍업 주 = 뽑은 주 − 평가 주. 팩터 기간 상한이 여기서 나온다 (ADR-0013)."""
+    return len(summary["datasets"]["GENERAL"]["weeks"]) - summary_evaluation_weeks(summary)
+
+
 def _round_sql(round_id: str, title: str, starts_at: str, ends_at: str, summary: dict, max_submissions: int) -> str:
-    warmup_weeks = len(summary["datasets"]["GENERAL"]["weeks"]) - summary_evaluation_weeks(summary)
+    warmup_weeks = _warmup_weeks(summary)
     return (
         "INSERT INTO contest.contest_round (\n"
         "    round_id, title, submission_starts_at, submission_ends_at, phase,\n"
@@ -198,8 +203,31 @@ def _read_hourly(path: str, markets: dict[str, str]) -> list[tuple]:
     return rows
 
 
+def _replace_sql(round_id: str) -> str:
+    """같은 회차를 새 데이터로 바꾼다. 이미 적용한 마이그레이션은 고치지 않는다 (ADR-0016 결정 6).
+
+    제출과 채점 결과, 대회 백테스트가 옛 데이터셋을 참조하므로 함께 지운다. 백테스트의 결과·체결·자산
+    추이는 외래 키가 CASCADE 라 따라 지워진다.
+    """
+    quoted = _quote(round_id)
+    entries = f"SELECT entry_id FROM contest.contest_entry WHERE round_id = {quoted}"
+    datasets = f"SELECT dataset_id FROM contest.market_dataset WHERE round_id = {quoted}"
+
+    return (
+        "-- 같은 회차의 옛 데이터를 지운다. 순서는 외래 키를 따른다.\n"
+        f"DELETE FROM contest.contest_result WHERE entry_id IN ({entries});\n"
+        f"DELETE FROM contest.contest_evaluation WHERE entry_id IN ({entries});\n"
+        f"DELETE FROM trading.backtest_run WHERE contest_dataset_id IN ({datasets});\n"
+        f"DELETE FROM contest.contest_entry WHERE round_id = {quoted};\n"
+        f"DELETE FROM contest.market_candle WHERE dataset_id IN ({datasets});\n"
+        f"DELETE FROM contest.market_dataset_asset WHERE dataset_id IN ({datasets});\n"
+        f"DELETE FROM contest.market_dataset WHERE round_id = {quoted};\n"
+        f"DELETE FROM contest.contest_round WHERE round_id = {quoted};\n"
+    )
+
+
 def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at: str, max_submissions: int,
-           generator_version: str, out_path: str) -> dict:
+           generator_version: str, out_path: str, replace: bool = False) -> dict:
     with open(os.path.join(datasets_dir, "weeks.json"), encoding="utf-8") as file:
         summary = json.load(file)
     markets = summary["markets"]
@@ -209,6 +237,11 @@ def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at
         f"-- 대회 {title} 데이터. 생성기 시드 {summary['seed']}, 구간 {summary['window']['start']}"
         f" ~ {summary['window']['end']} (ADR-0011, ADR-0014, ADR-0016).\n"
         "-- ai/scripts/contest_sim/export_seed_sql.py 가 만든 파일이다. 손으로 고치지 않는다.\n\n",
+    ]
+    if replace:
+        parts.append(_replace_sql(round_id))
+        parts.append("\n")
+    parts += [
         _round_sql(round_id, title, starts_at, ends_at, summary, max_submissions),
         "\n",
         _dataset_sql(round_id, dataset_ids, summary, generator_version),
@@ -236,7 +269,8 @@ def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at
         file.write("".join(parts))
 
     return {"round_id": round_id, "datasets": dataset_ids, "hourly_rows": hourly_rows,
-            "bytes": os.path.getsize(out_path), "markets": sorted(set(markets.values()))}
+            "bytes": os.path.getsize(out_path), "markets": sorted(set(markets.values())),
+            "replace": replace, "warmup_weeks": _warmup_weeks(summary)}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -249,10 +283,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-submissions", type=int, default=5)
     parser.add_argument("--generator-version", required=True, help="예: contest-2026-09-15")
     parser.add_argument("--out", required=True, help="Flyway 마이그레이션 경로")
+    parser.add_argument("--replace", action="store_true",
+                        help="같은 회차의 옛 데이터·제출·채점 결과를 지우고 새로 넣는다")
     args = parser.parse_args(argv)
 
     report = export(args.datasets, args.round_id, args.title, args.submission_starts, args.submission_ends,
-                    args.max_submissions, args.generator_version, args.out)
+                    args.max_submissions, args.generator_version, args.out, args.replace)
     print(json.dumps(report, ensure_ascii=False))
     return 0
 
