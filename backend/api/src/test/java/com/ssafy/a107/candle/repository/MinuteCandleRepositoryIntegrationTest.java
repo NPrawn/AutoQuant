@@ -1,7 +1,9 @@
 package com.ssafy.a107.candle.repository;
 
 import com.ssafy.a107.candle.domain.MinuteCandle;
+import com.ssafy.a107.candle.domain.MinuteCandleCoverage;
 import com.ssafy.a107.candle.domain.MinuteCandleSnapshot;
+import com.ssafy.a107.candle.service.CandleCoverageReadService;
 import com.ssafy.a107.candle.service.MinuteCandleReadService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
@@ -37,12 +39,15 @@ class MinuteCandleRepositoryIntegrationTest {
     private final JdbcTemplate jdbc;
     private final EntityManager entityManager;
     private final MinuteCandleReadService service;
+    private final CandleCoverageReadService coverageReadService;
 
     @Autowired
-    MinuteCandleRepositoryIntegrationTest(JdbcTemplate jdbc, EntityManager entityManager, MinuteCandleReadService service) {
+    MinuteCandleRepositoryIntegrationTest(JdbcTemplate jdbc, EntityManager entityManager,
+            MinuteCandleReadService service, CandleCoverageReadService coverageReadService) {
         this.jdbc = jdbc;
         this.entityManager = entityManager;
         this.service = service;
+        this.coverageReadService = coverageReadService;
     }
 
     @Test
@@ -113,10 +118,64 @@ class MinuteCandleRepositoryIntegrationTest {
                 """, assetId, interval, count - 1);
     }
 
+    @Test
+    @DisplayName("보유 구간은 대상 종목을 합쳐 가장 이른 봉과 가장 늦은 봉의 시작 시각이다")
+    void readCoverageAcrossAssets() {
+        UUID bitcoin = UUID.randomUUID();
+        UUID ethereum = UUID.randomUUID();
+        UUID excluded = UUID.randomUUID();
+        insertAsset(bitcoin, "BTC");
+        insertAsset(ethereum, "ETH");
+        insertAsset(excluded, "XRP");
+        insertCandles(bitcoin, 1, 3);
+        insertCandlesFrom(ethereum, 1, 2, "2025-12-31 23:00:00+00");
+        insertCandlesFrom(excluded, 1, 2, "2020-01-01 00:00:00+00");
+        entityManager.clear();
+
+        MinuteCandleCoverage coverage = coverageReadService.findCoverage(1, List.of(bitcoin, ethereum));
+
+        assertThat(coverage.oldestOpenTime()).isEqualTo(Instant.parse("2025-12-31T23:00:00Z"));
+        assertThat(coverage.newestOpenTime()).isEqualTo(Instant.parse("2026-01-01T00:02:00Z"));
+    }
+
+    @Test
+    @DisplayName("보유 구간은 요청한 간격의 봉만 본다")
+    void readCoverageOfSelectedInterval() {
+        UUID bitcoin = UUID.randomUUID();
+        insertAsset(bitcoin, "BTC");
+        insertCandles(bitcoin, 1, 3);
+        insertCandlesFrom(bitcoin, 5, 1, "2019-01-01 00:00:00+00");
+        entityManager.clear();
+
+        MinuteCandleCoverage coverage = coverageReadService.findCoverage(5, List.of(bitcoin));
+
+        assertThat(coverage.oldestOpenTime()).isEqualTo(Instant.parse("2019-01-01T00:00:00Z"));
+        assertThat(coverage.newestOpenTime()).isEqualTo(Instant.parse("2019-01-01T00:00:00Z"));
+    }
+
+    @Test
+    @DisplayName("봉이 없는 종목만 있으면 보유 구간이 비어 있다")
+    void readEmptyCoverage() {
+        assertThat(coverageReadService.findCoverage(1, List.of(UUID.randomUUID())).isEmpty()).isTrue();
+    }
+
+    private void insertCandlesFrom(UUID assetId, int interval, int count, String startAt) {
+        jdbc.update("""
+                INSERT INTO market_data.minute_candle (
+                    asset_id, interval_minutes, open_time, open_price, high_price, low_price, close_price,
+                    trade_volume, trade_amount, last_event_time
+                )
+                SELECT ?, ?, CAST(? AS TIMESTAMPTZ) + n * make_interval(mins => ?),
+                    100.123456789012, 101, 99, 100, 0.123456789012345678, 12.12345678,
+                    CAST(? AS TIMESTAMPTZ) + n * make_interval(mins => ?)
+                FROM generate_series(0, ?) AS n
+                """, assetId, interval, startAt, interval, startAt, interval, count - 1);
+    }
+
     @Configuration(proxyBeanMethods = false)
     @EnableJpaRepositories(basePackageClasses = MinuteCandleRepository.class)
     @EntityScan(basePackageClasses = MinuteCandle.class)
-    @Import(MinuteCandleReadService.class)
+    @Import({MinuteCandleReadService.class, CandleCoverageReadService.class})
     static class TestConfiguration {
     }
 }
