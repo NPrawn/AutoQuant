@@ -1,4 +1,10 @@
-import type { ContestDisplayStatus, ContestDisqualificationReason, MarketDatasetKind } from './types'
+import type {
+  ContestDisplayStatus,
+  ContestDisqualificationReason,
+  ContestRankingSort,
+  ContestRegimeKind,
+  MarketDatasetKind,
+} from './types'
 
 export const contestStatusLabels: Record<ContestDisplayStatus, string> = {
   SCHEDULED: '예정',
@@ -90,4 +96,25 @@ export function progressRatio(finished: number, total: number): number {
     return 0
   }
   return Math.min(Math.max(finished / total, 0), 1)
+}
+
+export const rankingSortLabels: Record<ContestRankingSort, string> = {
+  TOTAL: '종합 점수',
+  STABILITY: '안정성',
+}
+
+/* 국면 강점 필터의 선택지. 일반장은 세 국면과 견주는 값이 아니라 빠진다. */
+export const regimeKinds: ContestRegimeKind[] = ['BULL', 'BEAR', 'SIDEWAYS']
+
+/* 백분위는 정수로 읽는다. 소수 자리는 순위를 가르는 데 쓰이지 화면에서 읽을 값이 아니다. */
+export function formatPercentile(value: number | null): string {
+  if (value === null || Number.isNaN(value)) {
+    return '—'
+  }
+  return String(Math.round(value))
+}
+
+/* 목업의 두 자리 순위 표기. 10위 아래는 앞에 0을 붙인다. */
+export function formatRank(ranking: number): string {
+  return ranking < 10 ? `0${ranking}` : String(ranking)
 }

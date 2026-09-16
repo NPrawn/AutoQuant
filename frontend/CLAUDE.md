@@ -44,6 +44,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 모의투자 시작 조건은 `src/simulation/startForm.ts`, 보유 종목 평가는 `src/simulation/positions.ts` 의 순수 함수에만 둔다. 현재가가 없는 값은 비우고 추정하지 않는다. 종목 이름은 `assetLookup.ts` 로 맞추고 컴포넌트가 `/assets` 를 따로 부르지 않는다.
 - 전략 DSL 계약 타입은 `src/strategy/types.ts`, 열거형 문구·단위는 `src/strategy/labels.ts`, 빌더 편집 동작은 `src/strategy/draft.ts`의 순수 함수에만 둔다. 컴포넌트가 DSL 을 직접 조립하지 않는다.
 - 대회 응답 타입은 `src/contest/types.ts`, 상태·장세·실격 문구와 표기는 `src/contest/labels.ts`, 제출 실패 문구는 `src/contest/submitErrorMessage.ts` 에만 둔다. 채점 규칙 숫자는 회차 응답이 준 값만 쓰고 화면이 가중치나 실격선을 다시 적어 두지 않는다. 결과·데이터셋 조회는 종료 전에 부르면 409 라 `useContestProgress` 가 알린 상태로만 켠다.
+- 랭킹 표의 조회 조건은 `src/contest/rankingQuery.ts` 의 순수 함수에만 둔다. 정렬·국면·검색을 바꾸면 결과 수가 달라지므로 첫 페이지로 되돌리고, 조건은 서버에 넘겨 화면이 거르지 않는다. 내 성적 행은 `GET /contests/{roundId}/results/me` 로 따로 받아 표 아래에 고정한다. 페이지를 넘겨도 보여야 한다.
 - 후보군 종목 수는 `market/universe.ts` 의 `useUniverseSize()` 하나로 읽는다. 서버가 준 `/assets` 길이가 곧 후보군 크기라 화면이 숫자를 따로 적어 두지 않는다.
 - 알림이 어디로 가는지는 화면이 정한다. 서버는 종류와 `targetId` 만 주므로 경로 대응은 `pages/NotificationsPage.tsx` 의 `targetRoute` 하나에 둔다. 시각 표기와 아이콘·색은 `notification/labels.ts` 가 맡는다.
 - 알림 색도 색 계약을 따른다. 실패는 `--crit` 을 쓰는 `alert`, 완료는 `--good` 을 쓰는 `done` 이다.

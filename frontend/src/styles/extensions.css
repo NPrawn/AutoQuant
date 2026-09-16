@@ -222,3 +222,21 @@
 .shared-market-card #candle {
   height: 340px;
 }
+
+/* 랭킹 필터의 검색 칸. 목업 06 은 select 세 개만 그려 입력 칸 모양이 없다. select 와 같게 둔다. */
+.rfilt input {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: var(--r-s);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--ink);
+  outline: none;
+  min-width: 200px;
+}
+.rfilt input::placeholder {
+  color: var(--ink-3);
+}
+.rfilt input:focus-visible {
+  border-color: var(--line-2);
+}

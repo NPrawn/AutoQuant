@@ -109,6 +109,8 @@ export type ContestDatasetOutcomeResponse = {
 }
 
 export type ContestMyResultResponse = {
+  strategyId: number
+  strategyName: string
   ranking: number | null
   totalScore: number | null
   returnScore: number | null
@@ -160,4 +162,34 @@ export function parseSourceWeeks(sourceWeeks: string): ContestSourceWeek[] {
   } catch {
     return []
   }
+}
+
+/* 랭킹은 순위가 매겨진 제출만 본다. 실격 제출은 목록에서 빠지고 수만 따로 온다 (S15P21A107-233). */
+export type ContestRankingSort = 'TOTAL' | 'STABILITY'
+
+/* 국면 강점 필터. 일반장은 세 국면과 견주는 값이 아니라 필터 대상이 아니다. */
+export type ContestRegimeKind = Exclude<MarketDatasetKind, 'GENERAL'>
+
+export type ContestRankingRowResponse = {
+  ranking: number
+  strategyId: number
+  strategyName: string
+  nickname: string
+  published: boolean
+  totalScore: number
+  returnScore: number
+  stabilityScore: number
+  bullMddPercentile: number
+  bearMddPercentile: number
+  sidewaysMddPercentile: number
+  mine: boolean
+}
+
+export type ContestRankingPageResponse = {
+  content: ContestRankingRowResponse[]
+  page: number
+  size: number
+  totalElements: number
+  totalPages: number
+  disqualifiedCount: number
 }
