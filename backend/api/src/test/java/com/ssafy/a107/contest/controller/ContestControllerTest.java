@@ -9,11 +9,16 @@ import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.common.exception.ApiExceptionHandler;
 import com.ssafy.a107.contest.domain.ContestDisplayStatus;
+import com.ssafy.a107.contest.domain.ContestDisqualificationReason;
+import com.ssafy.a107.contest.domain.ContestResult;
+import com.ssafy.a107.contest.domain.MarketDataset;
+import com.ssafy.a107.contest.domain.MarketDatasetKind;
 import com.ssafy.a107.contest.domain.ContestEntry;
 import com.ssafy.a107.contest.domain.ContestFactorPeriodPolicy;
 import com.ssafy.a107.contest.domain.ContestRound;
 import com.ssafy.a107.contest.service.ContestEntryCommandService;
 import com.ssafy.a107.contest.service.ContestReadService;
+import com.ssafy.a107.contest.service.ContestResultReadService;
 import com.ssafy.a107.contest.service.ContestRoundDetail;
 import com.ssafy.a107.contest.service.ContestRoundSummary;
 import com.ssafy.a107.member.domain.LoginProvider;
@@ -40,6 +45,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -72,9 +78,13 @@ class ContestControllerTest {
     @Mock
     private ContestEntryCommandService contestEntryCommandService;
 
+    @Mock
+    private ContestResultReadService contestResultReadService;
+
     @BeforeEach
     void setUp(RestDocumentationContextProvider restDocumentation) {
-        ContestController controller = new ContestController(contestReadService, contestEntryCommandService);
+        ContestController controller = new ContestController(
+                contestReadService, contestEntryCommandService, contestResultReadService);
         ObjectMapper objectMapper = new ObjectMapper()
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -215,6 +225,165 @@ class ContestControllerTest {
                 .then()
                 .statusCode(HttpStatus.BAD_REQUEST.value())
                 .body("code", equalTo("CONTEST-400-001"));
+    }
+
+    @DisplayName("채점 중에는 끝난 백테스트 수를 돌려준다")
+    @Test
+    void getProgress() {
+        given(contestResultReadService.getProgress(ROUND_ID))
+                .willReturn(new ContestResultReadService.ContestProgress(ContestDisplayStatus.SCORING, 24, 40));
+
+        given()
+                .when()
+                .get("/contests/{roundId}/progress", ROUND_ID)
+                .then()
+                .apply(document(
+                        "contests-progress",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("대회")
+                                .summary("대회 채점 진행 조회")
+                                .description("채점 중 회차의 끝난 백테스트 수와 전체 수를 돌려줍니다.")
+                                .responseSchema(schema("ContestProgressResponse"))
+                                .responseFields(
+                                        fieldWithPath("status").type(JsonFieldType.STRING).description("화면 상태"),
+                                        fieldWithPath("finishedBacktests").type(JsonFieldType.NUMBER)
+                                                .description("끝난 백테스트 수"),
+                                        fieldWithPath("totalBacktests").type(JsonFieldType.NUMBER)
+                                                .description("전체 백테스트 수")
+                                )
+                                .build())
+                ))
+                .statusCode(HttpStatus.OK.value())
+                .body("status", equalTo("SCORING"))
+                .body("finishedBacktests", equalTo(24))
+                .body("totalBacktests", equalTo(40));
+    }
+
+    @DisplayName("종료된 회차는 순위표와 실격 제출을 함께 돌려준다")
+    @Test
+    void getResults() {
+        List<ContestResultReadService.ContestRanking> rankings = List.of(
+                new ContestResultReadService.ContestRanking(1, "대회 참가자", "모멘텀 전략",
+                        new BigDecimal("73.333"), new BigDecimal("66.667"), new BigDecimal("80.000"), null, null),
+                new ContestResultReadService.ContestRanking(null, "다른 참가자", "몰빵 전략",
+                        null, null, null, ContestDisqualificationReason.MDD_ABOVE_LIMIT, MarketDatasetKind.BULL)
+        );
+        given(contestResultReadService.getResults(ROUND_ID)).willReturn(rankings);
+
+        given()
+                .when()
+                .get("/contests/{roundId}/results", ROUND_ID)
+                .then()
+                .apply(document(
+                        "contests-results",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("대회")
+                                .summary("대회 순위표 조회")
+                                .description("종료된 회차의 순위와 점수를 돌려줍니다. 실격 제출은 순위 없이 사유와 함께 옵니다.")
+                                .responseSchema(schema("ContestResultsResponse"))
+                                .responseFields(
+                                        fieldWithPath("rankings[].ranking").type(JsonFieldType.NUMBER).optional()
+                                                .description("순위. 실격이면 null"),
+                                        fieldWithPath("rankings[].nickname").type(JsonFieldType.STRING).description("참가자 이름"),
+                                        fieldWithPath("rankings[].strategyName").type(JsonFieldType.STRING).description("전략 이름"),
+                                        fieldWithPath("rankings[].totalScore").type(JsonFieldType.NUMBER).optional()
+                                                .description("총점"),
+                                        fieldWithPath("rankings[].returnScore").type(JsonFieldType.NUMBER).optional()
+                                                .description("수익률 점수"),
+                                        fieldWithPath("rankings[].stabilityScore").type(JsonFieldType.NUMBER).optional()
+                                                .description("안정성 점수"),
+                                        fieldWithPath("rankings[].disqualificationReason").type(JsonFieldType.STRING)
+                                                .optional().description("실격 사유"),
+                                        fieldWithPath("rankings[].disqualifiedKind").type(JsonFieldType.STRING)
+                                                .optional().description("실격이 걸린 데이터셋")
+                                )
+                                .build())
+                ))
+                .statusCode(HttpStatus.OK.value())
+                .body("rankings[0].ranking", equalTo(1))
+                .body("rankings[0].totalScore", equalTo(73.333f))
+                .body("rankings[1].disqualificationReason", equalTo("MDD_ABOVE_LIMIT"));
+    }
+
+    @DisplayName("내 결과는 데이터셋별 성적과 점수 계산 과정을 돌려준다")
+    @Test
+    void getMyResult() {
+        ContestResult result = ContestResult.scored(
+                UUID.randomUUID(),
+                new BigDecimal("66.667"),
+                new BigDecimal("100.000"),
+                new BigDecimal("66.667"),
+                new BigDecimal("100.000"),
+                new BigDecimal("80.000"),
+                new BigDecimal("73.333"),
+                1
+        );
+        ContestResultReadService.ContestDatasetOutcome outcome = new ContestResultReadService.ContestDatasetOutcome(
+                MarketDatasetKind.GENERAL,
+                Instant.parse("2030-02-11T00:00:00Z"),
+                Instant.parse("2030-05-13T00:00:00Z"),
+                new BigDecimal("1.549"),
+                new BigDecimal("1.721"),
+                new BigDecimal("0.189"),
+                new BigDecimal("0.989"),
+                40
+        );
+        given(contestResultReadService.getMyResult(MEMBER_ID, ROUND_ID)).willReturn(
+                new ContestResultReadService.ContestMyResult(result, List.of(outcome), 10, new BigDecimal("73.333")));
+
+        given()
+                .when()
+                .get("/contests/{roundId}/results/me", ROUND_ID)
+                .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("ranking", equalTo(1))
+                .body("stabilityScore", equalTo(80.0f))
+                .body("entryCount", equalTo(10))
+                .body("datasets[0].kind", equalTo("GENERAL"))
+                .body("datasets[0].marketReturn", equalTo(1.549f))
+                .body("datasets[0].averageExposure", equalTo(0.989f));
+    }
+
+    @DisplayName("종료된 회차는 데이터셋의 시드와 뽑은 주를 공개한다")
+    @Test
+    void getDatasets() {
+        MarketDataset dataset = new MarketDataset(
+                round(),
+                MarketDatasetKind.GENERAL,
+                Instant.parse("2030-02-11T00:00:00Z"),
+                Instant.parse("2030-05-13T00:00:00Z"),
+                new BigDecimal("1.549"),
+                Instant.parse("2019-10-07T00:00:00Z"),
+                Instant.parse("2021-10-04T00:00:00Z"),
+                20260915L,
+                "[{\"source_start\": \"2019-12-30T00:00:00Z\", \"label\": \"FLAT\"}]",
+                "contest-2026-09-15",
+                302
+        );
+        given(contestResultReadService.getDatasets(ROUND_ID)).willReturn(List.of(dataset));
+
+        given()
+                .when()
+                .get("/contests/{roundId}/datasets", ROUND_ID)
+                .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("datasets[0].kind", equalTo("GENERAL"))
+                .body("datasets[0].seed", equalTo(20260915))
+                .body("datasets[0].filledHours", equalTo(302));
+    }
+
+    @DisplayName("채점이 끝나기 전에는 결과를 공개하지 않는다")
+    @Test
+    void hideResultsBeforeScoringFinishes() {
+        willThrow(new ApiException(ApiErrorCode.CONTEST_RESULT_NOT_PUBLISHED))
+                .given(contestResultReadService).getResults(ROUND_ID);
+
+        given()
+                .when()
+                .get("/contests/{roundId}/results", ROUND_ID)
+                .then()
+                .statusCode(HttpStatus.CONFLICT.value())
+                .body("code", equalTo("CONTEST-409-003"));
     }
 
     private ContestRound round() {

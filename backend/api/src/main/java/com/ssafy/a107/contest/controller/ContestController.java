@@ -2,11 +2,16 @@ package com.ssafy.a107.contest.controller;
 
 import com.ssafy.a107.auth.jwt.MemberPrincipal;
 import com.ssafy.a107.contest.controller.request.SubmitContestEntryRequest;
+import com.ssafy.a107.contest.controller.response.ContestDatasetsResponse;
 import com.ssafy.a107.contest.controller.response.ContestEntryResponse;
+import com.ssafy.a107.contest.controller.response.ContestMyResultResponse;
+import com.ssafy.a107.contest.controller.response.ContestProgressResponse;
+import com.ssafy.a107.contest.controller.response.ContestResultsResponse;
 import com.ssafy.a107.contest.controller.response.ContestRoundDetailResponse;
 import com.ssafy.a107.contest.controller.response.ContestRoundListResponse;
 import com.ssafy.a107.contest.service.ContestEntryCommandService;
 import com.ssafy.a107.contest.service.ContestReadService;
+import com.ssafy.a107.contest.service.ContestResultReadService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
@@ -26,13 +31,16 @@ public class ContestController {
 
     private final ContestReadService contestReadService;
     private final ContestEntryCommandService contestEntryCommandService;
+    private final ContestResultReadService contestResultReadService;
 
     public ContestController(
             ContestReadService contestReadService,
-            ContestEntryCommandService contestEntryCommandService
+            ContestEntryCommandService contestEntryCommandService,
+            ContestResultReadService contestResultReadService
     ) {
         this.contestReadService = contestReadService;
         this.contestEntryCommandService = contestEntryCommandService;
+        this.contestResultReadService = contestResultReadService;
     }
 
     @GetMapping
@@ -48,6 +56,35 @@ public class ContestController {
             @PathVariable UUID roundId
     ) {
         return ContestRoundDetailResponse.from(contestReadService.getRound(principal.memberId(), roundId));
+    }
+
+    @GetMapping("/{roundId}/progress")
+    public ContestProgressResponse getProgress(
+            @PathVariable UUID roundId
+    ) {
+        return ContestProgressResponse.from(contestResultReadService.getProgress(roundId));
+    }
+
+    @GetMapping("/{roundId}/results")
+    public ContestResultsResponse getResults(
+            @PathVariable UUID roundId
+    ) {
+        return ContestResultsResponse.from(contestResultReadService.getResults(roundId));
+    }
+
+    @GetMapping("/{roundId}/results/me")
+    public ContestMyResultResponse getMyResult(
+            @AuthenticationPrincipal MemberPrincipal principal,
+            @PathVariable UUID roundId
+    ) {
+        return ContestMyResultResponse.from(contestResultReadService.getMyResult(principal.memberId(), roundId));
+    }
+
+    @GetMapping("/{roundId}/datasets")
+    public ContestDatasetsResponse getDatasets(
+            @PathVariable UUID roundId
+    ) {
+        return ContestDatasetsResponse.from(contestResultReadService.getDatasets(roundId));
     }
 
     @PutMapping("/{roundId}/entry")
