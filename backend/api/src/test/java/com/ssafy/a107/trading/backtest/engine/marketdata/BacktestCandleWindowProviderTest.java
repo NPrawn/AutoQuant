@@ -26,11 +26,13 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class BacktestCandleWindowProviderTest {
 
     private static final UUID ASSET_ID = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private static final UUID DATASET_ID = UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd");
     private static final Instant PERIOD_START = Instant.parse("2026-01-02T00:00:00Z");
     private static final Instant PERIOD_END = Instant.parse("2026-01-03T00:00:00Z");
 
@@ -41,7 +43,8 @@ class BacktestCandleWindowProviderTest {
         BacktestWarmupCandleCountResolver warmupCandleCountResolver = mock(BacktestWarmupCandleCountResolver.class);
         BacktestCandleWindowProvider provider = new BacktestCandleWindowProvider(
                 historicalCandleProvider,
-                warmupCandleCountResolver
+                warmupCandleCountResolver,
+                mock(ContestDatasetMarketData.class)
         );
         BacktestRun backtestRun = mock(BacktestRun.class);
         Strategy strategy = mock(Strategy.class);
@@ -75,6 +78,52 @@ class BacktestCandleWindowProviderTest {
                 expectedLoadStart,
                 expectedLoadEnd
         );
+    }
+
+    @DisplayName("대회 백테스트는 실제 캔들 대신 데이터셋 캔들을 읽는다")
+    @Test
+    void loadContestDatasetCandles() {
+        HistoricalCandleProvider historicalCandleProvider = mock(HistoricalCandleProvider.class);
+        BacktestWarmupCandleCountResolver warmupCandleCountResolver = mock(BacktestWarmupCandleCountResolver.class);
+        ContestDatasetMarketData contestDatasetMarketData = mock(ContestDatasetMarketData.class);
+        BacktestCandleWindowProvider provider = new BacktestCandleWindowProvider(
+                historicalCandleProvider,
+                warmupCandleCountResolver,
+                contestDatasetMarketData
+        );
+        BacktestRun backtestRun = mock(BacktestRun.class);
+        Strategy strategy = mock(Strategy.class);
+        StrategyDsl strategyDsl = strategyDsl();
+        Instant expectedLoadStart = Instant.parse("2026-01-01T21:00:00Z");
+        Instant expectedLoadEnd = Instant.parse("2026-01-03T01:00:00Z");
+
+        when(backtestRun.getStrategy()).thenReturn(strategy);
+        when(strategy.getStrategyDsl()).thenReturn(strategyDsl);
+        when(backtestRun.getTimeframe()).thenReturn(Timeframe.ONE_HOUR);
+        when(backtestRun.getPeriodStart()).thenReturn(PERIOD_START);
+        when(backtestRun.getPeriodEnd()).thenReturn(PERIOD_END);
+        when(backtestRun.isContest()).thenReturn(true);
+        when(backtestRun.getContestDatasetId()).thenReturn(DATASET_ID);
+        when(warmupCandleCountResolver.resolve(strategyDsl)).thenReturn(3);
+        when(contestDatasetMarketData.loadCandles(
+                DATASET_ID,
+                List.of(ASSET_ID),
+                Timeframe.ONE_HOUR,
+                expectedLoadStart,
+                expectedLoadEnd
+        )).thenReturn(Map.of(ASSET_ID, List.of()));
+
+        BacktestCandleWindow window = provider.load(backtestRun, List.of(ASSET_ID));
+
+        assertThat(window.candlesByAssetId()).containsKey(ASSET_ID);
+        verify(contestDatasetMarketData).loadCandles(
+                DATASET_ID,
+                List.of(ASSET_ID),
+                Timeframe.ONE_HOUR,
+                expectedLoadStart,
+                expectedLoadEnd
+        );
+        verifyNoInteractions(historicalCandleProvider);
     }
 
     private StrategyDsl strategyDsl() {
