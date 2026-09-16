@@ -1,0 +1,381 @@
+{
+  "seed": 20260915,
+  "window": {
+    "start": "2019-10-07T00:00:00Z",
+    "end": "2021-10-04T00:00:00Z"
+  },
+  "results": {
+    "equal-weight-hold": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 1.72070121,
+        "mdd": 0.18935083,
+        "exposure": 0.9891304347825868,
+        "trades": 40
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 0.1205797,
+        "mdd": 0.40596367,
+        "exposure": 0.9889716056162612,
+        "trades": 39
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": -0.1090588,
+        "mdd": 0.41494779,
+        "exposure": 0.9891304347823784,
+        "trades": 40
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": 0.06161177,
+        "mdd": 0.40932289,
+        "exposure": 0.989106390665463,
+        "trades": 38
+      }
+    },
+    "momentum-7d": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 1.83721762,
+        "mdd": 0.22355723,
+        "exposure": 0.9995384245156128,
+        "trades": 94
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 0.23890828,
+        "mdd": 0.42654552,
+        "exposure": 0.9995221738837975,
+        "trades": 93
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": -0.04883366,
+        "mdd": 0.4049642,
+        "exposure": 0.999542334095809,
+        "trades": 94
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": 0.03989418,
+        "mdd": 0.45330976,
+        "exposure": 0.9995423340957831,
+        "trades": 92
+      }
+    },
+    "momentum-24h": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 1.31602722,
+        "mdd": 0.34238914,
+        "exposure": 0.999542333942083,
+        "trades": 468
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": -0.2723537,
+        "mdd": 0.61346687,
+        "exposure": 0.9995378811501239,
+        "trades": 473
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": -0.09805442,
+        "mdd": 0.48024693,
+        "exposure": 0.9995308179146956,
+        "trades": 470
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": -0.23579967,
+        "mdd": 0.51013867,
+        "exposure": 0.9995423327752049,
+        "trades": 458
+      }
+    },
+    "rsi-reversion": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 0.03802526,
+        "mdd": 0.07757688,
+        "exposure": 0.02203622251593182,
+        "trades": 16
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 0.20173486,
+        "mdd": 0.12965853,
+        "exposure": 0.0874810653439578,
+        "trades": 37
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": -0.06708421,
+        "mdd": 0.18645373,
+        "exposure": 0.09859553387533138,
+        "trades": 50
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": 0.16021201,
+        "mdd": 0.12894466,
+        "exposure": 0.08759947838358786,
+        "trades": 63
+      }
+    },
+    "trend-filter": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 1.3939543,
+        "mdd": 0.36677292,
+        "exposure": 0.900692951702031,
+        "trades": 474
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 0.08370804,
+        "mdd": 0.57801567,
+        "exposure": 0.955611965868866,
+        "trades": 442
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": -0.40684581,
+        "mdd": 0.50353869,
+        "exposure": 0.8348024134280853,
+        "trades": 395
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": -0.4009789,
+        "mdd": 0.53896495,
+        "exposure": 0.8787079598756656,
+        "trades": 399
+      }
+    },
+    "low-volatility": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 1.62609467,
+        "mdd": 0.25273471,
+        "exposure": 0.9981551623210403,
+        "trades": 126
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 0.17000169,
+        "mdd": 0.45698645,
+        "exposure": 0.99813109791144,
+        "trades": 127
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": -0.12182685,
+        "mdd": 0.45760664,
+        "exposure": 0.9981312078044845,
+        "trades": 127
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": -0.01909808,
+        "mdd": 0.43042445,
+        "exposure": 0.9980972922160868,
+        "trades": 119
+      }
+    },
+    "volume-surge": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 1.17010117,
+        "mdd": 0.26297024,
+        "exposure": 0.9995374997823421,
+        "trades": 651
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 0.05864178,
+        "mdd": 0.48477362,
+        "exposure": 0.9995412998368491,
+        "trades": 656
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": -0.16818987,
+        "mdd": 0.43567404,
+        "exposure": 0.9995363516699821,
+        "trades": 657
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": -0.22645092,
+        "mdd": 0.44372598,
+        "exposure": 0.9995397911874028,
+        "trades": 655
+      }
+    },
+    "all-in-one": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 0.88731972,
+        "mdd": 0.53936803,
+        "exposure": 0.9995423340544101,
+        "trades": 82
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 1.11679778,
+        "mdd": 0.54755171,
+        "exposure": 0.9995423337345214,
+        "trades": 70
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": 0.25184386,
+        "mdd": 0.46074392,
+        "exposure": 0.9995423324651944,
+        "trades": 59
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": -0.09869189,
+        "mdd": 0.47248519,
+        "exposure": 0.9995423266400981,
+        "trades": 75
+      }
+    },
+    "cash-only": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 0.0,
+        "mdd": 0.0,
+        "exposure": 0.0,
+        "trades": 0
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 0.0,
+        "mdd": 0.0,
+        "exposure": 0.0,
+        "trades": 0
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": 0.0,
+        "mdd": 0.0,
+        "exposure": 0.0,
+        "trades": 0
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": 0.0,
+        "mdd": 0.0,
+        "exposure": 0.0,
+        "trades": 0
+      }
+    },
+    "drawdown-dip": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 1.64025884,
+        "mdd": 0.27487956,
+        "exposure": 0.9995423340959125,
+        "trades": 93
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 0.12858807,
+        "mdd": 0.58848648,
+        "exposure": 0.9995243357015475,
+        "trades": 82
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": -0.16124291,
+        "mdd": 0.50819025,
+        "exposure": 0.9995152930972278,
+        "trades": 93
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": -0.17152502,
+        "mdd": 0.43514078,
+        "exposure": 0.9995244117185655,
+        "trades": 89
+      }
+    }
+  },
+  "scores": [
+    {
+      "strategy": "equal-weight-hold",
+      "return_score": 66.66666666666666,
+      "stability_score": 79.99999999999999,
+      "total": 73.33333333333331,
+      "disqualified": ""
+    },
+    {
+      "strategy": "momentum-7d",
+      "return_score": 100.0,
+      "stability_score": 33.33333333333333,
+      "total": 66.66666666666666,
+      "disqualified": ""
+    },
+    {
+      "strategy": "low-volatility",
+      "return_score": 33.33333333333333,
+      "stability_score": 19.999999999999996,
+      "total": 26.666666666666664,
+      "disqualified": ""
+    },
+    {
+      "strategy": "volume-surge",
+      "return_score": 0.0,
+      "stability_score": 13.33333333333333,
+      "total": 6.666666666666665,
+      "disqualified": ""
+    },
+    {
+      "strategy": "momentum-24h",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "BULL 최대 낙폭 61.3% > 50%"
+    },
+    {
+      "strategy": "rsi-reversion",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "평균 투자 비중 2.2% < 30%"
+    },
+    {
+      "strategy": "trend-filter",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "BULL 최대 낙폭 57.8% > 50%"
+    },
+    {
+      "strategy": "all-in-one",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "GENERAL 최대 낙폭 53.9% > 50%"
+    },
+    {
+      "strategy": "cash-only",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "평균 투자 비중 0.0% < 30%"
+    },
+    {
+      "strategy": "drawdown-dip",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "BULL 최대 낙폭 58.8% > 50%"
+    }
+  ]
+}
