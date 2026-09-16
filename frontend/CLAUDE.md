@@ -40,6 +40,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - API 응답 타입(`XxxResponse`)과 화면 모델은 `src/{feature}/types.ts`에서 분리하고 변환 함수를 거친다.
 - 백테스트 실행 조건 편집과 검증은 `src/backtest/runForm.ts` 의 순수 함수에만 두고 화면은 그 결과를 표시한다. 실행 식별자는 주소의 `run` 파라미터가 소유하며 상태 폴링은 `queries.ts` 가 맡는다. 실행 이력 선별은 `src/backtest/history.ts` 에 둔다.
 - 백테스트 기간 경계는 `src/backtest/periodBounds.ts` 가 정한다. 워밍업 봉 수 계산은 백엔드 `BacktestWarmupCandleCountResolver` 와 같은 규칙이라 한쪽이 바뀌면 다른 쪽도 바꾼다. 하한을 계산에 쓰는 곳은 프리셋, 시작일 검증, 기본 기간 셋뿐이고 컴포넌트가 날짜를 직접 계산하지 않는다.
+- 캔들 보유 구간은 `GET /candles/coverage` 하나로 받는다. 종목별 최근 봉을 모아 추정하지 않는다. 봉 조회는 1,000개가 상한이라 과거가 쌓일수록 시작일이 잘리고, 화면이 DB 에 있는 구간을 못 쓰게 된다.
 - 모의투자 시작 조건은 `src/simulation/startForm.ts`, 보유 종목 평가는 `src/simulation/positions.ts` 의 순수 함수에만 둔다. 현재가가 없는 값은 비우고 추정하지 않는다. 종목 이름은 `assetLookup.ts` 로 맞추고 컴포넌트가 `/assets` 를 따로 부르지 않는다.
 - 전략 DSL 계약 타입은 `src/strategy/types.ts`, 열거형 문구·단위는 `src/strategy/labels.ts`, 빌더 편집 동작은 `src/strategy/draft.ts`의 순수 함수에만 둔다. 컴포넌트가 DSL 을 직접 조립하지 않는다.
 - 후보군 종목 수는 `market/universe.ts` 의 `useUniverseSize()` 하나로 읽는다. 서버가 준 `/assets` 길이가 곧 후보군 크기라 화면이 숫자를 따로 적어 두지 않는다.

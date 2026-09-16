@@ -5,6 +5,7 @@ import type {
   BacktestRunCreatedResponse,
   BacktestRunResponse,
   BacktestTradeResponse,
+  CandleCoverageResponse,
   CreateBacktestRunRequest,
   PageResponse,
 } from './types'
@@ -48,4 +49,12 @@ export function fetchBacktestEquities(
   return request<PageResponse<BacktestEquityResponse>>(
     `/backtests/${encodeURIComponent(backtestId)}/equity?page=${page}&size=${size}`,
   )
+}
+
+/*
+ * 수집 종목이 보유한 봉 구간. 백테스트가 고를 수 있는 기간의 하한을 여기서 받는다.
+ * 종목별 최근 봉으로 추정하던 때는 조회 상한 1,000개에 막혀 과거가 쌓일수록 시작일이 잘렸다.
+ */
+export function fetchCandleCoverage(intervalMinutes: number): Promise<CandleCoverageResponse> {
+  return request<CandleCoverageResponse>(`/candles/coverage?intervalMinutes=${intervalMinutes}`)
 }
