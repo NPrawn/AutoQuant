@@ -3,8 +3,8 @@ import { formatPercent } from './labels'
 import type { ContestRoundDetailResponse } from './types'
 
 /*
- * 목업 31 의 채점 산식 카드. Calmar 대신 ADR-0003 의 수익률·안정성 점수를 쓴다
- * (대회 기능 설계 9절). 숫자는 회차 응답이 준 값만 적고 화면이 규칙을 다시 정하지 않는다.
+ * 목업 31 의 채점 산식 카드. 점수는 남들과 견주지 않는 절대값이라 제출이 채점되는 대로 확정된다
+ * (ADR-0002, ADR-0003). 숫자는 회차 응답이 준 값만 적고 화면이 규칙을 다시 정하지 않는다.
  */
 export function ContestRulesCard({ round }: { round: ContestRoundDetailResponse }) {
   const rules = round.scoringRules
@@ -19,10 +19,13 @@ export function ContestRulesCard({ round }: { round: ContestRoundDetailResponse 
       </div>
       <div className="formula">
         <div>
-          <i>수익률 점수 =</i> 일반장 누적 수익률 백분위 <i>(참가자 내)</i>
+          <i>수익률 점수 =</i> 일반장에서 시장보다 얼마나 더 벌었는지 <i>(시장과 같으면 50점)</i>
         </div>
         <div>
-          <i>안정성 점수 =</i> 상승·하락·횡보 낙폭 백분위의 평균 × 0.6 + 최저 × 0.4
+          <i>국면 점수 =</i> 구간 낙폭을 실격선으로 잰 값 <i>(낙폭 0%면 100점)</i>
+        </div>
+        <div>
+          <i>안정성 점수 =</i> 상승·하락·횡보 국면 점수의 평균 × 0.6 + 최저 × 0.4
         </div>
         <div className="eq">
           <i>종합 =</i> 수익률 점수 × <b>{rules.returnWeight}</b> + 안정성 점수 × <b>{rules.stabilityWeight}</b>

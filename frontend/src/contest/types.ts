@@ -111,13 +111,16 @@ export type ContestDatasetOutcomeResponse = {
 export type ContestMyResultResponse = {
   strategyId: number
   strategyName: string
+  /* 백테스트가 도는 동안에는 점수가 비어 있고 진행 수만 온다. */
+  finishedBacktests: number
+  totalBacktests: number
   ranking: number | null
   totalScore: number | null
   returnScore: number | null
   stabilityScore: number | null
-  bullMddPercentile: number | null
-  bearMddPercentile: number | null
-  sidewaysMddPercentile: number | null
+  bullRegimeScore: number | null
+  bearRegimeScore: number | null
+  sidewaysRegimeScore: number | null
   disqualificationReason: ContestDisqualificationReason | null
   disqualifiedKind: MarketDatasetKind | null
   entryCount: number
@@ -179,9 +182,9 @@ export type ContestRankingRowResponse = {
   totalScore: number
   returnScore: number
   stabilityScore: number
-  bullMddPercentile: number
-  bearMddPercentile: number
-  sidewaysMddPercentile: number
+  bullRegimeScore: number
+  bearRegimeScore: number
+  sidewaysRegimeScore: number
   mine: boolean
 }
 

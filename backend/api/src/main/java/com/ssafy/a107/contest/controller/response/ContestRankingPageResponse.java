@@ -43,9 +43,9 @@ public record ContestRankingPageResponse(
             BigDecimal totalScore,
             BigDecimal returnScore,
             BigDecimal stabilityScore,
-            BigDecimal bullMddPercentile,
-            BigDecimal bearMddPercentile,
-            BigDecimal sidewaysMddPercentile,
+            BigDecimal bullRegimeScore,
+            BigDecimal bearRegimeScore,
+            BigDecimal sidewaysRegimeScore,
             boolean mine
     ) {
 
@@ -59,9 +59,9 @@ public record ContestRankingPageResponse(
                     row.totalScore(),
                     row.returnScore(),
                     row.stabilityScore(),
-                    row.bullMddPercentile(),
-                    row.bearMddPercentile(),
-                    row.sidewaysMddPercentile(),
+                    row.bullRegimeScore(),
+                    row.bearRegimeScore(),
+                    row.sidewaysRegimeScore(),
                     row.memberId().equals(memberId)
             );
         }

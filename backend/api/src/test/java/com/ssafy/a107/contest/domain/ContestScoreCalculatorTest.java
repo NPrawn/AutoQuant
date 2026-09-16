@@ -19,8 +19,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ContestScoreCalculatorTest {
 
     private static final BigDecimal FULL_EXPOSURE = new BigDecimal("0.989");
+    /* 그 회차 일반장의 균등 보유 수익률. 수익률 점수를 재는 기준이다. */
+    private static final BigDecimal MARKET_RETURN = new BigDecimal("1.549");
 
-    @DisplayName("로컬 대회 결과와 같은 점수와 순위를 낸다")
+    @DisplayName("점수는 시장 대비 수익률과 낙폭으로만 정해지고 순위는 총점 순이다")
     @Test
     void scoreLikeTheLocalContestRun() {
         Map<String, UUID> ids = new LinkedHashMap<>();
@@ -38,22 +40,24 @@ class ContestScoreCalculatorTest {
                 new BigDecimal("0.022"));
         put(ids, outcomes, "cash-only", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, BigDecimal.ZERO);
 
-        List<ContestResult> results = ContestScoreCalculator.score(outcomes);
+        List<ContestResult> results = ContestScoreCalculator.score(outcomes, MARKET_RETURN);
 
         Map<UUID, String> names = ids.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
         List<ContestResult> ranked = results.stream().filter(result -> !result.isDisqualified()).toList();
         assertThat(ranked).extracting(result -> names.get(result.getEntryId()))
-                .containsExactly("equal-weight-hold", "momentum-7d", "low-volatility", "volume-surge");
+                .containsExactly("momentum-7d", "equal-weight-hold", "low-volatility", "volume-surge");
         assertThat(ranked).extracting(ContestResult::getRanking).containsExactly(1, 2, 3, 4);
         assertThat(ranked).extracting(result -> result.getTotalScore().toPlainString())
-                .containsExactly("73.333", "66.667", "26.667", "6.667");
+                .containsExactly("55.180", "48.133", "36.197", "3.300");
+        /* 시장 +154.9% 대비 +28.8% 면 98점, 시장보다 37.9% 못 벌면 0점이다. */
         assertThat(ranked).extracting(result -> result.getReturnScore().toPlainString())
-                .containsExactly("66.667", "100.000", "33.333", "0.000");
+                .containsExactly("98.000", "78.667", "62.833", "0.000");
+        /* 낙폭이 실격선 50% 에 가까워 국면 점수가 낮다. */
         assertThat(ranked).extracting(result -> result.getStabilityScore().toPlainString())
-                .containsExactly("80.000", "33.333", "20.000", "13.333");
-        assertThat(ranked.getFirst().getBullMddPercentile().toPlainString()).isEqualTo("100.000");
-        assertThat(ranked.getFirst().getSidewaysMddPercentile().toPlainString()).isEqualTo("100.000");
+                .containsExactly("12.360", "17.600", "9.560", "6.600");
+        assertThat(ranked.getFirst().getBullRegimeScore().toPlainString()).isEqualTo("14.600");
+        assertThat(ranked.getFirst().getSidewaysRegimeScore().toPlainString()).isEqualTo("9.400");
 
         Map<String, ContestResult> disqualified = results.stream()
                 .filter(ContestResult::isDisqualified)
@@ -79,7 +83,7 @@ class ContestScoreCalculatorTest {
         outcomes.put(MarketDatasetKind.BEAR, completed(0.0, 0.1));
         outcomes.put(MarketDatasetKind.SIDEWAYS, completed(0.0, 0.1));
 
-        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes));
+        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes), MARKET_RETURN);
 
         assertThat(results).singleElement().satisfies(result -> {
             assertThat(result.getDisqualificationReason())
@@ -98,7 +102,7 @@ class ContestScoreCalculatorTest {
         outcomes.put(MarketDatasetKind.BEAR, ContestEvaluationOutcome.failed());
         outcomes.put(MarketDatasetKind.SIDEWAYS, completed(0.0, 0.1));
 
-        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes));
+        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes), MARKET_RETURN);
 
         assertThat(results).singleElement().satisfies(result -> {
             assertThat(result.getDisqualificationReason()).isEqualTo(ContestDisqualificationReason.BACKTEST_FAILED);
@@ -106,19 +110,23 @@ class ContestScoreCalculatorTest {
         });
     }
 
-    @DisplayName("실격이 아닌 제출이 하나면 모든 백분위가 100 이다")
+    @DisplayName("점수는 남들과 무관하다. 제출이 하나여도 성적 그대로 나온다")
     @Test
-    void giveFullPercentileToTheOnlyQualifiedEntry() {
+    void scoreTheOnlyEntryOnItsOwnNumbers() {
         UUID entryId = UUID.randomUUID();
         Map<MarketDatasetKind, ContestEvaluationOutcome> outcomes = new LinkedHashMap<>();
         for (MarketDatasetKind kind : MarketDatasetKind.values()) {
             outcomes.put(kind, completed(0.1, 0.2));
         }
 
-        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes));
+        /* 시장 +10% 인 회차에서 +10% 를 내면 시장과 같아 50점, 낙폭 20% 면 국면 점수 60점이다. */
+        List<ContestResult> results = ContestScoreCalculator.score(
+                Map.of(entryId, outcomes), new BigDecimal("0.1"));
 
         assertThat(results).singleElement().satisfies(result -> {
-            assertThat(result.getTotalScore().toPlainString()).isEqualTo("100.000");
+            assertThat(result.getReturnScore().toPlainString()).isEqualTo("50.000");
+            assertThat(result.getStabilityScore().toPlainString()).isEqualTo("60.000");
+            assertThat(result.getTotalScore().toPlainString()).isEqualTo("55.000");
             assertThat(result.getRanking()).isEqualTo(1);
         });
     }

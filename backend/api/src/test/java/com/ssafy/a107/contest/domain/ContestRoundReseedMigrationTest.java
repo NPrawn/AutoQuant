@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,11 +21,19 @@ class ContestRoundReseedMigrationTest {
             "src/main/resources/db/migration/V26__reseed_contest_round_1_warmup_30w.sql"
     );
     private static final String ROUND_ID = "0f5f4f2a-9c4e-4b7a-8a3f-1c0e5a7b2d10";
+    /* 파일이 32MB 라 통째로 읽으면 테스트 JVM 이 죽는다. 확인할 내용은 모두 앞부분에 있다. */
+    private static final int HEAD_LINES = 400;
+
+    private static String head() throws IOException {
+        try (Stream<String> lines = Files.lines(MIGRATION_PATH)) {
+            return lines.limit(HEAD_LINES).collect(Collectors.joining(System.lineSeparator()));
+        }
+    }
 
     @DisplayName("옛 회차 데이터를 외래 키 순서대로 지운 뒤 다시 넣는다")
     @Test
     void clearTheRoundBeforeInserting() throws IOException {
-        String migration = Files.readString(MIGRATION_PATH);
+        String migration = head();
 
         int result = migration.indexOf("DELETE FROM contest.contest_result");
         int evaluation = migration.indexOf("DELETE FROM contest.contest_evaluation");
@@ -48,10 +58,10 @@ class ContestRoundReseedMigrationTest {
     @DisplayName("같은 회차 ID 를 워밍업 30주로 다시 넣는다")
     @Test
     void reinsertTheSameRoundWithLongerWarmup() throws IOException {
-        String migration = Files.readString(MIGRATION_PATH);
+        String migration = head();
 
         assertThat(migration).contains("'" + ROUND_ID + "', '1회차 모의 대회'");
-        assertThat(migration).contains("    5, 30, 13\n");
+        assertThat(migration).contains("5, 30, 13");
         assertThat(migration).contains("'READY'");
     }
 

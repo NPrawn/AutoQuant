@@ -26,22 +26,25 @@ public class ContestEntryCommandService {
     private final ContestEntryRepository contestEntryRepository;
     private final StrategyRepository strategyRepository;
     private final BacktestWarmupCandleCountResolver warmupCandleCountResolver;
+    private final ContestEvaluationService contestEvaluationService;
 
     public ContestEntryCommandService(
             ContestRoundRepository contestRoundRepository,
             ContestEntryRepository contestEntryRepository,
             StrategyRepository strategyRepository,
-            BacktestWarmupCandleCountResolver warmupCandleCountResolver
+            BacktestWarmupCandleCountResolver warmupCandleCountResolver,
+            ContestEvaluationService contestEvaluationService
     ) {
         this.contestRoundRepository = contestRoundRepository;
         this.contestEntryRepository = contestEntryRepository;
         this.strategyRepository = strategyRepository;
         this.warmupCandleCountResolver = warmupCandleCountResolver;
+        this.contestEvaluationService = contestEvaluationService;
     }
 
     /*
      * 검증 순서는 회차 → 제출 기간 → 본인 전략 → 팩터 기간 상한 → 제출 횟수다 (대회 기능 설계 5절).
-     * 같은 전략을 다시 제출해도 횟수에 넣는다.
+     * 같은 전략을 다시 제출해도 횟수에 넣는다. 통과하면 그 자리에서 데이터셋 4벌을 돌린다.
      */
     public ContestEntry submit(UUID memberId, UUID roundId, Long strategyId) {
         Instant now = Instant.now();
@@ -60,7 +63,10 @@ public class ContestEntryCommandService {
         Optional<ContestEntry> existing =
                 contestEntryRepository.findByRoundRoundIdAndMemberMemberId(roundId, memberId);
         if (existing.isEmpty()) {
-            return contestEntryRepository.save(new ContestEntry(round, strategy.getMember(), strategy, now));
+            ContestEntry entry = contestEntryRepository.save(
+                    new ContestEntry(round, strategy.getMember(), strategy, now));
+            contestEvaluationService.evaluate(entry);
+            return entry;
         }
 
         ContestEntry entry = existing.get();
@@ -68,6 +74,8 @@ public class ContestEntryCommandService {
             throw new ApiException(ApiErrorCode.CONTEST_SUBMISSION_LIMIT_EXCEEDED);
         }
         entry.resubmit(strategy, now);
+        /* 교체하면 이전 평가와 점수를 버리고 새 전략으로 다시 돌린다. 마지막 제출만 채점 대상이다. */
+        contestEvaluationService.evaluate(entry);
         return entry;
     }
 

@@ -12,10 +12,16 @@ import java.util.UUID;
 /*
  * 제출별 점수와 순위를 낸다 (ADR-0002, ADR-0003, 대회 기능 설계 7절).
  *
+ * 점수는 나 혼자로 계산되는 절대값이라 제출이 끝나는 대로 확정된다. 남들과 견주는 값은 순위뿐이고,
+ * 순위는 그때까지 채점된 제출 사이의 자리라 마감 전에는 잠정이다.
+ *
  * - 실격: 데이터셋을 일반장·상승장·하락장·횡보장 순으로 보며 실패 → 수익률 → 낙폭 순으로 처음 걸린 사유 하나.
  *   네 벌을 모두 통과하면 일반장 평균 투자 비중을 본다.
- * - 백분위: 실격이 아닌 제출끼리 (n − 순위) / (n − 1) × 100. 동점은 평균 순위를 쓰고, n = 1 이면 100.
- * - 수익률 점수는 일반장 누적 수익률 백분위, 안정성 점수는 장세 3벌 낙폭 백분위의 평균 × 0.6 + 최저 × 0.4.
+ * - 수익률 점수: 일반장에서 시장보다 얼마나 더 벌었는지. 시장과 같으면 50점, 시장 대비 +30%면 100점,
+ *   실격선인 시장 대비 −30%면 0점이다. 장세 난이도는 시장 수익률이 흡수한다.
+ * - 국면 점수: 구간 최대 낙폭을 실격선 50%로 잰다. 낙폭 0%면 100점, 50%면 0점이다.
+ * - 안정성 점수: 상승·하락·횡보 국면 점수의 평균 × 0.6 + 최저 × 0.4.
+ * - 총점: 수익률 점수 × 0.5 + 안정성 점수 × 0.5.
  *
  * 같은 규칙의 참고 구현이 ai/scripts/contest_sim/scoring.py 다.
  */
@@ -24,54 +30,113 @@ public final class ContestScoreCalculator {
     private static final List<MarketDatasetKind> REGIMES =
             List.of(MarketDatasetKind.BULL, MarketDatasetKind.BEAR, MarketDatasetKind.SIDEWAYS);
     private static final int SCORE_SCALE = 3;
+    /* 수익률 점수의 척도. 시장 대비 −30%가 0점, +30%가 100점이다. */
+    private static final double RETURN_SPAN = 0.30;
+    private static final double MAXIMUM_DRAWDOWN = ContestScoringPolicy.MAXIMUM_DRAWDOWN.doubleValue();
 
     private ContestScoreCalculator() {
     }
 
-    public static List<ContestResult> score(Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> outcomes) {
+    /*
+     * generalMarketReturn 은 일반장 데이터셋의 균등 보유 수익률이다. 회차 난이도를 여기서 흡수한다.
+     */
+    public static List<ContestResult> score(
+            Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> outcomes,
+            BigDecimal generalMarketReturn
+    ) {
         Map<UUID, ContestResult> disqualifiedResults = new LinkedHashMap<>();
         List<UUID> qualified = new ArrayList<>();
 
         for (Map.Entry<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> entry : outcomes.entrySet()) {
-            ContestResult disqualified = disqualify(entry.getKey(), entry.getValue());
-            if (disqualified == null) {
+            Disqualification disqualification = disqualification(entry.getValue());
+            if (disqualification == null) {
                 qualified.add(entry.getKey());
             } else {
-                disqualifiedResults.put(entry.getKey(), disqualified);
+                disqualifiedResults.put(entry.getKey(), ContestResult.disqualified(
+                        entry.getKey(), disqualification.reason(), disqualification.kind()));
             }
         }
 
-        List<ContestResult> results = new ArrayList<>(score(qualified, outcomes));
+        List<ContestResult> results = new ArrayList<>(score(qualified, outcomes, generalMarketReturn));
         results.addAll(disqualifiedResults.values());
         return List.copyOf(results);
     }
 
+    /** 실격 사유와 걸린 데이터셋. 통과하면 null 이다. 마감 전 내 성적 화면도 이 판정을 쓴다. */
+    public static Disqualification disqualification(Map<MarketDatasetKind, ContestEvaluationOutcome> outcomes) {
+        for (MarketDatasetKind kind : MarketDatasetKind.values()) {
+            ContestEvaluationOutcome outcome = outcomes.get(kind);
+            if (outcome == null || !outcome.completed()) {
+                return new Disqualification(ContestDisqualificationReason.BACKTEST_FAILED, kind);
+            }
+            if (outcome.cumulativeReturn().compareTo(ContestScoringPolicy.MINIMUM_RETURN) < 0) {
+                return new Disqualification(ContestDisqualificationReason.RETURN_BELOW_LIMIT, kind);
+            }
+            if (outcome.maximumDrawdown().compareTo(ContestScoringPolicy.MAXIMUM_DRAWDOWN) > 0) {
+                return new Disqualification(ContestDisqualificationReason.MDD_ABOVE_LIMIT, kind);
+            }
+        }
+
+        BigDecimal exposure = outcomes.get(MarketDatasetKind.GENERAL).averageExposure();
+        if (exposure == null || exposure.compareTo(ContestScoringPolicy.MINIMUM_EXPOSURE) < 0) {
+            return new Disqualification(ContestDisqualificationReason.LOW_EXPOSURE, MarketDatasetKind.GENERAL);
+        }
+        return null;
+    }
+
+    /** 일반장 수익률을 시장 대비로 재서 0~100 으로 옮긴다. */
+    public static double returnScore(BigDecimal cumulativeReturn, BigDecimal generalMarketReturn) {
+        double excess = cumulativeReturn.doubleValue() - generalMarketReturn.doubleValue();
+        return clamp((excess + RETURN_SPAN) / (2 * RETURN_SPAN) * 100);
+    }
+
+    /** 구간 최대 낙폭을 실격선으로 재서 0~100 으로 옮긴다. 낙폭이 작을수록 높다. */
+    public static double regimeScore(BigDecimal maximumDrawdown) {
+        return clamp((1 - maximumDrawdown.doubleValue() / MAXIMUM_DRAWDOWN) * 100);
+    }
+
+    public static double stabilityScore(List<Double> regimeScores) {
+        double mean = regimeScores.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
+        double worst = regimeScores.stream().mapToDouble(Double::doubleValue).min().orElseThrow();
+        return 0.6 * mean + 0.4 * worst;
+    }
+
+    public static double totalScore(double returnScore, double stabilityScore) {
+        return 0.5 * returnScore + 0.5 * stabilityScore;
+    }
+
     private static List<ContestResult> score(
             List<UUID> qualified,
-            Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> outcomes
+            Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> outcomes,
+            BigDecimal generalMarketReturn
     ) {
         if (qualified.isEmpty()) {
             return List.of();
         }
 
-        Map<UUID, Double> returnScores = percentiles(value(qualified, outcomes, MarketDatasetKind.GENERAL, true), true);
+        Map<UUID, Double> returnScores = new LinkedHashMap<>();
         Map<MarketDatasetKind, Map<UUID, Double>> regimeScores = new LinkedHashMap<>();
         for (MarketDatasetKind regime : REGIMES) {
-            regimeScores.put(regime, percentiles(value(qualified, outcomes, regime, false), false));
+            regimeScores.put(regime, new LinkedHashMap<>());
         }
-
-        Map<UUID, Double> totals = new LinkedHashMap<>();
         Map<UUID, Double> stabilities = new LinkedHashMap<>();
-        for (UUID entryId : qualified) {
-            List<Double> perRegime = REGIMES.stream()
-                    .map(regime -> regimeScores.get(regime).get(entryId))
-                    .toList();
-            double mean = perRegime.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
-            double worst = perRegime.stream().mapToDouble(Double::doubleValue).min().orElseThrow();
-            double stability = 0.6 * mean + 0.4 * worst;
+        Map<UUID, Double> totals = new LinkedHashMap<>();
 
+        for (UUID entryId : qualified) {
+            Map<MarketDatasetKind, ContestEvaluationOutcome> entryOutcomes = outcomes.get(entryId);
+            returnScores.put(entryId, returnScore(
+                    entryOutcomes.get(MarketDatasetKind.GENERAL).cumulativeReturn(), generalMarketReturn));
+
+            List<Double> perRegime = new ArrayList<>();
+            for (MarketDatasetKind regime : REGIMES) {
+                double score = regimeScore(entryOutcomes.get(regime).maximumDrawdown());
+                regimeScores.get(regime).put(entryId, score);
+                perRegime.add(score);
+            }
+
+            double stability = stabilityScore(perRegime);
             stabilities.put(entryId, stability);
-            totals.put(entryId, 0.5 * returnScores.get(entryId) + 0.5 * stability);
+            totals.put(entryId, totalScore(returnScores.get(entryId), stability));
         }
 
         Map<UUID, Integer> rankings = rankings(totals);
@@ -90,74 +155,6 @@ public final class ContestScoreCalculator {
         }
         results.sort(Comparator.comparing(ContestResult::getRanking));
         return results;
-    }
-
-    private static ContestResult disqualify(UUID entryId, Map<MarketDatasetKind, ContestEvaluationOutcome> outcomes) {
-        for (MarketDatasetKind kind : MarketDatasetKind.values()) {
-            ContestEvaluationOutcome outcome = outcomes.get(kind);
-            if (outcome == null || !outcome.completed()) {
-                return ContestResult.disqualified(entryId, ContestDisqualificationReason.BACKTEST_FAILED, kind);
-            }
-            if (outcome.cumulativeReturn().compareTo(ContestScoringPolicy.MINIMUM_RETURN) < 0) {
-                return ContestResult.disqualified(entryId, ContestDisqualificationReason.RETURN_BELOW_LIMIT, kind);
-            }
-            if (outcome.maximumDrawdown().compareTo(ContestScoringPolicy.MAXIMUM_DRAWDOWN) > 0) {
-                return ContestResult.disqualified(entryId, ContestDisqualificationReason.MDD_ABOVE_LIMIT, kind);
-            }
-        }
-
-        BigDecimal exposure = outcomes.get(MarketDatasetKind.GENERAL).averageExposure();
-        if (exposure == null || exposure.compareTo(ContestScoringPolicy.MINIMUM_EXPOSURE) < 0) {
-            return ContestResult.disqualified(
-                    entryId,
-                    ContestDisqualificationReason.LOW_EXPOSURE,
-                    MarketDatasetKind.GENERAL
-            );
-        }
-        return null;
-    }
-
-    private static Map<UUID, Double> value(
-            List<UUID> qualified,
-            Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> outcomes,
-            MarketDatasetKind kind,
-            boolean useReturn
-    ) {
-        Map<UUID, Double> values = new LinkedHashMap<>();
-        for (UUID entryId : qualified) {
-            ContestEvaluationOutcome outcome = outcomes.get(entryId).get(kind);
-            values.put(entryId, useReturn
-                    ? outcome.cumulativeReturn().doubleValue()
-                    : outcome.maximumDrawdown().doubleValue());
-        }
-        return values;
-    }
-
-    /** 순위 1 이 가장 좋은 성적이고, 동점은 평균 순위를 쓴다. */
-    private static Map<UUID, Double> percentiles(Map<UUID, Double> values, boolean higherIsBetter) {
-        int n = values.size();
-        if (n == 1) {
-            return Map.of(values.keySet().iterator().next(), 100.0);
-        }
-
-        List<UUID> ordered = new ArrayList<>(values.keySet());
-        Comparator<UUID> comparator = Comparator.comparingDouble(values::get);
-        ordered.sort(higherIsBetter ? comparator.reversed() : comparator);
-
-        Map<UUID, Double> percentiles = new LinkedHashMap<>();
-        int index = 0;
-        while (index < n) {
-            int last = index;
-            while (last + 1 < n && values.get(ordered.get(last + 1)).equals(values.get(ordered.get(index)))) {
-                last++;
-            }
-            double rank = (index + last) / 2.0 + 1;
-            for (UUID entryId : ordered.subList(index, last + 1)) {
-                percentiles.put(entryId, (n - rank) / (n - 1) * 100);
-            }
-            index = last + 1;
-        }
-        return percentiles;
     }
 
     /** 총점이 같으면 같은 순위를 준다. */
@@ -181,7 +178,14 @@ public final class ContestScoreCalculator {
         return rankings;
     }
 
+    private static double clamp(double value) {
+        return Math.min(Math.max(value, 0), 100);
+    }
+
     private static BigDecimal scale(double value) {
         return BigDecimal.valueOf(value).setScale(SCORE_SCALE, RoundingMode.HALF_UP);
+    }
+
+    public record Disqualification(ContestDisqualificationReason reason, MarketDatasetKind kind) {
     }
 }

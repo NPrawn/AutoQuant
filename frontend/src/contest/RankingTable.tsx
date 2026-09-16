@@ -48,12 +48,12 @@ export function RankingTable({ roundId, rows, myResult, copyPending, onCopy }: R
                 </td>
                 <td className="r mono">{formatPercentile(row.stabilityScore)}</td>
                 <td className="r">
-                  <span className="mono updown up">{formatPercentile(row.bullMddPercentile)}</span>
+                  <span className="mono updown up">{formatPercentile(row.bullRegimeScore)}</span>
                 </td>
                 <td className="r">
-                  <span className="mono updown down">{formatPercentile(row.bearMddPercentile)}</span>
+                  <span className="mono updown down">{formatPercentile(row.bearRegimeScore)}</span>
                 </td>
-                <td className="r mono">{formatPercentile(row.sidewaysMddPercentile)}</td>
+                <td className="r mono">{formatPercentile(row.sidewaysRegimeScore)}</td>
                 <td style={{ textAlign: 'right' }}>
                   <RowAction roundId={roundId} row={row} copyPending={copyPending} onCopy={onCopy} />
                 </td>
@@ -110,12 +110,12 @@ function MyRow({ roundId, result }: { roundId: string; result: ContestMyResultRe
       </td>
       <td className="r mono">{formatPercentile(result.stabilityScore)}</td>
       <td className="r">
-        <span className="mono updown up">{formatPercentile(result.bullMddPercentile)}</span>
+        <span className="mono updown up">{formatPercentile(result.bullRegimeScore)}</span>
       </td>
       <td className="r">
-        <span className="mono updown down">{formatPercentile(result.bearMddPercentile)}</span>
+        <span className="mono updown down">{formatPercentile(result.bearRegimeScore)}</span>
       </td>
-      <td className="r mono">{formatPercentile(result.sidewaysMddPercentile)}</td>
+      <td className="r mono">{formatPercentile(result.sidewaysRegimeScore)}</td>
       <td style={{ textAlign: 'right' }}>
         <Link className="rank-action" to={to.contestResult(roundId)}>
           결과 보기

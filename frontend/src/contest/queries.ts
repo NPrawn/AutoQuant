@@ -68,8 +68,14 @@ export function useMyContestResult(roundId: string | undefined, enabled: boolean
     queryKey: contestMyResultQueryKey(roundId ?? ''),
     queryFn: () => fetchMyContestResult(roundId ?? ''),
     enabled: roundId !== undefined && enabled,
-    /* 제출하지 않았거나 결과가 없으면 404 다. 없는 것이 답이라 다시 묻지 않는다. */
+    /* 제출하지 않았으면 404 다. 없는 것이 답이라 다시 묻지 않는다. */
     retry: false,
+    /* 제출 직후에는 백테스트 4벌이 도는 중이라 끝날 때까지 다시 묻는다. */
+    refetchInterval: (query) => {
+      const data = query.state.data
+      return data !== undefined && data.finishedBacktests < data.totalBacktests ? progressPollIntervalMs : false
+    },
+    refetchIntervalInBackground: true,
   })
 }
 

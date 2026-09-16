@@ -20,8 +20,6 @@ import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.trading.backtest.repository.BacktestEquityRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestResultRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
-import com.ssafy.a107.trading.backtest.service.BacktestRunCommandService;
-import com.ssafy.a107.trading.backtest.service.CreateContestBacktestRunCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -31,28 +29,36 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /*
- * 마감된 회차를 채점한다 (대회 기능 설계 7절).
+ * 회차를 채점한다 (대회 기능 설계 7절).
  *
- * 1. 마감이 지난 제출 중 회차를 채점 중으로 바꾸고, 제출마다 데이터셋 4벌의 대회 백테스트를 만든다.
- * 2. 모든 백테스트가 끝나면(완료 또는 실패) 점수를 계산해 저장하고 회차를 종료로 바꾼다.
+ * 점수가 절대값이라 제출의 백테스트 4벌이 끝나는 대로 점수를 낸다. 순위는 그때까지 채점된 제출 사이의
+ * 자리라 참가자가 늘면 바뀌고, 마감 때 그대로 확정된다.
+ *
+ * 1. 제출하면 ContestEvaluationService 가 백테스트 4벌을 만든다. 마감이 지난 회차에서 평가가 빠진 제출은
+ *    채점 시작이 채운다.
+ * 2. 끝난 제출이 생길 때마다 회차 결과를 다시 쓴다.
+ * 3. 마감이 지나고 모든 제출이 채점되면 회차를 종료로 바꾼다.
  */
 @Service
 public class ContestScoringService {
 
     private static final Logger log = LoggerFactory.getLogger(ContestScoringService.class);
-    private static final String ENGINE_VERSION = "contest-v1";
 
     private final ContestRoundRepository contestRoundRepository;
     private final ContestEntryRepository contestEntryRepository;
     private final MarketDatasetRepository marketDatasetRepository;
     private final ContestEvaluationRepository contestEvaluationRepository;
     private final ContestResultRepository contestResultRepository;
-    private final BacktestRunCommandService backtestRunCommandService;
+    private final ContestEvaluationService contestEvaluationService;
     private final BacktestRunRepository backtestRunRepository;
     private final BacktestResultRepository backtestResultRepository;
     private final BacktestEquityRepository backtestEquityRepository;
@@ -63,7 +69,7 @@ public class ContestScoringService {
             MarketDatasetRepository marketDatasetRepository,
             ContestEvaluationRepository contestEvaluationRepository,
             ContestResultRepository contestResultRepository,
-            BacktestRunCommandService backtestRunCommandService,
+            ContestEvaluationService contestEvaluationService,
             BacktestRunRepository backtestRunRepository,
             BacktestResultRepository backtestResultRepository,
             BacktestEquityRepository backtestEquityRepository
@@ -73,7 +79,7 @@ public class ContestScoringService {
         this.marketDatasetRepository = marketDatasetRepository;
         this.contestEvaluationRepository = contestEvaluationRepository;
         this.contestResultRepository = contestResultRepository;
-        this.backtestRunCommandService = backtestRunCommandService;
+        this.contestEvaluationService = contestEvaluationService;
         this.backtestRunRepository = backtestRunRepository;
         this.backtestResultRepository = backtestResultRepository;
         this.backtestEquityRepository = backtestEquityRepository;
@@ -88,6 +94,16 @@ public class ContestScoringService {
                 .toList();
     }
 
+    /** 제출을 받는 중이거나 채점 중인 회차. 끝난 백테스트가 있으면 그때그때 점수를 낸다. */
+    @Transactional(readOnly = true)
+    public List<UUID> findRoundsAcceptingScores() {
+        return Stream.concat(
+                        contestRoundRepository.findAllByPhase(ContestPhase.READY).stream(),
+                        contestRoundRepository.findAllByPhase(ContestPhase.SCORING).stream())
+                .map(ContestRound::getRoundId)
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public List<UUID> findRoundsInScoring() {
         return contestRoundRepository.findAllByPhase(ContestPhase.SCORING).stream()
@@ -95,17 +111,11 @@ public class ContestScoringService {
                 .toList();
     }
 
-    /** 제출마다 데이터셋 4벌의 대회 백테스트를 만든다. 제출이 없으면 바로 종료한다. */
+    /** 마감이 지난 회차를 채점 중으로 바꾸고, 아직 돌리지 않은 제출만 돌린다. 제출이 없으면 바로 종료한다. */
     @Transactional
     public void startScoring(UUID roundId, Instant now) {
         ContestRound round = contestRoundRepository.findById(roundId).orElseThrow();
         if (round.getPhase() != ContestPhase.READY) {
-            return;
-        }
-
-        List<MarketDataset> datasets = marketDatasetRepository.findAllByRoundRoundIdOrderByKindAsc(roundId);
-        if (datasets.size() != MarketDatasetKind.values().length) {
-            log.warn("대회 회차 {} 는 데이터셋이 {}벌이라 채점을 시작하지 않는다", roundId, datasets.size());
             return;
         }
 
@@ -117,32 +127,64 @@ public class ContestScoringService {
             return;
         }
 
+        Set<UUID> evaluated = contestEvaluationRepository.findAllByRoundId(roundId).stream()
+                .map(evaluation -> evaluation.getId().getEntryId())
+                .collect(Collectors.toSet());
+
+        int started = 0;
         for (ContestEntry entry : entries) {
-            for (MarketDataset dataset : datasets) {
-                BacktestRun backtestRun = backtestRunCommandService.createContestBacktestRun(
-                        new CreateContestBacktestRunCommand(
-                                entry.getStrategy().getStrategyId(),
-                                dataset.getDatasetId(),
-                                dataset.getPeriodStart(),
-                                dataset.getPeriodEnd(),
-                                ContestScoringPolicy.INITIAL_CAPITAL,
-                                ContestScoringPolicy.FEE_RATE,
-                                ContestScoringPolicy.SLIPPAGE_BPS,
-                                ENGINE_VERSION,
-                                dataset.getKind().name() + "-" + roundId
-                        )
-                );
-                contestEvaluationRepository.save(new ContestEvaluation(
-                        entry.getEntryId(),
-                        dataset.getDatasetId(),
-                        backtestRun.getBacktestId()
-                ));
+            if (evaluated.contains(entry.getEntryId())) {
+                continue;
             }
+            contestEvaluationService.evaluate(entry);
+            started++;
         }
-        log.info("대회 회차 {} 채점 시작: 제출 {}건 × 데이터셋 {}벌", roundId, entries.size(), datasets.size());
+        log.info("대회 회차 {} 채점 시작: 제출 {}건 중 {}건을 새로 돌린다", roundId, entries.size(), started);
     }
 
-    /** 백테스트가 모두 끝났으면 점수를 저장하고 회차를 종료한다. 아직이면 아무것도 하지 않는다. */
+    /*
+     * 백테스트가 끝난 제출의 점수를 저장한다. 점수는 절대값이라 제출별로 확정되지만 순위는 참가자가 늘면
+     * 바뀌므로 회차 결과를 통째로 다시 쓴다. 아직 도는 제출은 다음 차례에 들어온다.
+     */
+    @Transactional
+    public int scoreSettledEntries(UUID roundId) {
+        Map<UUID, MarketDatasetKind> kinds = datasetKinds(roundId);
+        Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> settled = new LinkedHashMap<>();
+        Set<UUID> running = new LinkedHashSet<>();
+
+        for (ContestEvaluation evaluation : contestEvaluationRepository.findAllByRoundId(roundId)) {
+            UUID entryId = evaluation.getId().getEntryId();
+            BacktestRun backtestRun = backtestRunRepository.findByBacktestId(evaluation.getBacktestId()).orElseThrow();
+            if (backtestRun.getStatus() != BacktestRunStatus.COMPLETED
+                    && backtestRun.getStatus() != BacktestRunStatus.FAILED) {
+                running.add(entryId);
+                continue;
+            }
+            settled.computeIfAbsent(entryId, key -> new LinkedHashMap<>())
+                    .put(kinds.get(evaluation.getId().getDatasetId()), outcome(evaluation, backtestRun));
+        }
+
+        running.forEach(settled::remove);
+        contestResultRepository.deleteAllByRoundId(roundId);
+        if (settled.isEmpty()) {
+            return 0;
+        }
+
+        List<ContestResult> results = ContestScoreCalculator.score(settled, generalMarketReturn(roundId));
+        contestResultRepository.saveAll(results);
+        return results.size();
+    }
+
+    /** 일반장 데이터셋의 균등 보유 수익률. 수익률 점수를 재는 기준이다 (ADR-0003). */
+    private BigDecimal generalMarketReturn(UUID roundId) {
+        return marketDatasetRepository.findAllByRoundRoundIdOrderByKindAsc(roundId).stream()
+                .filter(dataset -> dataset.getKind() == MarketDatasetKind.GENERAL)
+                .map(MarketDataset::getEvaluationReturn)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    /** 모든 제출이 채점됐으면 회차를 종료한다. 아직 도는 제출이 있으면 기다린다. */
     @Transactional
     public boolean finishScoring(UUID roundId, Instant now) {
         ContestRound round = contestRoundRepository.findById(roundId).orElseThrow();
@@ -150,26 +192,17 @@ public class ContestScoringService {
             return false;
         }
 
-        List<ContestEvaluation> evaluations = contestEvaluationRepository.findAllByRoundId(roundId);
-        Map<UUID, MarketDatasetKind> kinds = datasetKinds(roundId);
-        Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> outcomes = new LinkedHashMap<>();
-
-        for (ContestEvaluation evaluation : evaluations) {
+        for (ContestEvaluation evaluation : contestEvaluationRepository.findAllByRoundId(roundId)) {
             BacktestRun backtestRun = backtestRunRepository.findByBacktestId(evaluation.getBacktestId()).orElseThrow();
             if (backtestRun.getStatus() != BacktestRunStatus.COMPLETED
                     && backtestRun.getStatus() != BacktestRunStatus.FAILED) {
                 return false;
             }
-
-            MarketDatasetKind kind = kinds.get(evaluation.getId().getDatasetId());
-            outcomes.computeIfAbsent(evaluation.getId().getEntryId(), key -> new LinkedHashMap<>())
-                    .put(kind, outcome(evaluation, backtestRun));
         }
 
-        List<ContestResult> results = ContestScoreCalculator.score(outcomes);
-        contestResultRepository.saveAll(results);
+        int results = scoreSettledEntries(roundId);
         round.finish(now);
-        log.info("대회 회차 {} 채점 완료: 결과 {}건", roundId, results.size());
+        log.info("대회 회차 {} 채점 완료: 결과 {}건", roundId, results);
         return true;
     }
 

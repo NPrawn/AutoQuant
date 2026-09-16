@@ -54,9 +54,11 @@ def test_score_ranks_qualified_strategies_and_lists_disqualified_ones():
         "crash": _runs(0.1, (0.1, 0.6, 0.1)),
     }
 
-    rows = score(results)
+    # 시장 +10% 기준. 점수는 남들과 무관하게 시장 대비 수익률과 낙폭으로만 정해진다.
+    rows = score(results, market_return=0.1)
 
-    assert [(row["strategy"], row["total"]) for row in rows[:3]] == [("s1", 75.0), ("s2", 50.0), ("s3", 25.0)]
+    ranked = [(row["strategy"], round(row["total"], 3)) for row in rows[:3]]
+    assert ranked == [("s1", 76.667), ("s2", 67.6), ("s3", 59.333)]
     reasons = {row["strategy"]: row["disqualified"] for row in rows[3:]}
     assert "투자 비중" in reasons["cash"]
     assert "BEAR 최대 낙폭" in reasons["crash"]
