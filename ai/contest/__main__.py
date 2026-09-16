@@ -6,11 +6,14 @@ import os
 import random
 import sys
 from dataclasses import replace
+from decimal import Decimal
 
-from contest.blocks import build_pool, choose_window, format_time, label_weeks, load_source, transition_matrix
+from contest.blocks import (
+    Series, Week, build_pool, choose_window, format_time, label_weeks, load_source, transition_matrix,
+)
 from contest.checks import check_bars, feasibility, stage2
-from contest.sampling import KINDS, Params, evaluation_return, max_factor_period, sample_sequence
-from contest.stitch import aggregate, fill_gaps, stitch, tick_table, write_load_csv
+from contest.sampling import KINDS, Params, evaluation_returns, max_factor_period, sample_sequence
+from contest.stitch import Bar, aggregate, fill_gaps, stitch, tick_table, write_load_csv
 
 BLOCK_START = {"MON": 0, "THU": 3}
 
@@ -53,6 +56,20 @@ def _window_json(params: Params) -> dict | None:
                                                "end": format_time(params.window[1])}
 
 
+def build_bars(series: Series, universe: list[str], sequence: list[Week], params: Params,
+               ticks: dict[int, Decimal], fill: bool) -> tuple[list[Bar], int]:
+    """One dataset: chained hourly bars (gaps filled when `fill`), 4h and daily aggregates, all bar checks passed."""
+    hourly = stitch(series, universe, sequence, params.span, params.volume_ref_weeks, params.virtual_start, ticks)
+    filled = 0
+    if fill:
+        hourly, filled = fill_gaps(hourly)
+    bars = hourly + aggregate(hourly, 240) + aggregate(hourly, 1440)
+    problems = check_bars(bars, ticks)
+    if problems:
+        raise ValueError(f"{len(problems)} bar check failures, first: {problems[:5]}")
+    return bars, filled
+
+
 def _check(args: argparse.Namespace) -> int:
     params, series, universe = _select(args)
     report = {
@@ -92,17 +109,15 @@ def _build(args: argparse.Namespace) -> int:
     os.makedirs(args.out, exist_ok=True)
     for kind in KINDS:
         sequence = sample_sequence(kind, weeks, matrix, series, universe, params, rng)
-        hourly = stitch(series, universe, sequence, params.span, params.volume_ref_weeks, params.virtual_start, ticks)
-        filled = 0
-        if args.fill_gaps:
-            hourly, filled = fill_gaps(hourly)
-        bars = hourly + aggregate(hourly, 240) + aggregate(hourly, 1440)
-        problems = check_bars(bars, ticks)
-        if problems:
-            raise SystemExit(f"{kind}: {len(problems)} bar check failures, first: {problems[:5]}")
+        try:
+            bars, filled = build_bars(series, universe, sequence, params, ticks, args.fill_gaps)
+        except ValueError as error:
+            raise SystemExit(f"{kind}: {error}") from error
         write_load_csv(os.path.join(args.out, f"{kind}.csv"), bars)
+        held, rebalanced = evaluation_returns(sequence, series, universe, params)
         summary["datasets"][kind] = {
-            "evaluation_return": evaluation_return(sequence, series, universe, params),
+            "evaluation_return": held,
+            "rebalanced_return": rebalanced,
             "filled_hours": filled,
             "weeks": [{"source_start": format_time(week.start), "label": week.label} for week in sequence],
         }
@@ -128,7 +143,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--block-days", type=int, default=7)
         command.add_argument("--warmup-weeks", type=int, default=5)
         command.add_argument("--eval-weeks", type=int, default=13)
-        command.add_argument("--candidates", type=int, default=1000)
+        command.add_argument("--candidates", type=int, default=Params().candidates)
         command.add_argument("--window-weeks", type=int, default=104,
                              help="과거에서 랜덤하게 고를 구간 길이(주). 0이면 전체 기간을 쓴다")
         command.add_argument("--min-assets", type=int, default=10,

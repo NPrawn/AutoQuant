@@ -34,6 +34,7 @@ def test_build_writes_four_load_csvs_and_week_list(tmp_path, capsys):
     assert list(weeks["datasets"]) == list(KINDS)
     for kind, (low, high) in Params().targets.items():
         assert low <= weeks["datasets"][kind]["evaluation_return"] <= high
+        assert low <= weeks["datasets"][kind]["rebalanced_return"] <= high
         assert len(weeks["datasets"][kind]["weeks"]) == 6
     window = weeks["window"]
     assert all(window["start"] <= week["source_start"] < window["end"]
@@ -56,3 +57,15 @@ def test_check_reports_both_stages_and_exit_code(tmp_path, capsys):
     assert report["window"] is None and len(report["universe"]) == 3
     assert code == (0 if report["passed"] else 1)
     assert json.loads(capsys.readouterr().out) == report
+
+
+def test_build_is_byte_identical_for_the_same_seed(tmp_path):
+    source, universe = _write(tmp_path, patterned_series(assets=2, cycles=10, up=1 / 0.82, down=0.82))
+    args = ["build", "--source", source, "--universe", universe, "--seed", "7", "--warmup-weeks", "2",
+            "--eval-weeks", "4", "--candidates", "50", "--window-weeks", "24", "--min-assets", "2", "--fill-gaps"]
+
+    main([*args, "--out", str(tmp_path / "first")])
+    main([*args, "--out", str(tmp_path / "second")])
+
+    for name in [f"{kind}.csv" for kind in KINDS] + ["weeks.json"]:
+        assert (tmp_path / "first" / name).read_bytes() == (tmp_path / "second" / name).read_bytes()

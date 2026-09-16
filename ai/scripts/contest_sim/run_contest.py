@@ -119,35 +119,66 @@ def _collect(api: Api, backtest_id: str, poll_seconds: float) -> dict:
             "exposure": sum(exposures) / len(exposures) if exposures else 0.0, "trades": result["tradeCount"]}
 
 
-def run(config: dict, datasets_dir: str, strategies_path: str, out_path: str, poll_seconds: float = 5) -> dict:
-    with open(os.path.join(datasets_dir, "weeks.json"), encoding="utf-8") as file:
-        summary = json.load(file)
-    strategies = load_strategies(strategies_path, summary["max_factor_period"])
-    api = Api(config["api"], issue(config["member_id"], config["jwt_secret"], config.get("jwt_issuer", "a107")))
-    strategy_ids = {
+def read_config(path: str) -> dict:
+    """Local settings. Refuse any database that is not contest-only: loading candles replaces every candle."""
+    with open(path, encoding="utf-8") as file:
+        config = json.load(file)
+    if "contest" not in config["db_name"]:
+        raise SystemExit(f"db_name {config['db_name']!r} must name a contest-only database: run replaces every candle")
+    return config
+
+
+def connect(config: dict) -> Api:
+    return Api(config["api"], issue(config["member_id"], config["jwt_secret"], config.get("jwt_issuer", "a107")))
+
+
+def load_candles(config: dict, csv_path: str) -> None:
+    _psql(config, ["-c", "DELETE FROM market_data.minute_candle"], b"")
+    with open(csv_path, "rb") as file:
+        _psql(config, ["-c", LOAD_SQL], file.read())
+
+
+def create_strategies(api: Api, strategies: list[tuple[str, str, Strategy]]) -> dict[str, str]:
+    return {
         name: api.call("POST", "/strategies", {
             "name": name, "description": description, "strategyDsl": strategy.model_dump(mode="json"),
         })["strategyId"]
         for name, description, strategy in strategies
     }
+
+
+def run_backtests(api: Api, strategy_ids: dict[str, str], period_start: str, period_end: str, label: str,
+                  poll_seconds: float = 5) -> dict[str, dict]:
+    """Submit one backtest per strategy on the loaded candles, then wait for each result."""
+    backtests = {
+        name: api.call("POST", "/backtests", {
+            "strategyId": strategy_id, "periodStart": period_start, "periodEnd": period_end,
+            "quoteCurrency": "KRW", "initialCapital": 10_000_000, "feeRate": 0.0005, "slippageBps": 10,
+            "executionPriceRule": "NEXT_CANDLE_OPEN", "engineVersion": "local-sim", "marketDataVersion": label,
+        })["backtestId"]
+        for name, strategy_id in strategy_ids.items()
+    }
+    results = {}
+    for name, backtest_id in backtests.items():
+        results[name] = _collect(api, backtest_id, poll_seconds)
+        print(label, name, results[name], flush=True)
+    return results
+
+
+def run(config: dict, datasets_dir: str, strategies_path: str, out_path: str, poll_seconds: float = 5) -> dict:
+    with open(os.path.join(datasets_dir, "weeks.json"), encoding="utf-8") as file:
+        summary = json.load(file)
+    strategies = load_strategies(strategies_path, summary["max_factor_period"])
+    api = connect(config)
+    strategy_ids = create_strategies(api, strategies)
     results: dict[str, dict[str, dict]] = {name: {} for name in strategy_ids}
     for kind in KINDS:
-        _psql(config, ["-c", "DELETE FROM market_data.minute_candle"], b"")
-        with open(os.path.join(datasets_dir, f"{kind}.csv"), "rb") as file:
-            _psql(config, ["-c", LOAD_SQL], file.read())
-        backtests = {
-            name: api.call("POST", "/backtests", {
-                "strategyId": strategy_id, "periodStart": summary["period_start"], "periodEnd": summary["period_end"],
-                "quoteCurrency": "KRW", "initialCapital": 10_000_000, "feeRate": 0.0005, "slippageBps": 10,
-                "executionPriceRule": "NEXT_CANDLE_OPEN", "engineVersion": "local-sim",
-                "marketDataVersion": f"{kind}-seed{summary['seed']}",
-            })["backtestId"]
-            for name, strategy_id in strategy_ids.items()
-        }
-        for name, backtest_id in backtests.items():
-            results[name][kind] = _collect(api, backtest_id, poll_seconds)
-            print(kind, name, results[name][kind], flush=True)
-    report = {"seed": summary["seed"], "window": summary.get("window"), "results": results, "scores": score(results)}
+        load_candles(config, os.path.join(datasets_dir, f"{kind}.csv"))
+        runs = run_backtests(api, strategy_ids, summary["period_start"], summary["period_end"],
+                             f"{kind}-seed{summary['seed']}", poll_seconds)
+        for name, result in runs.items():
+            results[name][kind] = result
+    report ={"seed": summary["seed"], "window": summary.get("window"), "results": results, "scores": score(results)}
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     with open(out_path, "w", encoding="utf-8", newline="\n") as file:
         json.dump(report, file, ensure_ascii=False, indent=2)
@@ -173,10 +204,7 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("--strategies", required=True)
     run_parser.add_argument("--out", required=True)
     args = parser.parse_args(argv)
-    with open(args.config, encoding="utf-8") as file:
-        config = json.load(file)
-    if "contest" not in config["db_name"]:
-        raise SystemExit(f"db_name {config['db_name']!r} must name a contest-only database: run replaces every candle")
+    config = read_config(args.config)
     if args.command == "seed":
         seed(config, args.datasets)
     else:
