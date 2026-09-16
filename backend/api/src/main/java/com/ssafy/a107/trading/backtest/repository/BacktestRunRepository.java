@@ -18,8 +18,12 @@ public interface BacktestRunRepository extends JpaRepository<BacktestRun, UUID> 
     @EntityGraph(attributePaths = "strategy")
     Optional<BacktestRun> findByBacktestIdAndMemberMemberId(UUID backtestId, UUID memberId);
 
+    // 대회 채점용 실행은 사용자 목록에 넣지 않는다 (ADR-0014).
     @EntityGraph(attributePaths = "strategy")
-    Page<BacktestRun> findAllByMemberMemberIdOrderByQueuedAtDesc(UUID memberId, Pageable pageable);
+    Page<BacktestRun> findAllByMemberMemberIdAndContestDatasetIdIsNullOrderByQueuedAtDesc(
+            UUID memberId,
+            Pageable pageable
+    );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = "strategy")

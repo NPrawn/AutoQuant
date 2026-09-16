@@ -74,6 +74,16 @@ class BacktestRunPersistenceMappingTest {
         assertThat(column.nullable()).isFalse();
     }
 
+    @DisplayName("대회 데이터셋 ID는 NULL 을 허용하는 열에 매핑한다")
+    @Test
+    void mapContestDatasetIdAsNullableColumn() throws NoSuchFieldException {
+        Column column = BacktestRun.class.getDeclaredField("contestDatasetId").getAnnotation(Column.class);
+
+        assertThat(column.name()).isEqualTo("contest_dataset_id");
+        assertThat(column.nullable()).isTrue();
+        assertThat(column.updatable()).isFalse();
+    }
+
     private void assertManyToOne(Field field, String columnName, String foreignKeyName) {
         ManyToOne manyToOne = field.getAnnotation(ManyToOne.class);
         JoinColumn joinColumn = field.getAnnotation(JoinColumn.class);

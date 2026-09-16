@@ -32,7 +32,7 @@ class BacktestRunRepositoryTest {
     @Test
     void findBacktestRunsByMemberId() throws NoSuchMethodException {
         Method method = BacktestRunRepository.class.getMethod(
-                "findAllByMemberMemberIdOrderByQueuedAtDesc",
+                "findAllByMemberMemberIdAndContestDatasetIdIsNullOrderByQueuedAtDesc",
                 UUID.class,
                 Pageable.class
         );
