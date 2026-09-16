@@ -10,10 +10,10 @@ import java.util.UUID;
 
 public interface ContestEntryRepository extends JpaRepository<ContestEntry, UUID> {
 
-    @EntityGraph(attributePaths = "strategy")
+    @EntityGraph(attributePaths = {"strategy", "round"})
     Optional<ContestEntry> findByRoundRoundIdAndMemberMemberId(UUID roundId, UUID memberId);
 
-    @EntityGraph(attributePaths = "strategy")
+    @EntityGraph(attributePaths = {"strategy", "round"})
     List<ContestEntry> findAllByMemberMemberId(UUID memberId);
 
     List<ContestEntry> findAllByRoundRoundId(UUID roundId);

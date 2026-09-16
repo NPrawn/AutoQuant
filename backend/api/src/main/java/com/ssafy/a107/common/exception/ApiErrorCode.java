@@ -64,7 +64,13 @@ public enum ApiErrorCode {
     // 모의투자
     SIMULATION_INVALID_CONFIGURATION(HttpStatus.BAD_REQUEST, "SIMULATION-400-001", "모의투자 실행 설정이 올바르지 않습니다."),
     SIMULATION_NOT_FOUND(HttpStatus.NOT_FOUND, "SIMULATION-404-001", "요청한 모의투자 실행을 찾을 수 없습니다."),
-    SIMULATION_INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "SIMULATION-409-001", "현재 모의투자 실행 상태에서는 요청한 상태로 변경할 수 없습니다.");
+    SIMULATION_INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "SIMULATION-409-001", "현재 모의투자 실행 상태에서는 요청한 상태로 변경할 수 없습니다."),
+
+    // 대회
+    CONTEST_FACTOR_PERIOD_TOO_LONG(HttpStatus.BAD_REQUEST, "CONTEST-400-001", "대회 데이터의 워밍업보다 긴 팩터 기간은 제출할 수 없습니다."),
+    CONTEST_ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTEST-404-001", "요청한 대회 회차를 찾을 수 없습니다."),
+    CONTEST_SUBMISSION_CLOSED(HttpStatus.CONFLICT, "CONTEST-409-001", "지금은 대회 제출 기간이 아닙니다."),
+    CONTEST_SUBMISSION_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "CONTEST-409-002", "대회 제출 횟수를 모두 사용했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

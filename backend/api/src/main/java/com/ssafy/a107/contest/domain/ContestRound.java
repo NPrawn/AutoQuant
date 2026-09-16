@@ -91,6 +91,28 @@ public class ContestRound extends BaseEntity {
         this.phase = ContestPhase.FINISHED;
     }
 
+    /*
+     * 예정과 제출 중은 저장하지 않고 시각으로 계산한다. 마감이 지난 READY 회차는 스케줄러가 곧 채점을 시작하므로
+     * 화면에는 채점 중으로 보여 준다 (대회 기능 설계 5절).
+     */
+    public ContestDisplayStatus displayStatus(Instant at) {
+        Objects.requireNonNull(at);
+
+        if (phase == ContestPhase.FINISHED) {
+            return ContestDisplayStatus.FINISHED;
+        }
+        if (phase == ContestPhase.SCORING) {
+            return ContestDisplayStatus.SCORING;
+        }
+        if (at.isBefore(submissionStartsAt)) {
+            return ContestDisplayStatus.SCHEDULED;
+        }
+        if (at.isBefore(submissionEndsAt)) {
+            return ContestDisplayStatus.OPEN;
+        }
+        return ContestDisplayStatus.SCORING;
+    }
+
     public boolean isSubmittable(Instant at) {
         Objects.requireNonNull(at);
 
