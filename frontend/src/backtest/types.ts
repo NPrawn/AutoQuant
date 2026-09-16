@@ -68,6 +68,13 @@ export type BacktestTradeResponse = {
   reason: string | null
 }
 
+/* 봉이 하나도 없으면 두 값이 null 이다. 조회 실패가 아니라 아직 쌓인 봉이 없다는 뜻이다. */
+export type CandleCoverageResponse = {
+  intervalMinutes: number
+  start: string | null
+  end: string | null
+}
+
 export type BacktestEquityResponse = {
   valuationAt: string
   totalAssetValue: number

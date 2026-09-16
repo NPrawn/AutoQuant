@@ -22,18 +22,20 @@ export function toDateInput(value: Date): string {
   return new Date(value.getTime() - value.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 10)
 }
 
-/* 여러 종목의 봉 시각을 모아 첫 날과 마지막 날을 잰다. 봉이 없으면 null 이다. */
-export function coverageFromOpenTimes(openTimesUnixMilli: readonly number[]): CandleCoverage | null {
-  if (openTimesUnixMilli.length === 0) {
+/*
+ * 서버가 준 보유 구간을 날짜 입력이 쓰는 표기로 옮긴다. 기간 입력이 로컬 날짜라 여기서도 로컬로 맞춘다.
+ * 봉이 아직 없으면 서버가 두 값을 비우고, 그때는 하한 없이 실행한다.
+ */
+export function coverageFromInstants(start: string | null, end: string | null): CandleCoverage | null {
+  if (start === null || end === null) {
     return null
   }
-  let min = openTimesUnixMilli[0]
-  let max = openTimesUnixMilli[0]
-  for (const time of openTimesUnixMilli) {
-    if (time < min) min = time
-    if (time > max) max = time
+  const from = new Date(start)
+  const to = new Date(end)
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    return null
   }
-  return { start: toDateInput(new Date(min)), end: toDateInput(new Date(max)) }
+  return { start: toDateInput(from), end: toDateInput(to) }
 }
 
 /*

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  coverageFromOpenTimes, fallbackPeriodStart, periodBounds, shiftByCandles, toDateInput, warmupCandleCount,
+  coverageFromInstants, fallbackPeriodStart, periodBounds, shiftByCandles, toDateInput, warmupCandleCount,
 } from '../src/backtest/periodBounds.ts'
 
 const today = new Date('2026-09-14T05:00:00Z')
@@ -23,13 +23,21 @@ const dsl = (timeframe, rankingPeriod, filterPeriods) => ({
   rebalance: { period: 'WEEKLY' },
 })
 
-test('보유 구간은 모든 봉 시각의 첫 날과 마지막 날이다', () => {
-  const at = (iso) => new Date(iso).getTime()
+test('보유 구간은 서버가 준 양 끝 시각을 날짜 표기로 옮긴 값이다', () => {
   assert.deepEqual(
-    coverageFromOpenTimes([at('2026-06-01T00:00:00Z'), at('2025-07-20T00:00:00Z'), at('2026-09-13T00:00:00Z')]),
-    { start: '2025-07-20', end: '2026-09-13' },
+    coverageFromInstants('2018-01-01T00:00:00Z', '2026-09-13T00:00:00Z'),
+    { start: toDateInput(new Date('2018-01-01T00:00:00Z')), end: toDateInput(new Date('2026-09-13T00:00:00Z')) },
   )
-  assert.equal(coverageFromOpenTimes([]), null)
+})
+
+test('서버가 보유 구간을 비우면 하한이 없다', () => {
+  assert.equal(coverageFromInstants(null, null), null)
+  assert.equal(coverageFromInstants('2018-01-01T00:00:00Z', null), null)
+  assert.equal(coverageFromInstants(null, '2026-09-13T00:00:00Z'), null)
+})
+
+test('보유 구간 시각을 읽을 수 없으면 하한이 없다', () => {
+  assert.equal(coverageFromInstants('not-a-date', '2026-09-13T00:00:00Z'), null)
 })
 
 test('워밍업 봉 수는 랭킹과 필터 중 가장 긴 기간에 하나를 더한 값이다', () => {

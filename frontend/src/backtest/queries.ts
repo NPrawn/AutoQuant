@@ -7,11 +7,11 @@ import {
   fetchBacktestRun,
   fetchBacktestRuns,
   fetchBacktestTrades,
+  fetchCandleCoverage,
   maxPageSize,
 } from './api'
-import { fetchChartAssets, fetchRecentCandles } from '../market/api'
 import { hasUnsettledRun } from './history'
-import { coverageFromOpenTimes, type CandleCoverage } from './periodBounds'
+import { coverageFromInstants, type CandleCoverage } from './periodBounds'
 import { toBacktestResult, toBacktestRun, toBacktestTrade, toEquityPoint } from './types'
 import type { BacktestRunResponse, BacktestRunStatus, BacktestTrade, EquityPoint } from './types'
 
@@ -135,29 +135,21 @@ export function useBacktestEquityCurve(backtestId: string | null, enabled: boole
 }
 
 /*
- * 캔들 보유 구간. 서버에 구간 API 가 없어 종목 몇 개의 일봉(최대 1,000개)을 받아 첫·마지막 날로 잰다.
- * 종목마다 상장 시점이 달라 한 종목만 보면 첫 날이 실제보다 늦게 잡힌다. 표본을 늘릴수록 정확하지만
- * 종목당 응답이 100KB 에 가까워 앞의 몇 개만 본다. 일봉이 1,000개를 넘는 날이 오면 첫 날이 잘리므로
- * 그 전에 백엔드 구간 API 로 바꾼다.
+ * 캔들 보유 구간. 서버가 수집 종목 전체를 합쳐 재 준다. 대상이 백테스트 후보군과 같아
+ * 화면이 고른 기간을 엔진이 그대로 평가한다. 하루에 한 번꼴로 바뀌는 값이라 오래 들고 있는다.
  */
 export const candleCoverageQueryKey = ['candle-coverage'] as const
 
-const coverageSampleSize = 5
-
-async function fetchCandleCoverage(signal: AbortSignal): Promise<CandleCoverage | null> {
-  const assets = await fetchChartAssets(signal)
-  const sample = assets.slice(0, coverageSampleSize)
-  if (sample.length === 0) {
-    return null
-  }
-  const responses = await Promise.all(sample.map((asset) => fetchRecentCandles(asset.assetId, 1440, signal)))
-  return coverageFromOpenTimes(responses.flatMap((response) => response.candles.map((candle) => candle.openTimeUnixMilli)))
-}
+/* 기간 경계는 일 단위로 고르므로 일봉 구간을 본다. */
+const coverageIntervalMinutes = 1440
 
 export function useCandleCoverage() {
   return useQuery({
     queryKey: candleCoverageQueryKey,
-    queryFn: ({ signal }) => fetchCandleCoverage(signal),
+    queryFn: async (): Promise<CandleCoverage | null> => {
+      const response = await fetchCandleCoverage(coverageIntervalMinutes)
+      return coverageFromInstants(response.start, response.end)
+    },
     staleTime: 60 * 60 * 1000,
   })
 }
