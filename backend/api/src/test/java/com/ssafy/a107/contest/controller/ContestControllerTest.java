@@ -15,7 +15,9 @@ import com.ssafy.a107.contest.domain.MarketDataset;
 import com.ssafy.a107.contest.domain.MarketDatasetKind;
 import com.ssafy.a107.contest.domain.ContestEntry;
 import com.ssafy.a107.contest.domain.ContestFactorPeriodPolicy;
+import com.ssafy.a107.contest.domain.ContestRankingSort;
 import com.ssafy.a107.contest.domain.ContestRound;
+import com.ssafy.a107.contest.repository.ContestRankingRow;
 import com.ssafy.a107.contest.service.ContestEntryCommandService;
 import com.ssafy.a107.contest.service.ContestReadService;
 import com.ssafy.a107.contest.service.ContestResultReadService;
@@ -32,6 +34,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.restdocs.RestDocumentationContextProvider;
@@ -57,16 +62,20 @@ import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static com.epages.restdocs.apispec.Schema.schema;
 import static io.restassured.module.mockmvc.RestAssuredMockMvc.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.documentationConfiguration;
 import static org.springframework.restdocs.payload.PayloadDocumentation.fieldWithPath;
+import static org.springframework.restdocs.request.RequestDocumentation.parameterWithName;
 
 @ExtendWith({MockitoExtension.class, RestDocumentationExtension.class})
 class ContestControllerTest {
 
     private static final UUID MEMBER_ID = UUID.fromString("b7ced58c-00e9-4617-9658-4f576ea2f6fe");
+    private static final UUID OTHER_MEMBER_ID = UUID.fromString("2a1d0f2e-6d63-4a1f-9d27-0a0d3f0d9a11");
     private static final UUID ROUND_ID = UUID.fromString("0f5f4f2a-9c4e-4b7a-8a3f-1c0e5a7b2d10");
     private static final Instant SUBMISSION_STARTS_AT = Instant.parse("2026-09-16T00:00:00Z");
     private static final Instant SUBMISSION_ENDS_AT = Instant.parse("2026-10-16T00:00:00Z");
@@ -329,13 +338,16 @@ class ContestControllerTest {
                 40
         );
         given(contestResultReadService.getMyResult(MEMBER_ID, ROUND_ID)).willReturn(
-                new ContestResultReadService.ContestMyResult(result, List.of(outcome), 10, new BigDecimal("73.333")));
+                new ContestResultReadService.ContestMyResult(
+                        result, 7L, "모멘텀 전략", List.of(outcome), 10, new BigDecimal("73.333")));
 
         given()
                 .when()
                 .get("/contests/{roundId}/results/me", ROUND_ID)
                 .then()
                 .statusCode(HttpStatus.OK.value())
+                .body("strategyId", equalTo(7))
+                .body("strategyName", equalTo("모멘텀 전략"))
                 .body("ranking", equalTo(1))
                 .body("stabilityScore", equalTo(80.0f))
                 .body("entryCount", equalTo(10))
@@ -372,6 +384,83 @@ class ContestControllerTest {
                 .body("datasets[0].filledHours", equalTo(302));
     }
 
+    @DisplayName("랭킹은 조건을 그대로 서비스에 넘기고 내 제출을 표시한다")
+    @Test
+    void getRankings() {
+        ContestRankingRow mine = row(1, 7L, "모멘텀 전략", "대회 참가자", true, MEMBER_ID);
+        ContestRankingRow other = row(2, 9L, "추세 전략", "다른 참가자", false, OTHER_MEMBER_ID);
+        Page<ContestRankingRow> page = new PageImpl<>(List.of(mine, other), PageRequest.of(0, 20), 2);
+        given(contestResultReadService.getRankings(
+                eq(ROUND_ID), eq(ContestRankingSort.STABILITY), eq(MarketDatasetKind.BEAR), eq("모멘텀"), any()))
+                .willReturn(new ContestResultReadService.ContestRankings(page, 6));
+
+        given()
+                .queryParam("sort", "STABILITY")
+                .queryParam("kind", "BEAR")
+                .queryParam("query", "모멘텀")
+                .when()
+                .get("/contests/{roundId}/rankings", ROUND_ID)
+                .then()
+                .apply(document(
+                        "contests-rankings",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("대회")
+                                .summary("대회 회차 랭킹 조회")
+                                .description("""
+                                        종료된 회차의 순위를 페이지로 돌려줍니다.
+                                        정렬은 총점(TOTAL)과 안정성(STABILITY)이고, 국면 필터는 그 국면의 낙폭 백분위가
+                                        세 국면 중 가장 높은 제출만 남깁니다. 일반장(GENERAL)은 필터 대상이 아니라 400입니다.
+                                        검색은 전략 이름과 참가자 이름의 부분 일치입니다.
+                                        실격 제출은 순위가 없어 목록에서 빠지고 수만 disqualifiedCount 로 옵니다.
+                                        채점이 끝나지 않은 회차는 CONTEST-409-003(409)입니다.
+                                        """)
+                                .responseSchema(schema("ContestRankingPageResponse"))
+                                .queryParameters(
+                                        parameterWithName("sort").optional().description("정렬 기준. TOTAL(기본), STABILITY"),
+                                        parameterWithName("kind").optional().description("국면 필터. BULL, BEAR, SIDEWAYS"),
+                                        parameterWithName("query").optional().description("전략 이름·참가자 이름 검색어"),
+                                        parameterWithName("page").optional().description("페이지 번호. 기본 0"),
+                                        parameterWithName("size").optional().description("페이지 크기. 1~100, 기본 20")
+                                )
+                                .responseFields(rankingResponseFields())
+                                .build())
+                ))
+                .statusCode(HttpStatus.OK.value())
+                .body("content[0].strategyId", equalTo(7))
+                .body("content[0].mine", equalTo(true))
+                .body("content[0].published", equalTo(true))
+                .body("content[0].bearMddPercentile", equalTo(66.667f))
+                .body("content[1].mine", equalTo(false))
+                .body("totalElements", equalTo(2))
+                .body("disqualifiedCount", equalTo(6));
+    }
+
+    @DisplayName("일반장은 국면 필터로 쓸 수 없다")
+    @Test
+    void rejectGeneralAsRegimeFilter() {
+        given()
+                .queryParam("kind", "GENERAL")
+                .when()
+                .get("/contests/{roundId}/rankings", ROUND_ID)
+                .then()
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .body("code", equalTo("COMMON-400-001"));
+    }
+
+    @DisplayName("채점이 끝나기 전에는 랭킹도 공개하지 않는다")
+    @Test
+    void hideRankingsBeforeScoringFinishes() {
+        willThrow(new ApiException(ApiErrorCode.CONTEST_RESULT_NOT_PUBLISHED))
+                .given(contestResultReadService).getRankings(eq(ROUND_ID), any(), any(), any(), any());
+
+        given()
+                .when()
+                .get("/contests/{roundId}/rankings", ROUND_ID)
+                .then()
+                .statusCode(HttpStatus.CONFLICT.value())
+                .body("code", equalTo("CONTEST-409-003"));
+    }
+
     @DisplayName("채점이 끝나기 전에는 결과를 공개하지 않는다")
     @Test
     void hideResultsBeforeScoringFinishes() {
@@ -401,6 +490,48 @@ class ContestControllerTest {
         ContestEntry entry = new ContestEntry(round(), member, strategy, SUBMITTED_AT);
         ReflectionTestUtils.setField(entry, "lastSubmittedAt", SUBMITTED_AT.plus(Duration.ofMinutes(30)));
         return entry;
+    }
+
+    private ContestRankingRow row(int ranking, long strategyId, String strategyName, String nickname,
+                                 boolean published, UUID memberId) {
+        return new ContestRankingRow(
+                ranking,
+                strategyId,
+                strategyName,
+                nickname,
+                published,
+                new BigDecimal("73.333"),
+                new BigDecimal("66.667"),
+                new BigDecimal("80.000"),
+                new BigDecimal("100.000"),
+                new BigDecimal("66.667"),
+                new BigDecimal("100.000"),
+                memberId
+        );
+    }
+
+    private FieldDescriptor[] rankingResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("content[].ranking").type(JsonFieldType.NUMBER).description("순위"),
+                fieldWithPath("content[].strategyId").type(JsonFieldType.NUMBER).description("전략 ID"),
+                fieldWithPath("content[].strategyName").type(JsonFieldType.STRING).description("전략 이름"),
+                fieldWithPath("content[].nickname").type(JsonFieldType.STRING).description("참가자 이름"),
+                fieldWithPath("content[].published").type(JsonFieldType.BOOLEAN)
+                        .description("공개 전략 여부. 공개 전략만 복제할 수 있다"),
+                fieldWithPath("content[].totalScore").type(JsonFieldType.NUMBER).description("종합 점수"),
+                fieldWithPath("content[].returnScore").type(JsonFieldType.NUMBER).description("수익률 점수"),
+                fieldWithPath("content[].stabilityScore").type(JsonFieldType.NUMBER).description("안정성 점수"),
+                fieldWithPath("content[].bullMddPercentile").type(JsonFieldType.NUMBER).description("상승장 낙폭 백분위"),
+                fieldWithPath("content[].bearMddPercentile").type(JsonFieldType.NUMBER).description("하락장 낙폭 백분위"),
+                fieldWithPath("content[].sidewaysMddPercentile").type(JsonFieldType.NUMBER)
+                        .description("횡보장 낙폭 백분위"),
+                fieldWithPath("content[].mine").type(JsonFieldType.BOOLEAN).description("내 제출 여부"),
+                fieldWithPath("page").type(JsonFieldType.NUMBER).description("페이지 번호"),
+                fieldWithPath("size").type(JsonFieldType.NUMBER).description("페이지 크기"),
+                fieldWithPath("totalElements").type(JsonFieldType.NUMBER).description("순위에 오른 제출 수"),
+                fieldWithPath("totalPages").type(JsonFieldType.NUMBER).description("전체 페이지 수"),
+                fieldWithPath("disqualifiedCount").type(JsonFieldType.NUMBER).description("실격 제출 수"),
+        };
     }
 
     private FieldDescriptor[] listResponseFields() {

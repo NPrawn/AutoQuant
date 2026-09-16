@@ -11,6 +11,8 @@ import java.time.Instant;
 import java.util.List;
 
 public record ContestMyResultResponse(
+        Long strategyId,
+        String strategyName,
         Integer ranking,
         BigDecimal totalScore,
         BigDecimal returnScore,
@@ -29,6 +31,8 @@ public record ContestMyResultResponse(
         ContestResult result = myResult.result();
 
         return new ContestMyResultResponse(
+                myResult.strategyId(),
+                myResult.strategyName(),
                 result.getRanking(),
                 result.getTotalScore(),
                 result.getReturnScore(),

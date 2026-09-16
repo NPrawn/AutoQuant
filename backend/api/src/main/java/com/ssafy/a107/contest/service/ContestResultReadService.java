@@ -12,6 +12,8 @@ import com.ssafy.a107.contest.domain.MarketDataset;
 import com.ssafy.a107.contest.domain.MarketDatasetKind;
 import com.ssafy.a107.contest.repository.ContestEntryRepository;
 import com.ssafy.a107.contest.repository.ContestEvaluationRepository;
+import com.ssafy.a107.contest.domain.ContestRankingSort;
+import com.ssafy.a107.contest.repository.ContestRankingRow;
 import com.ssafy.a107.contest.repository.ContestResultRepository;
 import com.ssafy.a107.contest.repository.ContestRoundRepository;
 import com.ssafy.a107.contest.repository.MarketDatasetRepository;
@@ -20,6 +22,8 @@ import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.trading.backtest.repository.BacktestResultRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -141,7 +145,40 @@ public class ContestResultReadService {
                 .max(Comparator.naturalOrder())
                 .orElse(null);
 
-        return new ContestMyResult(result, outcomes, results.size(), topScore);
+        return new ContestMyResult(
+                result,
+                entry.getStrategy().getStrategyId(),
+                entry.getStrategy().getName(),
+                outcomes,
+                results.size(),
+                topScore
+        );
+    }
+
+    /*
+     * 랭킹 화면이 쓰는 회차 순위다. 정렬·국면 필터·검색·페이지를 모두 DB 에서 처리한다.
+     * 참가가 많은 회차에서 전체를 읽어 화면이 자르면 응답이 그만큼 커진다.
+     */
+    public ContestRankings getRankings(
+            UUID roundId,
+            ContestRankingSort sort,
+            MarketDatasetKind kind,
+            String query,
+            Pageable pageable
+    ) {
+        requireFinished(roundId);
+
+        String keyword = (query == null || query.isBlank()) ? null : "%" + query.trim().toLowerCase() + "%";
+        Page<ContestRankingRow> rows = contestResultRepository.findRankings(
+                roundId,
+                keyword,
+                kind == MarketDatasetKind.BULL,
+                kind == MarketDatasetKind.BEAR,
+                kind == MarketDatasetKind.SIDEWAYS,
+                sort == ContestRankingSort.STABILITY,
+                pageable
+        );
+        return new ContestRankings(rows, contestResultRepository.countDisqualifiedByRoundId(roundId));
     }
 
     public List<MarketDataset> getDatasets(UUID roundId) {
@@ -203,9 +240,17 @@ public class ContestResultReadService {
 
     public record ContestMyResult(
             ContestResult result,
+            Long strategyId,
+            String strategyName,
             List<ContestDatasetOutcome> datasets,
             int entryCount,
             BigDecimal topTotalScore
+    ) {
+    }
+
+    public record ContestRankings(
+            Page<ContestRankingRow> page,
+            long disqualifiedCount
     ) {
     }
 }
