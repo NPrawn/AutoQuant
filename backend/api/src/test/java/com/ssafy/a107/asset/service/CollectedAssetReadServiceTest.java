@@ -1,6 +1,7 @@
 package com.ssafy.a107.asset.service;
 
 import com.ssafy.a107.asset.domain.Asset;
+import com.ssafy.a107.asset.domain.AssetTradingStatus;
 import com.ssafy.a107.asset.domain.Exchange;
 import com.ssafy.a107.asset.domain.MarketDataCollectionStatus;
 import com.ssafy.a107.asset.domain.MarketDataCollectionTarget;
@@ -79,6 +80,21 @@ class CollectedAssetReadServiceTest {
                 .willReturn(List.of());
 
         assertThat(service().findAvailableAt(Exchange.UPBIT, "KRW", EVALUATION_AT)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("화면 종목 목록도 거래지원 중이면서 수집하는 종목만 남긴다")
+    void keepOnlyCollectedTradingAssets() {
+        Asset collected = asset();
+        Asset notCollected = asset();
+        given(assetRepository.findByExchangeAndQuoteCurrencyCodeAndTradingStatusOrderByExchangeMarketCodeAsc(
+                Exchange.UPBIT, "KRW", AssetTradingStatus.TRADING))
+                .willReturn(List.of(collected, notCollected));
+        MarketDataCollectionTarget enabled = target(collected);
+        given(collectionTargetRepository.findByCollectionStatus(MarketDataCollectionStatus.ENABLED))
+                .willReturn(List.of(enabled));
+
+        assertThat(service().findCollectedTradingAssets(Exchange.UPBIT, "KRW")).containsExactly(collected);
     }
 
     /* Asset 은 영속 엔티티라 식별자만 필요한 이 검증에서는 흉내로 충분하다. */
