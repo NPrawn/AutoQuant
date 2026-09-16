@@ -33,7 +33,7 @@ def _patterned():
 def test_params_virtual_start_and_factor_period_caps():
     assert Params().virtual_start == parse_time("2030-01-07T00:00:00Z")
     assert Params(block_start=3).virtual_start == parse_time("2030-01-03T00:00:00Z")
-    assert max_factor_period(Params()) == {"1H": 839, "4H": 209, "1D": 34}
+    assert max_factor_period(Params()) == {"1H": 5039, "4H": 1259, "1D": 209}
     assert Params().candidates == 3000
 
 

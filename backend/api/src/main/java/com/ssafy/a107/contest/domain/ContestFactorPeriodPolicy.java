@@ -7,7 +7,7 @@ import java.util.Map;
 
 /*
  * 대회는 제공한 데이터 안에서만 한다. 팩터 기간은 워밍업 캔들 수보다 짧아야 한다 (ADR-0013).
- * 워밍업 5주면 1시간봉 839, 4시간봉 209, 일봉 34다.
+ * 워밍업 30주면 1시간봉 5039, 4시간봉 1259, 일봉 209다.
  */
 public final class ContestFactorPeriodPolicy {
 

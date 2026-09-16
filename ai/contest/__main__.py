@@ -141,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--seed", type=int, required=True)
         command.add_argument("--block-start", choices=sorted(BLOCK_START), default="MON")
         command.add_argument("--block-days", type=int, default=7)
-        command.add_argument("--warmup-weeks", type=int, default=5)
+        command.add_argument("--warmup-weeks", type=int, default=30)
         command.add_argument("--eval-weeks", type=int, default=13)
         command.add_argument("--candidates", type=int, default=Params().candidates)
         command.add_argument("--window-weeks", type=int, default=104,

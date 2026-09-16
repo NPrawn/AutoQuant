@@ -1,0 +1,111 @@
+{
+  "window": {
+    "start": "2019-10-07T00:00:00Z",
+    "end": "2021-10-04T00:00:00Z"
+  },
+  "universe": [
+    "KRW-XRP",
+    "KRW-BTC",
+    "KRW-ETH",
+    "KRW-ONG",
+    "KRW-LSK",
+    "KRW-XLM",
+    "KRW-ADA",
+    "KRW-IOST",
+    "KRW-SC",
+    "KRW-CVC"
+  ],
+  "stage1": {
+    "assets": 10,
+    "pool_weeks": 104,
+    "label_weeks": {
+      "UP": 34,
+      "FLAT": 36,
+      "DOWN": 34
+    },
+    "matrix": {
+      "UP": {
+        "UP": 0.38235294117647056,
+        "FLAT": 0.35294117647058826,
+        "DOWN": 0.2647058823529412
+      },
+      "FLAT": {
+        "UP": 0.3142857142857143,
+        "FLAT": 0.4,
+        "DOWN": 0.2857142857142857
+      },
+      "DOWN": {
+        "UP": 0.29411764705882354,
+        "FLAT": 0.2647058823529412,
+        "DOWN": 0.4411764705882353
+      }
+    },
+    "hit_rates": {
+      "BULL": 0.021,
+      "BEAR": 0.019333333333333334,
+      "SIDEWAYS": 0.009333333333333334
+    },
+    "passed": true,
+    "reason": "통과"
+  },
+  "stage2": {
+    "real_windows": 62,
+    "generated": 200,
+    "seam_datasets": 50,
+    "violations": 0,
+    "metrics": {
+      "weekly_autocorr": {
+        "real_n": 62,
+        "generated_n": 200,
+        "real_median": 0.14331812431040225,
+        "generated_median": 0.08111443038919017,
+        "ks": 0.457741935483871,
+        "tolerance": 0.5806451612903225,
+        "passed": true,
+        "reason": ""
+      },
+      "monthly_vol": {
+        "real_n": 62,
+        "generated_n": 200,
+        "real_median": 0.39583343848034735,
+        "generated_median": 0.32833897203266793,
+        "ks": 0.365,
+        "tolerance": 1.0,
+        "passed": true,
+        "reason": ""
+      },
+      "max_drawdown": {
+        "real_n": 62,
+        "generated_n": 200,
+        "real_median": 0.5893187885850264,
+        "generated_median": 0.5063583246658967,
+        "ks": 0.27951612903225803,
+        "tolerance": 0.6451612903225806,
+        "passed": true,
+        "reason": ""
+      },
+      "vol_jump": {
+        "real_n": 1030,
+        "generated_n": 21000,
+        "real_median": 0.05313047970969356,
+        "generated_median": 0.07298044410431745,
+        "ks": 0.09892325473878873,
+        "tolerance": 0.07184466019417474,
+        "passed": false,
+        "reason": ""
+      },
+      "volume_jump": {
+        "real_n": 1030,
+        "generated_n": 21000,
+        "real_median": 0.20363998819059898,
+        "generated_median": 0.23301787334108132,
+        "ks": 0.13784096162736936,
+        "tolerance": 0.1029126213592233,
+        "passed": false,
+        "reason": ""
+      }
+    },
+    "passed": false
+  },
+  "passed": false
+}

@@ -11,7 +11,7 @@ from scripts.contest_sim.run_contest import load_strategies
 from scripts.contest_sim.validate import grid_keys, grid_strategies, prepare, report
 from tests.contest_fixtures import WEEK, random_walk_series, write_source_csv
 
-CAPS = {"1H": 839, "4H": 209, "1D": 34}
+CAPS = {"1H": 5039, "4H": 1259, "1D": 209}
 STRATEGIES = "scripts/contest_sim/strategies.json"
 
 CONTEST = ["equal-weight-hold", "momentum-7d", "momentum-24h", "rsi-reversion", "trend-filter",

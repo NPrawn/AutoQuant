@@ -17,7 +17,7 @@ class GenerationError(RuntimeError):
 class Params:
     block_days: int = 7
     block_start: int = 0                      # Monday=0 ... Thursday=3
-    warmup_weeks: int = 5
+    warmup_weeks: int = 30
     eval_weeks: int = 13
     candidates: int = 3000
     volume_ref_weeks: int = 4
