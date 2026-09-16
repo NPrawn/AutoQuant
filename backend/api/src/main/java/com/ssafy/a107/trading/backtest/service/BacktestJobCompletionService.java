@@ -3,8 +3,11 @@ package com.ssafy.a107.trading.backtest.service;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.trading.backtest.engine.BacktestExecutionResult;
+import com.ssafy.a107.notification.domain.NotificationType;
+import com.ssafy.a107.notification.service.NotificationRequestedEvent;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -17,15 +20,18 @@ public class BacktestJobCompletionService {
 
     private final BacktestRunRepository backtestRunRepository;
     private final BacktestResultPersistenceService backtestResultPersistenceService;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final Clock clock;
 
     public BacktestJobCompletionService(
             BacktestRunRepository backtestRunRepository,
             BacktestResultPersistenceService backtestResultPersistenceService,
+            ApplicationEventPublisher applicationEventPublisher,
             Clock clock
     ) {
         this.backtestRunRepository = backtestRunRepository;
         this.backtestResultPersistenceService = backtestResultPersistenceService;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.clock = clock;
     }
 
@@ -52,6 +58,13 @@ public class BacktestJobCompletionService {
                 executionResult.assets(),
                 executionResult.universeAssets()
         );
+        applicationEventPublisher.publishEvent(new NotificationRequestedEvent(
+                backtestRun.getMember().getMemberId(),
+                NotificationType.BACKTEST_COMPLETED,
+                BacktestNotificationMessages.completedTitle(backtestRun),
+                BacktestNotificationMessages.completedBody(backtestRun),
+                backtestRun.getBacktestId().toString()
+        ));
         return true;
     }
 }
