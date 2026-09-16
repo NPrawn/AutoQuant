@@ -1,9 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
   fetchContest,
   fetchContestDatasets,
   fetchContestProgress,
+  fetchContestRankings,
   fetchContestResults,
   fetchContests,
   fetchMyContestResult,
@@ -77,5 +78,21 @@ export function useContestDatasets(roundId: string | undefined, enabled: boolean
     queryKey: contestDatasetsQueryKey(roundId ?? ''),
     queryFn: () => fetchContestDatasets(roundId ?? ''),
     enabled: roundId !== undefined && enabled,
+  })
+}
+
+/*
+ * 회차 랭킹 한 페이지. 조건을 바꾸면 키가 달라지고, 이전 표를 유지해 표가 깜빡이지 않는다.
+ * 종료된 회차만 열리므로 회차를 고르기 전에는 요청하지 않는다.
+ */
+export const contestRankingsQueryKey = (roundId: string, params: Record<string, string>) =>
+  [...contestQueryKey(roundId), 'rankings', params] as const
+
+export function useContestRankings(roundId: string | null, params: Record<string, string>) {
+  return useQuery({
+    queryKey: contestRankingsQueryKey(roundId ?? '', params),
+    queryFn: () => fetchContestRankings(roundId ?? '', params),
+    enabled: roundId !== null,
+    placeholderData: keepPreviousData,
   })
 }

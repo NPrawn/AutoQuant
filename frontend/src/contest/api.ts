@@ -4,6 +4,7 @@ import type {
   ContestEntryResponse,
   ContestMyResultResponse,
   ContestProgressResponse,
+  ContestRankingPageResponse,
   ContestResultsResponse,
   ContestRoundDetailResponse,
   ContestRoundListResponse,
@@ -44,4 +45,13 @@ export function fetchMyContestResult(roundId: string): Promise<ContestMyResultRe
 /* 채점용 데이터는 마감 뒤에만 열린다 (ADR-0010). 그 전에는 CONTEST-409-003 이 온다. */
 export function fetchContestDatasets(roundId: string): Promise<ContestDatasetsResponse> {
   return request<ContestDatasetsResponse>(`/contests/${encodeURIComponent(roundId)}/datasets`)
+}
+
+/* 랭킹은 정렬·국면·검색·페이지를 서버에서 거른다. 조건은 rankingQuery.ts 가 만든다. */
+export function fetchContestRankings(
+  roundId: string,
+  params: Record<string, string>,
+): Promise<ContestRankingPageResponse> {
+  const query = new URLSearchParams(params).toString()
+  return request<ContestRankingPageResponse>(`/contests/${encodeURIComponent(roundId)}/rankings?${query}`)
 }
