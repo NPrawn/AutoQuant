@@ -55,7 +55,7 @@ class BacktestRunReadServiceTest {
     void getBacktestRuns() {
         BacktestRun run = org.mockito.Mockito.mock(BacktestRun.class);
         Page<BacktestRun> expected = new PageImpl<>(List.of(run));
-        given(backtestRunRepository.findAllByMemberMemberIdOrderByQueuedAtDesc(MEMBER_ID, pageable))
+        given(backtestRunRepository.findAllByMemberMemberIdAndContestDatasetIdIsNullOrderByQueuedAtDesc(MEMBER_ID, pageable))
                 .willReturn(expected);
 
         Page<BacktestRun> actual = service()
@@ -63,7 +63,7 @@ class BacktestRunReadServiceTest {
 
         assertThat(actual).isSameAs(expected);
         then(backtestRunRepository).should()
-                .findAllByMemberMemberIdOrderByQueuedAtDesc(MEMBER_ID, pageable);
+                .findAllByMemberMemberIdAndContestDatasetIdIsNullOrderByQueuedAtDesc(MEMBER_ID, pageable);
     }
 
     @Test
