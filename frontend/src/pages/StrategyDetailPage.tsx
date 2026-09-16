@@ -18,8 +18,9 @@ import { describeStrategy } from '../strategy/assistant/conversation'
 import type { BacktestEntryState } from '../strategy/backtestEntry'
 import { draftFromDsl } from '../strategy/draft'
 import { describeRanking, directionLabels, factorMeta, rebalanceMeta, timeframeLabels } from '../strategy/labels'
-import { useDeleteStrategy, useStrategy } from '../strategy/queries'
+import { useChangeStrategyVisibility, useCopyStrategy, useDeleteStrategy, useStrategy } from '../strategy/queries'
 import { summarizeFilters } from '../strategy/summary'
+import { describeCopyError, describeVisibilityError } from '../strategy/translateErrorMessage'
 import type { Strategy, Timeframe } from '../strategy/types'
 
 type DetailTab = 'overview' | StrategyDetailTab
@@ -74,8 +75,24 @@ type StrategyDetailProps = {
 function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProps) {
   const navigate = useNavigate()
   const remove = useDeleteStrategy()
+  const visibility = useChangeStrategyVisibility()
+  const copy = useCopyStrategy()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [publishOpen, setPublishOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<unknown>(null)
+
+  const confirmPublish = () => {
+    visibility.mutate(
+      { strategyId: strategy.id, published: true },
+      { onSettled: () => setPublishOpen(false) },
+    )
+  }
+
+  const confirmCopy = () => {
+    copy.mutate(strategy.id, {
+      onSuccess: (created) => navigate(to.strategyDetail(String(created.strategyId))),
+    })
+  }
 
   const openBacktest = () => {
     const entry: BacktestEntryState = { strategyId: strategy.id }
@@ -112,17 +129,25 @@ function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProp
             </span>
             <span>내 전략</span>
             <i aria-hidden="true" />
+            <span>{strategy.published ? '공개' : '비공개'}</span>
+            <i aria-hidden="true" />
             <span>v1 · {dateFormat.format(strategy.createdAt)}</span>
           </div>
           <h1>{strategy.name}</h1>
           <p>{strategy.description || describeStrategy(draftFromDsl(strategy.dsl))}</p>
         </div>
         <div className="detail-actions">
-          <button className="btn ghost" type="button" disabled title="공개 기능은 백엔드 준비 후 열립니다">
-            공개
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={visibility.isPending}
+            aria-pressed={strategy.published}
+            onClick={() => (strategy.published ? visibility.mutate({ strategyId: strategy.id, published: false }) : setPublishOpen(true))}
+          >
+            {strategy.published ? '공개 중지' : '공개'}
           </button>
-          <button className="btn ghost" type="button" disabled title="복제 기능은 백엔드 준비 후 열립니다">
-            복제
+          <button className="btn ghost" type="button" disabled={copy.isPending} onClick={confirmCopy}>
+            {copy.isPending ? '복제 중…' : '복제'}
           </button>
           <button className="btn ghost" type="button" onClick={() => setConfirmOpen(true)}>
             삭제
@@ -139,6 +164,18 @@ function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProp
       {deleteError !== null && (
         <div className="callout crit" role="alert" style={{ marginBottom: 16 }}>
           <span>{isApiError(deleteError) ? deleteError.message : '전략을 삭제하지 못했습니다.'} 잠시 후 다시 시도해 주세요.</span>
+        </div>
+      )}
+
+      {visibility.isError && (
+        <div className="callout crit" role="alert" style={{ marginBottom: 16 }}>
+          <span>{describeVisibilityError(visibility.error)}</span>
+        </div>
+      )}
+
+      {copy.isError && (
+        <div className="callout crit" role="alert" style={{ marginBottom: 16 }}>
+          <span>{describeCopyError(copy.error)}</span>
         </div>
       )}
 
@@ -162,6 +199,16 @@ function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProp
         {activeTab === 'strategy' && <StrategyPane strategy={strategy} />}
         {activeTab === 'code' && <CodePane strategy={strategy} />}
       </div>
+
+      <ConfirmDialog
+        open={publishOpen}
+        title="이 전략을 공개할까요?"
+        description="공개하면 다른 사용자가 이 전략의 구성을 보고 복제할 수 있습니다. 언제든 다시 비공개로 바꿀 수 있습니다."
+        confirmLabel="공개"
+        pending={visibility.isPending}
+        onConfirm={confirmPublish}
+        onCancel={() => setPublishOpen(false)}
+      />
 
       <ConfirmDialog
         open={confirmOpen}
