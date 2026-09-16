@@ -38,6 +38,16 @@ public class CollectedAssetReadService {
         this.collectionTargetRepository = collectionTargetRepository;
     }
 
+    /*
+     * 수집 중인 종목의 식별자만 필요한 곳에서 쓴다. 거래지원 기간으로 좁히지 않으므로
+     * 거래지원이 끝난 종목도 들어온다. 이미 쌓인 봉은 상장 폐지 뒤에도 그대로 남기 때문이다.
+     */
+    public List<UUID> findCollectedAssetIds() {
+        return collectionTargetRepository.findByCollectionStatus(MarketDataCollectionStatus.ENABLED).stream()
+                .map(MarketDataCollectionTarget::getAssetId)
+                .toList();
+    }
+
     public List<Asset> findAvailableAt(Exchange exchange, String quoteCurrencyCode, Instant evaluationAt) {
         return keepCollected(assetRepository.findAllAvailableAt(exchange, quoteCurrencyCode, evaluationAt));
     }
