@@ -35,6 +35,12 @@ com.ssafy.a107
 ├── ai/controller       전략 설명 변환 API
 ├── ai/service          회원당 호출 한도와 변환 조율
 ├── ai/infrastructure   ai/ FastAPI 서버 Client
+├── notification/domain 알림과 알림 종류
+├── notification/repository
+│                       회원별 알림 조회
+├── notification/service 알림 저장·읽음 처리와 커밋 뒤 발행
+├── notification/controller
+│                       알림 조회·읽음 API (response 분리)
 ├── auth                인증
 └── trading             백테스트·모의투자
 ```
@@ -67,6 +73,11 @@ com.ssafy.a107
 - 거래지원 시작일은 Upbit 가 주지 않아 가장 오래된 일봉 날짜로 갈음한다. 등록 때 채우고 실패하면 비워 둔다. 이 값이 비면 과거 수집이 상장 전 구간을 계속 요청하고 백테스트 후보군이 상장 전에도 그 종목을 넣는다.
 - 종목 등록 API의 `ENABLED`는 실제 Go WebSocket 구독 완료를 의미하지 않는다.
 - `GET /assets`는 AssetReadService의 읽기 전용 트랜잭션으로 등록된 Upbit KRW TRADING 종목을 조회한다. `assetId`·`marketCode`·한글명만 응답하며 실제 수집 연결 여부는 판단하지 않는다.
+- 알림은 백테스트 완료, 백테스트 실패, 모의투자 자동 중단 세 가지에서만 생긴다. 사용자가 직접 멈춘 모의투자는 이미 아는 일이라 알리지 않는다.
+- 알림 발행은 `NotificationRequestedEvent` 를 띄우고 `@TransactionalEventListener` 의 `AFTER_COMMIT` 이 받는다. 커밋 전에 남기면 되돌아간 일을 알리게 된다.
+- 알림 저장 실패는 백테스트·모의투자 트랜잭션을 되돌리지 않는다. 리스너가 잡아 로그만 남긴다.
+- 알림 본문에 내부 예외 이름과 메시지를 넣지 않는다. 사용자가 다음에 할 수 있는 일을 적는다.
+- 알림이 가리키는 화면 경로는 서버가 정하지 않는다. 종류와 `targetId` 만 주고 경로는 프론트가 만든다.
 - `realtime`은 Redis 수신 이벤트를 WebSocket으로 중계한다. DB 조회·쓰기와 봉 집계를 하지 않는다.
 - Redis 수신 adapter는 `RealtimeEventPublisher`에 의존하고 WebSocket adapter를 직접 참조하지 않는다.
 - `trade:realtime:updates`와 `candle:{intervalMinutes}m:live:updates`(지원 7개 간격)는 인스턴스마다 한 번씩 구독한다. Go JSON의 채널·간격·UTC 경계를 검증하고 종목·간격별 camelCase 응답으로 변환한다. `realtime`은 간격 계약만 `candle/domain`에서 참조하며 집계·조회 서비스에 의존하지 않는다.

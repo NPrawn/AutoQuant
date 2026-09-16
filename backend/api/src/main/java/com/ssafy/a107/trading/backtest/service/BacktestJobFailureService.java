@@ -5,8 +5,11 @@ import com.ssafy.a107.trading.backtest.domain.BacktestFailureCode;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.strategy.engine.InsufficientCandleDataException;
 import com.ssafy.a107.trading.backtest.engine.BacktestExecutionException;
+import com.ssafy.a107.notification.domain.NotificationType;
+import com.ssafy.a107.notification.service.NotificationRequestedEvent;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -16,11 +19,14 @@ import java.util.UUID;
 public class BacktestJobFailureService {
 
     private final BacktestRunRepository backtestRunRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public BacktestJobFailureService(
-            BacktestRunRepository backtestRunRepository
+            BacktestRunRepository backtestRunRepository,
+            ApplicationEventPublisher applicationEventPublisher
     ) {
         this.backtestRunRepository = Objects.requireNonNull(backtestRunRepository);
+        this.applicationEventPublisher = Objects.requireNonNull(applicationEventPublisher);
     }
 
     @Transactional
@@ -39,7 +45,15 @@ public class BacktestJobFailureService {
             return false;
         }
 
-        backtestRun.fail(failureCode(throwable), failureReason(throwable));
+        BacktestFailureCode failureCode = failureCode(throwable);
+        backtestRun.fail(failureCode, failureReason(throwable));
+        applicationEventPublisher.publishEvent(new NotificationRequestedEvent(
+                backtestRun.getMember().getMemberId(),
+                NotificationType.BACKTEST_FAILED,
+                BacktestNotificationMessages.failedTitle(backtestRun),
+                BacktestNotificationMessages.failedBody(failureCode),
+                backtestRun.getBacktestId().toString()
+        ));
         return true;
     }
 
