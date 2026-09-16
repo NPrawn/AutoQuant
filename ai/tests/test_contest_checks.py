@@ -6,8 +6,8 @@ import pytest
 
 from contest.blocks import DOWN, FLAT, HOUR, UP, parse_time
 from contest.checks import (
-    check_bars, feasibility, ks_critical, ks_statistic, max_drawdown, monthly_vol, seam_values, stage2,
-    weekly_autocorr,
+    check_bars, compare, feasibility, halves_distance, ks_statistic, max_drawdown, monthly_vol, seam_values,
+    stage2, weekly_autocorr,
 )
 from contest.sampling import BEAR, BULL, SIDEWAYS, Params
 from contest.stitch import Bar, aggregate
@@ -98,10 +98,20 @@ def test_feasibility_fails_on_too_few_weeks_or_unreachable_targets():
     assert unreachable["passed"] is False and unreachable["hit_rates"][BULL] == 0.0
 
 
-def test_ks_statistic_and_critical_value():
+def test_ks_statistic():
     assert ks_statistic([1.0, 2.0, 3.0], [1.0, 2.0, 3.0]) == 0.0
     assert ks_statistic([1.0, 2.0], [3.0, 4.0]) == 1.0
-    assert ks_critical(100, 100) == pytest.approx(0.2302, abs=1e-3)
+
+
+def test_compare_allows_the_gap_real_data_has_with_itself():
+    steady = [0.0, 1.0, 2.0, 3.0, 0.0, 1.0, 2.0, 3.0]
+    shifted = [0.0, 1.0, 2.0, 3.0, 10.0, 11.0, 12.0, 13.0]
+
+    assert halves_distance(steady) == 0.0 and halves_distance(shifted) == 1.0
+    assert compare(steady, [0.0, 1.0, 2.0, 3.0])["passed"] is True
+    assert compare(steady, [10.0, 11.0])["passed"] is False
+    result = compare(shifted, [10.0, 11.0])
+    assert (result["ks"], result["tolerance"], result["passed"]) == (0.5, 1.0, True)
 
 
 def test_window_metrics():
@@ -126,6 +136,16 @@ def test_seam_values_measure_volatility_and_volume_jumps():
     assert values["vol_jump"][0] == pytest.approx(math.log(2), abs=0.05)
 
 
+def test_seam_values_come_out_in_boundary_order():
+    first, second = MONDAY + WEEK, MONDAY + WEEK + 48 * HOUR
+    volumes = [10.0] * 24 + [20.0] * 24 + [5.0] * 24 + [20.0] * 24
+    rows = [(first - 24 * HOUR + i * HOUR, 100.0, volume) for i, volume in enumerate(volumes)]
+
+    values = seam_values({"a": rows, "b": list(rows)}, [first, second])
+
+    assert values["volume_jump"] == pytest.approx([math.log(2), math.log(2), math.log(4), math.log(4)])
+
+
 def test_stage2_runs_every_metric_and_bar_checks():
     series = random_walk_series(assets=3, weeks=40, seed=0)
 
@@ -135,3 +155,4 @@ def test_stage2_runs_every_metric_and_bar_checks():
     assert set(result["metrics"]) == {"weekly_autocorr", "monthly_vol", "max_drawdown", "vol_jump", "volume_jump"}
     assert result["real_windows"] == 34
     assert isinstance(result["passed"], bool)
+    assert all("tolerance" in metric for metric in result["metrics"].values())

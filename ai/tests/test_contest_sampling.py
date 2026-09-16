@@ -4,8 +4,8 @@ import pytest
 
 from contest.blocks import DOWN, FLAT, UP, Week, build_pool, label_weeks, parse_time, transition_matrix
 from contest.sampling import (
-    BEAR, BULL, GENERAL, SIDEWAYS, GenerationError, Params, max_factor_period, regime_hit_rate,
-    sample_general, sample_regime, sample_sequence, stitched_return,
+    BEAR, BULL, GENERAL, SIDEWAYS, GenerationError, Params, in_target, max_factor_period, rebalanced_return,
+    regime_hit_rate, sample_general, sample_regime, sample_sequence, stitched_return,
 )
 from tests.contest_fixtures import MONDAY, PATTERN_TARGETS, WEEK, patterned_series, weekly_track
 
@@ -34,6 +34,7 @@ def test_params_virtual_start_and_factor_period_caps():
     assert Params().virtual_start == parse_time("2030-01-07T00:00:00Z")
     assert Params(block_start=3).virtual_start == parse_time("2030-01-03T00:00:00Z")
     assert max_factor_period(Params()) == {"1H": 839, "4H": 209, "1D": 34}
+    assert Params().candidates == 3000
 
 
 def test_sample_general_follows_transitions_and_never_repeats_a_week():
@@ -70,6 +71,24 @@ def test_stitched_return_is_equal_weight_buy_and_hold():
     assert ret == pytest.approx(0.01)
 
 
+def test_rebalanced_return_resets_weights_every_day():
+    series = {
+        "a": weekly_track("KRW-A", MONDAY, [100.0, 110.0, 121.0]),
+        "b": weekly_track("KRW-B", MONDAY, [100.0, 90.0, 81.0]),
+    }
+    starts = [MONDAY + WEEK, MONDAY + 2 * WEEK]
+
+    assert rebalanced_return(series, ["a", "b"], starts, WEEK) == pytest.approx(0.0)
+    assert stitched_return(series, ["a", "b"], starts, WEEK) == pytest.approx(0.01)
+
+
+def test_in_target_needs_every_return_inside_the_range():
+    params = Params(targets={BULL: (0.2, 0.3), BEAR: (-0.2, -0.1), SIDEWAYS: (-0.03, 0.03)})
+
+    assert in_target(BULL, (0.25, 0.22), params)
+    assert not in_target(BULL, (0.25, 0.05), params)
+
+
 def test_sample_regime_mixes_labels_and_keeps_the_evaluation_return_inside_the_target():
     series, universe, weeks, matrix = _patterned()
     params = Params(warmup_weeks=2, eval_weeks=4, candidates=50, targets=PATTERN_TARGETS)
@@ -79,7 +98,9 @@ def test_sample_regime_mixes_labels_and_keeps_the_evaluation_return_inside_the_t
 
         assert len({week.start for week in sequence}) == 6
         assert len({week.label for week in sequence[2:]}) > 1
-        assert low <= stitched_return(series, universe, [week.start for week in sequence[2:]], WEEK) <= high
+        starts = [week.start for week in sequence[2:]]
+        assert low <= stitched_return(series, universe, starts, WEEK) <= high
+        assert low <= rebalanced_return(series, universe, starts, WEEK) <= high
 
 
 def test_sample_regime_raises_when_target_is_unreachable():
