@@ -53,6 +53,9 @@ com.ssafy.a107
 - 간격은 `candle/domain/CandleIntervals`의 1·2·5·15·60·240·1440분만 지원한다. UTC 버킷이며 `/candles/{intervalMinutes}m`으로 조회한다. 기존 `/1m`도 유지한다.
 - `candle:{intervalMinutes}m:recent:{assetId}`는 Go의 snake_case JSON과 시작 시간 millisecond score를 사용한다. Spring은 DB 조회 결과로 빈 시간대만 원자적으로 보충하고 종목·간격별 최신 1,000개를 유지한다. 기존 값의 보정·갱신은 Go가 담당한다.
 - 캐시가 없거나 요청 개수보다 적거나 손상/장애가 있으면 DB의 해당 종목·간격 최대 1,000개를 조회한다. Spring에서 1분봉 재집계는 하지 않는다. 진행 봉은 REST 응답에 포함하지 않는다.
+- `GET /candles/coverage`는 수집 종목 전체를 합친 봉 보유 구간을 준다. 화면이 종목별 최근 봉을 받아 구간을 추정하지 않는다. 최근 봉 조회는 1,000개가 상한이라 과거가 쌓일수록 시작일이 잘린다.
+- 보유 구간의 대상 종목은 `CollectedAssetReadService` 기준이라 백테스트 후보군과 같다. 화면이 고른 기간을 엔진이 그대로 평가할 수 있어야 한다.
+- 보유 구간은 집계 대신 양 끝 봉을 한 건씩 읽는다. PK 앞자리가 종목이라 종목 수가 늘어도 비용이 같다.
 - `GET /assets/{assetId}/factors`는 전략 엔진이 쓰는 `Ta4jFactorCalculator`를 그대로 불러 화면에 같은 값을 준다. 표시용 지표를 여기에 넣지 않는다.
 - 팩터 기간은 `AssetFactorReadService`가 정한다. 요청으로 바꿀 수 없고 응답에 실어 화면이 기간을 다시 정의하지 않게 한다.
 - 팩터 조회는 ta4j BarSeries 가 필요해 `MinuteCandleReadService.findRecentCandles`로 엔티티를 읽는다. 표시용 스냅샷 캐시 경로와 섞지 않는다.
