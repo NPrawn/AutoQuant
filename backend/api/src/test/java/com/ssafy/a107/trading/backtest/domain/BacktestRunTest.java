@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -123,6 +124,35 @@ class BacktestRunTest {
     void rejectFeeRateAtUpperBound() {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> backtestRun(BigDecimal.ONE));
+    }
+
+    @DisplayName("대회 백테스트만 데이터셋 ID를 가진다")
+    @Test
+    void createContestBacktestRun() {
+        UUID datasetId = UUID.randomUUID();
+
+        BacktestRun contestRun = new BacktestRun(
+                member(),
+                strategy(),
+                Instant.parse("2030-02-11T00:00:00Z"),
+                Instant.parse("2030-05-13T00:00:00Z"),
+                Timeframe.ONE_HOUR,
+                "KRW",
+                BigDecimal.valueOf(10_000_000),
+                BigDecimal.valueOf(0.0005),
+                BigDecimal.valueOf(10),
+                RebalancePeriod.DAILY,
+                ExecutionPriceRule.NEXT_CANDLE_OPEN,
+                "engine-v1",
+                "contest-round-1",
+                QUEUED_AT,
+                datasetId
+        );
+
+        assertThat(contestRun.getContestDatasetId()).isEqualTo(datasetId);
+        assertThat(contestRun.isContest()).isTrue();
+        assertThat(backtestRun().isContest()).isFalse();
+        assertThat(backtestRun().getContestDatasetId()).isNull();
     }
 
     private BacktestRun runningBacktestRun() {

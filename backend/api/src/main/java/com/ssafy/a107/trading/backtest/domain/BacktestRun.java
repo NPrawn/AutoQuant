@@ -101,6 +101,10 @@ public class BacktestRun extends BaseEntity {
     @Column(name = "market_data_version", nullable = false, length = MAX_MARKET_DATA_VERSION_LENGTH, updatable = false)
     private String marketDataVersion;
 
+    // 대회 채점용 실행만 값을 가진다. 값이 있으면 그 데이터셋의 캔들과 종목만 쓴다 (ADR-0014).
+    @Column(name = "contest_dataset_id", updatable = false)
+    private UUID contestDatasetId;
+
     @Column(name = "queued_at", nullable = false, updatable = false)
     private Instant queuedAt;
 
@@ -151,6 +155,32 @@ public class BacktestRun extends BaseEntity {
         this.marketDataVersion = requireNonBlank(marketDataVersion, MAX_MARKET_DATA_VERSION_LENGTH, "Market data version");
         this.queuedAt = Objects.requireNonNull(queuedAt);
         this.status = BacktestRunStatus.QUEUED;
+    }
+
+    public BacktestRun(
+            Member member,
+            Strategy strategy,
+            Instant periodStart,
+            Instant periodEnd,
+            Timeframe timeframe,
+            String quoteCurrency,
+            BigDecimal initialCapital,
+            BigDecimal feeRate,
+            BigDecimal slippageBps,
+            RebalancePeriod rebalanceInterval,
+            ExecutionPriceRule executionPriceRule,
+            String engineVersion,
+            String marketDataVersion,
+            Instant queuedAt,
+            UUID contestDatasetId
+    ) {
+        this(member, strategy, periodStart, periodEnd, timeframe, quoteCurrency, initialCapital, feeRate,
+                slippageBps, rebalanceInterval, executionPriceRule, engineVersion, marketDataVersion, queuedAt);
+        this.contestDatasetId = Objects.requireNonNull(contestDatasetId);
+    }
+
+    public boolean isContest() {
+        return contestDatasetId != null;
     }
 
     public void markRunning(Instant startedAt) {
@@ -306,6 +336,10 @@ public class BacktestRun extends BaseEntity {
 
     public String getMarketDataVersion() {
         return marketDataVersion;
+    }
+
+    public UUID getContestDatasetId() {
+        return contestDatasetId;
     }
 
     public Instant getQueuedAt() {
