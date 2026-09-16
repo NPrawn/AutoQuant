@@ -13,6 +13,9 @@ public interface ContestEvaluationRepository extends JpaRepository<ContestEvalua
 
     List<ContestEvaluation> findAllByIdEntryIdIn(List<UUID> entryIds);
 
+    /* 교체 제출이면 이전 평가를 버린다. 백테스트 실행 기록은 남는다. */
+    void deleteAllByIdEntryId(UUID entryId);
+
     @Query("""
             select  evaluation
             from ContestEvaluation evaluation

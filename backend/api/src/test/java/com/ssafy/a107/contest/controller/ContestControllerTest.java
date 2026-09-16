@@ -339,7 +339,7 @@ class ContestControllerTest {
         );
         given(contestResultReadService.getMyResult(MEMBER_ID, ROUND_ID)).willReturn(
                 new ContestResultReadService.ContestMyResult(
-                        result, 7L, "모멘텀 전략", List.of(outcome), 10, new BigDecimal("73.333")));
+                        result, 7L, "모멘텀 전략", List.of(outcome), 10, new BigDecimal("73.333"), 4, 4));
 
         given()
                 .when()
@@ -429,7 +429,7 @@ class ContestControllerTest {
                 .body("content[0].strategyId", equalTo(7))
                 .body("content[0].mine", equalTo(true))
                 .body("content[0].published", equalTo(true))
-                .body("content[0].bearMddPercentile", equalTo(66.667f))
+                .body("content[0].bearRegimeScore", equalTo(66.667f))
                 .body("content[1].mine", equalTo(false))
                 .body("totalElements", equalTo(2))
                 .body("disqualifiedCount", equalTo(6));
@@ -521,10 +521,10 @@ class ContestControllerTest {
                 fieldWithPath("content[].totalScore").type(JsonFieldType.NUMBER).description("종합 점수"),
                 fieldWithPath("content[].returnScore").type(JsonFieldType.NUMBER).description("수익률 점수"),
                 fieldWithPath("content[].stabilityScore").type(JsonFieldType.NUMBER).description("안정성 점수"),
-                fieldWithPath("content[].bullMddPercentile").type(JsonFieldType.NUMBER).description("상승장 낙폭 백분위"),
-                fieldWithPath("content[].bearMddPercentile").type(JsonFieldType.NUMBER).description("하락장 낙폭 백분위"),
-                fieldWithPath("content[].sidewaysMddPercentile").type(JsonFieldType.NUMBER)
-                        .description("횡보장 낙폭 백분위"),
+                fieldWithPath("content[].bullRegimeScore").type(JsonFieldType.NUMBER).description("상승장 국면 점수"),
+                fieldWithPath("content[].bearRegimeScore").type(JsonFieldType.NUMBER).description("하락장 국면 점수"),
+                fieldWithPath("content[].sidewaysRegimeScore").type(JsonFieldType.NUMBER)
+                        .description("횡보장 국면 점수"),
                 fieldWithPath("content[].mine").type(JsonFieldType.BOOLEAN).description("내 제출 여부"),
                 fieldWithPath("page").type(JsonFieldType.NUMBER).description("페이지 번호"),
                 fieldWithPath("size").type(JsonFieldType.NUMBER).description("페이지 크기"),

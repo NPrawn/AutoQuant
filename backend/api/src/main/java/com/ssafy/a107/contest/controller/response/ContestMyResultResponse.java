@@ -17,33 +17,38 @@ public record ContestMyResultResponse(
         BigDecimal totalScore,
         BigDecimal returnScore,
         BigDecimal stabilityScore,
-        BigDecimal bullMddPercentile,
-        BigDecimal bearMddPercentile,
-        BigDecimal sidewaysMddPercentile,
+        BigDecimal bullRegimeScore,
+        BigDecimal bearRegimeScore,
+        BigDecimal sidewaysRegimeScore,
         ContestDisqualificationReason disqualificationReason,
         MarketDatasetKind disqualifiedKind,
         int entryCount,
         BigDecimal topTotalScore,
+        int finishedBacktests,
+        int totalBacktests,
         List<ContestDatasetOutcomeItem> datasets
 ) {
 
+    /* 백테스트가 도는 동안에는 점수 자리가 비어 있고 진행 수만 채워진다. */
     public static ContestMyResultResponse from(ContestMyResult myResult) {
         ContestResult result = myResult.result();
 
         return new ContestMyResultResponse(
                 myResult.strategyId(),
                 myResult.strategyName(),
-                result.getRanking(),
-                result.getTotalScore(),
-                result.getReturnScore(),
-                result.getStabilityScore(),
-                result.getBullMddPercentile(),
-                result.getBearMddPercentile(),
-                result.getSidewaysMddPercentile(),
-                result.getDisqualificationReason(),
-                result.getDisqualifiedKind(),
+                result == null ? null : result.getRanking(),
+                result == null ? null : result.getTotalScore(),
+                result == null ? null : result.getReturnScore(),
+                result == null ? null : result.getStabilityScore(),
+                result == null ? null : result.getBullRegimeScore(),
+                result == null ? null : result.getBearRegimeScore(),
+                result == null ? null : result.getSidewaysRegimeScore(),
+                result == null ? null : result.getDisqualificationReason(),
+                result == null ? null : result.getDisqualifiedKind(),
                 myResult.entryCount(),
                 myResult.topTotalScore(),
+                myResult.finishedBacktests(),
+                myResult.totalBacktests(),
                 myResult.datasets().stream().map(ContestDatasetOutcomeItem::from).toList()
         );
     }

@@ -113,16 +113,27 @@ class ContestRankingReadServiceTest {
         assertThat(rankings.page().getTotalElements()).isZero();
     }
 
-    @DisplayName("채점이 끝나지 않은 회차는 랭킹을 열지 않는다")
+    @DisplayName("마감 전에도 잠정 순위를 연다. 점수가 절대값이라 채점된 제출끼리 줄을 세운다")
     @Test
-    void hideRankingsBeforeScoringFinishes() {
-        ContestRound round = round();
-        given(contestRoundRepository.findById(ROUND_ID)).willReturn(Optional.of(round));
+    void openRankingsBeforeTheDeadline() {
+        given(contestRoundRepository.findById(ROUND_ID)).willReturn(Optional.of(round()));
+        givenEmptyPage();
+
+        ContestResultReadService.ContestRankings rankings = service.getRankings(
+                ROUND_ID, ContestRankingSort.TOTAL, null, null, PageRequest.of(0, 20));
+
+        assertThat(rankings.page().getContent()).isEmpty();
+    }
+
+    @DisplayName("없는 회차는 찾을 수 없다고 답한다")
+    @Test
+    void rejectUnknownRound() {
+        given(contestRoundRepository.findById(ROUND_ID)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getRankings(
                 ROUND_ID, ContestRankingSort.TOTAL, null, null, PageRequest.of(0, 20)))
                 .isInstanceOf(ApiException.class)
-                .hasMessageContaining("채점이 끝난 뒤");
+                .hasMessageContaining("회차를 찾을 수 없습니다");
     }
 
     private void givenFinishedRound() {

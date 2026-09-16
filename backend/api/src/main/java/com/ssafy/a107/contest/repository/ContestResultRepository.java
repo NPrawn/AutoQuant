@@ -4,6 +4,7 @@ import com.ssafy.a107.contest.domain.ContestResult;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +25,18 @@ public interface ContestResultRepository extends JpaRepository<ContestResult, UU
 
     Optional<ContestResult> findByEntryId(UUID entryId);
 
+    void deleteByEntryId(UUID entryId);
+
+    /* 점수는 절대값이라 다시 계산해도 같지만, 순위는 참가자가 늘면 바뀌므로 회차 결과를 통째로 다시 쓴다. */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            delete from ContestResult result
+            where result.entryId in (
+                select entry.entryId from ContestEntry entry where entry.round.roundId = :roundId
+            )
+            """)
+    void deleteAllByRoundId(@Param("roundId") UUID roundId);
+
     /*
      * 랭킹 화면(목업 06)이 쓰는 조회다. 순위가 있는 제출만 보여 주고, 국면 필터는 그 국면의 낙폭 백분위가
      * 세 국면 중 가장 높은 제출을 남긴다. 정렬 기준이 둘뿐이라 쿼리 하나에 담고 동점은 순위로 가른다.
@@ -33,7 +46,7 @@ public interface ContestResultRepository extends JpaRepository<ContestResult, UU
                     select new com.ssafy.a107.contest.repository.ContestRankingRow(
                         result.ranking, strategy.strategyId, strategy.name, member.displayName, strategy.published,
                         result.totalScore, result.returnScore, result.stabilityScore,
-                        result.bullMddPercentile, result.bearMddPercentile, result.sidewaysMddPercentile,
+                        result.bullRegimeScore, result.bearRegimeScore, result.sidewaysRegimeScore,
                         member.memberId
                     )
                     from ContestEntry entry
@@ -49,18 +62,18 @@ public interface ContestResultRepository extends JpaRepository<ContestResult, UU
                       )
                       and (
                         :bull = false
-                        or (result.bullMddPercentile >= result.bearMddPercentile
-                            and result.bullMddPercentile >= result.sidewaysMddPercentile)
+                        or (result.bullRegimeScore >= result.bearRegimeScore
+                            and result.bullRegimeScore >= result.sidewaysRegimeScore)
                       )
                       and (
                         :bear = false
-                        or (result.bearMddPercentile >= result.bullMddPercentile
-                            and result.bearMddPercentile >= result.sidewaysMddPercentile)
+                        or (result.bearRegimeScore >= result.bullRegimeScore
+                            and result.bearRegimeScore >= result.sidewaysRegimeScore)
                       )
                       and (
                         :sideways = false
-                        or (result.sidewaysMddPercentile >= result.bullMddPercentile
-                            and result.sidewaysMddPercentile >= result.bearMddPercentile)
+                        or (result.sidewaysRegimeScore >= result.bullRegimeScore
+                            and result.sidewaysRegimeScore >= result.bearRegimeScore)
                       )
                     order by (case when :byStability = true then result.stabilityScore else result.totalScore end) desc,
                              result.ranking asc
@@ -80,18 +93,18 @@ public interface ContestResultRepository extends JpaRepository<ContestResult, UU
                       )
                       and (
                         :bull = false
-                        or (result.bullMddPercentile >= result.bearMddPercentile
-                            and result.bullMddPercentile >= result.sidewaysMddPercentile)
+                        or (result.bullRegimeScore >= result.bearRegimeScore
+                            and result.bullRegimeScore >= result.sidewaysRegimeScore)
                       )
                       and (
                         :bear = false
-                        or (result.bearMddPercentile >= result.bullMddPercentile
-                            and result.bearMddPercentile >= result.sidewaysMddPercentile)
+                        or (result.bearRegimeScore >= result.bullRegimeScore
+                            and result.bearRegimeScore >= result.sidewaysRegimeScore)
                       )
                       and (
                         :sideways = false
-                        or (result.sidewaysMddPercentile >= result.bullMddPercentile
-                            and result.sidewaysMddPercentile >= result.bearMddPercentile)
+                        or (result.sidewaysRegimeScore >= result.bullRegimeScore
+                            and result.sidewaysRegimeScore >= result.bearRegimeScore)
                       )
                     """
     )

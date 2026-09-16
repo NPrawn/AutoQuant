@@ -36,9 +36,9 @@ export function RankingPage() {
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null)
 
   const rounds = contests.data?.contests ?? []
-  /* 채점이 끝난 회차만 순위가 있다. 마감이 늦은 회차가 앞에 온다. */
+  /* 점수가 절대값이라 제출이 채점되는 대로 순위가 생긴다. 시작 전 회차만 뺀다. */
   const finished = rounds
-    .filter((round) => round.status === 'FINISHED')
+    .filter((round) => round.status !== 'SCHEDULED')
     .sort((left, right) => right.submissionEndsAt.localeCompare(left.submissionEndsAt))
   const openRound = rounds.find((round) => round.status === 'OPEN') ?? null
 
@@ -68,7 +68,9 @@ export function RankingPage() {
       <div className="page-head">
         <div>
           <span className="eyebrow">
-            {round === null ? '대회 결과' : `${round.title} 채점 완료 · ${round.entryCount}팀`}
+            {round === null
+              ? '대회 결과'
+              : `${round.title} ${round.status === 'FINISHED' ? '채점 완료' : '잠정 순위'} · ${round.entryCount}팀`}
           </span>
           <h1>어떤 장세에도 버티는 전략</h1>
           <p className="sub">
@@ -89,8 +91,8 @@ export function RankingPage() {
       )}
       {contests.isSuccess && finished.length === 0 && (
         <EmptyState
-          title="아직 채점이 끝난 회차가 없습니다"
-          description="회차가 마감되고 채점이 끝나면 순위가 여기에 공개됩니다."
+          title="아직 열린 회차가 없습니다"
+          description="회차가 열리고 제출이 채점되면 순위가 여기에 나옵니다."
           actions={
             openRound && (
               <Link className="btn primary" to={to.contestDetail(openRound.roundId)}>
@@ -109,9 +111,10 @@ export function RankingPage() {
               <path d="M12 8v5M12 16h.01" />
             </svg>
             <span>
-              <b>채점 기준</b> — 일반장 누적 수익률 백분위가 <b>수익률 점수</b>, 상승·하락·횡보 낙폭 백분위의{' '}
-              <b>평균 × 0.6 + 최저 × 0.4</b>가 안정성 점수이고 <b>종합 = 수익률 × 0.5 + 안정성 × 0.5</b>입니다. 국면
-              점수는 낙폭 백분위라 높을수록 낙폭이 작습니다.
+              <b>채점 기준</b> — 일반장에서 시장보다 얼마나 더 벌었는지가 <b>수익률 점수</b>, 상승·하락·횡보 낙폭을
+              실격선으로 잰 국면 점수의 <b>평균 × 0.6 + 최저 × 0.4</b>가 안정성 점수이고{' '}
+              <b>종합 = 수익률 × 0.5 + 안정성 × 0.5</b>입니다. 점수는 남들과 견주지 않는 절대값이라 제출이
+              채점되는 대로 확정되고, 순위만 참가자가 늘면 바뀝니다.
             </span>
           </div>
 

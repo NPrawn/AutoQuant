@@ -16,9 +16,9 @@ public record ContestRankingRow(
         BigDecimal totalScore,
         BigDecimal returnScore,
         BigDecimal stabilityScore,
-        BigDecimal bullMddPercentile,
-        BigDecimal bearMddPercentile,
-        BigDecimal sidewaysMddPercentile,
+        BigDecimal bullRegimeScore,
+        BigDecimal bearRegimeScore,
+        BigDecimal sidewaysRegimeScore,
         UUID memberId
 ) {
 }

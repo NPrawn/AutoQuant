@@ -37,7 +37,10 @@ import java.util.Map;
 import java.util.UUID;
 
 /*
- * 채점 진행과 결과를 읽는다. 결과와 데이터셋은 회차가 끝난 뒤에만 공개한다 (ADR-0010, 대회 기능 설계 8절).
+ * 채점 진행과 결과를 읽는다.
+ *
+ * 점수가 절대값이라 제출이 채점되는 대로 결과와 순위를 공개한다. 마감 전 순위는 그때까지 채점된 제출
+ * 사이의 자리라 잠정이다. 채점용 데이터의 출처(뽑은 주, 시드, 원본 구간)는 마감 뒤에만 공개한다 (ADR-0010).
  */
 @Service
 @Transactional(readOnly = true)
@@ -84,7 +87,7 @@ public class ContestResultReadService {
     }
 
     public List<ContestRanking> getResults(UUID roundId) {
-        ContestRound round = requireFinished(roundId);
+        ContestRound round = round(roundId);
         Map<UUID, ContestEntry> entries = entriesById(round.getRoundId());
 
         List<ContestRanking> rankings = new ArrayList<>();
@@ -109,11 +112,11 @@ public class ContestResultReadService {
     }
 
     public ContestMyResult getMyResult(UUID memberId, UUID roundId) {
-        ContestRound round = requireFinished(roundId);
+        ContestRound round = round(roundId);
         ContestEntry entry = contestEntryRepository.findByRoundRoundIdAndMemberMemberId(roundId, memberId)
                 .orElseThrow(() -> new ApiException(ApiErrorCode.CONTEST_ENTRY_NOT_FOUND));
-        ContestResult result = contestResultRepository.findByEntryId(entry.getEntryId())
-                .orElseThrow(() -> new ApiException(ApiErrorCode.CONTEST_ENTRY_NOT_FOUND));
+        /* 백테스트가 도는 동안에는 점수가 없다. 진행 수만 채워 보낸다. */
+        ContestResult result = contestResultRepository.findByEntryId(entry.getEntryId()).orElse(null);
 
         Map<UUID, MarketDataset> datasets = new LinkedHashMap<>();
         for (MarketDataset dataset : marketDatasetRepository.findAllByRoundRoundIdOrderByKindAsc(round.getRoundId())) {
@@ -121,9 +124,17 @@ public class ContestResultReadService {
         }
 
         List<ContestDatasetOutcome> outcomes = new ArrayList<>();
-        for (ContestEvaluation evaluation : contestEvaluationRepository.findAllByIdEntryIdIn(
-                List.of(entry.getEntryId()))) {
+        int finishedBacktests = 0;
+        List<ContestEvaluation> evaluations = contestEvaluationRepository.findAllByIdEntryIdIn(
+                List.of(entry.getEntryId()));
+        for (ContestEvaluation evaluation : evaluations) {
             MarketDataset dataset = datasets.get(evaluation.getId().getDatasetId());
+            BacktestRunStatus status = backtestRunRepository.findByBacktestId(evaluation.getBacktestId())
+                    .map(BacktestRun::getStatus)
+                    .orElse(null);
+            if (status == BacktestRunStatus.COMPLETED || status == BacktestRunStatus.FAILED) {
+                finishedBacktests++;
+            }
             BacktestResult backtestResult = backtestResultRepository.findById(evaluation.getBacktestId()).orElse(null);
             outcomes.add(new ContestDatasetOutcome(
                     dataset.getKind(),
@@ -151,7 +162,9 @@ public class ContestResultReadService {
                 entry.getStrategy().getName(),
                 outcomes,
                 results.size(),
-                topScore
+                topScore,
+                finishedBacktests,
+                evaluations.size()
         );
     }
 
@@ -166,7 +179,7 @@ public class ContestResultReadService {
             String query,
             Pageable pageable
     ) {
-        requireFinished(roundId);
+        round(roundId);
 
         String keyword = (query == null || query.isBlank()) ? null : "%" + query.trim().toLowerCase() + "%";
         Page<ContestRankingRow> rows = contestResultRepository.findRankings(
@@ -244,7 +257,9 @@ public class ContestResultReadService {
             String strategyName,
             List<ContestDatasetOutcome> datasets,
             int entryCount,
-            BigDecimal topTotalScore
+            BigDecimal topTotalScore,
+            int finishedBacktests,
+            int totalBacktests
     ) {
     }
 

@@ -57,6 +57,9 @@ class ContestEntryCommandServiceTest {
     @Mock
     private StrategyRepository strategyRepository;
 
+    @Mock
+    private ContestEvaluationService contestEvaluationService;
+
     @DisplayName("첫 제출은 제출 횟수 1로 저장한다")
     @Test
     void createEntryOnFirstSubmission() {
@@ -161,7 +164,8 @@ class ContestEntryCommandServiceTest {
                 contestRoundRepository,
                 contestEntryRepository,
                 strategyRepository,
-                new BacktestWarmupCandleCountResolver()
+                new BacktestWarmupCandleCountResolver(),
+                contestEvaluationService
         );
     }
 

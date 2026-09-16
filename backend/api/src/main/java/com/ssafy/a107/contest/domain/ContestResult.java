@@ -26,14 +26,14 @@ public class ContestResult extends BaseEntity {
     @Column(name = "return_score", precision = 6, scale = 3)
     private BigDecimal returnScore;
 
-    @Column(name = "bull_mdd_percentile", precision = 6, scale = 3)
-    private BigDecimal bullMddPercentile;
+    @Column(name = "bull_regime_score", precision = 6, scale = 3)
+    private BigDecimal bullRegimeScore;
 
-    @Column(name = "bear_mdd_percentile", precision = 6, scale = 3)
-    private BigDecimal bearMddPercentile;
+    @Column(name = "bear_regime_score", precision = 6, scale = 3)
+    private BigDecimal bearRegimeScore;
 
-    @Column(name = "sideways_mdd_percentile", precision = 6, scale = 3)
-    private BigDecimal sidewaysMddPercentile;
+    @Column(name = "sideways_regime_score", precision = 6, scale = 3)
+    private BigDecimal sidewaysRegimeScore;
 
     @Column(name = "stability_score", precision = 6, scale = 3)
     private BigDecimal stabilityScore;
@@ -58,9 +58,9 @@ public class ContestResult extends BaseEntity {
     public static ContestResult scored(
             UUID entryId,
             BigDecimal returnScore,
-            BigDecimal bullMddPercentile,
-            BigDecimal bearMddPercentile,
-            BigDecimal sidewaysMddPercentile,
+            BigDecimal bullRegimeScore,
+            BigDecimal bearRegimeScore,
+            BigDecimal sidewaysRegimeScore,
             BigDecimal stabilityScore,
             BigDecimal totalScore,
             int ranking
@@ -72,9 +72,9 @@ public class ContestResult extends BaseEntity {
         ContestResult result = new ContestResult();
         result.entryId = Objects.requireNonNull(entryId);
         result.returnScore = Objects.requireNonNull(returnScore);
-        result.bullMddPercentile = Objects.requireNonNull(bullMddPercentile);
-        result.bearMddPercentile = Objects.requireNonNull(bearMddPercentile);
-        result.sidewaysMddPercentile = Objects.requireNonNull(sidewaysMddPercentile);
+        result.bullRegimeScore = Objects.requireNonNull(bullRegimeScore);
+        result.bearRegimeScore = Objects.requireNonNull(bearRegimeScore);
+        result.sidewaysRegimeScore = Objects.requireNonNull(sidewaysRegimeScore);
         result.stabilityScore = Objects.requireNonNull(stabilityScore);
         result.totalScore = Objects.requireNonNull(totalScore);
         result.ranking = ranking;
@@ -105,16 +105,16 @@ public class ContestResult extends BaseEntity {
         return returnScore;
     }
 
-    public BigDecimal getBullMddPercentile() {
-        return bullMddPercentile;
+    public BigDecimal getBullRegimeScore() {
+        return bullRegimeScore;
     }
 
-    public BigDecimal getBearMddPercentile() {
-        return bearMddPercentile;
+    public BigDecimal getBearRegimeScore() {
+        return bearRegimeScore;
     }
 
-    public BigDecimal getSidewaysMddPercentile() {
-        return sidewaysMddPercentile;
+    public BigDecimal getSidewaysRegimeScore() {
+        return sidewaysRegimeScore;
     }
 
     public BigDecimal getStabilityScore() {
