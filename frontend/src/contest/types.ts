@@ -30,6 +30,13 @@ export type ContestRoundItemResponse = {
   submissionEndsAt: string
   entryCount: number
   mySubmission: ContestSubmissionResponse | null
+  /* 제출하지 않았거나 채점 전이거나 실격이면 비어 있다. 마감 전 순위는 잠정이다. */
+  myRanking: number | null
+  myTotalScore: number | null
+  /* 채점된 제출이 하나도 없으면 비어 있다. */
+  topStrategyName: string | null
+  topNickname: string | null
+  topTotalScore: number | null
 }
 
 export type ContestRoundListResponse = {

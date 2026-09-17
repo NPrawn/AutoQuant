@@ -18,6 +18,7 @@ import com.ssafy.a107.contest.domain.ContestFactorPeriodPolicy;
 import com.ssafy.a107.contest.domain.ContestRankingSort;
 import com.ssafy.a107.contest.domain.ContestRound;
 import com.ssafy.a107.contest.repository.ContestRankingRow;
+import com.ssafy.a107.contest.repository.ContestRoundTopResult;
 import com.ssafy.a107.contest.service.ContestEntryCommandService;
 import com.ssafy.a107.contest.service.ContestReadService;
 import com.ssafy.a107.contest.service.ContestResultReadService;
@@ -115,10 +116,23 @@ class ContestControllerTest {
         SecurityContextHolder.clearContext();
     }
 
-    @DisplayName("대회 목록은 회차 상태와 내 제출을 함께 보여 준다")
+    @DisplayName("대회 목록은 회차 상태와 내 제출, 내 순위와 1위를 함께 보여 준다")
     @Test
     void getContests() {
-        ContestRoundSummary summary = new ContestRoundSummary(round(), ContestDisplayStatus.OPEN, 12, entry());
+        ContestResult myResult = ContestResult.scored(
+                UUID.randomUUID(),
+                new BigDecimal("78.667"),
+                new BigDecimal("18.800"),
+                new BigDecimal("17.000"),
+                new BigDecimal("18.200"),
+                new BigDecimal("17.600"),
+                new BigDecimal("48.133"),
+                2
+        );
+        ContestRoundTopResult top = new ContestRoundTopResult(
+                ROUND_ID, "변동성 눌림 스윙", "가온", new BigDecimal("55.180"));
+        ContestRoundSummary summary = new ContestRoundSummary(
+                round(), ContestDisplayStatus.OPEN, 12, entry(), myResult, top);
         given(contestReadService.getRounds(MEMBER_ID)).willReturn(List.of(summary));
 
         given()
@@ -130,7 +144,11 @@ class ContestControllerTest {
                         resource(ResourceSnippetParameters.builder()
                                 .tag("대회")
                                 .summary("대회 회차 목록 조회")
-                                .description("회차마다 화면 상태, 제출 기간, 참가 수, 내 제출을 돌려줍니다.")
+                                .description("""
+                                        회차마다 화면 상태, 제출 기간, 참가 수, 내 제출을 돌려줍니다.
+                                        채점된 제출이 있으면 내 순위·총점과 회차 1위도 함께 옵니다.
+                                        점수는 절대값이라 마감 전에도 값이 있고, 그때 순위는 잠정입니다.
+                                        """)
                                 .responseSchema(schema("ContestRoundListResponse"))
                                 .responseFields(listResponseFields())
                                 .build())
@@ -140,7 +158,29 @@ class ContestControllerTest {
                 .body("contests[0].status", equalTo("OPEN"))
                 .body("contests[0].entryCount", equalTo(12))
                 .body("contests[0].mySubmission.submissionCount", equalTo(1))
-                .body("contests[0].mySubmission.remainingSubmissions", equalTo(4));
+                .body("contests[0].mySubmission.remainingSubmissions", equalTo(4))
+                .body("contests[0].myRanking", equalTo(2))
+                .body("contests[0].myTotalScore", equalTo(48.133f))
+                .body("contests[0].topStrategyName", equalTo("변동성 눌림 스윙"))
+                .body("contests[0].topNickname", equalTo("가온"))
+                .body("contests[0].topTotalScore", equalTo(55.18f));
+    }
+
+    @DisplayName("제출하지 않았거나 채점 전인 회차는 내 순위와 1위가 비어 있다")
+    @Test
+    void leaveRankingEmptyBeforeScoring() {
+        ContestRoundSummary summary = new ContestRoundSummary(
+                round(), ContestDisplayStatus.OPEN, 0, null, null, null);
+        given(contestReadService.getRounds(MEMBER_ID)).willReturn(List.of(summary));
+
+        given()
+                .when()
+                .get("/contests")
+                .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("contests[0].mySubmission", equalTo(null))
+                .body("contests[0].myRanking", equalTo(null))
+                .body("contests[0].topStrategyName", equalTo(null));
     }
 
     @DisplayName("대회 상세는 채점 규칙 상수와 팩터 기간 상한을 함께 보여 준다")
@@ -552,6 +592,16 @@ class ContestControllerTest {
                         .description("남은 제출 횟수"),
                 fieldWithPath("contests[].mySubmission.firstSubmittedAt").type(JsonFieldType.STRING).description("첫 제출 시각"),
                 fieldWithPath("contests[].mySubmission.lastSubmittedAt").type(JsonFieldType.STRING).description("마지막 제출 시각"),
+                fieldWithPath("contests[].myRanking").type(JsonFieldType.NUMBER).optional()
+                        .description("내 순위. 제출하지 않았거나 채점 전이거나 실격이면 null"),
+                fieldWithPath("contests[].myTotalScore").type(JsonFieldType.NUMBER).optional()
+                        .description("내 총점. 내 순위와 같은 조건으로 null"),
+                fieldWithPath("contests[].topStrategyName").type(JsonFieldType.STRING).optional()
+                        .description("1위 전략 이름. 채점된 제출이 없으면 null"),
+                fieldWithPath("contests[].topNickname").type(JsonFieldType.STRING).optional()
+                        .description("1위 참가자 이름"),
+                fieldWithPath("contests[].topTotalScore").type(JsonFieldType.NUMBER).optional()
+                        .description("1위 총점"),
         };
     }
 
