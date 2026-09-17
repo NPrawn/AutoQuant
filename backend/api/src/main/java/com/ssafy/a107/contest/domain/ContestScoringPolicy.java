@@ -13,8 +13,6 @@ public final class ContestScoringPolicy {
     public static final BigDecimal STABILITY_MEAN_WEIGHT = new BigDecimal("0.6");
     public static final BigDecimal STABILITY_WORST_WEIGHT = new BigDecimal("0.4");
 
-    public static final BigDecimal MINIMUM_RETURN = new BigDecimal("-0.30");
-    public static final BigDecimal MAXIMUM_DRAWDOWN = new BigDecimal("0.50");
     public static final BigDecimal MINIMUM_EXPOSURE = new BigDecimal("0.30");
 
     public static final BigDecimal INITIAL_CAPITAL = new BigDecimal("10000000");

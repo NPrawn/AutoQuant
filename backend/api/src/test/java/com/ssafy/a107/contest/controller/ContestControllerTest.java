@@ -317,7 +317,7 @@ class ContestControllerTest {
                 new ContestResultReadService.ContestRanking(1, MEMBER_ID, "대회 참가자", "모멘텀 전략",
                         new BigDecimal("73.333"), new BigDecimal("66.667"), new BigDecimal("80.000"), null, null),
                 new ContestResultReadService.ContestRanking(null, OTHER_MEMBER_ID, "다른 참가자", "몰빵 전략",
-                        null, null, null, ContestDisqualificationReason.MDD_ABOVE_LIMIT, MarketDatasetKind.BULL)
+                        null, null, null, ContestDisqualificationReason.LOW_EXPOSURE, MarketDatasetKind.GENERAL)
         );
         given(contestResultReadService.getResults(ROUND_ID)).willReturn(rankings);
 
@@ -358,7 +358,7 @@ class ContestControllerTest {
                 .statusCode(HttpStatus.OK.value())
                 .body("rankings[0].ranking", equalTo(1))
                 .body("rankings[0].totalScore", equalTo(73.333f))
-                .body("rankings[1].disqualificationReason", equalTo("MDD_ABOVE_LIMIT"));
+                .body("rankings[1].disqualificationReason", equalTo("LOW_EXPOSURE"));
     }
 
     @DisplayName("내 결과는 데이터셋별 성적과 점수 계산 과정을 돌려준다")
@@ -639,8 +639,6 @@ class ContestControllerTest {
                 fieldWithPath("factorPeriodCaps.1D").type(JsonFieldType.NUMBER).description("일봉 상한"),
                 fieldWithPath("scoringRules.returnWeight").type(JsonFieldType.NUMBER).description("수익률 점수 가중치"),
                 fieldWithPath("scoringRules.stabilityWeight").type(JsonFieldType.NUMBER).description("안정성 점수 가중치"),
-                fieldWithPath("scoringRules.minimumReturn").type(JsonFieldType.NUMBER).description("실격 수익률 하한"),
-                fieldWithPath("scoringRules.maximumDrawdown").type(JsonFieldType.NUMBER).description("실격 최대 낙폭 상한"),
                 fieldWithPath("scoringRules.minimumExposure").type(JsonFieldType.NUMBER).description("실격 평균 투자 비중 하한"),
                 fieldWithPath("scoringRules.initialCapital").type(JsonFieldType.NUMBER).description("초기 자본"),
                 fieldWithPath("scoringRules.feeRate").type(JsonFieldType.NUMBER).description("수수료율"),

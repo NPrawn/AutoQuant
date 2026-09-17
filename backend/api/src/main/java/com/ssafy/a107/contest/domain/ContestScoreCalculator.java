@@ -15,10 +15,10 @@ import java.util.UUID;
  * 점수는 나 혼자로 계산되는 절대값이라 제출이 끝나는 대로 확정된다. 남들과 견주는 값은 순위뿐이고,
  * 순위는 그때까지 채점된 제출 사이의 자리라 마감 전에는 잠정이다.
  *
- * - 실격: 데이터셋을 일반장·상승장·하락장·횡보장 순으로 보며 실패 → 수익률 → 낙폭 순으로 처음 걸린 사유 하나.
- *   네 벌을 모두 통과하면 일반장 평균 투자 비중을 본다.
+ * - 실격: 데이터셋을 일반장·상승장·하락장·횡보장 순으로 보며 처음 실패한 백테스트 하나. 네 벌이 모두 끝났으면
+ *   일반장 평균 투자 비중을 본다. 크게 잃거나 깊이 빠진 전략은 실격이 아니라 아래 점수가 0점으로 내려간다.
  * - 수익률 점수: 일반장에서 시장보다 얼마나 더 벌었는지. 시장과 같으면 50점, 시장 대비 +30%면 100점,
- *   실격선인 시장 대비 −30%면 0점이다. 장세 난이도는 시장 수익률이 흡수한다.
+ *   시장 대비 −30%면 0점이다. 장세 난이도는 시장 수익률이 흡수한다.
  * - 국면 점수: 구간 최대 낙폭을 그 장세의 시장 낙폭과 견준다. 시장과 같으면 50점, 시장보다 30%p 덜 빠지면
  *   100점, 30%p 더 빠지면 0점이다. 장세가 거칠어 누구나 깊이 빠지는 구간도 시장 낙폭이 흡수한다.
  * - 안정성 점수: 상승·하락·횡보 국면 점수의 평균 × 0.6 + 최저 × 0.4.
@@ -70,12 +70,6 @@ public final class ContestScoreCalculator {
             ContestEvaluationOutcome outcome = outcomes.get(kind);
             if (outcome == null || !outcome.completed()) {
                 return new Disqualification(ContestDisqualificationReason.BACKTEST_FAILED, kind);
-            }
-            if (outcome.cumulativeReturn().compareTo(ContestScoringPolicy.MINIMUM_RETURN) < 0) {
-                return new Disqualification(ContestDisqualificationReason.RETURN_BELOW_LIMIT, kind);
-            }
-            if (outcome.maximumDrawdown().compareTo(ContestScoringPolicy.MAXIMUM_DRAWDOWN) > 0) {
-                return new Disqualification(ContestDisqualificationReason.MDD_ABOVE_LIMIT, kind);
             }
         }
 
