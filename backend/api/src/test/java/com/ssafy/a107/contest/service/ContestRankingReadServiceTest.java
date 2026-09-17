@@ -10,6 +10,7 @@ import com.ssafy.a107.contest.repository.ContestRankingRow;
 import com.ssafy.a107.contest.repository.ContestResultRepository;
 import com.ssafy.a107.contest.repository.ContestRoundRepository;
 import com.ssafy.a107.contest.repository.MarketDatasetRepository;
+import com.ssafy.a107.trading.backtest.repository.BacktestEquityRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestResultRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -49,7 +50,8 @@ class ContestRankingReadServiceTest {
             contestResultRepository,
             mock(MarketDatasetRepository.class),
             mock(BacktestRunRepository.class),
-            mock(BacktestResultRepository.class)
+            mock(BacktestResultRepository.class),
+            mock(BacktestEquityRepository.class)
     );
 
     @DisplayName("검색어는 소문자 부분 일치로 바꾸고 국면 필터는 해당 국면만 켠다")

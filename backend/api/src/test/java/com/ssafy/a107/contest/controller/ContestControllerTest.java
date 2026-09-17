@@ -14,6 +14,7 @@ import com.ssafy.a107.contest.domain.ContestResult;
 import com.ssafy.a107.contest.domain.MarketDataset;
 import com.ssafy.a107.contest.domain.MarketDatasetKind;
 import com.ssafy.a107.contest.domain.ContestEntry;
+import com.ssafy.a107.contest.domain.ContestEquityPoint;
 import com.ssafy.a107.contest.domain.ContestFactorPeriodPolicy;
 import com.ssafy.a107.contest.domain.ContestRankingSort;
 import com.ssafy.a107.contest.domain.ContestRound;
@@ -382,7 +383,8 @@ class ContestControllerTest {
                 new BigDecimal("1.721"),
                 new BigDecimal("0.189"),
                 new BigDecimal("0.989"),
-                40
+                40,
+                List.of(new ContestEquityPoint(Instant.parse("2030-02-12T00:00:00Z"), new BigDecimal("0.0125")))
         );
         given(contestResultReadService.getMyResult(MEMBER_ID, ROUND_ID)).willReturn(
                 new ContestResultReadService.ContestMyResult(
@@ -401,7 +403,9 @@ class ContestControllerTest {
                 .body("datasets[0].kind", equalTo("GENERAL"))
                 .body("datasets[0].marketReturn", equalTo(1.549f))
                 .body("datasets[0].marketMaximumDrawdown", equalTo(0.38448381f))
-                .body("datasets[0].averageExposure", equalTo(0.989f));
+                .body("datasets[0].averageExposure", equalTo(0.989f))
+                .body("datasets[0].equityCurve[0].valuationAt", equalTo("2030-02-12T00:00:00Z"))
+                .body("datasets[0].equityCurve[0].returnRate", equalTo(0.0125f));
     }
 
     @DisplayName("종료된 회차는 데이터셋의 시드와 뽑은 주를 공개한다")

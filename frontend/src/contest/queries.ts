@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
 
 import {
   fetchContest,
@@ -10,6 +11,7 @@ import {
   fetchMyContestResult,
   submitContestEntry,
 } from './api'
+import { awaitingScore } from './types'
 import type { SubmitContestEntryRequest } from './types'
 
 /* 대회 쿼리 키의 뿌리. 제출이 성공하면 이 키 아래를 무효화해 남은 횟수를 다시 읽는다. */
@@ -64,19 +66,38 @@ export function useContestResults(roundId: string | undefined, enabled: boolean)
 }
 
 export function useMyContestResult(roundId: string | undefined, enabled: boolean) {
-  return useQuery({
+  const queryClient = useQueryClient()
+  const query = useQuery({
     queryKey: contestMyResultQueryKey(roundId ?? ''),
     queryFn: () => fetchMyContestResult(roundId ?? ''),
     enabled: roundId !== undefined && enabled,
     /* 제출하지 않았으면 404 다. 없는 것이 답이라 다시 묻지 않는다. */
     retry: false,
-    /* 제출 직후에는 백테스트 4벌이 도는 중이라 끝날 때까지 다시 묻는다. */
-    refetchInterval: (query) => {
-      const data = query.state.data
-      return data !== undefined && data.finishedBacktests < data.totalBacktests ? progressPollIntervalMs : false
+    /* 제출 직후에는 백테스트 4벌이 돌고, 끝난 뒤에도 스케줄러가 점수를 쓸 때까지 다시 묻는다. */
+    refetchInterval: (current) => {
+      const data = current.state.data
+      return data !== undefined && awaitingScore(data) ? progressPollIntervalMs : false
     },
     refetchIntervalInBackground: true,
   })
+
+  /* 채점되는 순간 순위표와 목록의 내 순위도 바뀐다. 기다리던 결과가 채점됐을 때 한 번만 대회 쿼리를 다시 읽는다. */
+  const waiting = useRef(false)
+  useEffect(() => {
+    if (query.data === undefined) {
+      return
+    }
+    if (awaitingScore(query.data)) {
+      waiting.current = true
+      return
+    }
+    if (waiting.current) {
+      waiting.current = false
+      void queryClient.invalidateQueries({ queryKey: contestsQueryKey })
+    }
+  }, [query.data, queryClient])
+
+  return query
 }
 
 export function useContestDatasets(roundId: string | undefined, enabled: boolean) {

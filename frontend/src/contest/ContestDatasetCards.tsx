@@ -1,3 +1,4 @@
+import { sparkPaths } from './charts'
 import { datasetKindLabels, formatDate, formatPercent } from './labels'
 import { parseSourceWeeks } from './types'
 import type { ContestDatasetItemResponse, ContestDatasetOutcomeResponse, MarketDatasetKind } from './types'
@@ -20,6 +21,26 @@ function signClass(value: number | null): string {
   return value >= 0 ? 'updown up' : 'updown down'
 }
 
+/* 목업 33 의 장세 카드 곡선. 마감 전에는 곡선이 비어 와서 그리지 않는다. 색은 카드의 장세 색(--rg)이다. */
+function RegimeSpark({ returnRates }: { returnRates: number[] }) {
+  const paths = sparkPaths(returnRates)
+  if (paths === null) {
+    return null
+  }
+  return (
+    <svg className="regime-spark" viewBox="0 0 200 46" preserveAspectRatio="none" role="img" aria-label="누적 수익률 곡선">
+      <path d={paths.area} style={{ fill: 'var(--rg)' }} opacity=".13" />
+      <path
+        d={paths.line}
+        fill="none"
+        style={{ stroke: 'var(--rg)' }}
+        strokeWidth="1.5"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  )
+}
+
 /* 목업 33·35 의 국면별 성적. 백테스트가 실패한 데이터셋은 값이 비어 온다. */
 export function ContestOutcomeGrid({ outcomes }: { outcomes: ContestDatasetOutcomeResponse[] }) {
   return (
@@ -31,6 +52,7 @@ export function ContestOutcomeGrid({ outcomes }: { outcomes: ContestDatasetOutco
             <b>{datasetKindLabels[outcome.kind]}</b>
             <em>{outcome.cumulativeReturn === null ? '실행 실패' : `체결 ${outcome.tradeCount ?? 0}`}</em>
           </div>
+          <RegimeSpark returnRates={outcome.equityCurve.map((point) => point.returnRate)} />
           <dl>
             <dt>구간 수익률</dt>
             <dd className={signClass(outcome.cumulativeReturn)}>{formatPercent(outcome.cumulativeReturn)}</dd>

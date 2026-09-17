@@ -4,6 +4,7 @@ import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.contest.domain.ContestDisqualificationReason;
 import com.ssafy.a107.contest.domain.ContestEntry;
+import com.ssafy.a107.contest.domain.ContestEquityPoint;
 import com.ssafy.a107.contest.domain.ContestEvaluation;
 import com.ssafy.a107.contest.domain.ContestPhase;
 import com.ssafy.a107.contest.domain.ContestResult;
@@ -20,6 +21,7 @@ import com.ssafy.a107.contest.repository.MarketDatasetRepository;
 import com.ssafy.a107.trading.backtest.domain.BacktestResult;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
+import com.ssafy.a107.trading.backtest.repository.BacktestEquityRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestResultRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import org.springframework.data.domain.Page;
@@ -41,6 +43,8 @@ import java.util.UUID;
  *
  * 점수가 절대값이라 제출이 채점되는 대로 결과와 순위를 공개한다. 마감 전 순위는 그때까지 채점된 제출
  * 사이의 자리라 잠정이다. 채점용 데이터의 출처(뽑은 주, 시드, 원본 구간)는 마감 뒤에만 공개한다 (ADR-0010).
+ * 장세별 자산 곡선도 마감 뒤에만 싣는다. 전 종목을 들고 있는 전략의 일별 곡선이면 평가 13주를 실제 과거와
+ * 맞춰 뽑은 주를 역산할 수 있다.
  */
 @Service
 @Transactional(readOnly = true)
@@ -53,6 +57,7 @@ public class ContestResultReadService {
     private final MarketDatasetRepository marketDatasetRepository;
     private final BacktestRunRepository backtestRunRepository;
     private final BacktestResultRepository backtestResultRepository;
+    private final BacktestEquityRepository backtestEquityRepository;
 
     public ContestResultReadService(
             ContestRoundRepository contestRoundRepository,
@@ -61,7 +66,8 @@ public class ContestResultReadService {
             ContestResultRepository contestResultRepository,
             MarketDatasetRepository marketDatasetRepository,
             BacktestRunRepository backtestRunRepository,
-            BacktestResultRepository backtestResultRepository
+            BacktestResultRepository backtestResultRepository,
+            BacktestEquityRepository backtestEquityRepository
     ) {
         this.contestRoundRepository = contestRoundRepository;
         this.contestEntryRepository = contestEntryRepository;
@@ -70,6 +76,7 @@ public class ContestResultReadService {
         this.marketDatasetRepository = marketDatasetRepository;
         this.backtestRunRepository = backtestRunRepository;
         this.backtestResultRepository = backtestResultRepository;
+        this.backtestEquityRepository = backtestEquityRepository;
     }
 
     public ContestProgress getProgress(UUID roundId) {
@@ -124,6 +131,7 @@ public class ContestResultReadService {
             datasets.put(dataset.getDatasetId(), dataset);
         }
 
+        boolean finished = round.getPhase() == ContestPhase.FINISHED;
         List<ContestDatasetOutcome> outcomes = new ArrayList<>();
         int finishedBacktests = 0;
         List<ContestEvaluation> evaluations = contestEvaluationRepository.findAllByIdEntryIdIn(
@@ -145,7 +153,8 @@ public class ContestResultReadService {
                     backtestResult == null ? null : backtestResult.getCumulativeReturn(),
                     backtestResult == null ? null : backtestResult.getMdd(),
                     evaluation.getAverageExposure(),
-                    backtestResult == null ? null : backtestResult.getTradeCount()
+                    backtestResult == null ? null : backtestResult.getTradeCount(),
+                    finished && backtestResult != null ? equityCurve(evaluation.getBacktestId()) : List.of()
             ));
         }
         outcomes.sort(Comparator.comparing(ContestDatasetOutcome::kind));
@@ -193,6 +202,14 @@ public class ContestResultReadService {
                 pageable
         );
         return new ContestRankings(rows, contestResultRepository.countDisqualifiedByRoundId(roundId));
+    }
+
+    private List<ContestEquityPoint> equityCurve(UUID backtestId) {
+        return ContestEquityPoint.lastOfEachDay(
+                backtestEquityRepository.findAllByBacktestRunBacktestIdOrderByIdValuationAtAsc(backtestId).stream()
+                        .map(equity -> new ContestEquityPoint(equity.getId().getValuationAt(), equity.getReturnRate()))
+                        .toList()
+        );
     }
 
     public List<MarketDataset> getDatasets(UUID roundId) {
@@ -250,7 +267,8 @@ public class ContestResultReadService {
             BigDecimal cumulativeReturn,
             BigDecimal maximumDrawdown,
             BigDecimal averageExposure,
-            Integer tradeCount
+            Integer tradeCount,
+            List<ContestEquityPoint> equityCurve
     ) {
     }
 

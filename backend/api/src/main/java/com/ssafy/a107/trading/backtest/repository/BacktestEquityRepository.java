@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -18,6 +19,9 @@ public interface BacktestEquityRepository extends JpaRepository<BacktestEquity, 
             UUID backtestId,
             Pageable pageable
     );
+
+    // 대회 결과 화면의 자산 곡선이다. 받은 쪽이 하루 한 점으로 줄인다.
+    List<BacktestEquity> findAllByBacktestRunBacktestIdOrderByIdValuationAtAsc(UUID backtestId);
 
     // 평균 투자 비중이다. 대회 채점의 실격 규칙이 쓴다 (ADR-0003).
     @Query("""

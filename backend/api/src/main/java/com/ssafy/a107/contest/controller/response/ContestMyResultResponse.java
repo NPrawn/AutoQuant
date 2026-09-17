@@ -1,6 +1,7 @@
 package com.ssafy.a107.contest.controller.response;
 
 import com.ssafy.a107.contest.domain.ContestDisqualificationReason;
+import com.ssafy.a107.contest.domain.ContestEquityPoint;
 import com.ssafy.a107.contest.domain.ContestResult;
 import com.ssafy.a107.contest.domain.MarketDatasetKind;
 import com.ssafy.a107.contest.service.ContestResultReadService.ContestDatasetOutcome;
@@ -62,7 +63,8 @@ public record ContestMyResultResponse(
             BigDecimal cumulativeReturn,
             BigDecimal maximumDrawdown,
             BigDecimal averageExposure,
-            Integer tradeCount
+            Integer tradeCount,
+            List<ContestEquityPointItem> equityCurve
     ) {
 
         static ContestDatasetOutcomeItem from(ContestDatasetOutcome outcome) {
@@ -75,8 +77,17 @@ public record ContestMyResultResponse(
                     outcome.cumulativeReturn(),
                     outcome.maximumDrawdown(),
                     outcome.averageExposure(),
-                    outcome.tradeCount()
+                    outcome.tradeCount(),
+                    outcome.equityCurve().stream().map(ContestEquityPointItem::from).toList()
             );
+        }
+    }
+
+    /* 마감 뒤에만 채워지는 하루 한 점 자산 곡선. returnRate 는 초기 자본 대비 누적 수익률이다. */
+    public record ContestEquityPointItem(Instant valuationAt, BigDecimal returnRate) {
+
+        static ContestEquityPointItem from(ContestEquityPoint point) {
+            return new ContestEquityPointItem(point.valuationAt(), point.returnRate());
         }
     }
 }
