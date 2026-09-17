@@ -31,7 +31,7 @@ public interface ContestResultRepository extends JpaRepository<ContestResult, UU
     /* 회차마다 1위 한 줄. 동점이면 그중 하나가 온다. */
     @Query("""
             select new com.ssafy.a107.contest.repository.ContestRoundTopResult(
-                entry.round.roundId, strategy.name, member.displayName, result.totalScore
+                entry.round.roundId, strategy.name, member.displayName, result.totalScore, member.memberId
             )
             from ContestEntry entry
             join entry.strategy strategy
@@ -54,8 +54,9 @@ public interface ContestResultRepository extends JpaRepository<ContestResult, UU
     void deleteAllByRoundId(@Param("roundId") UUID roundId);
 
     /*
-     * 랭킹 화면(목업 06)이 쓰는 조회다. 순위가 있는 제출만 보여 주고, 국면 필터는 그 국면의 낙폭 백분위가
+     * 랭킹 화면(목업 06)이 쓰는 조회다. 순위가 있는 제출만 보여 주고, 국면 필터는 그 국면 점수가
      * 세 국면 중 가장 높은 제출을 남긴다. 정렬 기준이 둘뿐이라 쿼리 하나에 담고 동점은 순위로 가른다.
+     * 검색은 전략 이름만 본다. 참가자 이름은 가려서 보여 주므로 이름으로 찾으면 가린 실명이 드러난다.
      */
     @Query(
             value = """
@@ -71,11 +72,7 @@ public interface ContestResultRepository extends JpaRepository<ContestResult, UU
                     join ContestResult result on result.entryId = entry.entryId
                     where entry.round.roundId = :roundId
                       and result.ranking is not null
-                      and (
-                        :keyword is null
-                        or lower(strategy.name) like :keyword
-                        or lower(member.displayName) like :keyword
-                      )
+                      and (:keyword is null or lower(strategy.name) like :keyword)
                       and (
                         :bull = false
                         or (result.bullRegimeScore >= result.bearRegimeScore
@@ -102,11 +99,7 @@ public interface ContestResultRepository extends JpaRepository<ContestResult, UU
                     join ContestResult result on result.entryId = entry.entryId
                     where entry.round.roundId = :roundId
                       and result.ranking is not null
-                      and (
-                        :keyword is null
-                        or lower(strategy.name) like :keyword
-                        or lower(member.displayName) like :keyword
-                      )
+                      and (:keyword is null or lower(strategy.name) like :keyword)
                       and (
                         :bull = false
                         or (result.bullRegimeScore >= result.bearRegimeScore

@@ -54,7 +54,8 @@ class ContestReadServiceTest {
         given(contestEntryRepository.countByRound()).willReturn(List.of(new ContestRoundEntryCount(FIRST_ROUND, 12)));
         given(contestResultRepository.findAllByEntryIdIn(any())).willReturn(List.of(scored(MY_ENTRY, 2)));
         given(contestResultRepository.findTopResults()).willReturn(List.of(
-                new ContestRoundTopResult(FIRST_ROUND, "변동성 눌림 스윙", "가온", new BigDecimal("55.180"))));
+                new ContestRoundTopResult(FIRST_ROUND, "변동성 눌림 스윙", "가온", new BigDecimal("55.180"),
+                        UUID.randomUUID())));
 
         List<ContestRoundSummary> summaries = service.getRounds(MEMBER_ID);
 

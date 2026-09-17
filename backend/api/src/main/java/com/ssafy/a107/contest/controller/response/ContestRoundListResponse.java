@@ -1,6 +1,7 @@
 package com.ssafy.a107.contest.controller.response;
 
 import com.ssafy.a107.contest.domain.ContestDisplayStatus;
+import com.ssafy.a107.contest.domain.ContestNickname;
 import com.ssafy.a107.contest.domain.ContestResult;
 import com.ssafy.a107.contest.repository.ContestRoundTopResult;
 import com.ssafy.a107.contest.service.ContestRoundSummary;
@@ -14,8 +15,9 @@ public record ContestRoundListResponse(
         List<ContestRoundItem> contests
 ) {
 
-    public static ContestRoundListResponse from(List<ContestRoundSummary> summaries) {
-        return new ContestRoundListResponse(summaries.stream().map(ContestRoundItem::from).toList());
+    public static ContestRoundListResponse from(List<ContestRoundSummary> summaries, UUID memberId) {
+        return new ContestRoundListResponse(
+                summaries.stream().map(summary -> ContestRoundItem.from(summary, memberId)).toList());
     }
 
     /*
@@ -37,7 +39,7 @@ public record ContestRoundListResponse(
             BigDecimal topTotalScore
     ) {
 
-        static ContestRoundItem from(ContestRoundSummary summary) {
+        static ContestRoundItem from(ContestRoundSummary summary, UUID memberId) {
             ContestResult myResult = summary.myResult();
             ContestRoundTopResult top = summary.top();
 
@@ -52,7 +54,7 @@ public record ContestRoundListResponse(
                     myResult == null ? null : myResult.getRanking(),
                     myResult == null ? null : myResult.getTotalScore(),
                     top == null ? null : top.strategyName(),
-                    top == null ? null : top.nickname(),
+                    top == null ? null : ContestNickname.visibleTo(top.nickname(), top.memberId(), memberId),
                     top == null ? null : top.totalScore()
             );
         }

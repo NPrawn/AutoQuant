@@ -59,7 +59,10 @@ public class ContestController {
     public ContestRoundListResponse getContests(
             @AuthenticationPrincipal MemberPrincipal principal
     ) {
-        return ContestRoundListResponse.from(contestReadService.getRounds(principal.memberId()));
+        return ContestRoundListResponse.from(
+                contestReadService.getRounds(principal.memberId()),
+                principal.memberId()
+        );
     }
 
     @GetMapping("/{roundId}")
@@ -79,9 +82,10 @@ public class ContestController {
 
     @GetMapping("/{roundId}/results")
     public ContestResultsResponse getResults(
+            @AuthenticationPrincipal MemberPrincipal principal,
             @PathVariable UUID roundId
     ) {
-        return ContestResultsResponse.from(contestResultReadService.getResults(roundId));
+        return ContestResultsResponse.from(contestResultReadService.getResults(roundId), principal.memberId());
     }
 
     /*

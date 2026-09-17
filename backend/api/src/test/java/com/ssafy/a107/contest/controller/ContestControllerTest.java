@@ -130,7 +130,7 @@ class ContestControllerTest {
                 2
         );
         ContestRoundTopResult top = new ContestRoundTopResult(
-                ROUND_ID, "변동성 눌림 스윙", "가온", new BigDecimal("55.180"));
+                ROUND_ID, "변동성 눌림 스윙", "가온누리", new BigDecimal("55.180"), OTHER_MEMBER_ID);
         ContestRoundSummary summary = new ContestRoundSummary(
                 round(), ContestDisplayStatus.OPEN, 12, entry(), myResult, top);
         given(contestReadService.getRounds(MEMBER_ID)).willReturn(List.of(summary));
@@ -148,6 +148,7 @@ class ContestControllerTest {
                                         회차마다 화면 상태, 제출 기간, 참가 수, 내 제출을 돌려줍니다.
                                         채점된 제출이 있으면 내 순위·총점과 회차 1위도 함께 옵니다.
                                         점수는 절대값이라 마감 전에도 값이 있고, 그때 순위는 잠정입니다.
+                                        1위가 다른 참가자면 이름을 첫 글자와 마지막 글자만 남기고 가립니다.
                                         """)
                                 .responseSchema(schema("ContestRoundListResponse"))
                                 .responseFields(listResponseFields())
@@ -162,7 +163,7 @@ class ContestControllerTest {
                 .body("contests[0].myRanking", equalTo(2))
                 .body("contests[0].myTotalScore", equalTo(48.133f))
                 .body("contests[0].topStrategyName", equalTo("변동성 눌림 스윙"))
-                .body("contests[0].topNickname", equalTo("가온"))
+                .body("contests[0].topNickname", equalTo("가**리"))
                 .body("contests[0].topTotalScore", equalTo(55.18f));
     }
 
@@ -312,9 +313,9 @@ class ContestControllerTest {
     @Test
     void getResults() {
         List<ContestResultReadService.ContestRanking> rankings = List.of(
-                new ContestResultReadService.ContestRanking(1, "대회 참가자", "모멘텀 전략",
+                new ContestResultReadService.ContestRanking(1, MEMBER_ID, "대회 참가자", "모멘텀 전략",
                         new BigDecimal("73.333"), new BigDecimal("66.667"), new BigDecimal("80.000"), null, null),
-                new ContestResultReadService.ContestRanking(null, "다른 참가자", "몰빵 전략",
+                new ContestResultReadService.ContestRanking(null, OTHER_MEMBER_ID, "다른 참가자", "몰빵 전략",
                         null, null, null, ContestDisqualificationReason.MDD_ABOVE_LIMIT, MarketDatasetKind.BULL)
         );
         given(contestResultReadService.getResults(ROUND_ID)).willReturn(rankings);
@@ -328,12 +329,17 @@ class ContestControllerTest {
                         resource(ResourceSnippetParameters.builder()
                                 .tag("대회")
                                 .summary("대회 순위표 조회")
-                                .description("종료된 회차의 순위와 점수를 돌려줍니다. 실격 제출은 순위 없이 사유와 함께 옵니다.")
+                                .description("""
+                                        회차의 순위와 점수를 돌려줍니다. 실격 제출은 순위 없이 사유와 함께 옵니다.
+                                        마감 전 순위는 그때까지 채점된 제출 사이의 잠정 순위입니다.
+                                        다른 참가자 이름은 첫 글자와 마지막 글자만 남기고 가립니다.
+                                        """)
                                 .responseSchema(schema("ContestResultsResponse"))
                                 .responseFields(
                                         fieldWithPath("rankings[].ranking").type(JsonFieldType.NUMBER).optional()
                                                 .description("순위. 실격이면 null"),
-                                        fieldWithPath("rankings[].nickname").type(JsonFieldType.STRING).description("참가자 이름"),
+                                        fieldWithPath("rankings[].nickname").type(JsonFieldType.STRING)
+                                                .description("참가자 이름. 다른 참가자는 가린 이름"),
                                         fieldWithPath("rankings[].strategyName").type(JsonFieldType.STRING).description("전략 이름"),
                                         fieldWithPath("rankings[].totalScore").type(JsonFieldType.NUMBER).optional()
                                                 .description("총점"),
@@ -452,18 +458,17 @@ class ContestControllerTest {
                                 .tag("대회")
                                 .summary("대회 회차 랭킹 조회")
                                 .description("""
-                                        종료된 회차의 순위를 페이지로 돌려줍니다.
-                                        정렬은 총점(TOTAL)과 안정성(STABILITY)이고, 국면 필터는 그 국면의 낙폭 백분위가
+                                        회차의 순위를 페이지로 돌려줍니다. 마감 전 순위는 잠정입니다.
+                                        정렬은 총점(TOTAL)과 안정성(STABILITY)이고, 국면 필터는 그 국면 점수가
                                         세 국면 중 가장 높은 제출만 남깁니다. 일반장(GENERAL)은 필터 대상이 아니라 400입니다.
-                                        검색은 전략 이름과 참가자 이름의 부분 일치입니다.
+                                        검색은 전략 이름의 부분 일치입니다. 다른 참가자 이름은 가려서 주므로 검색하지 않습니다.
                                         실격 제출은 순위가 없어 목록에서 빠지고 수만 disqualifiedCount 로 옵니다.
-                                        채점이 끝나지 않은 회차는 CONTEST-409-003(409)입니다.
                                         """)
                                 .responseSchema(schema("ContestRankingPageResponse"))
                                 .queryParameters(
                                         parameterWithName("sort").optional().description("정렬 기준. TOTAL(기본), STABILITY"),
                                         parameterWithName("kind").optional().description("국면 필터. BULL, BEAR, SIDEWAYS"),
-                                        parameterWithName("query").optional().description("전략 이름·참가자 이름 검색어"),
+                                        parameterWithName("query").optional().description("전략 이름 검색어"),
                                         parameterWithName("page").optional().description("페이지 번호. 기본 0"),
                                         parameterWithName("size").optional().description("페이지 크기. 1~100, 기본 20")
                                 )
@@ -473,6 +478,8 @@ class ContestControllerTest {
                 .statusCode(HttpStatus.OK.value())
                 .body("content[0].strategyId", equalTo(7))
                 .body("content[0].mine", equalTo(true))
+                .body("content[0].nickname", equalTo("대회 참가자"))
+                .body("content[1].nickname", equalTo("다****자"))
                 .body("content[0].published", equalTo(true))
                 .body("content[0].bearRegimeScore", equalTo(66.667f))
                 .body("content[1].mine", equalTo(false))
@@ -560,7 +567,8 @@ class ContestControllerTest {
                 fieldWithPath("content[].ranking").type(JsonFieldType.NUMBER).description("순위"),
                 fieldWithPath("content[].strategyId").type(JsonFieldType.NUMBER).description("전략 ID"),
                 fieldWithPath("content[].strategyName").type(JsonFieldType.STRING).description("전략 이름"),
-                fieldWithPath("content[].nickname").type(JsonFieldType.STRING).description("참가자 이름"),
+                fieldWithPath("content[].nickname").type(JsonFieldType.STRING)
+                        .description("참가자 이름. 다른 참가자는 첫 글자와 마지막 글자만 남기고 가린다"),
                 fieldWithPath("content[].published").type(JsonFieldType.BOOLEAN)
                         .description("공개 전략 여부. 공개 전략만 복제할 수 있다"),
                 fieldWithPath("content[].totalScore").type(JsonFieldType.NUMBER).description("종합 점수"),
