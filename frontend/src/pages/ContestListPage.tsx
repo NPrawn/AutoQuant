@@ -4,7 +4,7 @@ import { to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { useNow } from '../contest/clock'
-import { contestStatusLabels, formatDate, formatDateTime, formatRemaining } from '../contest/labels'
+import { contestStatusLabels, formatDate, formatDateTime, formatRemaining, formatScore } from '../contest/labels'
 import { useContests } from '../contest/queries'
 import type { ContestRoundItemResponse } from '../contest/types'
 
@@ -101,20 +101,32 @@ export function ContestListPage() {
                   <tr>
                     <th>이름</th>
                     <th className="r">참가</th>
-                    <th>내 제출</th>
-                    <th className="r">마감</th>
+                    <th>1위 전략</th>
+                    <th className="r">내 순위</th>
+                    <th className="r">종합 점수</th>
                     <th />
                   </tr>
                 </thead>
                 <tbody>
                   {past.map((round) => (
                     <tr key={round.roundId}>
-                      <td>{round.title}</td>
-                      <td className="r mono">{round.entryCount}</td>
-                      <td className={round.mySubmission ? 'strategy-name-cell' : 'muted-cell'}>
-                        {round.mySubmission?.strategyName ?? '미참가'}
+                      <td>
+                        {round.title}
+                        <small className="muted-cell" style={{ display: 'block' }}>
+                          {formatDate(round.submissionEndsAt)} 마감
+                        </small>
                       </td>
-                      <td className="r mono">{formatDate(round.submissionEndsAt)}</td>
+                      <td className="r mono">{round.entryCount}</td>
+                      {round.topStrategyName === null ? (
+                        <td className="muted-cell">—</td>
+                      ) : (
+                        <td className="strategy-name-cell">
+                          <b>{round.topStrategyName}</b>
+                          <small>{round.topNickname}</small>
+                        </td>
+                      )}
+                      <td className="r mono">{myRankLabel(round)}</td>
+                      <td className="r mono">{formatScore(round.myTotalScore)}</td>
                       <td style={{ textAlign: 'right' }}>
                         <Link className="rank-action" to={to.contestResult(round.roundId)}>
                           결과 보기
@@ -130,6 +142,17 @@ export function ContestListPage() {
       )}
     </section>
   )
+}
+
+/* 내 순위 칸. 제출하지 않았으면 미참가, 제출했는데 순위가 없으면 실격이거나 아직 채점 중이다. */
+function myRankLabel(round: ContestRoundItemResponse): string {
+  if (round.mySubmission === null) {
+    return '미참가'
+  }
+  if (round.myRanking === null) {
+    return '—'
+  }
+  return String(round.myRanking)
 }
 
 /* 목업 30 의 .ct-live. 제출 중이면 마감까지 남은 시간을, 채점 중이면 결과로 가는 길을 보여 준다. */

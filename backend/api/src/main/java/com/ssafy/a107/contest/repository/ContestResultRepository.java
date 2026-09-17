@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,6 +25,21 @@ public interface ContestResultRepository extends JpaRepository<ContestResult, UU
     List<ContestResult> findAllByRoundId(@Param("roundId") UUID roundId);
 
     Optional<ContestResult> findByEntryId(UUID entryId);
+
+    List<ContestResult> findAllByEntryIdIn(Collection<UUID> entryIds);
+
+    /* 회차마다 1위 한 줄. 동점이면 그중 하나가 온다. */
+    @Query("""
+            select new com.ssafy.a107.contest.repository.ContestRoundTopResult(
+                entry.round.roundId, strategy.name, member.displayName, result.totalScore
+            )
+            from ContestEntry entry
+            join entry.strategy strategy
+            join entry.member member
+            join ContestResult result on result.entryId = entry.entryId
+            where result.ranking = 1
+            """)
+    List<ContestRoundTopResult> findTopResults();
 
     void deleteByEntryId(UUID entryId);
 
