@@ -7,7 +7,7 @@ import pytest
 
 from scripts.contest_sim.jwt_token import issue
 from scripts.contest_sim.run_contest import load_strategies
-from scripts.contest_sim.scoring import percentiles, score
+from scripts.contest_sim.scoring import market_drawdowns, percentiles, regime_score, score
 
 SECRET = "local-contest-secret-at-least-32-bytes"
 CAPS = {"1H": 5039, "4H": 1259, "1D": 209}
@@ -39,9 +39,10 @@ def test_percentiles_give_ties_their_average_rank():
 
 
 def _runs(general_return: float, mdds: tuple[float, float, float], exposure: float = 0.8) -> dict:
-    runs = {"GENERAL": {"status": "COMPLETED", "return": general_return, "mdd": 0.1, "exposure": exposure}}
+    runs = {"GENERAL": {"status": "COMPLETED", "return": general_return, "mdd": 0.1, "exposure": exposure,
+                        "market_mdd": 0.2}}
     for kind, mdd in zip(("BULL", "BEAR", "SIDEWAYS"), mdds):
-        runs[kind] = {"status": "COMPLETED", "return": 0.0, "mdd": mdd, "exposure": exposure}
+        runs[kind] = {"status": "COMPLETED", "return": 0.0, "mdd": mdd, "exposure": exposure, "market_mdd": 0.2}
     return runs
 
 
@@ -54,14 +55,52 @@ def test_score_ranks_qualified_strategies_and_lists_disqualified_ones():
         "crash": _runs(0.1, (0.1, 0.6, 0.1)),
     }
 
-    # 시장 +10% 기준. 점수는 남들과 무관하게 시장 대비 수익률과 낙폭으로만 정해진다.
+    # 시장 +10%, 시장 낙폭 20% 기준. 점수는 남들과 무관하게 시장 대비 수익률과 낙폭으로만 정해진다.
     rows = score(results, market_return=0.1)
 
     ranked = [(row["strategy"], round(row["total"], 3)) for row in rows[:3]]
-    assert ranked == [("s1", 76.667), ("s2", 67.6), ("s3", 59.333)]
+    assert ranked == [("s1", 70.833), ("s2", 60.5), ("s3", 55.0)]
     reasons = {row["strategy"]: row["disqualified"] for row in rows[3:]}
     assert "투자 비중" in reasons["cash"]
     assert "BEAR 최대 낙폭" in reasons["crash"]
+
+
+def test_regime_score_is_fifty_when_the_strategy_falls_as_far_as_the_market():
+    assert regime_score(0.36, 0.36) == 50.0
+    assert round(regime_score(0.06, 0.36), 6) == 100.0
+    assert regime_score(0.70, 0.36) == 0.0
+
+
+def _candle(asset: str, minutes: int, open_time: str, close: float) -> str:
+    return f"{asset},{minutes},{open_time},{close},{close},{close},{close},1,1,{open_time}\n"
+
+
+def test_market_drawdowns_hold_the_basket_from_the_last_close_before_the_period(tmp_path):
+    path = tmp_path / "BEAR.csv"
+    rows = ["asset_id,interval_minutes,open_time,open_price,high_price,low_price,close_price,trade_volume,"
+            "trade_amount,last_event_time\n"]
+    # 기준가: 평가 시작(01-02 00:00) 전에 닫힌 마지막 봉. 앞선 봉 200 은 기준이 아니다.
+    for asset in ("a", "b"):
+        rows.append(_candle(asset, 60, "2030-01-01T22:00:00Z", 200))
+        rows.append(_candle(asset, 60, "2030-01-01T23:00:00Z", 100))
+        rows.append(_candle(asset, 240, "2030-01-01T20:00:00Z", 100))
+        rows.append(_candle(asset, 1440, "2030-01-01T00:00:00Z", 100))
+    # a 는 120 → 90 → 110, b 는 100 그대로. 바구니는 1.10 → 0.95 → 1.05 라 낙폭 1 − 0.95/1.10.
+    for hour, close in enumerate((120, 90, 110)):
+        rows.append(_candle("a", 60, f"2030-01-02T{hour:02d}:00:00Z", close))
+    for hour in range(3):
+        rows.append(_candle("b", 60, f"2030-01-02T{hour:02d}:00:00Z", 100))
+    # 4시간봉은 올랐다 제자리라 고점 1.05 에서 1.00 으로, 평가 끝 뒤 봉은 보지 않는다.
+    rows.append(_candle("a", 240, "2030-01-02T00:00:00Z", 110))
+    rows.append(_candle("a", 240, "2030-01-02T04:00:00Z", 100))
+    rows.append(_candle("a", 240, "2030-01-03T00:00:00Z", 10))
+    path.write_text("".join(rows), encoding="utf-8")
+
+    drawdowns = market_drawdowns(str(path), "2030-01-02T00:00:00Z", "2030-01-03T00:00:00Z")
+
+    assert round(drawdowns["1H"], 6) == round(1 - 0.95 / 1.10, 6)
+    assert round(drawdowns["4H"], 6) == round(1 - 1.00 / 1.05, 6)
+    assert drawdowns["1D"] == 0.0
 
 
 def test_sample_strategies_are_valid_and_fit_the_default_warmup():

@@ -19,7 +19,8 @@ import java.util.UUID;
  *   네 벌을 모두 통과하면 일반장 평균 투자 비중을 본다.
  * - 수익률 점수: 일반장에서 시장보다 얼마나 더 벌었는지. 시장과 같으면 50점, 시장 대비 +30%면 100점,
  *   실격선인 시장 대비 −30%면 0점이다. 장세 난이도는 시장 수익률이 흡수한다.
- * - 국면 점수: 구간 최대 낙폭을 실격선 50%로 잰다. 낙폭 0%면 100점, 50%면 0점이다.
+ * - 국면 점수: 구간 최대 낙폭을 그 장세의 시장 낙폭과 견준다. 시장과 같으면 50점, 시장보다 30%p 덜 빠지면
+ *   100점, 30%p 더 빠지면 0점이다. 장세가 거칠어 누구나 깊이 빠지는 구간도 시장 낙폭이 흡수한다.
  * - 안정성 점수: 상승·하락·횡보 국면 점수의 평균 × 0.6 + 최저 × 0.4.
  * - 총점: 수익률 점수 × 0.5 + 안정성 점수 × 0.5.
  *
@@ -32,7 +33,8 @@ public final class ContestScoreCalculator {
     private static final int SCORE_SCALE = 3;
     /* 수익률 점수의 척도. 시장 대비 −30%가 0점, +30%가 100점이다. */
     private static final double RETURN_SPAN = 0.30;
-    private static final double MAXIMUM_DRAWDOWN = ContestScoringPolicy.MAXIMUM_DRAWDOWN.doubleValue();
+    /* 국면 점수의 척도. 시장 낙폭보다 30%p 더 빠지면 0점, 30%p 덜 빠지면 100점이다. */
+    private static final double DRAWDOWN_SPAN = 0.30;
 
     private ContestScoreCalculator() {
     }
@@ -90,9 +92,10 @@ public final class ContestScoreCalculator {
         return clamp((excess + RETURN_SPAN) / (2 * RETURN_SPAN) * 100);
     }
 
-    /** 구간 최대 낙폭을 실격선으로 재서 0~100 으로 옮긴다. 낙폭이 작을수록 높다. */
-    public static double regimeScore(BigDecimal maximumDrawdown) {
-        return clamp((1 - maximumDrawdown.doubleValue() / MAXIMUM_DRAWDOWN) * 100);
+    /** 구간 최대 낙폭을 그 장세의 시장 낙폭 대비로 재서 0~100 으로 옮긴다. 시장만큼 빠지면 50점이다. */
+    public static double regimeScore(BigDecimal maximumDrawdown, BigDecimal marketMaximumDrawdown) {
+        double avoided = marketMaximumDrawdown.doubleValue() - maximumDrawdown.doubleValue();
+        return clamp((avoided + DRAWDOWN_SPAN) / (2 * DRAWDOWN_SPAN) * 100);
     }
 
     public static double stabilityScore(List<Double> regimeScores) {
@@ -129,7 +132,8 @@ public final class ContestScoreCalculator {
 
             List<Double> perRegime = new ArrayList<>();
             for (MarketDatasetKind regime : REGIMES) {
-                double score = regimeScore(entryOutcomes.get(regime).maximumDrawdown());
+                ContestEvaluationOutcome outcome = entryOutcomes.get(regime);
+                double score = regimeScore(outcome.maximumDrawdown(), outcome.marketMaximumDrawdown());
                 regimeScores.get(regime).put(entryId, score);
                 perRegime.add(score);
             }

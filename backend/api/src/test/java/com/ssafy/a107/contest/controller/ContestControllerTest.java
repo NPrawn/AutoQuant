@@ -372,6 +372,7 @@ class ContestControllerTest {
                 Instant.parse("2030-02-11T00:00:00Z"),
                 Instant.parse("2030-05-13T00:00:00Z"),
                 new BigDecimal("1.549"),
+                new BigDecimal("0.38448381"),
                 new BigDecimal("1.721"),
                 new BigDecimal("0.189"),
                 new BigDecimal("0.989"),
@@ -393,6 +394,7 @@ class ContestControllerTest {
                 .body("entryCount", equalTo(10))
                 .body("datasets[0].kind", equalTo("GENERAL"))
                 .body("datasets[0].marketReturn", equalTo(1.549f))
+                .body("datasets[0].marketMaximumDrawdown", equalTo(0.38448381f))
                 .body("datasets[0].averageExposure", equalTo(0.989f));
     }
 
@@ -405,6 +407,9 @@ class ContestControllerTest {
                 Instant.parse("2030-02-11T00:00:00Z"),
                 Instant.parse("2030-05-13T00:00:00Z"),
                 new BigDecimal("1.549"),
+                new BigDecimal("0.38448381"),
+                new BigDecimal("0.38448381"),
+                new BigDecimal("0.32298406"),
                 Instant.parse("2019-10-07T00:00:00Z"),
                 Instant.parse("2021-10-04T00:00:00Z"),
                 20260915L,

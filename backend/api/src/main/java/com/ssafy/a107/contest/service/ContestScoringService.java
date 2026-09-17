@@ -148,7 +148,7 @@ public class ContestScoringService {
      */
     @Transactional
     public int scoreSettledEntries(UUID roundId) {
-        Map<UUID, MarketDatasetKind> kinds = datasetKinds(roundId);
+        Map<UUID, MarketDataset> datasets = datasets(roundId);
         Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> settled = new LinkedHashMap<>();
         Set<UUID> running = new LinkedHashSet<>();
 
@@ -160,8 +160,9 @@ public class ContestScoringService {
                 running.add(entryId);
                 continue;
             }
+            MarketDataset dataset = datasets.get(evaluation.getId().getDatasetId());
             settled.computeIfAbsent(entryId, key -> new LinkedHashMap<>())
-                    .put(kinds.get(evaluation.getId().getDatasetId()), outcome(evaluation, backtestRun));
+                    .put(dataset.getKind(), outcome(evaluation, backtestRun, dataset));
         }
 
         running.forEach(settled::remove);
@@ -206,7 +207,11 @@ public class ContestScoringService {
         return true;
     }
 
-    private ContestEvaluationOutcome outcome(ContestEvaluation evaluation, BacktestRun backtestRun) {
+    private ContestEvaluationOutcome outcome(
+            ContestEvaluation evaluation,
+            BacktestRun backtestRun,
+            MarketDataset dataset
+    ) {
         if (backtestRun.getStatus() == BacktestRunStatus.FAILED) {
             return ContestEvaluationOutcome.failed();
         }
@@ -217,17 +222,22 @@ public class ContestScoringService {
                             .findAverageExposure(evaluation.getBacktestId())
                             .orElse(BigDecimal.ZERO);
                     evaluation.recordAverageExposure(exposure);
-                    return ContestEvaluationOutcome.completed(result.getCumulativeReturn(), result.getMdd(), exposure);
+                    return ContestEvaluationOutcome.completed(
+                            result.getCumulativeReturn(),
+                            result.getMdd(),
+                            exposure,
+                            dataset.getMarketMaximumDrawdown(backtestRun.getTimeframe())
+                    );
                 })
                 .orElseGet(ContestEvaluationOutcome::failed);
     }
 
-    private Map<UUID, MarketDatasetKind> datasetKinds(UUID roundId) {
-        Map<UUID, MarketDatasetKind> kinds = new LinkedHashMap<>();
+    private Map<UUID, MarketDataset> datasets(UUID roundId) {
+        Map<UUID, MarketDataset> datasets = new LinkedHashMap<>();
         for (MarketDataset dataset : marketDatasetRepository.findAllByRoundRoundIdOrderByKindAsc(roundId)) {
-            kinds.put(dataset.getDatasetId(), dataset.getKind());
+            datasets.put(dataset.getDatasetId(), dataset);
         }
-        return kinds;
+        return datasets;
     }
 
     /** 채점 진행률이다. 화면이 채점 중에 보여 준다. */

@@ -109,6 +109,8 @@ export type ContestDatasetOutcomeResponse = {
   periodStart: string
   periodEnd: string
   marketReturn: number
+  /* 균등 보유의 최대 낙폭을 내 전략 봉 간격으로 잰 값. 국면 점수의 기준이다. */
+  marketMaximumDrawdown: number
   cumulativeReturn: number | null
   maximumDrawdown: number | null
   averageExposure: number | null

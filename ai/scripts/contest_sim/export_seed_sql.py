@@ -15,6 +15,8 @@ import os
 import sys
 import uuid
 
+from scripts.contest_sim.scoring import market_drawdowns
+
 KINDS = ("GENERAL", "BULL", "BEAR", "SIDEWAYS")
 CHUNK_ROWS = 500
 HOUR_MINUTES = 60
@@ -66,21 +68,26 @@ def _epoch(text: str) -> int:
     return int(datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp())
 
 
-def _dataset_sql(round_id: str, dataset_ids: dict[str, str], summary: dict, generator_version: str) -> str:
+def _dataset_sql(round_id: str, dataset_ids: dict[str, str], summary: dict, generator_version: str,
+                 drawdowns: dict[str, dict[str, float]]) -> str:
+    """drawdowns[kind][timeframe] 는 국면 점수의 기준인 시장 낙폭이다 (ADR-0003)."""
     rows = []
     for kind in KINDS:
         dataset = summary["datasets"][kind]
         weeks = json.dumps(dataset["weeks"], ensure_ascii=False)
+        market = drawdowns[kind]
         rows.append(
             f"    ({_quote(dataset_ids[kind])}, {_quote(round_id)}, {_quote(kind)}, "
             f"{_quote(summary['period_start'])}, {_quote(summary['period_end'])}, "
-            f"{dataset['evaluation_return']:.8f}, {_quote(summary['window']['start'])}, "
+            f"{dataset['evaluation_return']:.8f}, {market['1H']:.8f}, {market['4H']:.8f}, {market['1D']:.8f}, "
+            f"{_quote(summary['window']['start'])}, "
             f"{_quote(summary['window']['end'])}, {summary['seed']}, {_quote(weeks)}, "
             f"{_quote(generator_version)}, {dataset['filled_hours']})"
         )
     return (
         "INSERT INTO contest.market_dataset (\n"
         "    dataset_id, round_id, kind, period_start, period_end, evaluation_return,\n"
+        "    market_mdd_1h, market_mdd_4h, market_mdd_1d,\n"
         "    source_window_start, source_window_end, seed, source_weeks, generator_version, filled_hours\n"
         ") VALUES\n" + ",\n".join(rows) + ";\n"
     )
@@ -244,7 +251,11 @@ def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at
     parts += [
         _round_sql(round_id, title, starts_at, ends_at, summary, max_submissions),
         "\n",
-        _dataset_sql(round_id, dataset_ids, summary, generator_version),
+        _dataset_sql(round_id, dataset_ids, summary, generator_version, {
+            kind: market_drawdowns(os.path.join(datasets_dir, f"{kind}.csv"), summary["period_start"],
+                                   summary["period_end"])
+            for kind in KINDS
+        }),
         "\n",
         _asset_seed_sql(sorted(set(markets.values()))),
         "\n",
