@@ -1,6 +1,7 @@
 package com.ssafy.a107.asset.service;
 
 import com.ssafy.a107.asset.domain.Asset;
+import com.ssafy.a107.asset.domain.AssetTradingStatus;
 import com.ssafy.a107.asset.domain.Exchange;
 import com.ssafy.a107.asset.domain.MarketDataCollectionStatus;
 import com.ssafy.a107.asset.domain.MarketDataCollectionTarget;
@@ -46,6 +47,16 @@ public class CollectedAssetReadService {
         return collectionTargetRepository.findByCollectionStatus(MarketDataCollectionStatus.ENABLED).stream()
                 .map(MarketDataCollectionTarget::getAssetId)
                 .toList();
+    }
+
+    /*
+     * 지금 거래지원 중이면서 수집하는 종목이다. 화면의 종목 목록이 쓴다.
+     * 수집하지 않는 종목은 거래소에서 거래 중이어도 우리에게 캔들이 없어 차트도 후보군도 비어 있다.
+     */
+    public List<Asset> findCollectedTradingAssets(Exchange exchange, String quoteCurrencyCode) {
+        return keepCollected(assetRepository
+                .findByExchangeAndQuoteCurrencyCodeAndTradingStatusOrderByExchangeMarketCodeAsc(
+                        exchange, quoteCurrencyCode, AssetTradingStatus.TRADING));
     }
 
     public List<Asset> findAvailableAt(Exchange exchange, String quoteCurrencyCode, Instant evaluationAt) {
