@@ -126,6 +126,20 @@ class BacktestJobFailureServiceTest {
         );
     }
 
+    @DisplayName("대회 백테스트는 실패 알림을 내지 않는다. 그 제출은 채점 알림에서 실격으로 알린다")
+    @Test
+    void skipNotificationForContestRun() {
+        given(backtestRunRepository.findByBacktestIdForUpdate(BACKTEST_ID))
+                .willReturn(Optional.of(backtestRun));
+        given(backtestRun.getStatus()).willReturn(BacktestRunStatus.RUNNING);
+        given(backtestRun.isContest()).willReturn(true);
+
+        assertThat(service().fail(BACKTEST_ID, new InsufficientCandleDataException("warmup 20 candles required")))
+                .isTrue();
+
+        then(applicationEventPublisher).shouldHaveNoInteractions();
+    }
+
     @DisplayName("실패를 알리는 알림에 다음에 할 수 있는 일을 담고 내부 예외는 담지 않는다")
     @Test
     void publishFailureNotification() {

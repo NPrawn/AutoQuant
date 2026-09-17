@@ -69,7 +69,7 @@ class BacktestRunReadServiceTest {
     @Test
     @DisplayName("회원 소유가 아닌 백테스트 실행은 단건 조회할 수 없다")
     void rejectBacktestRunOutsideMemberOwnership() {
-        given(backtestRunRepository.findByBacktestIdAndMemberMemberId(BACKTEST_ID, MEMBER_ID))
+        given(backtestRunRepository.findByBacktestIdAndMemberMemberIdAndContestDatasetIdIsNull(BACKTEST_ID, MEMBER_ID))
                 .willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service()
@@ -80,11 +80,25 @@ class BacktestRunReadServiceTest {
     }
 
     @Test
+    @DisplayName("대회 백테스트는 연습 화면에서 찾을 수 없다. 체결과 자산 추이로 채점용 데이터가 드러난다")
+    void hideContestBacktestRuns() {
+        /* 조회가 대회 실행을 빼는 메서드를 쓰므로 대회 실행이면 빈 값이 온다. */
+        given(backtestRunRepository.findByBacktestIdAndMemberMemberIdAndContestDatasetIdIsNull(BACKTEST_ID, MEMBER_ID))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service().getBacktestResult(MEMBER_ID, BACKTEST_ID))
+                .isInstanceOfSatisfying(ApiException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.BACKTEST_NOT_FOUND)
+                );
+        then(backtestResultRepository).shouldHaveNoInteractions();
+    }
+
+    @Test
     @DisplayName("소유한 백테스트 실행의 최종 결과를 조회한다")
     void getBacktestResult() {
         BacktestRun run = org.mockito.Mockito.mock(BacktestRun.class);
         BacktestResult result = org.mockito.Mockito.mock(BacktestResult.class);
-        given(backtestRunRepository.findByBacktestIdAndMemberMemberId(BACKTEST_ID, MEMBER_ID))
+        given(backtestRunRepository.findByBacktestIdAndMemberMemberIdAndContestDatasetIdIsNull(BACKTEST_ID, MEMBER_ID))
                 .willReturn(Optional.of(run));
         given(backtestResultRepository.findById(BACKTEST_ID))
                 .willReturn(Optional.of(result));
@@ -109,7 +123,7 @@ class BacktestRunReadServiceTest {
         Page<BacktestEquity> equities = new PageImpl<>(List.of(
                 org.mockito.Mockito.mock(BacktestEquity.class)
         ));
-        given(backtestRunRepository.findByBacktestIdAndMemberMemberId(BACKTEST_ID, MEMBER_ID))
+        given(backtestRunRepository.findByBacktestIdAndMemberMemberIdAndContestDatasetIdIsNull(BACKTEST_ID, MEMBER_ID))
                 .willReturn(Optional.of(run));
         given(backtestTradeRepository
                 .findAllByBacktestRunBacktestIdOrderByFilledAtAscTradeIdAsc(

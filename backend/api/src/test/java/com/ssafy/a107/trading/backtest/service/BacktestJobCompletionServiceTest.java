@@ -161,6 +161,20 @@ class BacktestJobCompletionServiceTest {
         assertThat(event.getValue().targetId()).isEqualTo(BACKTEST_ID.toString());
     }
 
+    @DisplayName("대회 백테스트는 완료 알림을 내지 않는다. 채점이 끝나면 회차 알림 하나가 나간다")
+    @Test
+    void skipNotificationForContestRun() {
+        given(backtestRunRepository.findByBacktestIdForUpdate(BACKTEST_ID))
+                .willReturn(Optional.of(backtestRun));
+        given(backtestRun.getStatus()).willReturn(BacktestRunStatus.RUNNING);
+        given(backtestRun.isContest()).willReturn(true);
+
+        assertThat(service().complete(BACKTEST_ID, executionResult())).isTrue();
+
+        then(backtestResultPersistenceService).should().persist(any(), any(), anyList(), anyMap(), anyList());
+        then(applicationEventPublisher).shouldHaveNoInteractions();
+    }
+
     /* 알림 문구는 전략 이름과 소유자, 평가 기간을 읽는다. 그 경로까지 가는 시험에서만 준비한다. */
     private void givenNotifiableRun() {
         Member member = mock(Member.class);

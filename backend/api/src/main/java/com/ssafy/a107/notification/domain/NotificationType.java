@@ -13,5 +13,8 @@ public enum NotificationType {
     BACKTEST_FAILED,
 
     /* targetId 는 모의투자 실행 식별자다. 사용자가 멈춘 것이 아니라 엔진이 멈춘 경우다. */
-    SIMULATION_FAILED
+    SIMULATION_FAILED,
+
+    /* targetId 는 대회 회차 식별자다. 제출이 채점되면 백테스트 4벌을 합쳐 한 번만 알린다. */
+    CONTEST_SCORED
 }

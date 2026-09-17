@@ -47,6 +47,10 @@ public class BacktestJobFailureService {
 
         BacktestFailureCode failureCode = failureCode(throwable);
         backtestRun.fail(failureCode, failureReason(throwable));
+        /* 대회 백테스트가 실패하면 그 제출은 실격이다. 채점 알림 하나로 알린다. */
+        if (backtestRun.isContest()) {
+            return true;
+        }
         applicationEventPublisher.publishEvent(new NotificationRequestedEvent(
                 backtestRun.getMember().getMemberId(),
                 NotificationType.BACKTEST_FAILED,
