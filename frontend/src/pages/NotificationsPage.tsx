@@ -122,5 +122,8 @@ function targetRoute(notification: AppNotification): string | null {
       return to.backtestRun(notification.targetId)
     case 'SIMULATION_FAILED':
       return to.simulationLive(notification.targetId)
+    /* 대회 알림의 targetId 는 회차 식별자다. 제출 하나의 성적과 순위를 결과 화면에서 본다. */
+    case 'CONTEST_SCORED':
+      return to.contestResult(notification.targetId)
   }
 }

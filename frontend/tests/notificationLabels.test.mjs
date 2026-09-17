@@ -27,5 +27,7 @@ test('그 앞은 며칠 전인지로 읽고 한 주가 넘으면 날짜로 읽�
 test('실패는 alert, 완료는 done 으로 색 계약을 지킨다', () => {
   assert.equal(notificationLooks.BACKTEST_FAILED.tone, 'alert')
   assert.equal(notificationLooks.SIMULATION_FAILED.tone, 'alert')
+  assert.equal(notificationLooks.CONTEST_SCORED.tone, 'contest')
+  assert.equal(notificationLooks.CONTEST_SCORED.action, '결과 보기')
   assert.equal(notificationLooks.BACKTEST_COMPLETED.tone, 'done')
 })

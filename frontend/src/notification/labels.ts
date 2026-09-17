@@ -14,6 +14,8 @@ export const notificationLooks: Record<NotificationType, NotificationLook> = {
   BACKTEST_COMPLETED: { tone: 'done', icon: '✓', action: '결과 보기' },
   BACKTEST_FAILED: { tone: 'alert', icon: '!', action: '사유 보기' },
   SIMULATION_FAILED: { tone: 'alert', icon: '!', action: '상태 보기' },
+  /* 대회 채점은 제출 하나에 하나만 온다. 목업 37 의 대회 줄과 같은 색을 쓴다. */
+  CONTEST_SCORED: { tone: 'contest', icon: '★', action: '결과 보기' },
 }
 
 const dayInMs = 24 * 60 * 60 * 1000
