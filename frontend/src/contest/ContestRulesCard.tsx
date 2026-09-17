@@ -22,7 +22,7 @@ export function ContestRulesCard({ round }: { round: ContestRoundDetailResponse 
           <i>수익률 점수 =</i> 일반장에서 시장보다 얼마나 더 벌었는지 <i>(시장과 같으면 50점)</i>
         </div>
         <div>
-          <i>국면 점수 =</i> 구간 낙폭을 실격선으로 잰 값 <i>(낙폭 0%면 100점)</i>
+          <i>국면 점수 =</i> 구간 낙폭을 그 장세의 시장 낙폭과 견준 값 <i>(시장만큼 빠지면 50점)</i>
         </div>
         <div>
           <i>안정성 점수 =</i> 상승·하락·횡보 국면 점수의 평균 × 0.6 + 최저 × 0.4

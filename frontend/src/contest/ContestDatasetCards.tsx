@@ -38,6 +38,8 @@ export function ContestOutcomeGrid({ outcomes }: { outcomes: ContestDatasetOutco
             <dd className={signClass(outcome.marketReturn)}>{formatPercent(outcome.marketReturn)}</dd>
             <dt>구간 최대 낙폭</dt>
             <dd className="dd-val">{formatPercent(outcome.maximumDrawdown)}</dd>
+            <dt>시장 최대 낙폭</dt>
+            <dd className="dd-val">{formatPercent(outcome.marketMaximumDrawdown)}</dd>
             <dt>평균 투자 비중</dt>
             <dd>{formatPercent(outcome.averageExposure)}</dd>
           </dl>

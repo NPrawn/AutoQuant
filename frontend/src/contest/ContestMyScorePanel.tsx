@@ -89,7 +89,8 @@ export function ContestMyScorePanel({ result, provisional }: ContestMyScorePanel
           <div>
             <div className="sec-title">국면 점수</div>
             <div className="sec-sub">
-              구간 낙폭을 실격선 50%로 잰 값이다. 낙폭 0%면 100점, 50%면 0점. 안정성 점수는 평균 × 0.6 + 최저 × 0.4
+              구간 낙폭을 그 장세의 시장 낙폭과 견준 값이다. 시장만큼 빠지면 50점, 30%p 덜 빠지면 100점. 안정성
+              점수는 평균 × 0.6 + 최저 × 0.4
             </div>
           </div>
         </div>
