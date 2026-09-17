@@ -32,12 +32,8 @@ export function ContestRulesCard({ round }: { round: ContestRoundDetailResponse 
         </div>
       </div>
       <div className="krow" style={{ marginTop: 16 }}>
-        <span>실격 — 구간 수익률</span>
-        <span>{formatPercent(rules.minimumReturn, 0)} 미만</span>
-      </div>
-      <div className="krow">
-        <span>실격 — 구간 최대 낙폭</span>
-        <span>{formatPercent(rules.maximumDrawdown, 0)} 초과</span>
+        <span>실격 — 백테스트</span>
+        <span>4벌 중 하나라도 실패</span>
       </div>
       <div className="krow">
         <span>실격 — 일반장 평균 투자 비중</span>

@@ -16,7 +16,7 @@ const apiError = (status, code) =>
   new ApiError(status, { timestamp: '', status, code, message: '서버 문구', path: '/contests', validationErrors: [] })
 
 test('실격 사유는 걸린 장세와 함께 읽는다', () => {
-  assert.equal(describeDisqualification('MDD_ABOVE_LIMIT', 'BEAR'), '하락장 최대 낙폭 실격선 초과')
+  assert.equal(describeDisqualification('BACKTEST_FAILED', 'BEAR'), '하락장 백테스트 실패')
   assert.equal(describeDisqualification('LOW_EXPOSURE', null), '평균 투자 비중 미달')
   assert.equal(describeDisqualification(null, 'BULL'), null)
 })
@@ -114,5 +114,5 @@ test('값이 모두 0이거나 없으면 축 폭을 1로 둬 나눗셈이 깨지
 test('백테스트가 다 끝나도 점수와 실격 사유가 비어 있으면 아직 채점을 기다린다', () => {
   assert.equal(awaitingScore({ totalScore: null, disqualificationReason: null }), true)
   assert.equal(awaitingScore({ totalScore: 72.1, disqualificationReason: null }), false)
-  assert.equal(awaitingScore({ totalScore: null, disqualificationReason: 'MDD_ABOVE_LIMIT' }), false)
+  assert.equal(awaitingScore({ totalScore: null, disqualificationReason: 'LOW_EXPOSURE' }), false)
 })

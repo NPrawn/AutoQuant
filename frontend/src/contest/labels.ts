@@ -22,8 +22,6 @@ export const datasetKindLabels: Record<MarketDatasetKind, string> = {
 
 const disqualificationLabels: Record<ContestDisqualificationReason, string> = {
   BACKTEST_FAILED: '백테스트 실패',
-  RETURN_BELOW_LIMIT: '수익률 실격선 미만',
-  MDD_ABOVE_LIMIT: '최대 낙폭 실격선 초과',
   LOW_EXPOSURE: '평균 투자 비중 미달',
 }
 
