@@ -5,6 +5,7 @@ import json
 import os
 import re
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -21,17 +22,18 @@ LOAD_COLUMNS = [
 
 def _hourly_row(asset: str, hour: int) -> dict:
     """One generated hourly candle. Padding zeros are what write_load_csv emits."""
+    opened = datetime(2030, 1, 7, tzinfo=timezone.utc) + timedelta(hours=hour)
     return {
         "asset_id": asset,
         "interval_minutes": "60",
-        "open_time": f"2030-01-07T{hour:02d}:00:00Z",
+        "open_time": opened.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "open_price": "100.000000000000",
         "high_price": "101.500000000000",
         "low_price": "99.000000000000",
         "close_price": "101.000000000000",
         "trade_volume": "2.500000000000000000",
         "trade_amount": "252.50000000",
-        "last_event_time": f"2030-01-07T{hour:02d}:59:59Z",
+        "last_event_time": (opened + timedelta(minutes=59, seconds=59)).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
 
@@ -62,8 +64,8 @@ def _write_datasets(directory: str, hours: int = 3, weeks: int = 3) -> dict:
                 for hour in range(hours):
                     writer.writerow(_hourly_row(asset, hour))
                 # 집계 봉도 같은 CSV 에 있다. 마이그레이션은 1시간봉만 싣는다.
-                rolled = _hourly_row(asset, 0) | {"interval_minutes": "240"}
-                writer.writerow(rolled)
+                writer.writerow(_hourly_row(asset, 0) | {"interval_minutes": "240"})
+                writer.writerow(_hourly_row(asset, 0) | {"interval_minutes": "1440"})
     with open(os.path.join(directory, "weeks.json"), "w", encoding="utf-8", newline="\n") as file:
         json.dump(summary, file, ensure_ascii=False)
     return summary
@@ -102,7 +104,7 @@ def test_only_hourly_rows_are_written_and_higher_intervals_are_aggregated_in_sql
     assert report["hourly_rows"] == len(KINDS) * len(MARKETS) * 3
     assert sql.count(", 60, ") == len(KINDS)
     assert "       240,\n" in sql and "       1440,\n" in sql
-    assert ", 240, " not in sql
+    assert ", 240, " not in sql and ", 1440, " not in sql
 
 
 def test_hourly_inserts_are_chunked(tmp_path):
@@ -133,7 +135,9 @@ def test_source_weeks_and_market_return_ride_along_for_the_result_screen(tmp_pat
     sql, _ = _export(tmp_path)
 
     datasets = sql.split("INSERT INTO contest.market_dataset (")[1].split(";")[0]
-    assert "0.23890000" in datasets
+    assert "market_mdd_1h, market_mdd_4h, market_mdd_1d" in datasets
+    # 봉이 모두 평가 시작 전이라 시장 낙폭은 0 이다. 수익률 다음에 1H·4H·1D 순으로 온다.
+    assert "0.23890000, 0.00000000, 0.00000000, 0.00000000," in datasets
     assert WEEK_STARTS[0] in datasets
     assert "'contest-2026-09-15'" in datasets
 

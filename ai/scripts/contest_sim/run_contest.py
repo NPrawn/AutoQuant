@@ -20,7 +20,7 @@ import urllib.request
 from app.core.schema import Condition, FactorOperand, FilterGroup, Strategy
 from contest.sampling import KINDS
 from scripts.contest_sim.jwt_token import issue
-from scripts.contest_sim.scoring import score
+from scripts.contest_sim.scoring import market_drawdowns, score
 
 LOAD_SQL = (
     "\\copy market_data.minute_candle (asset_id, interval_minutes, open_time, open_price, high_price, low_price, "
@@ -171,14 +171,19 @@ def run(config: dict, datasets_dir: str, strategies_path: str, out_path: str, po
     strategies = load_strategies(strategies_path, summary["max_factor_period"])
     api = connect(config)
     strategy_ids = create_strategies(api, strategies)
+    timeframes = {name: strategy.timeframe.value for name, _, strategy in strategies}
     results: dict[str, dict[str, dict]] = {name: {} for name in strategy_ids}
     for kind in KINDS:
-        load_candles(config, os.path.join(datasets_dir, f"{kind}.csv"))
+        csv_path = os.path.join(datasets_dir, f"{kind}.csv")
+        drawdowns = market_drawdowns(csv_path, summary["period_start"], summary["period_end"])
+        load_candles(config, csv_path)
         runs = run_backtests(api, strategy_ids, summary["period_start"], summary["period_end"],
                              f"{kind}-seed{summary['seed']}", poll_seconds)
         for name, result in runs.items():
-            results[name][kind] = result
-    report ={"seed": summary["seed"], "window": summary.get("window"), "results": results, "scores": score(results, summary["datasets"]["GENERAL"]["evaluation_return"])}
+            results[name][kind] = result | {"market_mdd": drawdowns[timeframes[name]]}
+    market_return = summary["datasets"]["GENERAL"]["evaluation_return"]
+    report = {"seed": summary["seed"], "window": summary.get("window"), "results": results,
+              "scores": score(results, market_return)}
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     with open(out_path, "w", encoding="utf-8", newline="\n") as file:
         json.dump(report, file, ensure_ascii=False, indent=2)
