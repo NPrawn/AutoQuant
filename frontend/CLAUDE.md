@@ -49,7 +49,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 결과 화면의 곡선·막대 좌표는 `src/contest/charts.ts` 의 순수 함수가 계산한다. 곡선은 목업의 `regime-spark`, 막대는 `pct-track` 을 그대로 쓰고 차트 라이브러리를 들이지 않는다. 자산 곡선은 종료 후에만 서버가 채워 준다.
 - 랭킹 표의 조회 조건은 `src/contest/rankingQuery.ts` 의 순수 함수에만 둔다. 정렬·국면·검색을 바꾸면 결과 수가 달라지므로 첫 페이지로 되돌리고, 조건은 서버에 넘겨 화면이 거르지 않는다. 내 성적 행은 `GET /contests/{roundId}/results/me` 로 따로 받아 표 아래에 고정한다. 페이지를 넘겨도 보여야 한다.
 - 후보군 종목 수는 `market/universe.ts` 의 `useUniverseSize()` 하나로 읽는다. 서버가 준 `/assets` 길이가 곧 후보군 크기라 화면이 숫자를 따로 적어 두지 않는다.
-- 알림이 어디로 가는지는 화면이 정한다. 서버는 종류와 `targetId` 만 주므로 경로 대응은 `pages/NotificationsPage.tsx` 의 `targetRoute` 하나에 둔다. 시각 표기와 아이콘·색은 `notification/labels.ts` 가 맡는다.
+- 알림이 어디로 가는지는 화면이 정한다. 서버는 종류와 `targetId` 만 주므로 경로 대응은 `pages/NotificationsPage.tsx` 의 `targetRoute` 하나에 둔다. 대회 채점 알림(`CONTEST_SCORED`)의 `targetId` 는 백테스트가 아니라 회차라 결과 화면으로 보낸다. 시각 표기와 아이콘·색은 `notification/labels.ts` 가 맡는다.
 - 알림 색도 색 계약을 따른다. 실패는 `--crit` 을 쓰는 `alert`, 완료는 `--good` 을 쓰는 `done` 이다.
 - 전략 공개는 남에게 보이기 시작하는 동작이라 ConfirmDialog 로 한 번 묻는다. 되돌리는 비공개는 묻지 않는다.
 - 오류 코드는 `src/api/errorCodes.ts`의 상수만 쓰고 `'AUTH-401-…'` 문자열을 화면 코드에 직접 쓰지 않는다.

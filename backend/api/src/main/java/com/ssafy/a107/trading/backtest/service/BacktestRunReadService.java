@@ -46,7 +46,8 @@ public class BacktestRunReadService {
     }
 
     public BacktestRun getBacktestRun(UUID memberId, UUID backtestId) {
-        return backtestRunRepository.findByBacktestIdAndMemberMemberId(backtestId, memberId)
+        return backtestRunRepository
+                .findByBacktestIdAndMemberMemberIdAndContestDatasetIdIsNull(backtestId, memberId)
                 .orElseThrow(() -> new ApiException(ApiErrorCode.BACKTEST_NOT_FOUND));
     }
 

@@ -1,5 +1,5 @@
 /* backend/api 의 notification 응답과 같은 모양. 시각은 UTC ISO 문자열로 온다. */
-export type NotificationType = 'BACKTEST_COMPLETED' | 'BACKTEST_FAILED' | 'SIMULATION_FAILED'
+export type NotificationType = 'BACKTEST_COMPLETED' | 'BACKTEST_FAILED' | 'SIMULATION_FAILED' | 'CONTEST_SCORED'
 
 export type NotificationResponse = {
   notificationId: number

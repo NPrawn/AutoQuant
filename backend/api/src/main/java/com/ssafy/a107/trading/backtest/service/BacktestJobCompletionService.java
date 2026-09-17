@@ -58,6 +58,10 @@ public class BacktestJobCompletionService {
                 executionResult.assets(),
                 executionResult.universeAssets()
         );
+        /* 대회 백테스트는 제출 하나에 4벌이라 여기서 알리지 않는다. 채점이 끝나면 회차 알림 하나가 나간다. */
+        if (backtestRun.isContest()) {
+            return true;
+        }
         applicationEventPublisher.publishEvent(new NotificationRequestedEvent(
                 backtestRun.getMember().getMemberId(),
                 NotificationType.BACKTEST_COMPLETED,

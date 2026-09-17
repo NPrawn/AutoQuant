@@ -15,6 +15,8 @@ import com.ssafy.a107.contest.repository.ContestEvaluationRepository;
 import com.ssafy.a107.contest.repository.ContestResultRepository;
 import com.ssafy.a107.contest.repository.ContestRoundRepository;
 import com.ssafy.a107.contest.repository.MarketDatasetRepository;
+import com.ssafy.a107.notification.domain.NotificationType;
+import com.ssafy.a107.notification.service.NotificationRequestedEvent;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.trading.backtest.repository.BacktestEquityRepository;
@@ -22,6 +24,7 @@ import com.ssafy.a107.trading.backtest.repository.BacktestResultRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,6 +65,7 @@ public class ContestScoringService {
     private final BacktestRunRepository backtestRunRepository;
     private final BacktestResultRepository backtestResultRepository;
     private final BacktestEquityRepository backtestEquityRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public ContestScoringService(
             ContestRoundRepository contestRoundRepository,
@@ -72,7 +76,8 @@ public class ContestScoringService {
             ContestEvaluationService contestEvaluationService,
             BacktestRunRepository backtestRunRepository,
             BacktestResultRepository backtestResultRepository,
-            BacktestEquityRepository backtestEquityRepository
+            BacktestEquityRepository backtestEquityRepository,
+            ApplicationEventPublisher applicationEventPublisher
     ) {
         this.contestRoundRepository = contestRoundRepository;
         this.contestEntryRepository = contestEntryRepository;
@@ -83,6 +88,7 @@ public class ContestScoringService {
         this.backtestRunRepository = backtestRunRepository;
         this.backtestResultRepository = backtestResultRepository;
         this.backtestEquityRepository = backtestEquityRepository;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Transactional(readOnly = true)
@@ -149,6 +155,9 @@ public class ContestScoringService {
     @Transactional
     public int scoreSettledEntries(UUID roundId) {
         Map<UUID, MarketDataset> datasets = datasets(roundId);
+        Set<UUID> alreadyScored = contestResultRepository.findAllByRoundId(roundId).stream()
+                .map(ContestResult::getEntryId)
+                .collect(Collectors.toSet());
         Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> settled = new LinkedHashMap<>();
         Set<UUID> running = new LinkedHashSet<>();
 
@@ -173,7 +182,33 @@ public class ContestScoringService {
 
         List<ContestResult> results = ContestScoreCalculator.score(settled, generalMarketReturn(roundId));
         contestResultRepository.saveAll(results);
+        notifyScored(roundId, results.stream()
+                .map(ContestResult::getEntryId)
+                .filter(entryId -> !alreadyScored.contains(entryId))
+                .collect(Collectors.toSet()));
         return results.size();
+    }
+
+    /*
+     * 이번에 처음 채점된 제출에만 알린다. 회차 결과는 순위 때문에 채점할 때마다 통째로 다시 쓰지만,
+     * 이미 알린 제출까지 다시 알리면 같은 알림이 쌓인다. 교체 제출은 이전 결과를 버려서 다시 알린다.
+     */
+    private void notifyScored(UUID roundId, Set<UUID> scoredEntryIds) {
+        if (scoredEntryIds.isEmpty()) {
+            return;
+        }
+        for (ContestEntry entry : contestEntryRepository.findAllByRoundRoundId(roundId)) {
+            if (!scoredEntryIds.contains(entry.getEntryId())) {
+                continue;
+            }
+            applicationEventPublisher.publishEvent(new NotificationRequestedEvent(
+                    entry.getMember().getMemberId(),
+                    NotificationType.CONTEST_SCORED,
+                    ContestNotificationMessages.scoredTitle(entry.getRound()),
+                    ContestNotificationMessages.scoredBody(),
+                    roundId.toString()
+            ));
+        }
     }
 
     /** 일반장 데이터셋의 균등 보유 수익률. 수익률 점수를 재는 기준이다 (ADR-0003). */

@@ -14,11 +14,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class BacktestRunRepositoryTest {
 
-    @DisplayName("백테스트 실행은 백테스트 ID와 회원 ID로 함께 조회한다")
+    @DisplayName("백테스트 실행은 백테스트 ID와 회원 ID로 함께 조회하고 대회 실행은 빼놓는다")
     @Test
     void findBacktestRunByIdAndMemberId() throws NoSuchMethodException {
         Method method = BacktestRunRepository.class.getMethod(
-                "findByBacktestIdAndMemberMemberId",
+                "findByBacktestIdAndMemberMemberIdAndContestDatasetIdIsNull",
                 UUID.class,
                 UUID.class
         );
