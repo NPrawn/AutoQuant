@@ -164,12 +164,12 @@ export function RankingPage() {
             </select>
 
             <label className="sr-only" htmlFor={`${id}-search`}>
-              전략·참가자 검색
+              전략 이름 검색
             </label>
             <input
               id={`${id}-search`}
               type="search"
-              placeholder="전략 이름이나 참가자 검색"
+              placeholder="전략 이름 검색"
               value={query.search}
               onChange={(event) => setQuery(setSearch(query, event.target.value))}
             />
