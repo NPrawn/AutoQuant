@@ -10,8 +10,6 @@ from datetime import datetime
 
 GENERAL = "GENERAL"
 REGIMES = ("BULL", "BEAR", "SIDEWAYS")
-MIN_RETURN = -0.30
-MAX_MDD = 0.50
 MIN_EXPOSURE = 0.30
 RETURN_WEIGHT = 0.5
 RETURN_SPAN = 0.30  # 시장 대비 -30%가 0점, +30%가 100점
@@ -93,14 +91,14 @@ def percentiles(values: dict[str, float], higher_is_better: bool) -> dict[str, f
 
 
 def disqualification(runs: dict[str, dict]) -> str:
+    """점수를 낼 수 없거나(백테스트 미완료) 현금만 들고 시장과 같은 점수를 받는 경우(투자 비중 미달)만 실격이다.
+
+    크게 잃거나 깊이 빠진 전략은 실격 대신 시장 대비 점수가 0점으로 내려간다 (ADR-0003, S15P21A107-249).
+    """
     for kind in (GENERAL, *REGIMES):
         run = runs.get(kind)
         if run is None or run["status"] != "COMPLETED":
             return f"{kind} 백테스트 미완료"
-        if run["return"] < MIN_RETURN:
-            return f"{kind} 수익률 {run['return']:.1%} < -30%"
-        if run["mdd"] > MAX_MDD:
-            return f"{kind} 최대 낙폭 {run['mdd']:.1%} > 50%"
     if runs[GENERAL]["exposure"] < MIN_EXPOSURE:
         return f"평균 투자 비중 {runs[GENERAL]['exposure']:.1%} < 30%"
     return ""
