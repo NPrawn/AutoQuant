@@ -1,5 +1,7 @@
 import { ContestOutcomeGrid } from './ContestDatasetCards'
+import { ContestMarketComparison } from './ContestMarketComparison'
 import { describeDisqualification, formatScore, progressRatio } from './labels'
+import { awaitingScore } from './types'
 import type { ContestMyResultResponse } from './types'
 
 type ContestMyScorePanelProps = {
@@ -13,7 +15,7 @@ type ContestMyScorePanelProps = {
  * 아직 도는 중이면 진행률만 보여 준다. 대회 상세와 결과 화면이 함께 쓴다.
  */
 export function ContestMyScorePanel({ result, provisional }: ContestMyScorePanelProps) {
-  if (result.totalScore === null && result.disqualificationReason === null) {
+  if (awaitingScore(result)) {
     return <ScoringPanel result={result} />
   }
 
@@ -78,11 +80,14 @@ export function ContestMyScorePanel({ result, provisional }: ContestMyScorePanel
       <div className="sec-head" style={{ margin: '24px 0 12px' }}>
         <div>
           <div className="sec-title">장세별 성적</div>
-          <div className="sec-sub">채점용 데이터 · 모든 참가자와 같은 조건</div>
+          <div className="sec-sub">
+            채점용 데이터 · 모든 참가자와 같은 조건{provisional && ' · 장세별 자산 곡선은 마감 후 공개됩니다'}
+          </div>
         </div>
         <span className="chip mute">채점용</span>
       </div>
       <ContestOutcomeGrid outcomes={result.datasets} />
+      <ContestMarketComparison outcomes={result.datasets} />
 
       <div className="card pad" style={{ marginTop: 16 }}>
         <div className="sec-head">

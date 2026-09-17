@@ -115,6 +115,21 @@ export type ContestDatasetOutcomeResponse = {
   maximumDrawdown: number | null
   averageExposure: number | null
   tradeCount: number | null
+  /* 하루 한 점 누적 수익률. 마감 전에는 빈 목록이다 (ADR-0010). */
+  equityCurve: ContestEquityPointResponse[]
+}
+
+/*
+ * 점수도 실격 사유도 없으면 아직 채점 전이다. 백테스트 4벌이 끝나도 채점 스케줄러가 점수를 쓰기 전까지는
+ * 이 상태라, 끝난 백테스트 수만 보고 기다리기를 멈추면 화면이 채점 중에 머문다.
+ */
+export function awaitingScore(result: Pick<ContestMyResultResponse, 'totalScore' | 'disqualificationReason'>): boolean {
+  return result.totalScore === null && result.disqualificationReason === null
+}
+
+export type ContestEquityPointResponse = {
+  valuationAt: string
+  returnRate: number
 }
 
 export type ContestMyResultResponse = {
