@@ -95,6 +95,7 @@ public class ContestResultReadService {
             ContestEntry entry = entries.get(result.getEntryId());
             rankings.add(new ContestRanking(
                     result.getRanking(),
+                    entry.getMember().getMemberId(),
                     entry.getMember().getDisplayName(),
                     entry.getStrategy().getName(),
                     result.getTotalScore(),
@@ -229,6 +230,7 @@ public class ContestResultReadService {
 
     public record ContestRanking(
             Integer ranking,
+            UUID memberId,
             String nickname,
             String strategyName,
             BigDecimal totalScore,

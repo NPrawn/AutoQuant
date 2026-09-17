@@ -1,5 +1,6 @@
 package com.ssafy.a107.contest.controller.response;
 
+import com.ssafy.a107.contest.domain.ContestNickname;
 import com.ssafy.a107.contest.repository.ContestRankingRow;
 import com.ssafy.a107.contest.service.ContestResultReadService.ContestRankings;
 import org.springframework.data.domain.Page;
@@ -10,7 +11,7 @@ import java.util.UUID;
 
 /*
  * 랭킹 화면(목업 06)의 표 한 페이지. 실격 제출은 순위가 없어 목록에서 빼고 수만 알려 준다.
- * 다른 참가자의 회원 식별자는 내보내지 않고 내 제출인지만 표시한다.
+ * 다른 참가자의 회원 식별자는 내보내지 않고 내 제출인지만 표시한다. 다른 참가자 이름은 가린다.
  */
 public record ContestRankingPageResponse(
         List<ContestRankingItem> content,
@@ -54,7 +55,7 @@ public record ContestRankingPageResponse(
                     row.ranking(),
                     row.strategyId(),
                     row.strategyName(),
-                    row.nickname(),
+                    ContestNickname.visibleTo(row.nickname(), row.memberId(), memberId),
                     row.published(),
                     row.totalScore(),
                     row.returnScore(),
