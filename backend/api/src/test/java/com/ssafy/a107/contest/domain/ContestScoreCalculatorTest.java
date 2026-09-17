@@ -11,6 +11,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 /*
  * 기준값은 2026-09-15 로컬 대회 재실행 결과다 (ADR-0012 결과, ai/docs/contest-validation/local-contest-2026-09-15-regime-a.json).
@@ -21,6 +22,13 @@ class ContestScoreCalculatorTest {
     private static final BigDecimal FULL_EXPOSURE = new BigDecimal("0.989");
     /* 그 회차 일반장의 균등 보유 수익률. 수익률 점수를 재는 기준이다. */
     private static final BigDecimal MARKET_RETURN = new BigDecimal("1.549");
+    /* 데이터셋별 시장 낙폭. 국면 점수를 재는 기준이다. 값은 1회차 4시간봉 기준을 반올림했다. */
+    private static final Map<MarketDatasetKind, BigDecimal> MARKET_DRAWDOWNS = Map.of(
+            MarketDatasetKind.GENERAL, new BigDecimal("0.384"),
+            MarketDatasetKind.BULL, new BigDecimal("0.357"),
+            MarketDatasetKind.BEAR, new BigDecimal("0.504"),
+            MarketDatasetKind.SIDEWAYS, new BigDecimal("0.390")
+    );
 
     @DisplayName("점수는 시장 대비 수익률과 낙폭으로만 정해지고 순위는 총점 순이다")
     @Test
@@ -49,15 +57,16 @@ class ContestScoreCalculatorTest {
                 .containsExactly("momentum-7d", "equal-weight-hold", "low-volatility", "volume-surge");
         assertThat(ranked).extracting(ContestResult::getRanking).containsExactly(1, 2, 3, 4);
         assertThat(ranked).extracting(result -> result.getTotalScore().toPlainString())
-                .containsExactly("55.180", "48.133", "36.197", "3.300");
+                .containsExactly("71.100", "63.050", "51.517", "18.833");
         /* 시장 +154.9% 대비 +28.8% 면 98점, 시장보다 37.9% 못 벌면 0점이다. */
         assertThat(ranked).extracting(result -> result.getReturnScore().toPlainString())
                 .containsExactly("98.000", "78.667", "62.833", "0.000");
-        /* 낙폭이 실격선 50% 에 가까워 국면 점수가 낮다. */
+        /* 시장만큼 빠지면 50점이다. 상승장에서 시장(35.7%)보다 7%p 더 빠진 1위는 38.3점이다. */
         assertThat(ranked).extracting(result -> result.getStabilityScore().toPlainString())
-                .containsExactly("12.360", "17.600", "9.560", "6.600");
-        assertThat(ranked.getFirst().getBullRegimeScore().toPlainString()).isEqualTo("14.600");
-        assertThat(ranked.getFirst().getSidewaysRegimeScore().toPlainString()).isEqualTo("9.400");
+                .containsExactly("44.200", "47.433", "40.200", "37.667");
+        assertThat(ranked.getFirst().getBullRegimeScore().toPlainString()).isEqualTo("38.333");
+        assertThat(ranked.getFirst().getBearRegimeScore().toPlainString()).isEqualTo("66.500");
+        assertThat(ranked.getFirst().getSidewaysRegimeScore().toPlainString()).isEqualTo("39.500");
 
         Map<String, ContestResult> disqualified = results.stream()
                 .filter(ContestResult::isDisqualified)
@@ -110,7 +119,7 @@ class ContestScoreCalculatorTest {
         });
     }
 
-    @DisplayName("점수는 남들과 무관하다. 제출이 하나여도 성적 그대로 나온다")
+    @DisplayName("점수는 남들과 무관하다. 시장과 똑같이 벌고 똑같이 빠지면 모두 50점이다")
     @Test
     void scoreTheOnlyEntryOnItsOwnNumbers() {
         UUID entryId = UUID.randomUUID();
@@ -119,23 +128,38 @@ class ContestScoreCalculatorTest {
             outcomes.put(kind, completed(0.1, 0.2));
         }
 
-        /* 시장 +10% 인 회차에서 +10% 를 내면 시장과 같아 50점, 낙폭 20% 면 국면 점수 60점이다. */
+        /* 시장 +10%·낙폭 20% 인 회차에서 +10%·낙폭 20% 를 내면 수익률도 국면도 시장과 같다. */
         List<ContestResult> results = ContestScoreCalculator.score(
                 Map.of(entryId, outcomes), new BigDecimal("0.1"));
 
         assertThat(results).singleElement().satisfies(result -> {
             assertThat(result.getReturnScore().toPlainString()).isEqualTo("50.000");
-            assertThat(result.getStabilityScore().toPlainString()).isEqualTo("60.000");
-            assertThat(result.getTotalScore().toPlainString()).isEqualTo("55.000");
+            assertThat(result.getBullRegimeScore().toPlainString()).isEqualTo("50.000");
+            assertThat(result.getStabilityScore().toPlainString()).isEqualTo("50.000");
+            assertThat(result.getTotalScore().toPlainString()).isEqualTo("50.000");
             assertThat(result.getRanking()).isEqualTo(1);
         });
     }
 
+    @DisplayName("국면 점수는 시장보다 30%p 덜 빠지면 100점, 30%p 더 빠지면 0점이다")
+    @Test
+    void measureRegimeScoreAgainstTheMarketDrawdown() {
+        BigDecimal market = new BigDecimal("0.40");
+
+        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.40"), market)).isEqualTo(50.0);
+        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.10"), market)).isCloseTo(100.0, within(1e-9));
+        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.05"), market)).isEqualTo(100.0);
+        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.49"), market)).isCloseTo(35.0, within(1e-9));
+        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.50"), new BigDecimal("0.10"))).isEqualTo(0.0);
+    }
+
+    /* 시장 낙폭은 20% 로 둔다. */
     private static ContestEvaluationOutcome completed(double cumulativeReturn, double maximumDrawdown) {
         return ContestEvaluationOutcome.completed(
                 BigDecimal.valueOf(cumulativeReturn),
                 BigDecimal.valueOf(maximumDrawdown),
-                FULL_EXPOSURE
+                FULL_EXPOSURE,
+                new BigDecimal("0.2")
         );
     }
 
@@ -153,14 +177,24 @@ class ContestScoreCalculatorTest {
         ids.put(name, entryId);
 
         Map<MarketDatasetKind, ContestEvaluationOutcome> byKind = new LinkedHashMap<>();
-        byKind.put(MarketDatasetKind.GENERAL, ContestEvaluationOutcome.completed(
-                BigDecimal.valueOf(generalReturn), BigDecimal.valueOf(generalMdd), exposure));
-        byKind.put(MarketDatasetKind.BULL, ContestEvaluationOutcome.completed(
-                BigDecimal.valueOf(bullReturn), BigDecimal.valueOf(bullMdd), exposure));
-        byKind.put(MarketDatasetKind.BEAR, ContestEvaluationOutcome.completed(
-                BigDecimal.valueOf(bearReturn), BigDecimal.valueOf(bearMdd), exposure));
-        byKind.put(MarketDatasetKind.SIDEWAYS, ContestEvaluationOutcome.completed(
-                BigDecimal.valueOf(sidewaysReturn), BigDecimal.valueOf(sidewaysMdd), exposure));
+        byKind.put(MarketDatasetKind.GENERAL, outcome(MarketDatasetKind.GENERAL, generalReturn, generalMdd, exposure));
+        byKind.put(MarketDatasetKind.BULL, outcome(MarketDatasetKind.BULL, bullReturn, bullMdd, exposure));
+        byKind.put(MarketDatasetKind.BEAR, outcome(MarketDatasetKind.BEAR, bearReturn, bearMdd, exposure));
+        byKind.put(MarketDatasetKind.SIDEWAYS, outcome(MarketDatasetKind.SIDEWAYS, sidewaysReturn, sidewaysMdd, exposure));
         outcomes.put(entryId, byKind);
+    }
+
+    private static ContestEvaluationOutcome outcome(
+            MarketDatasetKind kind,
+            double cumulativeReturn,
+            double maximumDrawdown,
+            BigDecimal exposure
+    ) {
+        return ContestEvaluationOutcome.completed(
+                BigDecimal.valueOf(cumulativeReturn),
+                BigDecimal.valueOf(maximumDrawdown),
+                exposure,
+                MARKET_DRAWDOWNS.get(kind)
+        );
     }
 }

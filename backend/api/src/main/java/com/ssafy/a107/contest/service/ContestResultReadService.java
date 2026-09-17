@@ -129,9 +129,8 @@ public class ContestResultReadService {
                 List.of(entry.getEntryId()));
         for (ContestEvaluation evaluation : evaluations) {
             MarketDataset dataset = datasets.get(evaluation.getId().getDatasetId());
-            BacktestRunStatus status = backtestRunRepository.findByBacktestId(evaluation.getBacktestId())
-                    .map(BacktestRun::getStatus)
-                    .orElse(null);
+            BacktestRun backtestRun = backtestRunRepository.findByBacktestId(evaluation.getBacktestId()).orElseThrow();
+            BacktestRunStatus status = backtestRun.getStatus();
             if (status == BacktestRunStatus.COMPLETED || status == BacktestRunStatus.FAILED) {
                 finishedBacktests++;
             }
@@ -141,6 +140,7 @@ public class ContestResultReadService {
                     dataset.getPeriodStart(),
                     dataset.getPeriodEnd(),
                     dataset.getEvaluationReturn(),
+                    dataset.getMarketMaximumDrawdown(backtestRun.getTimeframe()),
                     backtestResult == null ? null : backtestResult.getCumulativeReturn(),
                     backtestResult == null ? null : backtestResult.getMdd(),
                     evaluation.getAverageExposure(),
@@ -244,6 +244,7 @@ public class ContestResultReadService {
             Instant periodStart,
             Instant periodEnd,
             BigDecimal marketReturn,
+            BigDecimal marketMaximumDrawdown,
             BigDecimal cumulativeReturn,
             BigDecimal maximumDrawdown,
             BigDecimal averageExposure,

@@ -1,6 +1,7 @@
 package com.ssafy.a107.contest.domain;
 
 import com.ssafy.a107.common.domain.BaseEntity;
+import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -22,6 +23,7 @@ import java.util.UUID;
 /*
  * 대회 데이터 한 벌이다. 생성기가 만든 결과를 그대로 담아 마감 후 공개한다 (ADR-0010, ADR-0014).
  * source_weeks 는 생성기 weeks.json 의 주 목록을 JSON 문자열 그대로 둔다.
+ * market_mdd_* 는 평가 구간 균등 보유의 최대 낙폭을 봉 간격별로 잰 값이다. 국면 점수의 기준이다 (ADR-0003).
  */
 @Entity
 @Table(name = "market_dataset", schema = "contest")
@@ -56,6 +58,15 @@ public class MarketDataset extends BaseEntity {
     @Column(name = "evaluation_return", nullable = false, precision = 12, scale = 8, updatable = false)
     private BigDecimal evaluationReturn;
 
+    @Column(name = "market_mdd_1h", nullable = false, precision = 12, scale = 8, updatable = false)
+    private BigDecimal hourlyMarketMaximumDrawdown;
+
+    @Column(name = "market_mdd_4h", nullable = false, precision = 12, scale = 8, updatable = false)
+    private BigDecimal fourHourMarketMaximumDrawdown;
+
+    @Column(name = "market_mdd_1d", nullable = false, precision = 12, scale = 8, updatable = false)
+    private BigDecimal dailyMarketMaximumDrawdown;
+
     @Column(name = "source_window_start", nullable = false, updatable = false)
     private Instant sourceWindowStart;
 
@@ -83,6 +94,9 @@ public class MarketDataset extends BaseEntity {
             Instant periodStart,
             Instant periodEnd,
             BigDecimal evaluationReturn,
+            BigDecimal hourlyMarketMaximumDrawdown,
+            BigDecimal fourHourMarketMaximumDrawdown,
+            BigDecimal dailyMarketMaximumDrawdown,
             Instant sourceWindowStart,
             Instant sourceWindowEnd,
             long seed,
@@ -95,6 +109,9 @@ public class MarketDataset extends BaseEntity {
         this.periodStart = Objects.requireNonNull(periodStart);
         this.periodEnd = requireAfter(periodStart, periodEnd, "Period end");
         this.evaluationReturn = Objects.requireNonNull(evaluationReturn);
+        this.hourlyMarketMaximumDrawdown = Objects.requireNonNull(hourlyMarketMaximumDrawdown);
+        this.fourHourMarketMaximumDrawdown = Objects.requireNonNull(fourHourMarketMaximumDrawdown);
+        this.dailyMarketMaximumDrawdown = Objects.requireNonNull(dailyMarketMaximumDrawdown);
         this.sourceWindowStart = Objects.requireNonNull(sourceWindowStart);
         this.sourceWindowEnd = requireAfter(sourceWindowStart, sourceWindowEnd, "Source window end");
         this.seed = seed;
@@ -150,6 +167,15 @@ public class MarketDataset extends BaseEntity {
 
     public BigDecimal getEvaluationReturn() {
         return evaluationReturn;
+    }
+
+    /** 전략 봉 간격으로 잰 시장 최대 낙폭. 엔진이 그 간격마다 자산을 기록하므로 같은 간격 값과 견준다. */
+    public BigDecimal getMarketMaximumDrawdown(Timeframe timeframe) {
+        return switch (timeframe) {
+            case ONE_HOUR -> hourlyMarketMaximumDrawdown;
+            case FOUR_HOURS -> fourHourMarketMaximumDrawdown;
+            case ONE_DAY -> dailyMarketMaximumDrawdown;
+        };
     }
 
     public Instant getSourceWindowStart() {
