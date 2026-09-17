@@ -30,7 +30,7 @@ class ContestScoreCalculatorTest {
             MarketDatasetKind.SIDEWAYS, new BigDecimal("0.390")
     );
 
-    @DisplayName("점수는 시장 대비 수익률과 낙폭으로만 정해지고 순위는 총점 순이다")
+    @DisplayName("점수는 시장 대비 수익률과 낙폭으로만 정해지고 순위는 총점 순이다. 실격은 투자 비중 미달뿐이다")
     @Test
     void scoreLikeTheLocalContestRun() {
         Map<String, UUID> ids = new LinkedHashMap<>();
@@ -53,17 +53,18 @@ class ContestScoreCalculatorTest {
         Map<UUID, String> names = ids.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
         List<ContestResult> ranked = results.stream().filter(result -> !result.isDisqualified()).toList();
-        assertThat(ranked).extracting(result -> names.get(result.getEntryId()))
-                .containsExactly("momentum-7d", "equal-weight-hold", "low-volatility", "volume-surge");
-        assertThat(ranked).extracting(ContestResult::getRanking).containsExactly(1, 2, 3, 4);
-        assertThat(ranked).extracting(result -> result.getTotalScore().toPlainString())
-                .containsExactly("71.100", "63.050", "51.517", "18.833");
+        assertThat(ranked).extracting(result -> names.get(result.getEntryId())).containsExactly(
+                "momentum-7d", "equal-weight-hold", "low-volatility", "drawdown-dip",
+                "trend-filter", "volume-surge", "momentum-24h", "all-in-one");
+        assertThat(ranked).extracting(ContestResult::getRanking).containsExactly(1, 2, 3, 4, 5, 6, 7, 8);
+        assertThat(ranked).extracting(result -> result.getTotalScore().toPlainString()).containsExactly(
+                "71.100", "63.050", "51.517", "45.217", "23.550", "18.833", "16.183", "14.800");
         /* 시장 +154.9% 대비 +28.8% 면 98점, 시장보다 37.9% 못 벌면 0점이다. */
-        assertThat(ranked).extracting(result -> result.getReturnScore().toPlainString())
-                .containsExactly("98.000", "78.667", "62.833", "0.000");
+        assertThat(ranked).extracting(result -> result.getReturnScore().toPlainString()).containsExactly(
+                "98.000", "78.667", "62.833", "65.167", "24.167", "0.000", "11.167", "0.000");
         /* 시장만큼 빠지면 50점이다. 상승장에서 시장(35.7%)보다 7%p 더 빠진 1위는 38.3점이다. */
-        assertThat(ranked).extracting(result -> result.getStabilityScore().toPlainString())
-                .containsExactly("44.200", "47.433", "40.200", "37.667");
+        assertThat(ranked).extracting(result -> result.getStabilityScore().toPlainString()).containsExactly(
+                "44.200", "47.433", "40.200", "25.267", "22.933", "37.667", "21.200", "29.600");
         assertThat(ranked.getFirst().getBullRegimeScore().toPlainString()).isEqualTo("38.333");
         assertThat(ranked.getFirst().getBearRegimeScore().toPlainString()).isEqualTo("66.500");
         assertThat(ranked.getFirst().getSidewaysRegimeScore().toPlainString()).isEqualTo("39.500");
@@ -71,33 +72,33 @@ class ContestScoreCalculatorTest {
         Map<String, ContestResult> disqualified = results.stream()
                 .filter(ContestResult::isDisqualified)
                 .collect(Collectors.toMap(result -> names.get(result.getEntryId()), result -> result));
-        assertThat(disqualified).hasSize(6);
-        assertThat(disqualified.get("momentum-24h").getDisqualificationReason())
-                .isEqualTo(ContestDisqualificationReason.MDD_ABOVE_LIMIT);
-        assertThat(disqualified.get("momentum-24h").getDisqualifiedKind()).isEqualTo(MarketDatasetKind.BULL);
-        assertThat(disqualified.get("all-in-one").getDisqualifiedKind()).isEqualTo(MarketDatasetKind.GENERAL);
+        assertThat(disqualified).containsOnlyKeys("rsi-reversion", "cash-only");
         assertThat(disqualified.get("rsi-reversion").getDisqualificationReason())
                 .isEqualTo(ContestDisqualificationReason.LOW_EXPOSURE);
         assertThat(disqualified.get("cash-only").getDisqualificationReason())
                 .isEqualTo(ContestDisqualificationReason.LOW_EXPOSURE);
     }
 
-    @DisplayName("수익률이 실격선 아래면 낙폭보다 먼저 걸린다")
+    @DisplayName("크게 잃고 깊이 빠져도 실격이 아니라 그 점수가 0점이다")
     @Test
-    void preferReturnLimitOverDrawdownLimit() {
+    void scoreBlowupsInsteadOfDisqualifying() {
         UUID entryId = UUID.randomUUID();
         Map<MarketDatasetKind, ContestEvaluationOutcome> outcomes = new LinkedHashMap<>();
-        outcomes.put(MarketDatasetKind.GENERAL, completed(0.1, 0.2));
-        outcomes.put(MarketDatasetKind.BULL, completed(-0.35, 0.6));
-        outcomes.put(MarketDatasetKind.BEAR, completed(0.0, 0.1));
-        outcomes.put(MarketDatasetKind.SIDEWAYS, completed(0.0, 0.1));
+        outcomes.put(MarketDatasetKind.GENERAL, completed(-0.4, 0.6));
+        outcomes.put(MarketDatasetKind.BULL, completed(-0.4, 0.6));
+        outcomes.put(MarketDatasetKind.BEAR, completed(0.0, 0.2));
+        outcomes.put(MarketDatasetKind.SIDEWAYS, completed(0.0, 0.2));
 
-        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes), MARKET_RETURN);
+        /* 시장 +10%·낙폭 20% 에서 −40%·낙폭 60% 면 수익률 점수와 상승장 국면 점수가 바닥이다. */
+        List<ContestResult> results = ContestScoreCalculator.score(
+                Map.of(entryId, outcomes), new BigDecimal("0.1"));
 
         assertThat(results).singleElement().satisfies(result -> {
-            assertThat(result.getDisqualificationReason())
-                    .isEqualTo(ContestDisqualificationReason.RETURN_BELOW_LIMIT);
-            assertThat(result.getDisqualifiedKind()).isEqualTo(MarketDatasetKind.BULL);
+            assertThat(result.isDisqualified()).isFalse();
+            assertThat(result.getRanking()).isEqualTo(1);
+            assertThat(result.getReturnScore().toPlainString()).isEqualTo("0.000");
+            assertThat(result.getBullRegimeScore().toPlainString()).isEqualTo("0.000");
+            assertThat(result.getBearRegimeScore().toPlainString()).isEqualTo("50.000");
         });
     }
 

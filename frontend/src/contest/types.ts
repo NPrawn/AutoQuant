@@ -7,11 +7,8 @@ export type ContestDisplayStatus = 'SCHEDULED' | 'OPEN' | 'SCORING' | 'FINISHED'
 
 export type MarketDatasetKind = 'GENERAL' | 'BULL' | 'BEAR' | 'SIDEWAYS'
 
-export type ContestDisqualificationReason =
-  | 'BACKTEST_FAILED'
-  | 'RETURN_BELOW_LIMIT'
-  | 'MDD_ABOVE_LIMIT'
-  | 'LOW_EXPOSURE'
+/* 크게 잃거나 깊이 빠진 전략은 실격이 아니라 점수가 0점으로 내려간다 (S15P21A107-249). */
+export type ContestDisqualificationReason = 'BACKTEST_FAILED' | 'LOW_EXPOSURE'
 
 export type ContestSubmissionResponse = {
   strategyId: number
@@ -46,8 +43,6 @@ export type ContestRoundListResponse = {
 export type ContestScoringRulesResponse = {
   returnWeight: number
   stabilityWeight: number
-  minimumReturn: number
-  maximumDrawdown: number
   minimumExposure: number
   initialCapital: number
   feeRate: number

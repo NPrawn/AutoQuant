@@ -51,8 +51,6 @@ public record ContestRoundDetailResponse(
     public record ContestScoringRulesResponse(
             BigDecimal returnWeight,
             BigDecimal stabilityWeight,
-            BigDecimal minimumReturn,
-            BigDecimal maximumDrawdown,
             BigDecimal minimumExposure,
             BigDecimal initialCapital,
             BigDecimal feeRate,
@@ -63,8 +61,6 @@ public record ContestRoundDetailResponse(
             return new ContestScoringRulesResponse(
                     ContestScoringPolicy.RETURN_WEIGHT,
                     ContestScoringPolicy.STABILITY_WEIGHT,
-                    ContestScoringPolicy.MINIMUM_RETURN,
-                    ContestScoringPolicy.MAXIMUM_DRAWDOWN,
                     ContestScoringPolicy.MINIMUM_EXPOSURE,
                     ContestScoringPolicy.INITIAL_CAPITAL,
                     ContestScoringPolicy.FEE_RATE,
