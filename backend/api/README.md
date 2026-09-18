@@ -328,6 +328,16 @@ WebSocket/STOMP 계약은 이 절에서 관리하며 REST Docs/OpenAPI에는 포
 
 이 구분은 봉 이력에 따른 계산 정책이며 수집 장애 원인을 판정하지 않는다. 과거 공백이 보충되면 다음 판단부터 해당 종목도 다시 계산 대상이 된다. 마지막 봉만 계속 없는 종목이나 데이터가 부족한 보유 종목은 여전히 대기를 유발하므로 수집·보정 상태를 점검해야 한다. 이 변경은 과거에 이미 완료 처리된 재선정을 되돌리거나 운영 기록을 자동으로 재실행하지 않는다.
 
+### 즉시 준비 상태 진단
+
+로컬 또는 스테이징에서 `simulation-debug` 프로필과 `simulation.debug.enabled=true`를 함께 설정하면 아래 읽기 전용 API가 생긴다. 기본 환경과 운영 프로필에는 등록되지 않는다. 호출자는 자신의 모의투자만 확인할 수 있고, 실행·재선정 시각·체결·보유·평가 기록을 바꾸지 않는다.
+
+```http
+GET /debug/simulations/{simulationId}/readiness?executionAt=2026-09-18T00:00:00Z
+```
+
+응답의 전체 `state`가 `READY`면 해당 시각의 전략 판단에 필요한 봉이 준비됐다는 뜻이다. 종목별 `state`는 마지막 봉을 기다리는지, 과거 이력이 부족해 제외되는지, 신규 상장이라 제외되는지를 보여 준다. `hideLatestCompletedCandle=true`을 추가하면 마지막 확정 봉이 아직 저장되지 않은 상황을 메모리에서만 재현한다. 이 옵션도 기록을 바꾸지 않으며, 같은 요청을 옵션 없이 다시 호출해 `WAITING_FOR_CANDLES`와 `READY`를 즉시 비교할 수 있다.
+
 ## API 문서
 
 Controller 테스트는 `RestAssuredMockMvc`로 실행하고 REST Docs 리소스 스니펫을 생성한다. 성공·오류 응답은 각각 문서화하며 `openapi3` 작업이 동일 API의 응답들을 하나의 OpenAPI 3 YAML로 합친다.

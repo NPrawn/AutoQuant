@@ -57,7 +57,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -358,46 +357,17 @@ public class SimulationCandleExecutionService {
     private Optional<TargetPortfolio> executeStrategy(
             SimulationRun simulationRun, List<Asset> universe, Instant candleAt, Set<UUID> heldAssetIds
     ) {
-        int warmupCount = warmupCandleCountResolver.resolve(simulationRun.getStrategy().getStrategyDsl());
-        Duration candleDuration = candleDuration(simulationRun.getTimeframe());
-        Instant fromInclusive = candleAt.minus(candleDuration.multipliedBy(warmupCount));
-        Instant latestCompletedOpenAt = candleAt.minus(candleDuration);
-        // 상장 전 봉은 기다려도 생기지 않는다. 시작일이 없으면 실제 이력으로 판단한다.
-        List<UUID> assetIds = universe.stream()
-                .filter(asset -> asset.getTradingSupportStartedAt() == null
-                        || !asset.getTradingSupportStartedAt().isAfter(fromInclusive))
-                .map(Asset::getAssetId)
-                .toList();
-        Map<UUID, List<MinuteCandle>> loadedCandles = historicalCandleProvider.load(
-                assetIds, simulationRun.getTimeframe(), fromInclusive, candleAt
+        SimulationStrategyReadinessEvaluator.Evaluation readiness = new SimulationStrategyReadinessEvaluator(
+                historicalCandleProvider, warmupCandleCountResolver
+        ).evaluate(
+                simulationRun.getStrategy().getStrategyDsl(), simulationRun.getTimeframe(), universe,
+                heldAssetIds, candleAt, false
         );
-        Map<UUID, List<MinuteCandle>> candlesByAssetId = new LinkedHashMap<>();
-        for (UUID assetId : assetIds) {
-            List<MinuteCandle> completedCandles = loadedCandles.getOrDefault(assetId, List.of()).stream()
-                    .filter(candle -> {
-                        Instant openTime = candle.getId().getOpenTime();
-                        return !openTime.isBefore(fromInclusive)
-                                && !openTime.plus(candleDuration).isAfter(candleAt);
-                    })
-                    .toList();
-            long priorCandleCount = completedCandles.stream()
-                    .filter(candle -> candle.getId().getOpenTime().isBefore(latestCompletedOpenAt))
-                    .count();
-            // 과거 이력부터 부족한 종목은 계산할 수 없다. 수집 중단 종목이 전체 실행을 막지 않게 한다.
-            if (priorCandleCount < warmupCount - 1) {
-                if (heldAssetIds.contains(assetId)) return Optional.empty();
-                continue;
-            }
-            // 직전까지 이력이 충분했던 종목은 새 확정 봉을 기다린다. 저장 순서가 순위를 바꾸면 안 된다.
-            if (completedCandles.size() < warmupCount) return Optional.empty();
-            candlesByAssetId.put(assetId, completedCandles);
-        }
-        // 계산할 데이터 자체가 없는 상태를 정상적인 현금 보유 결정으로 확정하지 않는다.
-        if (candlesByAssetId.isEmpty()) return Optional.empty();
+        if (!readiness.isReady()) return Optional.empty();
         return Optional.of(strategyExecutionPipeline.execute(new StrategyExecutionContext(
                 simulationRun.getStrategy().getStrategyDsl(),
                 candleAt,
-                candlesByAssetId
+                readiness.readyCandlesByAssetId()
         )));
     }
 
