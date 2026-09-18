@@ -13,7 +13,9 @@ from contest.blocks import (
 )
 from contest.checks import check_bars, feasibility, stage2
 from contest.sampling import KINDS, Params, evaluation_returns, max_factor_period, sample_sequence
-from contest.stitch import Bar, aggregate, fill_gaps, stitch, tick_table, write_load_csv
+from contest.stitch import (
+    SEAM_ALPHA, SEAM_HOURS, Bar, aggregate, fill_gaps, stitch, tick_table, write_load_csv,
+)
 
 BLOCK_START = {"MON": 0, "THU": 3}
 
@@ -57,9 +59,11 @@ def _window_json(params: Params) -> dict | None:
 
 
 def build_bars(series: Series, universe: list[str], sequence: list[Week], params: Params,
-               ticks: dict[int, Decimal], fill: bool) -> tuple[list[Bar], int]:
+               ticks: dict[int, Decimal], fill: bool,
+               seam_alpha: float = SEAM_ALPHA, seam_hours: int = SEAM_HOURS) -> tuple[list[Bar], int]:
     """One dataset: chained hourly bars (gaps filled when `fill`), 4h and daily aggregates, all bar checks passed."""
-    hourly = stitch(series, universe, sequence, params.span, params.volume_ref_weeks, params.virtual_start, ticks)
+    hourly = stitch(series, universe, sequence, params.span, params.volume_ref_weeks, params.virtual_start, ticks,
+                    seam_alpha, seam_hours)
     filled = 0
     if fill:
         hourly, filled = fill_gaps(hourly)
@@ -76,7 +80,8 @@ def _check(args: argparse.Namespace) -> int:
         "window": _window_json(params),
         "universe": universe,
         "stage1": feasibility(series, universe, params, args.seed, args.min_weeks),
-        "stage2": stage2(series, universe, params, args.seed, args.generated, args.seam_datasets),
+        "stage2": stage2(series, universe, params, args.seed, args.generated, args.seam_datasets,
+                         args.seam_alpha, args.seam_hours),
     }
     report["passed"] = report["stage1"]["passed"] and report["stage2"]["passed"]
     text = json.dumps(report, ensure_ascii=False, indent=2)
@@ -104,13 +109,15 @@ def _build(args: argparse.Namespace) -> int:
         "period_start": format_time(period_start),
         "period_end": format_time(period_start + params.eval_weeks * params.span),
         "max_factor_period": max_factor_period(params),
+        "seam": {"alpha": args.seam_alpha, "hours": args.seam_hours},
         "datasets": {},
     }
     os.makedirs(args.out, exist_ok=True)
     for kind in KINDS:
         sequence = sample_sequence(kind, weeks, matrix, series, universe, params, rng)
         try:
-            bars, filled = build_bars(series, universe, sequence, params, ticks, args.fill_gaps)
+            bars, filled = build_bars(series, universe, sequence, params, ticks, args.fill_gaps,
+                                      args.seam_alpha, args.seam_hours)
         except ValueError as error:
             raise SystemExit(f"{kind}: {error}") from error
         write_load_csv(os.path.join(args.out, f"{kind}.csv"), bars)
@@ -148,6 +155,10 @@ def main(argv: list[str] | None = None) -> int:
                              help="과거에서 랜덤하게 고를 구간 길이(주). 0이면 전체 기간을 쓴다")
         command.add_argument("--min-assets", type=int, default=10,
                              help="구간 내내 거래된 종목이 이 수 이상인 구간만 고른다")
+        command.add_argument("--seam-alpha", type=float, default=SEAM_ALPHA,
+                             help="이음매 정합 강도. 0이면 정합하지 않고 1이면 직전 주 수준에 맞춘다")
+        command.add_argument("--seam-hours", type=int, default=SEAM_HOURS,
+                             help="이음매 정합이 옅어지는 시간(시간). 이 시간이 지나면 원래 주 그대로다")
     commands.choices["check"].add_argument("--min-weeks", type=int, default=30)
     commands.choices["check"].add_argument("--generated", type=int, default=200)
     commands.choices["check"].add_argument("--seam-datasets", type=int, default=50)

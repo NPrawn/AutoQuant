@@ -22,7 +22,7 @@ AI 서버 문서. 코드와 같은 저장소에 두어 함께 버전 관리한�
 | [PLAN-PROMPT-AXES.md](PLAN-PROMPT-AXES.md) | 위 설계의 구현 계획 (작업 7건) | 그 작업을 실제로 잡았을 때 |
 | [DESIGN-CONTEST-DATA-QUALITY.md](DESIGN-CONTEST-DATA-QUALITY.md) | 이음매 정합과 점수 신뢰도 설계 | 대회 데이터 품질을 고칠 때, 장세 벌 수나 평가 기간을 정할 때 |
 | [PLAN-CONTEST-DATA.md](PLAN-CONTEST-DATA.md) | 대회 데이터 생성·검증·로컬 적재 설계 (결정은 `adr/`와 `../../docs/adr/`) | 대회 데이터 코드를 만들거나 검증 결과를 볼 때 |
-| [adr/](adr/) | 대회 데이터 생성기 내부 결정: 조작 방식(0008·0009·0011)과 검증(0012·0015) | 생성·검증 방식을 바꿀 때 |
+| [adr/](adr/) | 대회 데이터 생성기 내부 결정: 조작 방식(0008·0009·0011·0017)과 검증(0012·0015) | 생성·검증 방식을 바꿀 때 |
 | [contest-validation/](contest-validation/) | 대회 데이터 1·2단계 확인과 로컬 대회 결과 JSON | 조작 데이터가 어디까지 검증됐는지 볼 때 |
 
 ## 문서 경계

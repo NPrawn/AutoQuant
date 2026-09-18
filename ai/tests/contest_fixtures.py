@@ -75,3 +75,22 @@ def write_source_csv(path: str, series: Series) -> None:
                     track.market, asset, format_time(c.t),
                     repr(c.o), repr(c.h), repr(c.l), repr(c.c), repr(c.v), repr(c.a),
                 ])
+
+
+def two_speed_track(market: str, start: int, weekly_sigma: list[float], seed: int = 0,
+                    volumes: list[float] | None = None) -> Track:
+    """Hourly random walk whose volatility and volume are set per week, on a 0.01 price grid."""
+    rng = random.Random(seed)
+    track = Track(market)
+    price = 1000.0
+    for week, sigma in enumerate(weekly_sigma):
+        volume = 10.0 if volumes is None else volumes[week]
+        for hour in range(7 * 24):
+            open_price = price
+            price = round(max(price * (1 + rng.gauss(0, sigma)), 1.0), 2)
+            high = round(max(open_price, price) + 0.01, 2)
+            low = round(min(open_price, price) - 0.01, 2)
+            track.candles.append(Candle(start + (week * 7 * 24 + hour) * HOUR, open_price, high, low, price,
+                                        volume, volume * (open_price + price) / 2))
+    track.finish()
+    return track

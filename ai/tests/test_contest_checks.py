@@ -114,6 +114,16 @@ def test_compare_allows_the_gap_real_data_has_with_itself():
     assert (result["ks"], result["tolerance"], result["passed"]) == (0.5, 1.0, True)
 
 
+def test_compare_reports_the_shape_of_both_sides():
+    real = [float(value) for value in range(100)]
+
+    result = compare(real, [0.0, 50.0, 99.0])
+
+    assert result["real_shape"] == {"p10": 10.0, "p25": 25.0, "p75": 75.0, "p90": 90.0, "mean_abs": 49.5}
+    assert result["generated_shape"]["p90"] == 99.0
+    assert result["generated_shape"]["mean_abs"] == pytest.approx(49.666667)
+
+
 def test_window_metrics():
     alternating = {"a": weekly_track("KRW-A", MONDAY, [100.0, 110.0, 99.0, 108.9, 98.01, 98.01])}
     steady = {"a": weekly_track("KRW-A", MONDAY, [100.0, 110.0, 121.0, 133.1, 146.41, 146.41])}
@@ -156,3 +166,14 @@ def test_stage2_runs_every_metric_and_bar_checks():
     assert result["real_windows"] == 34
     assert isinstance(result["passed"], bool)
     assert all("tolerance" in metric for metric in result["metrics"].values())
+    assert result["seam"] == {"alpha": 0.5, "hours": 24}
+
+
+def test_stage2_records_the_seam_matching_it_measured():
+    series = random_walk_series(assets=2, weeks=20, seed=2)
+
+    result = stage2(series, list(series), Params(warmup_weeks=2, eval_weeks=2), seed=1, generated=10,
+                    seam_datasets=2, seam_alpha=1.0, seam_hours=12)
+
+    assert result["seam"] == {"alpha": 1.0, "hours": 12}
+    assert result["violations"] == 0

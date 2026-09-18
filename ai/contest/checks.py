@@ -10,7 +10,7 @@ from contest.blocks import (
     DAY, HOUR, LABELS, Series, build_pool, label_weeks, period_return, real_windows, transition_matrix,
 )
 from contest.sampling import BEAR, BULL, SIDEWAYS, GenerationError, Params, regime_hit_rate, sample_general
-from contest.stitch import Bar, aggregate, stitch, tick_for, tick_table
+from contest.stitch import SEAM_ALPHA, SEAM_HOURS, Bar, aggregate, stitch, tick_for, tick_table
 
 MIN_WEEKS_PER_LABEL = 30
 Point = tuple[int, float, float]   # (open time, close, volume)
@@ -185,6 +185,15 @@ def halves_distance(values: list[float]) -> float:
     return ks_statistic(values[:half], values[half:])
 
 
+def _shape(values: list[float]) -> dict:
+    """Quantiles and mean absolute value: how wide the distribution is, which the KS distance alone does not say."""
+    ordered = sorted(values)
+    last = len(ordered) - 1
+    quantiles = {f"p{int(share * 100)}": ordered[min(int(share * len(ordered)), last)]
+                 for share in (0.10, 0.25, 0.75, 0.90)}
+    return {**quantiles, "mean_abs": statistics.fmean(abs(value) for value in values)}
+
+
 def compare(real: list[float], generated: list[float]) -> dict:
     """`real` must be in time order. Passes when generated data is no farther from real than real is from itself."""
     summary = {"real_n": len(real), "generated_n": len(generated)}
@@ -193,11 +202,13 @@ def compare(real: list[float], generated: list[float]) -> dict:
     distance = ks_statistic(real, generated)
     tolerance = halves_distance(real)
     return {**summary, "real_median": statistics.median(real), "generated_median": statistics.median(generated),
+            "real_shape": _shape(real), "generated_shape": _shape(generated),
             "ks": distance, "tolerance": tolerance, "passed": distance <= tolerance, "reason": ""}
 
 
 def stage2(series: Series, universe: list[str], params: Params, seed: int,
-           generated: int = 200, seam_datasets: int = 50) -> dict:
+           generated: int = 200, seam_datasets: int = 50,
+           seam_alpha: float = SEAM_ALPHA, seam_hours: int = SEAM_HOURS) -> dict:
     span = params.span
     length = params.warmup_weeks + params.eval_weeks
     pool = build_pool(series, universe, params.block_start, params.block_days, params.window)
@@ -220,7 +231,8 @@ def stage2(series: Series, universe: list[str], params: Params, seed: int,
     generated_seams: dict[str, list[float]] = {"vol_jump": [], "volume_jump": []}
     violations = 0
     for sequence in sampled[:seam_datasets]:
-        hourly = stitch(series, universe, sequence, span, params.volume_ref_weeks, params.virtual_start, ticks)
+        hourly = stitch(series, universe, sequence, span, params.volume_ref_weeks, params.virtual_start, ticks,
+                        seam_alpha, seam_hours)
         violations += len(check_bars(hourly + aggregate(hourly, 240) + aggregate(hourly, 1440), ticks))
         boundaries = [params.virtual_start + i * span for i in range(1, length)]
         for name, values in seam_values(points_from_bars(hourly), boundaries).items():
@@ -232,6 +244,7 @@ def stage2(series: Series, universe: list[str], params: Params, seed: int,
         "real_windows": len(real),
         "generated": generated,
         "seam_datasets": min(seam_datasets, generated),
+        "seam": {"alpha": seam_alpha, "hours": seam_hours},
         "violations": violations,
         "metrics": metrics,
         "passed": violations == 0 and all(metric["passed"] for metric in metrics.values()),
