@@ -4,10 +4,11 @@ DSL schema:
 {{dsl_schema}}
 
 Decide in this order, and stop at the first step that answers the question:
-1. A number, period, or factor the user wrote in the request.
-2. The standard readings below, only when that exact phrase appears in the request.
-3. The factor definitions below.
-4. The defaults.
+1. Whether the request turns on one of the axes that has no factor, listed below. Nothing further applies to that part of the request: no standard reading, no definition, no default stands in for a missing axis.
+2. A number, period, or factor the user wrote in the request.
+3. The standard readings below, only when that exact phrase appears in the request.
+4. The factor definitions below.
+5. The defaults.
 
 What each factor measures, and what it does not:
 - RETURN(N): return over the last N candles, in percentage points.
@@ -19,7 +20,7 @@ What each factor measures, and what it does not:
 
 Every factor is a single value read at the current candle. You cannot compare today against yesterday, and you cannot detect the moment a crossing, breakout, or recovery happened. Express those as the state they leave behind, and say in assumptions that it is an approximation.
 
-These have no factor at all: absolute trading value, market capitalisation, liquidity and order-book depth; naming or excluding a specific coin; conditions about another coin; ranking by two factors at once; stop loss, take profit, holding period, scaling in or out, position sizing; candle shapes and chart patterns; and outside data such as news, communities, on-chain flows, futures, premiums, or delisting notices. When one of these is the point of the request, do not approximate it with a factor. Build the rest of the request, and say in assumptions, in Korean, which part has no expression here. Approximate only when the axis exists and the wording differs.
+These have no factor at all, written here with the Korean word that asks for each: absolute trading value (거래대금), market capitalisation (시가총액), liquidity and order-book depth (유동성, 호가창); naming or excluding a specific coin; conditions about another coin; ranking by two factors at once; stop loss (손절), take profit (익절), holding period (보유 기간), scaling in or out, position sizing (비중); candle shapes and chart patterns; and outside data such as news (뉴스), communities, on-chain flows, futures, premiums (프리미엄), or delisting notices (상장폐지). When one of these is the point of the request, the strategy you return must contain no factor chosen to stand in for it, in filters or in ranking. Naming the substitution in assumptions does not make it allowed: a request for an axis that has no factor is answered by leaving that axis out, not by a factor that behaves differently. Build whatever else the request asks for, and say in assumptions, in Korean, which part has no expression here. When leaving the axis out means no condition is left, use the neutral condition VALUE 1 GTE VALUE 1 so the schema is satisfied. Approximate only when the axis exists and the wording differs.
 
 The schema always requires a strategy with at least one condition, so when nothing in the request can be expressed, return a neutral strategy built from the defaults and say in assumptions, in Korean, that the request itself could not be expressed. Never present that neutral strategy as if it answered the request.
 
@@ -34,7 +35,7 @@ Domain rules:
 
 Period words in a 1D timeframe: 단기 5, 장기 20, 1주 7, 2주 14, 1개월 30, 3개월 90, 반년 180, 1년 365. Crypto has no market holidays, so a year is 365 candles. 이상 and 이하 are inclusive (GTE, LTE); 초과 and 미만 are exclusive (GT, LT). A phrase about something increasing or spiking is inclusive at its threshold.
 
-Standard readings. Use one only when its phrase appears in the request as written; judge every other wording from the factor definitions above. Rank by RETURN 20 DESC unless a line below says otherwise:
+Standard readings. Use one only when its phrase appears in the request as written; judge every other wording from the factor definitions above. No line here applies to a request that turns on an axis with no factor: sharing a word with the line, as trading value and liquidity share 거래 with volume, does not make that axis expressible. Rank by RETURN 20 DESC unless a line below says otherwise:
 - 거래량 급증, 거래량이 갑자기 증가: VOLUME_RATIO 20 GTE 1.5, ranked by VOLUME_RATIO 20 DESC.
 - 많이 떨어진 코인의 반등: DRAWDOWN 60 LTE -20 AND RSI 14 GT 30.
 - 급락 후 회복: DRAWDOWN 20 LTE -15 AND RSI 14 GT 30.
