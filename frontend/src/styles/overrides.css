@@ -43,3 +43,12 @@ dialog.mbd::backdrop {
 dialog.mbd:not([open]) {
   display: none;
 }
+
+/*
+ * 목업은 백테스트 KPI 줄을 상단바 밑에 붙이려고 윗선과 위 모서리를 뺐다. 그대로 옮기면 스크롤 전에는
+ * 위가 잘린 카드로 읽혀 윗선을 되살린다. 상단바에 붙는 sticky 동작은 그대로 둔다.
+ */
+.bt-result-kpis {
+  border-top: 1px solid var(--line);
+  border-radius: 12px;
+}

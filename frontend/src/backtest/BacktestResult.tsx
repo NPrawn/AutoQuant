@@ -3,10 +3,17 @@ import { Link } from 'react-router'
 import { routes, to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/StateBlock'
-import { EquityChart } from '../components/EquityChart'
 import type { SimulationEntryState } from '../simulation/simulationEntry'
 import { blank, formatDate, formatRate } from './labels'
-import { useBacktestEquityCurve, useBacktestResult, useCandleCoverage } from './queries'
+import { formatIndex, indexBenchmark, indexEquity, rebalanceCycles } from './performance'
+import { PerformanceChart } from './PerformanceChart'
+import {
+  useBacktestBenchmark,
+  useBacktestEquityCurve,
+  useBacktestResult,
+  useBacktestTradeMarkers,
+  useCandleCoverage,
+} from './queries'
 import { ResultKpis } from './ResultKpis'
 import { TradeTable } from './TradeTable'
 import type { BacktestRun, EquityPoint } from './types'
@@ -30,6 +37,8 @@ function peakDrawdownAt(points: EquityPoint[]): Date | null {
 export function BacktestResult({ run, strategyName, tradePage, onTradePageChange }: BacktestResultProps) {
   const result = useBacktestResult(run.id, true)
   const equity = useBacktestEquityCurve(run.id, true)
+  const trades = useBacktestTradeMarkers(run.id, true)
+  const benchmarkCandles = useBacktestBenchmark(true)
   const coverage = useCandleCoverage()
 
   if (result.isPending) {
@@ -41,6 +50,12 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
 
   const metrics = result.data
   const points = equity.data ?? []
+  /* 차트가 쓰는 값은 전부 여기서 만든다. 체결이나 벤치마크가 아직 안 왔으면 그 부분만 비운 채 그린다. */
+  const indexed = indexEquity(points)
+  const benchmark = indexBenchmark(benchmarkCandles.data ?? [], points)
+  const cycles = rebalanceCycles(trades.data ?? [], indexed)
+  const lastIndex = indexed.at(-1)?.value ?? null
+  const lastBenchmark = benchmark.at(-1)?.value ?? null
   const simulationEntry: SimulationEntryState = { strategyId: run.strategyId }
   /* 요청 시작일이 캔들 보유 시작일보다 앞서면 그 앞은 평가되지 않았다. 연평균 수익률 해석이 달라져 알린다. */
   const coverageStart = coverage.data?.start ?? null
@@ -67,30 +82,55 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
       <section className="card card--lead perf-stack">
         <div className="perf-head">
           <div>
-            <div className="sec-title">누적 자산 곡선</div>
+            <div className="sec-title">누적 수익</div>
             <div className="sec-sub">
-              {formatDate(run.periodStart)} ~ {formatDate(run.periodEnd)} · 평가 시점 {points.length}개
+              {formatDate(run.periodStart)} ~ {formatDate(run.periodEnd)}
+              {cycles.length > 0 && ` · ${cycles.length}회 리밸런싱 · 점은 종목이 교체된 회차`}
+            </div>
+          </div>
+          <div className="perf-head-r">
+            <div className="legend">
+              <span>
+                <i style={{ background: 'var(--ink)' }} />
+                전략
+              </span>
+              {benchmark.length > 0 && (
+                <span>
+                  <i style={{ background: 'var(--ink-3)' }} />
+                  BTC 단순보유
+                </span>
+              )}
             </div>
           </div>
         </div>
-        <div className="perf-plot">
-          {equity.isPending ? (
+        {equity.isPending ? (
+          <div className="perf-plot">
             <LoadingState label="자산 곡선을 불러오는 중…" />
-          ) : equity.isError ? (
+          </div>
+        ) : equity.isError ? (
+          <div className="perf-plot">
             <ErrorState title="자산 곡선을 불러오지 못했습니다" error={equity.error} onRetry={() => equity.refetch()} />
-          ) : points.length === 0 ? (
+          </div>
+        ) : indexed.length === 0 ? (
+          <div className="perf-plot">
             <p className="goal-note">평가 시점 기록이 없어 곡선을 그릴 수 없습니다.</p>
-          ) : (
-            <EquityChart points={points} />
-          )}
-        </div>
+          </div>
+        ) : (
+          <PerformanceChart indexed={indexed} benchmark={benchmark} cycles={cycles} />
+        )}
         <div className="perf-foot">
           <span>
-            연평균 수익률 <b>{formatRate(metrics.cagr, { signed: true })}</b>
+            {benchmark.length > 0 ? (
+              <>
+                전략 선이 점선 위에 있는 구간은 BTC 단순보유보다 <b>초과 수익</b>, 아래는 열위입니다.
+              </>
+            ) : (
+              <>BTC 봉을 받지 못해 단순보유 비교는 생략했습니다.</>
+            )}
           </span>
           <span className="mono">
-            전략 {formatRate(metrics.cumulativeReturn, { signed: true })} · 벤치마크{' '}
-            {metrics.benchmarkReturn === null ? blank : formatRate(metrics.benchmarkReturn, { signed: true })}
+            전략 {lastIndex === null ? blank : formatIndex(lastIndex)} · BTC {lastBenchmark === null ? blank : formatIndex(lastBenchmark)} · 연평균{' '}
+            {formatRate(metrics.cagr, { signed: true })}
           </span>
         </div>
       </section>
