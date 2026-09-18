@@ -217,5 +217,7 @@ export function useBacktestTrades(backtestId: string | null, page: number, enabl
     queryFn: () => fetchBacktestTrades(backtestId ?? '', page, tradePageSize),
     select: (response) => ({ ...response, content: response.content.map(toBacktestTrade) }),
     enabled: backtestId !== null && enabled,
+    /* 페이지를 넘길 때 표가 로딩 블록으로 바뀌면 스크롤이 튄다. 이전 페이지를 보이며 바꾼다. */
+    placeholderData: keepPreviousData,
   })
 }

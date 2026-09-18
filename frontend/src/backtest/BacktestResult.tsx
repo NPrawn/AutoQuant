@@ -56,6 +56,8 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
   const cycles = rebalanceCycles(trades.data ?? [], indexed)
   const lastIndex = indexed.at(-1)?.value ?? null
   const lastBenchmark = benchmark.at(-1)?.value ?? null
+  /* BTC 일봉 롤업이 덜 됐으면 비교선이 전략보다 늦게 시작한다. 왼쪽이 비는 이유를 적어 버그로 읽히지 않게 한다. */
+  const benchmarkStartsLate = benchmark.length > 0 && indexed.length > 0 && benchmark[0].at.getTime() > indexed[0].at.getTime()
   const simulationEntry: SimulationEntryState = { strategyId: run.strategyId }
   /* 요청 시작일이 캔들 보유 시작일보다 앞서면 그 앞은 평가되지 않았다. 연평균 수익률 해석이 달라져 알린다. */
   const coverageStart = coverage.data?.start ?? null
@@ -73,6 +75,9 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
         </span>
       </div>
 
+      <ResultKpis metrics={metrics} initialCapital={run.initialCapital} drawdownAt={peakDrawdownAt(points)} />
+
+      {/* 커버리지는 결과와 다른 쿼리라 늦게 온다. KPI 위에 끼어들면 숫자를 읽는 중에 화면이 밀려 아래에 둔다. */}
       {startsBeforeCoverage && (
         <div className="callout warn" role="note" style={{ marginBottom: 16 }}>
           <span>
@@ -81,8 +86,6 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
           </span>
         </div>
       )}
-
-      <ResultKpis metrics={metrics} initialCapital={run.initialCapital} drawdownAt={peakDrawdownAt(points)} />
 
       <section className="card card--lead perf-stack">
         <div className="perf-head">
@@ -128,6 +131,7 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
             {benchmark.length > 0 ? (
               <>
                 전략 선이 점선 위에 있는 구간은 BTC 단순보유보다 <b>초과 수익</b>, 아래는 열위입니다.
+                {benchmarkStartsLate && <> BTC 일봉이 <b>{formatDate(benchmark[0].at)}</b>부터 있어 비교는 그날부터입니다.</>}
               </>
             ) : (
               <>BTC 봉을 받지 못해 단순보유 비교는 생략했습니다.</>

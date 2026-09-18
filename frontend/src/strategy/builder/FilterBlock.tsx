@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useId } from 'react'
 
 import { conditionLimit, type ConditionDraft, type SimpleConditionPatch } from '../draft'
 import { logicLabels } from '../labels'
@@ -21,6 +21,7 @@ type FilterBlockProps = {
  */
 export function FilterBlock({ conditions, logic, onAdd, onChange, onRemove, changed = false }: FilterBlockProps) {
   const full = conditions.length >= conditionLimit
+  const limitNoteId = useId()
 
   return (
     <div className={changed ? 'blk sig changed' : 'blk sig'} data-cat="signal">
@@ -64,9 +65,15 @@ export function FilterBlock({ conditions, logic, onAdd, onChange, onRemove, chan
             </Fragment>
           ))}
         </div>
-        <button className="add-cond" type="button" onClick={onAdd} disabled={full} title={full ? `조건은 ${conditionLimit}개까지 둘 수 있습니다` : undefined}>
+        <button className="add-cond" type="button" onClick={onAdd} disabled={full} aria-describedby={full ? limitNoteId : undefined}>
           ＋ 조건 추가
         </button>
+        {/* 한도 사유는 툴팁 대신 늘 보이는 문구로. 터치와 스크린리더에는 툴팁이 없다. */}
+        {full && (
+          <p className="add-cond-note" id={limitNoteId}>
+            조건은 {conditionLimit}개까지 둘 수 있습니다. 새 조건을 넣으려면 하나를 지워 주세요.
+          </p>
+        )}
       </div>
     </div>
   )

@@ -144,13 +144,15 @@ function LiveView({ run, strategy, lookup }: LiveViewProps) {
               <em className="mono">{updatedAt === null ? '--:--:--' : formatTime(updatedAt)}</em>
             </span>
             {live && (
-              <button className="btn ghost sm" type="button" disabled={stop.isPending} onClick={() => transition('정지')}>
-                {stop.isPending ? '정지 중…' : '정지'}
+              <button className="btn ghost sm" type="button" disabled={stop.isPending} aria-busy={stop.isPending} onClick={() => transition('정지')}>
+                {stop.isPending && <span className="spin" aria-hidden="true" />}
+                정지
               </button>
             )}
             {(run.status === 'STOPPED' || run.status === 'CREATED') && (
-              <button className="btn primary sm" type="button" disabled={start.isPending} onClick={() => transition('재시작')}>
-                {start.isPending ? '시작 중…' : run.status === 'CREATED' ? '시작' : '다시 시작'}
+              <button className="btn primary sm" type="button" disabled={start.isPending} aria-busy={start.isPending} onClick={() => transition('재시작')}>
+                {start.isPending && <span className="spin" aria-hidden="true" />}
+                {run.status === 'CREATED' ? '시작' : '다시 시작'}
               </button>
             )}
           </div>

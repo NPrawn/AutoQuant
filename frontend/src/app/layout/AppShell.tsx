@@ -12,7 +12,7 @@ import { Topbar } from './Topbar'
 export function AppShell() {
   const { data } = useCurrentMember()
   const logout = useLogout()
-  /* 아직 못 읽었으면 0 으로 두어 모달이 "계속 실행된다"는 말을 근거 없이 하지 않게 한다. */
+  /* 아직 못 읽었으면 null 로 넘겨 모달이 실행 여부를 단정하지 않게 한다. */
   const runningSimulations = useRunningSimulationCount()
 
   if (!data?.member) {
@@ -23,7 +23,12 @@ export function AppShell() {
     <div className="shell">
       <Sidebar />
       <div className="col">
-        <Topbar member={data.member} runningSimulations={runningSimulations.data ?? 0} onLogout={() => logout.mutate()} />
+        <Topbar
+          member={data.member}
+          runningSimulations={runningSimulations.data ?? null}
+          logoutPending={logout.isPending}
+          onLogout={() => logout.mutate()}
+        />
         <main className="wrap">
           <Outlet />
         </main>

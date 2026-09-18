@@ -1,4 +1,4 @@
-import { errorCodes } from '../api/errorCodes'
+import { errorCodes } from '../api/errorCodes.ts'
 
 /*
  * 로그인 콜백이 실패하면 백엔드가 /login?error={코드} 로 돌려보내고, 세션이 끊기면

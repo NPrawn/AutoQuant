@@ -1,6 +1,7 @@
-import type { SimpleCondition, SimpleConditionPatch } from '../draft'
+import { periodMax, type SimpleCondition, type SimpleConditionPatch } from '../draft'
 import { comparisonOperators, factorMeta, factorTypes, operatorSymbols } from '../labels'
 import type { ComparisonOperator, FactorType } from '../types'
+import { blurOnWheel } from './numberInput'
 
 type ConditionRowProps = {
   condition: SimpleCondition
@@ -34,8 +35,9 @@ export function ConditionRow({ condition, index, onChange, onRemove }: Condition
       <input
         className="num"
         type="number"
+        onWheel={blurOnWheel}
         min={1}
-        max={500}
+        max={periodMax}
         step={1}
         aria-label={`${label} 기간`}
         value={displayNumber(condition.period)}
@@ -56,6 +58,7 @@ export function ConditionRow({ condition, index, onChange, onRemove }: Condition
         <input
           className="num"
           type="number"
+          onWheel={blurOnWheel}
           step={0.1}
           aria-label={`${label} 기준값`}
           value={displayNumber(condition.value)}

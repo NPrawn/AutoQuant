@@ -19,18 +19,18 @@ export function RankingTable({ roundId, rows, myResult, copyPending, onCopy }: R
 
   return (
     <div className="card">
-      <div className="table-scroll">
+      <div className="table-scroll" tabIndex={0} role="region" aria-label="순위표 표">
         <table>
           <thead>
             <tr>
-              <th style={{ width: 58 }}>순위</th>
-              <th>전략</th>
-              <th className="r">종합 점수</th>
-              <th className="r">안정성</th>
-              <th className="r">상승</th>
-              <th className="r">하락</th>
-              <th className="r">횡보</th>
-              <th />
+              <th scope="col" style={{ width: 58 }}>순위</th>
+              <th scope="col">전략</th>
+              <th scope="col" className="r">종합 점수</th>
+              <th scope="col" className="r">안정성</th>
+              <th scope="col" className="r">상승</th>
+              <th scope="col" className="r">하락</th>
+              <th scope="col" className="r">횡보</th>
+              <th scope="col"><span className="sr-only">작업</span></th>
             </tr>
           </thead>
           <tbody>

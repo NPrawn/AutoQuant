@@ -17,16 +17,16 @@ export function PositionsTable({ valuations, lookup, selectedId = null, onSelect
   }
 
   return (
-    <div className="table-scroll">
+    <div className="table-scroll" tabIndex={0} role="region" aria-label="보유 종목 표">
       <table>
         <thead>
           <tr>
-            <th>종목</th>
-            <th className="r">수량</th>
-            <th className="r">평균 매수가</th>
-            <th className="r">현재가</th>
-            <th className="r">평가액</th>
-            <th className="r">수익률</th>
+            <th scope="col">종목</th>
+            <th scope="col" className="r">수량</th>
+            <th scope="col" className="r">평균 매수가</th>
+            <th scope="col" className="r">현재가</th>
+            <th scope="col" className="r">평가액</th>
+            <th scope="col" className="r">수익률</th>
           </tr>
         </thead>
         <tbody>

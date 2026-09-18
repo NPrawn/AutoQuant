@@ -30,6 +30,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 드롭다운 메뉴는 열렸을 때만 렌더링하고 바깥 `pointerdown`과 Esc 로 닫으며, 닫힐 때 여는 버튼으로 포커스를 되돌린다.
 - 정의되지 않은 경로는 `AppShell` 안의 `NotFoundPage`가 받아 사이드바와 상단바가 남는다. 960px 이하에서는 상단바의 `MobileNav`가 `navigation.tsx`의 같은 항목을 dialog 시트로 연다.
 - 비활성 버튼은 `extensions.css`의 `.btn:disabled` 한 벌로 흐려지고 hover 가 걸리지 않는다. 컴포넌트가 비활성 모양을 따로 그리지 않는다.
+- 조작마다 화면이 움직이지 않게 한다. 문서와 스크롤 컨테이너에는 `scrollbar-gutter: stable`, 처리 중 버튼은 라벨을 바꾸지 않고 `.spin` 만 붙이며 `aria-busy` 를 켠다. 상태 문구가 여러 가지인 자리는 가장 긴 문구에 `min-width` 를 맞춘다. 로딩 블록과 빈·오류 블록은 같은 최소 높이다. `Pager` 는 한 페이지여도 자리를 비워 둔다.
 
 ## API 호출과 인증 상태
 
@@ -52,7 +53,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 결과 화면의 곡선·막대 좌표는 `src/contest/charts.ts` 의 순수 함수가 계산한다. 곡선은 목업의 `regime-spark`, 막대는 `pct-track` 을 그대로 쓰고 차트 라이브러리를 들이지 않는다. 자산 곡선은 종료 후에만 서버가 채워 준다.
 - 랭킹 표의 조회 조건은 `src/contest/rankingQuery.ts` 의 순수 함수에만 둔다. 정렬·국면·검색을 바꾸면 결과 수가 달라지므로 첫 페이지로 되돌리고, 조건은 서버에 넘겨 화면이 거르지 않는다. 내 성적 행은 `GET /contests/{roundId}/results/me` 로 따로 받아 표 아래에 고정한다. 페이지를 넘겨도 보여야 한다.
 - 후보군 종목 수는 `market/universe.ts` 의 `useUniverseSize()` 하나로 읽는다. 서버가 준 `/assets` 길이가 곧 후보군 크기라 화면이 숫자를 따로 적어 두지 않는다.
-- 알림이 어디로 가는지는 화면이 정한다. 서버는 종류와 `targetId` 만 주므로 경로 대응은 `pages/NotificationsPage.tsx` 의 `targetRoute` 하나에 둔다. 대회 채점 알림(`CONTEST_SCORED`)의 `targetId` 는 백테스트가 아니라 회차라 결과 화면으로 보낸다. 시각 표기와 아이콘·색은 `notification/labels.ts` 가 맡는다.
+- 알림이 어디로 가는지는 화면이 정한다. 서버는 종류와 `targetId` 만 주므로 경로 대응은 `notification/targetRoute.ts` 의 `targetRoute` 하나에 둔다. 모르는 종류는 null 이다. 대회 채점 알림(`CONTEST_SCORED`)의 `targetId` 는 백테스트가 아니라 회차라 결과 화면으로 보낸다. 시각 표기와 아이콘·색은 `notification/labels.ts` 가 맡는다.
 - 알림 색도 색 계약을 따른다. 실패는 `--crit` 을 쓰는 `alert`, 완료는 `--good` 을 쓰는 `done` 이다.
 - 전략 공개는 남에게 보이기 시작하는 동작이라 ConfirmDialog 로 한 번 묻는다. 되돌리는 비공개는 묻지 않는다.
 - 오류 코드는 `src/api/errorCodes.ts`의 상수만 쓰고 `'AUTH-401-…'` 문자열을 화면 코드에 직접 쓰지 않는다.
@@ -64,7 +65,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 차트 책임은 `src/market`의 API·queries, STOMP 연결(선택 종목은 `stream.ts`, 여러 종목 현재가는 `priceStream.ts`), 데이터 검증·병합(`model.ts`), 표시값 계산(`ticker.ts`), 차트 렌더러로 나눈다. `ChartPage`는 종목 선택과 표시만 한다.
 - 차트 화면은 목업 04 의 클래스(`.chart-shell` `.coin-list` `.coin-row` `.tick-stats` `.tfs` `.inds` `.chart-legend` `.tr-head` `.trr`)를 쓴다. 이미 `base.css`에 있으므로 같은 목적의 클래스를 새로 만들지 않는다.
 - 보조지표 계산은 `src/market/indicators.ts` 의 순수 함수에만 두고 차트는 그린 결과만 받는다. 값은 한 번 계산해 범례와 차트가 함께 쓴다. 기간이 채워지기 전 구간은 값을 만들지 않는다.
-- `MinuteCandleChart` 는 차트, 모의투자 실시간, 전략 상세가 함께 쓴다. 크기는 화면마다 다르므로 `#candle` 높이 규칙을 `extensions.css` 에 두고 컴포넌트는 크기를 정하지 않는다.- 체결 마커는 표시 전용이다. 종목 선택과 좌표 변환은 `backtest/tradeMarkers.ts` 의 순수 함수에 두고 차트는 받은 것만 찍는다. 마커가 있으면 그 구간에 화면을 맞춘다.
+- `MinuteCandleChart` 는 차트, 모의투자 실시간, 전략 상세가 함께 쓴다. 크기는 화면마다 다르므로 `#candle` 높이 규칙을 `extensions.css` 에 두고 컴포넌트는 크기를 정하지 않는다. 지표를 켜고 꺼도 봉 자리가 같아야 하므로 가격 축 폭을 고정하고, 오른쪽 끝을 최신 봉에 붙이고, 거래량·RSI 패널은 접지 않고 라벨에 "꺼짐" 만 붙인다. 범례도 꺼진 지표를 흐린 글자로 남긴다.- 체결 마커는 표시 전용이다. 종목 선택과 좌표 변환은 `backtest/tradeMarkers.ts` 의 순수 함수에 두고 차트는 받은 것만 찍는다. 마커가 있으면 그 구간에 화면을 맞춘다.
 - 화면 표시용 지표와 전략이 쓰는 팩터를 섞지 않는다. 전자는 프론트가 계산하고 후자는 서버가 계산한 값을 그대로 받는다. 둘이 어긋나면 사용자가 본 숫자와 전략 판단이 달라진다.
 - 팩터 값은 `GET /assets/{assetId}/factors` 로 받아 `src/market/factors.ts` 가 표기만 만든다. 기간은 서버가 정하므로 화면에 기간을 적어 두지 않는다. 단위와 소수 자리는 `strategy/labels.ts` 의 `factorMeta` 하나로 빌더와 맞춘다.
 - 백테스트 결과의 성과 차트는 목업 12 의 SVG 에서 위 구간(지수 100 기준 누적 수익)만 가져온다. 낙폭 구간은 두지 않는다. 지수화·회차 묶기·좌표는 `backtest/performance.ts` 의 순수 함수에 두고 `PerformanceChart` 는 그린 결과만 받는다. 단순보유 비교는 `KRW-BTC` 일봉을 평가 시각 앞에 시작한 마지막 봉의 종가로 맞춘다. 모의투자 실시간 화면의 `EquityChart` 와는 다른 차트라 서로 바꿔 쓰지 않는다. 목업 클래스 `.perf-plot` `.rb-mark` `.rb-tip` `.rb-cursor` `.legend` 는 `base.css` 에 있으므로 새로 만들지 않는다.

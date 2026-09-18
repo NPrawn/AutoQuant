@@ -19,16 +19,16 @@ function strategyNameOf(strategyNames: ReadonlyMap<string, string>, strategyId: 
 export function RunHistoryTable({ runs, strategyNames, showStrategy = true, onOpen }: RunHistoryTableProps) {
   return (
     <div className="card">
-      <div className="table-scroll">
+      <div className="table-scroll" tabIndex={0} role="region" aria-label="실행 이력 표">
         <table>
           <thead>
             <tr>
-              <th>상태</th>
-              {showStrategy && <th>전략</th>}
-              <th>평가 기간</th>
-              <th className="r">초기자산</th>
-              <th>접수 시각</th>
-              <th style={{ textAlign: 'right' }}>결과</th>
+              <th scope="col">상태</th>
+              {showStrategy && <th scope="col">전략</th>}
+              <th scope="col">평가 기간</th>
+              <th scope="col" className="r">초기자산</th>
+              <th scope="col">접수 시각</th>
+              <th scope="col" style={{ textAlign: 'right' }}>결과</th>
             </tr>
           </thead>
           <tbody>

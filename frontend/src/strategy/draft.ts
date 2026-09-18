@@ -208,6 +208,11 @@ export type DraftIssue = {
 
 const isPositiveInteger = (value: number): boolean => Number.isInteger(value) && value > 0
 
+/* 기간 상한. 입력 칸의 max 와 같은 값이라 직접 타이핑한 큰 수도 저장 전에 걸린다. */
+export const periodMax = 500
+const isPeriod = (value: number): boolean => isPositiveInteger(value) && value <= periodMax
+const periodMessage = `기간은 1~${periodMax} 사이의 정수여야 합니다.`
+
 export function validateDraft(draft: StrategyDraft): DraftIssue[] {
   const issues: DraftIssue[] = []
 
@@ -224,16 +229,16 @@ export function validateDraft(draft: StrategyDraft): DraftIssue[] {
     if (condition.kind !== 'simple') {
       continue
     }
-    if (!isPositiveInteger(condition.period)) {
-      issues.push({ field: `condition.${condition.id}`, message: '기간은 1 이상의 정수여야 합니다.' })
+    if (!isPeriod(condition.period)) {
+      issues.push({ field: `condition.${condition.id}`, message: periodMessage })
     }
     if (!Number.isFinite(condition.value)) {
       issues.push({ field: `condition.${condition.id}`, message: '기준값을 숫자로 입력해 주세요.' })
     }
   }
 
-  if (!isPositiveInteger(draft.ranking.period)) {
-    issues.push({ field: 'ranking', message: '순위 기간은 1 이상의 정수여야 합니다.' })
+  if (!isPeriod(draft.ranking.period)) {
+    issues.push({ field: 'ranking', message: `순위 ${periodMessage}` })
   }
   if (!isPositiveInteger(draft.topN)) {
     issues.push({ field: 'topN', message: '투자 종목 수는 1 이상이어야 합니다.' })

@@ -336,3 +336,120 @@ dialog.nav-sheet-scrim {
   margin: 0;
   font-size: 14px;
 }
+
+/*
+ * 화면이 조작마다 미세하게 움직이는 원인들을 고정한다.
+ * 페이지마다 스크롤바가 생기고 사라지면 문서 폭이 바뀌어 상단바 버튼이 밀린다. 자리를 항상 비워 둔다.
+ * 내용이 넘치는 순간 스크롤바가 생기는 컨테이너도 같다.
+ */
+html {
+  scrollbar-gutter: stable;
+}
+.coin-list,
+.live-feed,
+.bot-body,
+.shared-code-card pre {
+  scrollbar-gutter: stable;
+}
+
+/* 처리 중 버튼은 라벨을 바꾸지 않고 스피너만 붙인다. 라벨이 바뀌면 옆 버튼이 밀린다. */
+.btn .spin {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+  flex: none;
+}
+
+/* 모의투자 상단 연결 상태. 문구가 세 가지라 가장 긴 것에 폭을 맞춰 옆 버튼이 움직이지 않게 한다. */
+.live-actions .stream-status > span {
+  display: inline-block;
+  min-width: 132px;
+}
+
+/* 차트 화면 등락률 옆 연결 안내. 끊겼을 때만 글자가 차고 자리는 늘 있다. */
+.tick-ch .conn-note {
+  display: inline-block;
+  min-width: 176px;
+  margin-left: 8px;
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+/*
+ * 로딩 블록과 빈·오류 블록의 높이를 맞춘다. 목업은 로딩 190px, 빈 상태 400px 로 달라
+ * 로딩이 끝나는 순간 아래 내용이 튀었다.
+ */
+.bt-load,
+.state-block {
+  min-height: 280px;
+}
+.bt-load {
+  padding-block: 40px;
+}
+
+/* 모의투자 카드의 곡선 자리. 첫 봉이 마감되기 전에도 같은 높이를 차지한다. */
+.spark.spark-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+  font-size: 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-s);
+}
+
+/* 전략 상세 액션. 다섯 개가 좁은 폭에서 한 줄에 눌리지 않게 줄바꿈한다. 삭제는 hover 에만 오류색이 든다. */
+.detail-actions {
+  flex-wrap: wrap;
+}
+.btn.ghost.danger:hover {
+  color: var(--crit);
+  border-color: color-mix(in srgb, var(--crit) 40%, transparent);
+  background: var(--crit-soft);
+}
+
+/* 빌더 조건 추가 한도 안내. 툴팁은 터치와 스크린리더에 없어 늘 보이는 문구로 둔다. */
+.add-cond-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* 요약 카드 검증 목록. 같은 문장은 한 번만 적는다. */
+.sum-warn ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+}
+
+/* 알림 줄. 제목 영역 전체가 눌린다. 버튼으로 만들되 글처럼 보이게 초기화한다. */
+.notif-main {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.notif-main:hover b {
+  text-decoration: underline;
+}
+.notif-main:disabled {
+  cursor: default;
+}
+.notif-main:disabled:hover b {
+  text-decoration: none;
+}
+
+/* 페이저. 한 페이지여도 자리를 유지해 표 아래 내용이 튀지 않는다. */
+.pager[aria-hidden='true'] {
+  visibility: hidden;
+}
+
+/* 로그아웃 확인의 운용 중 모의투자 줄. 모달 폭에 맞춰 늘린다. */
+.modal .state-detail.logout-detail {
+  width: 100%;
+  margin: 0 0 20px;
+}

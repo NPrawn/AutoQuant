@@ -59,16 +59,16 @@ export function StrategyListPage() {
       )}
       {strategies.isSuccess && strategies.data.length > 0 && (
         <div className="card">
-          <div className="table-scroll">
+          <div className="table-scroll" tabIndex={0} role="region" aria-label="전략 목록 표">
             <table>
               <thead>
                 <tr>
-                  <th>전략</th>
-                  <th>상태</th>
-                  <th className="r">백테스트 수익률</th>
-                  <th className="r">최대 낙폭</th>
-                  <th>최근 수정</th>
-                  <th style={{ textAlign: 'right' }}>다음 할 일</th>
+                  <th scope="col">전략</th>
+                  <th scope="col">상태</th>
+                  <th scope="col" className="r">백테스트 수익률</th>
+                  <th scope="col" className="r">최대 낙폭</th>
+                  <th scope="col">최근 수정</th>
+                  <th scope="col" style={{ textAlign: 'right' }}>다음 할 일</th>
                 </tr>
               </thead>
               <tbody>

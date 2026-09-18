@@ -146,10 +146,11 @@ function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProp
           >
             {strategy.published ? '공개 중지' : '공개'}
           </button>
-          <button className="btn ghost" type="button" disabled={copy.isPending} onClick={confirmCopy}>
-            {copy.isPending ? '복제 중…' : '복제'}
+          <button className="btn ghost" type="button" disabled={copy.isPending} aria-busy={copy.isPending} onClick={confirmCopy}>
+            {copy.isPending && <span className="spin" aria-hidden="true" />}
+            복제
           </button>
-          <button className="btn ghost" type="button" onClick={() => setConfirmOpen(true)}>
+          <button className="btn ghost danger" type="button" onClick={() => setConfirmOpen(true)}>
             삭제
           </button>
           <Link className="btn" to={to.strategyEdit(strategy.id)}>

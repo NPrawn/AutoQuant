@@ -39,17 +39,17 @@ export function TradeTable({ backtestId, page, onPageChange }: TradeTableProps) 
       </div>
 
       <div className="card">
-        <div className="table-scroll">
+        <div className="table-scroll" tabIndex={0} role="region" aria-label="거래 내역 표">
           <table>
             <thead>
               <tr>
-                <th>체결 시각</th>
-                <th>종목</th>
-                <th>구분</th>
-                <th className="r">체결가</th>
-                <th className="r">수량</th>
-                <th className="r">거래대금</th>
-                <th className="r">수수료</th>
+                <th scope="col">체결 시각</th>
+                <th scope="col">종목</th>
+                <th scope="col">구분</th>
+                <th scope="col" className="r">체결가</th>
+                <th scope="col" className="r">수량</th>
+                <th scope="col" className="r">거래대금</th>
+                <th scope="col" className="r">수수료</th>
               </tr>
             </thead>
             <tbody>
@@ -73,7 +73,7 @@ export function TradeTable({ backtestId, page, onPageChange }: TradeTableProps) 
         </div>
       </div>
 
-      <Pager page={page} totalPages={totalPages} onPageChange={onPageChange} />
+      <Pager page={page} totalPages={totalPages} disabled={trades.isPlaceholderData} label="거래 내역 페이지" onPageChange={onPageChange} />
     </>
   )
 }

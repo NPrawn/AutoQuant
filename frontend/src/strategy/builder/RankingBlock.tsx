@@ -1,7 +1,9 @@
 import { useId } from 'react'
 
 import { directionLabels, factorMeta, factorTypes, timeframeLabels, timeframes } from '../labels'
+import { periodMax } from '../draft'
 import type { FactorType, Ranking, RankingDirection, Timeframe } from '../types'
+import { blurOnWheel } from './numberInput'
 
 type RankingBlockProps = {
   ranking: Ranking
@@ -46,8 +48,9 @@ export function RankingBlock({ ranking, timeframe, onRankingChange, onTimeframeC
               id={`${id}-period`}
               className="num"
               type="number"
+              onWheel={blurOnWheel}
               min={1}
-              max={500}
+              max={periodMax}
               step={1}
               value={Number.isNaN(ranking.period) ? '' : ranking.period}
               onChange={(event) => onRankingChange({ period: event.target.value.trim() === '' ? Number.NaN : Number(event.target.value) })}
