@@ -1,4 +1,4 @@
-import { blank, formatKrw, formatQuantity, formatRate, trendClass } from '../backtest/labels'
+import { blank, formatKrw, formatPriceKrw, formatQuantity, formatRate, trendClass } from '../backtest/labels'
 import { assetCode, assetName, type AssetLookup } from './assetLookup'
 import type { PositionValuation } from './positions'
 
@@ -33,10 +33,12 @@ export function PositionsTable({ valuations, lookup, selectedId = null, onSelect
           {valuations.map((valuation) => {
             const name = assetName(lookup, valuation.assetId)
             const selectable = onSelect !== undefined
+            const selected = selectable && valuation.assetId === selectedId
             return (
               <tr
                 key={valuation.assetId}
-                className={selectable ? (valuation.assetId === selectedId ? 'click on' : 'click') : undefined}
+                className={selectable ? (selected ? 'click on' : 'click') : undefined}
+                aria-current={selected ? 'true' : undefined}
                 onClick={selectable ? () => onSelect(valuation.assetId) : undefined}
               >
                 <td>
@@ -51,8 +53,8 @@ export function PositionsTable({ valuations, lookup, selectedId = null, onSelect
                   {name !== null && <small className="muted-cell" style={{ marginLeft: 6 }}>{name}</small>}
                 </td>
                 <td className="r mono">{formatQuantity(valuation.quantity)}</td>
-                <td className="r mono">{formatKrw(valuation.averageEntryPrice)}</td>
-                <td className="r mono">{valuation.price === null ? blank : formatKrw(valuation.price)}</td>
+                <td className="r mono">{formatPriceKrw(valuation.averageEntryPrice)}</td>
+                <td className="r mono">{valuation.price === null ? blank : formatPriceKrw(valuation.price)}</td>
                 <td className="r mono">{valuation.value === null ? blank : formatKrw(valuation.value)}</td>
                 <td className={`r mono ${trendClass(valuation.pnlRate)}`}>{formatRate(valuation.pnlRate, { signed: true })}</td>
               </tr>

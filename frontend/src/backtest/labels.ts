@@ -27,6 +27,27 @@ export function formatKrw(value: number | null): string {
   return value === null ? blank : krwFormat.format(value)
 }
 
+/*
+ * 코인 가격. 금액이 작을수록 소수를 더 남긴다. 1원 미만 코인의 체결가·평균 매수가를 정수로 반올림하면
+ * 0 이 찍혀 차트 화면의 표기와 어긋난다. 자릿수는 업비트 호가 단위를 대략 따른다.
+ */
+export function priceDecimals(value: number): number {
+  const size = Math.abs(value)
+  if (size >= 1000) return 0
+  if (size >= 100) return 1
+  if (size >= 10) return 2
+  if (size >= 1) return 3
+  return 4
+}
+
+export function formatPriceKrw(value: number | null): string {
+  if (value === null) {
+    return blank
+  }
+  const digits = priceDecimals(value)
+  return value.toLocaleString('ko-KR', { minimumFractionDigits: digits, maximumFractionDigits: digits })
+}
+
 export function formatQuantity(value: number | null): string {
   return value === null ? blank : quantityFormat.format(value)
 }

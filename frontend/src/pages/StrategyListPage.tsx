@@ -30,9 +30,9 @@ export function StrategyListPage() {
       <div className="page-head">
         <div>
           <h1>내 전략</h1>
-          <p className="sub">저장할 때마다 새 버전이 만들어집니다. 각 전략의 현재 상태와 다음 할 일만 표시합니다.</p>
+          <p className="sub">수정해 저장하면 별도의 새 전략이 만들어집니다. 각 전략의 현재 상태와 다음 할 일만 표시합니다.</p>
         </div>
-        <Link className="btn primary" to={routes.home}>
+        <Link className="btn primary" to={routes.strategyNew}>
           새 전략 만들기
         </Link>
       </div>
@@ -124,7 +124,8 @@ function statusOf(runs: BacktestRun[], latest: BacktestRun | null): { label: str
 function StrategyRow({ strategy, runs, onOpen, onBacktest }: StrategyRowProps) {
   const latest = runs === null ? null : latestCompletedRun(runs)
   const result = useBacktestResult(latest?.id ?? null, latest !== null)
-  const status = runs === null ? { label: '초안', chip: 'chip mute' } : statusOf(runs, latest)
+  /* 이력을 아직 못 읽었으면 상태를 비운다. 초안이라고 먼저 적었다가 검증됨으로 바뀌면 틀린 사실을 먼저 읽게 된다. */
+  const status = runs === null ? null : statusOf(runs, latest)
   const metrics = result.data ?? null
 
   const handleRowClick = (event: MouseEvent<HTMLTableRowElement>) => {
@@ -143,7 +144,7 @@ function StrategyRow({ strategy, runs, onOpen, onBacktest }: StrategyRowProps) {
         <small>{strategy.description || summarizeDsl(strategy.dsl)} · v1</small>
       </td>
       <td>
-        <span className={status.chip}>{status.label}</span>
+        {status === null ? <span className="muted-cell">{blank}</span> : <span className={status.chip}>{status.label}</span>}
       </td>
       <td className={`r mono ${metrics === null ? 'muted-cell' : trendClass(metrics.cumulativeReturn)}`}>
         {metrics === null ? blank : formatRate(metrics.cumulativeReturn, { signed: true })}

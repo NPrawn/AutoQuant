@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { changedSections, draftFromDsl } from '../src/strategy/draft.ts'
+import { changedSections, draftFromDsl, topNOptions } from '../src/strategy/draft.ts'
 
 const dsl = (overrides = {}) => ({
   timeframe: '1D',
@@ -69,4 +69,10 @@ test('이름과 설명은 전략의 내용이 아니라 비교하지 않는다',
   const before = draftFromDsl(dsl(), { name: '옛 이름', description: '옛 설명' })
   const after = draftFromDsl(dsl(), { name: '새 이름', description: '새 설명' })
   assert.deepEqual(changedSections(before, after), [])
+})
+
+test('종목 수 선택지는 기본 셋에 현재 값을 더해 오름차순이고 잘못된 값은 뺀다', () => {
+  assert.deepEqual(topNOptions(5), [3, 5, 10])
+  assert.deepEqual(topNOptions(7), [3, 5, 7, 10])
+  assert.deepEqual(topNOptions(0), [3, 5, 10])
 })

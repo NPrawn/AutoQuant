@@ -1,7 +1,7 @@
 import { LoadingState } from '../components/LoadingState'
 import { Pager } from '../components/Pager'
 import { EmptyState, ErrorState } from '../components/StateBlock'
-import { formatDateTime, formatKrw, formatQuantity, sideLabels } from './labels'
+import { formatDateTime, formatKrw, formatQuantity, sideLabels, formatPriceKrw } from './labels'
 import { tradePageSize, useBacktestTrades } from './queries'
 
 type TradeTableProps = {
@@ -62,7 +62,7 @@ export function TradeTable({ backtestId, page, onPageChange }: TradeTableProps) 
                   <td>
                     <span className={trade.side === 'BUY' ? 'updown up' : 'updown down'}>{sideLabels[trade.side]}</span>
                   </td>
-                  <td className="r mono">{formatKrw(trade.executedPrice)}</td>
+                  <td className="r mono">{formatPriceKrw(trade.executedPrice)}</td>
                   <td className="r mono">{formatQuantity(trade.quantity)}</td>
                   <td className="r mono">{formatKrw(trade.notional)}</td>
                   <td className="r mono muted-cell">{formatKrw(trade.feeAmount)}</td>

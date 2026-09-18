@@ -1,4 +1,4 @@
-import { formatDateTime, formatKrw, formatQuantity, sideLabels } from '../backtest/labels'
+import { formatDateTime, formatKrw, formatPriceKrw, formatQuantity, sideLabels } from '../backtest/labels'
 import { LoadingState } from '../components/LoadingState'
 import { Pager } from '../components/Pager'
 import { ErrorState } from '../components/StateBlock'
@@ -59,7 +59,7 @@ export function SimulationTradeTable({ simulationId, live, lookup, page, onPageC
                 <td className="mono">{assetCode(lookup, trade.assetId)}</td>
                 <td className="muted-cell">{trade.reason ?? '—'}</td>
                 <td className="r mono">{formatQuantity(trade.quantity)}</td>
-                <td className="r mono">{formatKrw(trade.executedPrice)}</td>
+                <td className="r mono">{formatPriceKrw(trade.executedPrice)}</td>
                 <td className="r mono">{formatKrw(trade.notional)}</td>
                 <td className="r mono muted-cell">{formatKrw(trade.feeAmount)}</td>
               </tr>

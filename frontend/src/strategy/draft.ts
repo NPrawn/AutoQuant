@@ -48,6 +48,12 @@ export type StrategyDraft = {
 /* 목업의 서비스 정책. 후보 조건은 4개까지, 투자 종목은 Top 5 동일비중이다. */
 export const conditionLimit = 4
 export const defaultTopN = 5
+/* 빌더가 고를 수 있는 종목 수. 전략봇이 다른 값을 주면 그 값도 선택지로 함께 보인다. */
+export const topNChoices: readonly number[] = [3, 5, 10]
+
+export function topNOptions(current: number): number[] {
+  return [...new Set([...topNChoices, current])].filter((value) => Number.isInteger(value) && value > 0).sort((left, right) => left - right)
+}
 
 const newId = (): string => crypto.randomUUID()
 

@@ -240,3 +240,99 @@
 .rfilt input:focus-visible {
   border-color: var(--line-2);
 }
+
+/*
+ * 비활성 버튼. base.css 는 .btn.primary 만 흐리게 해서 나머지 변형과 SSO·전략봇 전송 버튼은
+ * 눌리는 것처럼 보였다. 흐리게 하고 hover 가 걸리지 않게 한다.
+ */
+.btn:disabled,
+.sso-btn:disabled,
+.bot-foot button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn:disabled:hover {
+  background: var(--panel-2);
+  border-color: var(--line-2);
+}
+.btn.ghost:disabled:hover {
+  background: none;
+  border-color: var(--line);
+  color: var(--ink-2);
+}
+.btn.primary:disabled:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.sso-btn:disabled,
+.bot-foot button:disabled {
+  pointer-events: none;
+}
+
+/* 보유 종목 표에서 아래 차트가 보고 있는 행. 목업은 선택 상태를 그리지 않았다. */
+tbody tr.click.on {
+  background: var(--panel-2);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+tbody tr.click.on:hover {
+  background: var(--panel-3);
+}
+
+/* 빌더 저장 실패. 편집 영역 위에 띄우고 항목 목록과 다시 저장 버튼을 같이 둔다. */
+.callout.save-error {
+  align-items: flex-start;
+}
+.callout.save-error > span {
+  flex: 1;
+}
+.callout.save-error ul {
+  margin: 6px 0 0;
+  padding-left: 16px;
+}
+.callout.save-error .btn {
+  flex: none;
+}
+
+/*
+ * 960px 이하의 메뉴. 사이드바가 사라지는 폭에서만 상단바 왼쪽에 버튼이 보이고,
+ * 시트는 목업의 .modal 을 왼쪽에 붙여 사이드바처럼 읽히게 한다.
+ */
+.nav-toggle {
+  display: none;
+  margin-right: 8px;
+}
+.crumb {
+  display: flex;
+  align-items: center;
+}
+@media (max-width: 960px) {
+  .nav-toggle {
+    display: flex;
+  }
+}
+dialog.nav-sheet-scrim {
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0;
+}
+.modal.nav-sheet {
+  max-width: 280px;
+  border-radius: 0;
+  border-width: 0 1px 0 0;
+  max-height: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px 12px;
+}
+.nav-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 0 10px;
+}
+.nav-sheet-head h3 {
+  margin: 0;
+  font-size: 14px;
+}

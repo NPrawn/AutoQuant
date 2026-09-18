@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useBlocker, useNavigate } from 'react-router'
 
 import { routes, to } from '../../app/routes'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { LoadingState } from '../../components/LoadingState'
-import { ErrorState } from '../../components/StateBlock'
 import { AssistantPanel } from '../assistant/AssistantPanel'
 import {
   appendAssistantMessage,
@@ -26,6 +26,7 @@ import {
   setRanking,
   setRebalance,
   setTimeframe,
+  setTopN,
   updateCondition,
   validateDraft,
   type BuilderSection,
@@ -39,6 +40,7 @@ import { FilterBlock } from './FilterBlock'
 import { RankingBlock } from './RankingBlock'
 import { RebalanceBlock } from './RebalanceBlock'
 import { StrategySummaryCard } from './StrategySummaryCard'
+import { TopNBlock } from './TopNBlock'
 
 /* 강조가 켜져 있는 시간. extensions.css 의 애니메이션보다 조금 길게 둔다. */
 const highlightDurationMs = 1800
@@ -56,7 +58,7 @@ type StrategyEditorProps = {
 /*
  * 전략 빌더 본체(목업 19·27). 편집 상태는 draft.ts 의 순수 함수로만 바꾼다. 홈에서 넘어온 목표
  * 문장은 진입 즉시 변환해 블록을 채우고, 전략봇의 요청은 지금 블록을 함께 보내 고쳐 받는다.
- * 저장이 실패하면 블록 자리에 안내를 보이되 편집 내용은 그대로 둔다. 수정 API 가 없어 수정 모드의
+ * 저장이 실패하면 블록 위에 안내를 보이되 편집 내용은 그대로 둔다. 수정 API 가 없어 수정 모드의
  * 저장도 새 전략을 만든다. base.css 가 #view-builder 로 블록 격자를 정하므로 목업의 id 를 그대로 둔다.
  */
 export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProps) {
@@ -104,6 +106,26 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
   const translate = useTranslateStrategy()
   const create = useCreateStrategy()
   const [saveError, setSaveError] = useState<unknown>(null)
+
+  /*
+   * 저장하지 않은 변경이 있으면 화면을 떠나기 전에 묻는다. 전략봇 초안을 받고 블록을 손보는 데 든 시간이
+   * 오클릭 한 번에 사라지면 안 된다. 저장이 끝나 상세로 가는 이동은 막지 않는다.
+   */
+  const savedRef = useRef(false)
+  const dirty = draft.name !== initialDraft.name || changedSections(initialDraft, draft).length > 0
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) => dirty && !savedRef.current && currentLocation.pathname !== nextLocation.pathname,
+  )
+  useEffect(() => {
+    if (!dirty) {
+      return
+    }
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
 
   /*
    * strategy 가 null 이면 전략 설명이 아닌 입력이라 서버가 LLM 을 부르지 않은 것이다. 200 이고
@@ -196,13 +218,16 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
         strategyDsl: dslFromDraft(draft),
       },
       {
-        onSuccess: (response) => navigate(to.strategyDetail(String(response.strategyId))),
+        onSuccess: (response) => {
+          savedRef.current = true
+          navigate(to.strategyDetail(String(response.strategyId)))
+        },
         onError: (error) => setSaveError(error),
       },
     )
   }
 
-  const saveLabel = create.isPending ? '저장 중…' : mode === 'edit' ? '새 버전으로 저장' : '전략 저장'
+  const saveLabel = create.isPending ? '저장 중…' : mode === 'edit' ? '새 전략으로 저장' : '전략 저장'
   const saveErrorView = saveError ? describeSaveError(saveError) : null
 
   return (
@@ -249,64 +274,86 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
         </div>
       )}
 
-      {saveErrorView ? (
-        <ErrorState
-          title={saveErrorView.title}
-          description={saveErrorView.description}
-          details={saveErrorView.details}
-          error={saveError}
-          onRetry={handleSave}
-          actions={
-            <button className="btn" type="button" onClick={() => setSaveError(null)}>
-              블록 수정
-            </button>
-          }
-        />
-      ) : (
-        <div className="edit-shell">
-          <div>
-            <div className="tabp on">
-              <FilterBlock
-                changed={highlighted.includes('filters')}
-                conditions={draft.conditions}
-                logic={draft.logic}
-                onAdd={() => setDraft(addCondition(draft))}
-                onChange={(id, patch) => setDraft(updateCondition(draft, id, patch))}
-                onRemove={(id) => setDraft(removeCondition(draft, id))}
-              />
-              <RankingBlock
-                changed={highlighted.includes('ranking')}
-                ranking={draft.ranking}
-                timeframe={draft.timeframe}
-                onRankingChange={(patch) => setDraft(setRanking(draft, patch))}
-                onTimeframeChange={(timeframe) => setDraft(setTimeframe(draft, timeframe))}
-              />
-              <RebalanceBlock
-                changed={highlighted.includes('rebalance')}
-                rebalance={draft.rebalance}
-                onChange={(rebalance) => setDraft(setRebalance(draft, rebalance))}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-              <button className="btn ghost" type="button" onClick={() => navigate(routes.strategies)}>
-                취소
-              </button>
-              <button className="btn primary" type="button" onClick={handleSave} disabled={create.isPending}>
-                {saveLabel}
-              </button>
-            </div>
-          </div>
-
-          <aside className="edit-side">
-            <StrategySummaryCard
-              changed={highlighted.includes('summary')}
-              draft={draft}
-              goal={entry?.prompt ?? null}
-              issues={showIssues ? issues : []}
-            />
-          </aside>
+      {/* 저장 실패는 블록 위에 띄우고 편집 영역은 그대로 둔다. 문구가 "편집한 내용은 남아 있다" 고 말하는데 화면에서 사라지면 안 된다. */}
+      {saveErrorView !== null && (
+        <div className="callout crit save-error" role="alert">
+          <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v5M12 16h.01" />
+          </svg>
+          <span>
+            <b>{saveErrorView.title}</b> {saveErrorView.description}
+            {saveErrorView.details.length > 0 && (
+              <ul>
+                {saveErrorView.details.map((row) => (
+                  <li key={row.label}>
+                    <b>{row.label}</b> {row.value}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </span>
+          <button className="btn sm" type="button" onClick={handleSave} disabled={create.isPending}>
+            다시 저장
+          </button>
         </div>
       )}
+
+      <div className="edit-shell">
+        <div>
+          <div className="tabp on">
+            <FilterBlock
+              changed={highlighted.includes('filters')}
+              conditions={draft.conditions}
+              logic={draft.logic}
+              onAdd={() => setDraft(addCondition(draft))}
+              onChange={(id, patch) => setDraft(updateCondition(draft, id, patch))}
+              onRemove={(id) => setDraft(removeCondition(draft, id))}
+            />
+            <RankingBlock
+              changed={highlighted.includes('ranking')}
+              ranking={draft.ranking}
+              timeframe={draft.timeframe}
+              onRankingChange={(patch) => setDraft(setRanking(draft, patch))}
+              onTimeframeChange={(timeframe) => setDraft(setTimeframe(draft, timeframe))}
+            />
+            <TopNBlock changed={highlighted.includes('summary')} topN={draft.topN} onChange={(topN) => setDraft(setTopN(draft, topN))} />
+            <RebalanceBlock
+              changed={highlighted.includes('rebalance')}
+              rebalance={draft.rebalance}
+              onChange={(rebalance) => setDraft(setRebalance(draft, rebalance))}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+            <button className="btn ghost" type="button" onClick={() => navigate(routes.strategies)}>
+              취소
+            </button>
+            <button className="btn primary" type="button" onClick={handleSave} disabled={create.isPending}>
+              {saveLabel}
+            </button>
+          </div>
+        </div>
+
+        <aside className="edit-side">
+          <StrategySummaryCard
+            changed={highlighted.includes('summary')}
+            draft={draft}
+            goal={entry?.prompt ?? null}
+            issues={showIssues ? issues : []}
+          />
+        </aside>
+      </div>
+
+      <ConfirmDialog
+        open={blocker.state === 'blocked'}
+        title="편집한 내용을 버릴까요?"
+        description="저장하지 않은 변경이 있습니다. 나가면 지금까지 고친 블록과 이름이 사라집니다."
+        confirmLabel="나가기"
+        cancelLabel="계속 편집"
+        danger
+        onConfirm={() => blocker.proceed?.()}
+        onCancel={() => blocker.reset?.()}
+      />
 
       <AssistantPanel
         conversation={conversation}
