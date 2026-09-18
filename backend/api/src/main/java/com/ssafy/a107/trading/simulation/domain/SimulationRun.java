@@ -150,6 +150,20 @@ public class SimulationRun extends BaseEntity {
         return true;
     }
 
+    /**
+     * 아직 실행 이력이 없는 검증용 모의투자를 과거 확정 봉 시점부터 재생한다.
+     */
+    public void rewindStartAtForDebug(Instant startedAt) {
+        ensureRunning();
+        if (lastCandleAt != null) {
+            throw new IllegalStateException("Cannot rewind a simulation that already processed a candle");
+        }
+        Instant validatedStartedAt = Objects.requireNonNull(startedAt);
+        if (validatedStartedAt.isBefore(this.startedAt)) {
+            this.startedAt = validatedStartedAt;
+        }
+    }
+
     public void markRebalanced(Instant rebalanceAt) {
         ensureRunning();
         if (lastCandleAt == null || rebalanceAt == null || rebalanceAt.isAfter(lastCandleAt)) {
