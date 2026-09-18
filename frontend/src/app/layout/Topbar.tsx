@@ -4,6 +4,7 @@ import { useUnreadNotificationCount } from '../../notification/queries'
 import { ThemeToggle } from '../../styles/ThemeToggle'
 import { routes } from '../routes'
 import { AccountMenu } from './AccountMenu'
+import { MobileNav } from './MobileNav'
 
 /* 라우트 정의의 handle.title 을 상단바 제목으로 쓴다. 가장 깊은 매치가 이긴다. */
 type RouteHandle = { title?: string }
@@ -33,6 +34,7 @@ export function Topbar({ member, runningSimulations, onLogout }: TopbarProps) {
   return (
     <header className="topbar">
       <div className="crumb">
+        <MobileNav />
         <b>{title}</b>
       </div>
       <div className="topbar-r">

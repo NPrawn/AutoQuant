@@ -191,7 +191,7 @@ function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProp
             {item.label}
           </button>
         ))}
-        <span className="detail-lock">저장할 때마다 새 버전이 만들어집니다</span>
+        <span className="detail-lock">수정해 저장하면 별도의 새 전략이 만들어집니다</span>
       </nav>
 
       <div className="detail-pane on">
@@ -430,7 +430,7 @@ function StrategyPane({ strategy }: { strategy: Strategy }) {
       <div className="sec-head detail-version-head">
         <div>
           <div className="sec-title">버전 이력</div>
-          <div className="sec-sub">수정 API 가 준비되기 전까지는 저장할 때마다 새 전략이 만들어집니다</div>
+          <div className="sec-sub">수정해 저장하면 별도의 새 전략이 만들어집니다</div>
         </div>
       </div>
       <div className="card pad">

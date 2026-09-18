@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { isRunInProgress } from '../src/backtest/labels.ts'
+import { formatPriceKrw, isRunInProgress } from '../src/backtest/labels.ts'
 import { periodBounds } from '../src/backtest/periodBounds.ts'
 import {
   applyPreset, clampPeriodStart, createRunForm, detectPreset, setInitialCapital,
@@ -101,4 +101,14 @@ test('조건 폼은 대기·계산 중인 실행에만 잠기고 끝난 실행�
   assert.equal(isRunInProgress('RUNNING'), true)
   assert.equal(isRunInProgress('COMPLETED'), false)
   assert.equal(isRunInProgress('FAILED'), false)
+})
+
+test('코인 가격은 금액이 작을수록 소수를 더 남겨 저가 코인이 0 으로 찍히지 않는다', () => {
+  assert.equal(formatPriceKrw(98_500_000), '98,500,000')
+  assert.equal(formatPriceKrw(1234.5), '1,235')
+  assert.equal(formatPriceKrw(523.4), '523.4')
+  assert.equal(formatPriceKrw(45.678), '45.68')
+  assert.equal(formatPriceKrw(2.3456), '2.346')
+  assert.equal(formatPriceKrw(0.4523), '0.4523')
+  assert.equal(formatPriceKrw(null), '—')
 })

@@ -28,7 +28,8 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 사이드바 항목은 `src/app/navigation.tsx`에만 추가한다.
 - 모달은 네이티브 `dialog`를 `showModal()`로 열고 겉모습만 목업의 `.mbd`·`.modal`을 쓴다. 포커스 트랩, Esc 닫기, 바깥 요소 비활성화는 브라우저에 맡기고 직접 구현하지 않는다. 되돌릴 수 없는 동작의 확인은 `src/components/ConfirmDialog`를 쓴다.
 - 드롭다운 메뉴는 열렸을 때만 렌더링하고 바깥 `pointerdown`과 Esc 로 닫으며, 닫힐 때 여는 버튼으로 포커스를 되돌린다.
-- 정의되지 않은 경로는 `NotFoundPage`가 받는다.
+- 정의되지 않은 경로는 `AppShell` 안의 `NotFoundPage`가 받아 사이드바와 상단바가 남는다. 960px 이하에서는 상단바의 `MobileNav`가 `navigation.tsx`의 같은 항목을 dialog 시트로 연다.
+- 비활성 버튼은 `extensions.css`의 `.btn:disabled` 한 벌로 흐려지고 hover 가 걸리지 않는다. 컴포넌트가 비활성 모양을 따로 그리지 않는다.
 
 ## API 호출과 인증 상태
 
@@ -42,7 +43,9 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 백테스트 기간 경계는 `src/backtest/periodBounds.ts` 가 정한다. 워밍업 봉 수 계산은 백엔드 `BacktestWarmupCandleCountResolver` 와 같은 규칙이라 한쪽이 바뀌면 다른 쪽도 바꾼다. 하한을 계산에 쓰는 곳은 프리셋, 시작일 검증, 기본 기간 셋뿐이고 컴포넌트가 날짜를 직접 계산하지 않는다.
 - 캔들 보유 구간은 `GET /candles/coverage` 하나로 받는다. 종목별 최근 봉을 모아 추정하지 않는다. 봉 조회는 1,000개가 상한이라 과거가 쌓일수록 시작일이 잘리고, 화면이 DB 에 있는 구간을 못 쓰게 된다.
 - 모의투자 시작 조건은 `src/simulation/startForm.ts`, 보유 종목 평가는 `src/simulation/positions.ts` 의 순수 함수에만 둔다. 현재가가 없는 값은 비우고 추정하지 않는다. 종목 이름은 `assetLookup.ts` 로 맞추고 컴포넌트가 `/assets` 를 따로 부르지 않는다.
-- 전략 DSL 계약 타입은 `src/strategy/types.ts`, 열거형 문구·단위는 `src/strategy/labels.ts`, 빌더 편집 동작은 `src/strategy/draft.ts`의 순수 함수에만 둔다. 컴포넌트가 DSL 을 직접 조립하지 않는다.
+- 전략 DSL 계약 타입은 `src/strategy/types.ts`, 열거형 문구·단위는 `src/strategy/labels.ts`, 빌더 편집 동작은 `src/strategy/draft.ts`의 순수 함수에만 둔다. 컴포넌트가 DSL 을 직접 조립하지 않는다. 종목 수는 `TopNBlock`이 `topNOptions`로 고르며 전략봇이 준 다른 값도 선택지에 남긴다.
+- 빌더는 저장하지 않은 변경이 있으면 `useBlocker`와 `beforeunload`로 이탈을 묻는다. 저장 실패는 편집 영역을 바꾸지 않고 위에 콜아웃으로 보인다. 편집해 저장하면 "새 전략"이 만들어진다고 모든 화면이 같은 말로 적는다. "새 버전"이라고 쓰지 않는다.
+- 코인 가격은 `backtest/labels.ts`의 `formatPriceKrw`로 적어 금액이 작을수록 소수를 더 남긴다. 정수 반올림인 `formatKrw`는 평가액·거래대금·수수료처럼 원화 합계에만 쓴다.
 - 대회 응답 타입은 `src/contest/types.ts`, 상태·장세·실격 문구와 표기는 `src/contest/labels.ts`, 제출 실패 문구는 `src/contest/submitErrorMessage.ts` 에만 둔다. 채점 규칙 숫자는 회차 응답이 준 값만 쓰고 화면이 가중치나 투자 비중 하한을 다시 적어 두지 않는다. 결과와 내 결과는 마감 전에도 열리지만 데이터셋 조회는 종료 전에 부르면 409 라 `useContestProgress` 가 종료를 알린 뒤에만 켠다.
 - 내 제출 성적은 `src/contest/ContestMyScorePanel.tsx` 하나로 대회 상세와 결과 화면이 같이 쓴다. 점수가 비어 있으면 채점 중이라 진행률을 보여 주고, 마감 전 순위에는 잠정이라고 적는다.
 - 채점 중 판정은 `awaitingScore` 하나다. 백테스트가 다 끝나도 스케줄러가 점수를 쓰기 전까지는 채점 중이라, 끝난 백테스트 수로 다시 묻기를 멈추지 않는다. 기다리던 결과가 채점되면 대회 쿼리를 한 번 무효화해 순위표도 갱신한다.

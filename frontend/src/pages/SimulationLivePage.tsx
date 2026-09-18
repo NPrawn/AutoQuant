@@ -108,8 +108,9 @@ function LiveView({ run, strategy, lookup }: LiveViewProps) {
   /* 체결가는 정밀도 때문에 문자열로 온다. 평가 계산에는 숫자가 필요해 여기서 바꾼다. */
   const priceMap = new Map(Array.from(prices, ([assetId, quote]) => [assetId, Number(quote.price)]))
   const valuations = valuePositions(positions.data ?? [], priceMap)
-  /* 고른 종목이 재선정으로 빠졌으면 남아 있는 첫 종목으로 되돌린다. */
-  const chartAsset = lookup.get(chartAssetId ?? '') ?? lookup.get(valuations[0]?.assetId ?? '')
+  /* 고른 종목이 재선정으로 빠졌으면 남아 있는 첫 종목으로 되돌린다. 보유 목록으로 확인해야 매도된 종목 차트가 남지 않는다. */
+  const heldChartAssetId = valuations.some((valuation) => valuation.assetId === chartAssetId) ? chartAssetId : valuations[0]?.assetId
+  const chartAsset = lookup.get(heldChartAssetId ?? '')
   const chartInterval = simulationIntervals[run.timeframe]
   const liveEquity = live ? totalEquity(run.cashBalance, valuations) : null
   const metrics = result.data ?? null
