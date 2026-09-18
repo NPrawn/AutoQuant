@@ -36,8 +36,16 @@ export function ContestListPage() {
       {contests.isError && (
         <ErrorState title="대회 회차를 불러오지 못했습니다" error={contests.error} onRetry={() => contests.refetch()} />
       )}
-      {contests.isSuccess && rounds.length === 0 && (
-        <EmptyState title="아직 열린 대회가 없습니다" description="회차가 열리면 이 화면에서 제출할 수 있습니다." />
+      {/* 회차는 끝나도 다음 회차가 이어 열리지 않는다. 준비되면 새로 연다. 그동안은 그 상태를 그대로 말한다. */}
+      {contests.isSuccess && live === null && upcoming.length === 0 && (
+        <EmptyState
+          title={past.length === 0 ? '아직 열린 대회가 없습니다' : '현재 열린 대회가 없습니다'}
+          description={
+            past.length === 0
+              ? '회차가 열리면 이 화면에서 제출할 수 있습니다.'
+              : '다음 회차가 열리면 이 화면에서 제출할 수 있습니다. 지난 회차 결과는 아래에서 볼 수 있습니다.'
+          }
+        />
       )}
 
       {live && <LiveRoundCard round={live} />}
