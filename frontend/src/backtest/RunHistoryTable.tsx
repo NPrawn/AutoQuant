@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
 
-import { formatDate, formatDateTime, formatKrw, statusMeta } from './labels'
+import { formatDate, formatDateTime, formatKrw, statusOf } from './labels'
 import type { BacktestRun } from './types'
 
 type RunHistoryTableProps = {
@@ -50,7 +50,7 @@ type RunRowProps = {
 
 /* 행 전체가 클릭 영역이지만 키보드 사용자는 마지막 열의 버튼으로 들어간다. */
 function RunRow({ run, strategyName, onOpen }: RunRowProps) {
-  const status = statusMeta[run.status]
+  const status = statusOf(run.status)
   const handleRowClick = (event: MouseEvent<HTMLTableRowElement>) => {
     if ((event.target as HTMLElement).closest('a, button')) {
       return

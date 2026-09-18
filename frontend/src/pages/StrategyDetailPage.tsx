@@ -17,11 +17,11 @@ import { EmptyState, ErrorState } from '../components/StateBlock'
 import { describeStrategy } from '../strategy/assistant/conversation'
 import type { BacktestEntryState } from '../strategy/backtestEntry'
 import { draftFromDsl } from '../strategy/draft'
-import { describeRanking, directionLabels, factorMeta, rebalanceMeta, timeframeLabels } from '../strategy/labels'
+import { describeRanking, directionLabels, factorMeta, rebalanceMeta, timeframeLabels, toTimeframe } from '../strategy/labels'
 import { useChangeStrategyVisibility, useCopyStrategy, useDeleteStrategy, useStrategy } from '../strategy/queries'
 import { summarizeFilters } from '../strategy/summary'
 import { describeCopyError, describeVisibilityError } from '../strategy/translateErrorMessage'
-import type { Strategy, Timeframe } from '../strategy/types'
+import type { Strategy } from '../strategy/types'
 
 type DetailTab = 'overview' | StrategyDetailTab
 
@@ -288,7 +288,7 @@ function OverviewPane({ strategy, onBacktest }: OverviewPaneProps) {
       {latest !== null && (
         <section className="card pad shared-market-card" style={{ marginBottom: 20 }}>
           <div className="sec-title" style={{ marginBottom: 2 }}>전략 체결 차트</div>
-          <TradeChart backtestId={latest.id} timeframe={latest.timeframe as Timeframe} />
+          <TradeChart backtestId={latest.id} timeframe={toTimeframe(latest.timeframe)} />
         </section>
       )}
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router'
 
 import { routes } from '../app/routes'
@@ -7,7 +7,7 @@ import { Pager } from '../components/Pager'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { BacktestResult } from '../backtest/BacktestResult'
 import { BacktestRunForm } from '../backtest/BacktestRunForm'
-import { formatKrw, isRunInProgress, statusMeta } from '../backtest/labels'
+import { formatKrw, isRunInProgress, statusOf } from '../backtest/labels'
 import { periodBounds } from '../backtest/periodBounds'
 import { useBacktestRun, useBacktestRuns, useCandleCoverage, useCreateBacktestRun } from '../backtest/queries'
 import { describeFailedRun, describeRunError } from '../backtest/runErrorMessage'
@@ -20,6 +20,18 @@ import type { Strategy } from '../strategy/types'
 
 /* 대기가 이 시간을 넘기면 워커가 집어가지 못하고 있다는 뜻이라 사용자에게 알린다. */
 const longQueueWarningMs = 30_000
+
+/* 오늘 날짜. 화면을 열어 둔 채 자정을 넘기면 종료일 검증과 프리셋이 어제 기준으로 남아 다음 날 첫 순간에 갱신한다. */
+function useToday(): Date {
+  const [today, setToday] = useState(() => new Date())
+  useEffect(() => {
+    const midnight = new Date(today)
+    midnight.setHours(24, 0, 0, 0)
+    const timer = setTimeout(() => setToday(new Date()), Math.max(1000, midnight.getTime() - Date.now() + 1000))
+    return () => clearTimeout(timer)
+  }, [today])
+  return today
+}
 
 /* 보유 구간과 전략을 아직 모를 때의 경계. 첫 렌더의 초안 기간에만 쓰인다. */
 const unknownBounds = (today: Date) => periodBounds(null, null, today)
@@ -36,7 +48,7 @@ export function BacktestPage() {
 
   const strategies = useStrategies()
   const coverage = useCandleCoverage()
-  const [today] = useState(() => new Date())
+  const today = useToday()
   const [form, setForm] = useState(() => createRunForm(entry?.strategyId ?? '', today, unknownBounds(today)))
   /* 하한을 이미 반영한 전략. 전략이 바뀐 순간에만 시작일을 끌어올리려고 기억한다. */
   const [clampedFor, setClampedFor] = useState<string | null>(null)
@@ -314,7 +326,7 @@ function RunPanel({ runId, run, strategyName, createError, tradePage, onTradePag
   return (
     <div className="bt-load on">
       <div className="spin" aria-hidden="true" />
-      <div role="status">{statusMeta[status].label}입니다. 계산이 끝나면 결과가 표시됩니다.</div>
+      <div role="status">{statusOf(status).label}입니다. 계산이 끝나면 결과가 표시됩니다.</div>
       {waitedTooLong && (
         <p className="goal-note" style={{ margin: 0, textAlign: 'center' }}>
           대기가 길어지고 있습니다. 계산 워커가 아직 이 작업을 가져가지 못했을 수 있습니다.

@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 
 import { to } from '../app/routes'
@@ -26,6 +26,8 @@ import { describeCopyError } from '../strategy/translateErrorMessage'
  * 목업 06 과 26. 순위는 대회 결과로만 매기므로 회차를 골라 그 회차의 순위를 본다.
  * 정렬·국면·검색·페이지는 서버가 거르고 화면은 조건만 들고 있는다.
  */
+const searchDebounceMs = 300
+
 export function RankingPage() {
   const id = useId()
   const navigate = useNavigate()
@@ -34,6 +36,15 @@ export function RankingPage() {
 
   const [query, setQuery] = useState(defaultRankingQuery)
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null)
+  /* 입력 칸은 바로 바뀌고 서버 조건은 잠깐 뒤에 따라간다. 글자마다 요청을 보내지 않는다. */
+  const [searchInput, setSearchInput] = useState(defaultRankingQuery.search)
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setQuery((current) => (current.search === searchInput ? current : setSearch(current, searchInput))),
+      searchDebounceMs,
+    )
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   const rounds = contests.data?.contests ?? []
   /* 점수가 절대값이라 제출이 채점되는 대로 순위가 생긴다. 시작 전 회차만 뺀다. */
@@ -52,6 +63,7 @@ export function RankingPage() {
   const changeRound = (nextRoundId: string) => {
     setSelectedRoundId(nextRoundId)
     setQuery(defaultRankingQuery)
+    setSearchInput(defaultRankingQuery.search)
   }
 
   const copyStrategy = (strategyId: number) => {
@@ -170,8 +182,8 @@ export function RankingPage() {
               id={`${id}-search`}
               type="search"
               placeholder="전략 이름 검색"
-              value={query.search}
-              onChange={(event) => setQuery(setSearch(query, event.target.value))}
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
             />
           </div>
 

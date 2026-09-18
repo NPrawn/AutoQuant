@@ -58,11 +58,6 @@ export function describeSubmitError(error: unknown): ContestSubmitErrorView {
   }
 }
 
-/* 결과·데이터셋 조회는 종료 전이면 409 다. 오류가 아니라 아직 공개 전이라는 뜻이다. */
-export function isResultNotPublished(error: unknown): boolean {
-  return isApiError(error) && error.code === errorCodes.contestResultNotPublished
-}
-
 /* 제출하지 않은 회차의 내 결과는 404 다. */
 export function isEntryNotFound(error: unknown): boolean {
   return isApiError(error) && error.code === errorCodes.contestEntryNotFound

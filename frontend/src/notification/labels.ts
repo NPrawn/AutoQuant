@@ -18,6 +18,13 @@ export const notificationLooks: Record<NotificationType, NotificationLook> = {
   CONTEST_SCORED: { tone: 'contest', icon: '★', action: '결과 보기' },
 }
 
+/* 서버에 종류가 하나 늘어도 화면이 깨지지 않게 모르는 종류는 중립 모양이다. */
+const unknownLook: NotificationLook = { tone: 'done', icon: '•', action: '보기' }
+
+export function notificationLook(type: string): NotificationLook {
+  return (notificationLooks as Record<string, NotificationLook>)[type] ?? unknownLook
+}
+
 const dayInMs = 24 * 60 * 60 * 1000
 
 /*

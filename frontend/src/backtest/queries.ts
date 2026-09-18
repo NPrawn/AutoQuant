@@ -55,7 +55,9 @@ export function useBacktestRun(backtestId: string | null) {
     queryFn: () => fetchBacktestRun(backtestId ?? ''),
     select: toBacktestRun,
     enabled: backtestId !== null,
-    refetchInterval: (query) => (query.state.data && isSettled(query.state.data.status) ? false : statusPollIntervalMs),
+    /* 조회가 실패해도 인터벌은 돌아간다. 없는 실행 id 로 2초마다 404 를 보내지 않게 오류에서도 멈춘다. */
+    refetchInterval: (query) =>
+      query.state.status === 'error' || (query.state.data && isSettled(query.state.data.status)) ? false : statusPollIntervalMs,
     refetchIntervalInBackground: true,
   })
 }
