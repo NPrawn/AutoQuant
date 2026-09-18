@@ -7,7 +7,7 @@ import { Pager } from '../components/Pager'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { BacktestResult } from '../backtest/BacktestResult'
 import { BacktestRunForm } from '../backtest/BacktestRunForm'
-import { formatKrw, statusMeta } from '../backtest/labels'
+import { formatKrw, isRunInProgress, statusMeta } from '../backtest/labels'
 import { periodBounds } from '../backtest/periodBounds'
 import { useBacktestRun, useBacktestRuns, useCandleCoverage, useCreateBacktestRun } from '../backtest/queries'
 import { describeFailedRun, describeRunError } from '../backtest/runErrorMessage'
@@ -52,6 +52,15 @@ export function BacktestPage() {
   }
 
   const selectedStrategy = strategies.data?.find((strategy) => strategy.id === form.strategyId) ?? null
+  /*
+   * 조건 폼은 실행이 아직 돌고 있을 때만 잠근다. 주소에 run 이 있다는 것만으로 잠그면 결과가 뜬 뒤에도
+   * 풀리지 않아 조건을 바꿔 다시 돌릴 수 없다. 상태를 아직 못 읽은 동안은 잠가 두어 깜빡이지 않게 한다.
+   */
+  const runLocked =
+    create.isPending || (runId !== null && (run.isPending || (run.isSuccess && isRunInProgress(run.data.status))))
+  /* 결과 줄의 전략 이름은 폼의 선택이 아니라 실행이 가리키는 전략이다. 폼을 바꿔도 결과 줄은 그대로다. */
+  const runStrategyName =
+    run.data === undefined ? '' : (strategies.data?.find((strategy) => strategy.id === run.data.strategyId)?.name ?? '삭제된 전략')
   /* 하한은 보유 구간과 전략이 함께 정한다. 전략마다 필요한 워밍업 봉 수가 다르다. */
   const bounds = periodBounds(coverage.data ?? null, selectedStrategy?.dsl ?? null, today)
 
@@ -108,7 +117,7 @@ export function BacktestPage() {
           <span className="eyebrow">검증</span>
           <h1>백테스트</h1>
           <p className="sub">
-            평가 기간 동안 이 전략이 무엇을 언제 담고 있었는지 재현하고, 전체 성과와 낙폭을 같은 축에서 분석합니다.
+            평가 기간 동안의 누적 수익을 BTC 단순보유와 견주고, 체결 하나하나를 확인합니다. 결과를 보면서 조건을 바꿔 바로 다시 돌릴 수 있습니다.
           </p>
         </div>
       </div>
@@ -134,7 +143,7 @@ export function BacktestPage() {
           <StrategyPicker
             strategies={strategies.data}
             selectedId={form.strategyId}
-            disabled={create.isPending || runId !== null}
+            disabled={runLocked}
             onChange={(strategyId) => setForm(setStrategyId(form, strategyId))}
           />
 
@@ -145,7 +154,7 @@ export function BacktestPage() {
               today={today}
               bounds={bounds}
               loadingCoverage={coverage.isPending}
-              pending={create.isPending || runId !== null}
+              pending={runLocked}
               showIssues={showIssues}
               onChange={setForm}
               onSubmit={startRun}
@@ -155,7 +164,7 @@ export function BacktestPage() {
               <RunPanel
                 runId={runId}
                 run={run}
-                strategyName={selectedStrategy?.name ?? '선택한 전략'}
+                strategyName={runStrategyName}
                 createError={create.isError ? create.error : null}
                 tradePage={tradePage}
                 onTradePageChange={setTradePage}
@@ -165,8 +174,14 @@ export function BacktestPage() {
             </div>
           </div>
 
-          {runId === null && !create.isError && (
-            <RecentRuns strategies={strategies.data} onOpen={(backtestId) => setSearchParams({ run: backtestId })} />
+          {!create.isError && (
+            <RecentRuns
+              strategies={strategies.data}
+              onOpen={(backtestId) => {
+                setTradePage(0)
+                setSearchParams({ run: backtestId })
+              }}
+            />
           )}
         </>
       )}
@@ -180,7 +195,7 @@ type RecentRunsProps = {
 }
 
 /*
- * 실행 전 상태 아래의 최근 실행 이력. 주소의 run 파라미터를 잃어도 여기서 결과로 돌아간다.
+ * 실행 패널 아래의 최근 실행 이력. 결과가 떠 있어도 남겨 두어 다른 실행과 견주러 갈 수 있다.
  * 이력이 없으면 안내 패널만 남기고 표를 그리지 않는다.
  */
 function RecentRuns({ strategies, onOpen }: RecentRunsProps) {
@@ -235,7 +250,7 @@ function RunPanel({ runId, run, strategyName, createError, tradePage, onTradePag
     return (
       <div className="bt-idle">
         <div>
-          왼쪽에서 조건을 설정하고 <b>백테스트 실행</b>을 누르면
+          위에서 조건을 설정하고 <b>백테스트 실행</b>을 누르면
           <br />
           평가 기간의 자산 곡선과 체결 내역을 보여 줍니다.
         </div>

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { isRunInProgress } from '../src/backtest/labels.ts'
 import { periodBounds } from '../src/backtest/periodBounds.ts'
 import {
   applyPreset, clampPeriodStart, createRunForm, detectPreset, setInitialCapital,
@@ -93,4 +94,11 @@ test('요청은 고른 날짜의 로컬 하루 경계를 보내 표시할 때 �
   assert.equal(new Date(request.periodEnd).getTime() - new Date(request.periodStart).getTime(), 92 * 86400000 - 1)
   assert.equal(request.quoteCurrency, 'KRW')
   assert.equal(request.executionPriceRule, 'NEXT_CANDLE_OPEN')
+})
+
+test('조건 폼은 대기·계산 중인 실행에만 잠기고 끝난 실행에는 풀린다', () => {
+  assert.equal(isRunInProgress('QUEUED'), true)
+  assert.equal(isRunInProgress('RUNNING'), true)
+  assert.equal(isRunInProgress('COMPLETED'), false)
+  assert.equal(isRunInProgress('FAILED'), false)
 })

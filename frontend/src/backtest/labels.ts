@@ -8,6 +8,11 @@ export const statusMeta: Record<BacktestRunStatus, { label: string; chip: string
   FAILED: { label: '실패', chip: 'chip crit' },
 }
 
+/* 아직 끝나지 않은 실행. 이 동안만 조건 폼을 잠근다. 끝난 실행은 결과가 떠 있어도 폼을 막지 않는다. */
+export function isRunInProgress(status: BacktestRunStatus): boolean {
+  return status === 'QUEUED' || status === 'RUNNING'
+}
+
 export const sideLabels: Record<TradeSide, string> = { BUY: '매수', SELL: '매도' }
 
 /* 아직 계산되지 않은 값의 표기. 목업의 빈 셀과 같다. */
