@@ -35,18 +35,18 @@ export function SimulationTradeTable({ simulationId, live, lookup, page, onPageC
       <p className="live-note" style={{ margin: '0 0 10px' }}>
         전체 {formatKrw(totalElements)}건 중 {firstRowNumber}–{firstRowNumber + content.length - 1}
       </p>
-      <div className="table-scroll">
+      <div className="table-scroll" tabIndex={0} role="region" aria-label="체결 원장 표">
         <table>
           <thead>
             <tr>
-              <th>체결 시각</th>
-              <th>구분</th>
-              <th>종목</th>
-              <th>근거</th>
-              <th className="r">수량</th>
-              <th className="r">체결가</th>
-              <th className="r">거래대금</th>
-              <th className="r">수수료</th>
+              <th scope="col">체결 시각</th>
+              <th scope="col">구분</th>
+              <th scope="col">종목</th>
+              <th scope="col">근거</th>
+              <th scope="col" className="r">수량</th>
+              <th scope="col" className="r">체결가</th>
+              <th scope="col" className="r">거래대금</th>
+              <th scope="col" className="r">수수료</th>
             </tr>
           </thead>
           <tbody>

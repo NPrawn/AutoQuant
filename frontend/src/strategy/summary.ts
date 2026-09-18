@@ -1,4 +1,4 @@
-import { describeCondition, describeRanking, logicLabels } from './labels'
+import { describeCondition, describeRanking, logicLabels } from './labels.ts'
 import type { ConditionFilterNode, FilterNode, StrategyDsl } from './types'
 
 /*

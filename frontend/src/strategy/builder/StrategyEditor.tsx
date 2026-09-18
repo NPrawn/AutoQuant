@@ -227,7 +227,9 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
     )
   }
 
-  const saveLabel = create.isPending ? '저장 중…' : mode === 'edit' ? '새 전략으로 저장' : '전략 저장'
+  /* 처리 중에도 라벨을 바꾸지 않는다. 라벨이 바뀌면 버튼 폭이 달라져 옆 취소 버튼이 밀린다. 스피너만 붙인다. */
+  const saveLabel = mode === 'edit' ? '새 전략으로 저장' : '전략 저장'
+  const saveSpinner = create.isPending ? <span className="spin" aria-hidden="true" /> : null
   const saveErrorView = saveError ? describeSaveError(saveError) : null
 
   return (
@@ -254,7 +256,8 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
           <button className="btn ghost sm" type="button" onClick={() => navigate(routes.strategies)}>
             취소
           </button>
-          <button className="btn primary sm" type="button" onClick={handleSave} disabled={create.isPending}>
+          <button className="btn primary sm" type="button" onClick={handleSave} disabled={create.isPending} aria-busy={create.isPending}>
+            {saveSpinner}
             {saveLabel}
           </button>
         </div>
@@ -328,7 +331,8 @@ export function StrategyEditor({ initialDraft, entry, mode }: StrategyEditorProp
             <button className="btn ghost" type="button" onClick={() => navigate(routes.strategies)}>
               취소
             </button>
-            <button className="btn primary" type="button" onClick={handleSave} disabled={create.isPending}>
+            <button className="btn primary" type="button" onClick={handleSave} disabled={create.isPending} aria-busy={create.isPending}>
+              {saveSpinner}
               {saveLabel}
             </button>
           </div>

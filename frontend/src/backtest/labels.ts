@@ -64,8 +64,13 @@ export function formatRate(value: number | null, options?: { signed?: boolean; d
 }
 
 /* 낙폭은 양수로 오지만 화면에서는 잃은 값이라 음수로 읽힌다. */
+/* 낙폭은 늘 음수로 적는다. 0 은 "-0.0%" 가 아니라 "0.0%" 다. */
 export function formatDrawdown(value: number | null): string {
-  return value === null ? blank : `-${(Math.abs(value) * 100).toFixed(1)}%`
+  if (value === null) {
+    return blank
+  }
+  const percent = (Math.abs(value) * 100).toFixed(1)
+  return percent === '0.0' ? '0.0%' : `-${percent}%`
 }
 
 export function formatRatio(value: number | null): string {

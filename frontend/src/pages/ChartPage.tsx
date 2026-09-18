@@ -139,10 +139,10 @@ function MarketChartCard({ asset, interval, ticker, rank, livePrice, indicators,
             <div className={`tick-px ${changeClass(rate)}`}>{formatPrice(price)}</div>
             <div className={`tick-ch ${changeClass(rate)}`}>
               {formatChangeRate(rate)}
-              {/* 연결은 정상일 때 좌측 하단이 이미 알린다. 여기서는 끊겼을 때만 말한다. */}
-              {!connected && (
-                <span style={{ color: 'var(--ink-3)', marginLeft: 8 }}>연결 중 · 끊기면 자동 재연결</span>
-              )}
+              {/* 연결은 정상일 때 좌측 하단이 이미 알린다. 끊겼을 때만 글자가 차고 자리는 늘 있어 헤더가 흔들리지 않는다. */}
+              <span className="conn-note" role="status">
+                {connected ? '' : '연결 중 · 끊기면 자동 재연결'}
+              </span>
             </div>
           </div>
           <div className="tick-stats">
@@ -250,8 +250,10 @@ function ChartLegend({ asset, interval, candle }: { asset: ChartAsset; interval:
 }
 
 /* 범례 둘째 줄. 켜 둔 지표의 마지막 값만 보인다. 값이 아직 없으면 그 지표는 적지 않는다. */
+/* 꺼진 지표도 흐린 글자로 자리를 남긴다. 줄이 사라졌다 나타나면 지표를 누를 때마다 범례가 튄다. */
 function IndicatorLegend({ data, indicators }: { data: IndicatorData; indicators: ReadonlySet<IndicatorKey> }) {
   const entries: Array<{ key: string; token: string; text: string }> = []
+  const off = '--ink-4'
 
   if (indicators.has('bb')) {
     const upper = lastValue(data.bands.upper)
@@ -264,6 +266,8 @@ function IndicatorLegend({ data, indicators }: { data: IndicatorData; indicators
         text: `BB ${bollingerPeriod} ${bollingerMultiplier} ${formatIndicator(upper)} / ${formatIndicator(middle)} / ${formatIndicator(lower)}`,
       })
     }
+  } else {
+    entries.push({ key: 'bb', token: off, text: `BB ${bollingerPeriod} ${bollingerMultiplier} 꺼짐` })
   }
   if (indicators.has('ma')) {
     movingAveragePeriods.forEach((period, index) => {
@@ -272,12 +276,16 @@ function IndicatorLegend({ data, indicators }: { data: IndicatorData; indicators
         entries.push({ key: `ma${period}`, token: `--ma${period}`, text: `MA${period} ${formatIndicator(value)}` })
       }
     })
+  } else {
+    entries.push({ key: 'ma', token: off, text: `MA ${movingAveragePeriods.join('·')} 꺼짐` })
   }
   if (indicators.has('rsi')) {
     const value = lastValue(data.strength)
     if (value !== null) {
       entries.push({ key: 'rsi', token: '--accent', text: `RSI ${value.toFixed(1)}` })
     }
+  } else {
+    entries.push({ key: 'rsi', token: off, text: 'RSI 꺼짐' })
   }
 
   return (

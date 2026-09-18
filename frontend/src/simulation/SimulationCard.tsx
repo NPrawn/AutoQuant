@@ -82,7 +82,16 @@ function EquitySpark({ simulationId, live }: { simulationId: string; live: boole
   const curve = useSimulationEquityCurve(simulationId, live)
   const spark = sparkFromEquity(curve.data ?? [])
   if (spark === null) {
-    return null
+    /* 자리는 남긴다. 첫 봉이 마감돼 곡선이 생기는 순간 카드가 커지면 아래 카드가 밀린다. */
+    return (
+      <div className="sim-chart">
+        <div className="sim-chart-head">
+          <span>운용 수익 곡선</span>
+          <span>{curve.data?.length ?? 0}개 평가 시점</span>
+        </div>
+        <div className="spark spark-empty">첫 봉이 마감되면 곡선이 그려집니다</div>
+      </div>
+    )
   }
 
   const gradientId = `spark-${simulationId}`

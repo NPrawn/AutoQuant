@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { changedSections, draftFromDsl, topNOptions } from '../src/strategy/draft.ts'
+import { changedSections, draftFromDsl, dslFromDraft, topNOptions, validateDraft } from '../src/strategy/draft.ts'
 
 const dsl = (overrides = {}) => ({
   timeframe: '1D',
@@ -75,4 +75,27 @@ test('종목 수 선택지는 기본 셋에 현재 값을 더해 오름차순이
   assert.deepEqual(topNOptions(5), [3, 5, 10])
   assert.deepEqual(topNOptions(7), [3, 5, 7, 10])
   assert.deepEqual(topNOptions(0), [3, 5, 10])
+})
+
+test('초안 검증은 이름·조건·기간 상한·순위 기간·종목 수를 본다', () => {
+  const ok = draftFromDsl(dsl(), { name: '테스트', description: '' })
+  assert.deepEqual(validateDraft(ok), [])
+
+  const bad = { ...ok, name: '  ', conditions: [], ranking: { ...ok.ranking, period: 501 }, topN: 0 }
+  const fields = validateDraft(bad).map((issue) => issue.field)
+  assert.deepEqual(fields, ['name', 'conditions', 'ranking', 'topN'])
+
+  const longPeriod = { ...ok, conditions: [{ ...ok.conditions[0], period: 501 }] }
+  assert.equal(validateDraft(longPeriod).length, 1)
+  assert.match(validateDraft(longPeriod)[0].message, /1~500/)
+  const nanValue = { ...ok, conditions: [{ ...ok.conditions[0], value: Number.NaN }] }
+  assert.match(validateDraft(nanValue)[0].message, /숫자/)
+})
+
+test('초안에서 만든 DSL 은 저장 계약 모양이고 원본과 같다', () => {
+  const source = dsl()
+  const roundTrip = dslFromDraft(draftFromDsl(source))
+  assert.deepEqual(roundTrip, source)
+  assert.equal(roundTrip.selection.topN, 5)
+  assert.equal(roundTrip.filters.type, 'GROUP')
 })

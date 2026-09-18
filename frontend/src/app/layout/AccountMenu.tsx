@@ -1,16 +1,17 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
-import { LogoutConfirmModal } from './LogoutConfirmModal'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 
 type AccountMenuProps = {
   displayName: string
   emailAddress: string
-  /* 운용 중인 모의투자 수. 로그아웃 확인 모달이 계속 실행된다고 알린다. */
-  runningSimulations: number
+  /* 운용 중인 모의투자 수. 아직 못 읽었으면 null 이라 모달이 근거 없는 말을 하지 않는다. */
+  runningSimulations: number | null
+  logoutPending?: boolean
   onLogout?: () => void
 }
 
-export function AccountMenu({ displayName, emailAddress, runningSimulations, onLogout }: AccountMenuProps) {
+export function AccountMenu({ displayName, emailAddress, runningSimulations, logoutPending = false, onLogout }: AccountMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -51,10 +52,17 @@ export function AccountMenu({ displayName, emailAddress, runningSimulations, onL
     avatarRef.current?.focus()
   }
 
+  /* 모달은 요청이 끝날 때까지 열어 둔다. 닫아 버리면 실패해도 로그아웃된 줄 안다. */
   const confirmLogout = () => {
-    setConfirmOpen(false)
     onLogout?.()
   }
+
+  const logoutDescription =
+    runningSimulations === null
+      ? '로그아웃하면 이 브라우저의 세션이 끝납니다.'
+      : runningSimulations > 0
+        ? `운용 중인 모의투자 ${runningSimulations}건은 로그아웃 후에도 서버에서 계속 실행됩니다.`
+        : '로그아웃해도 저장한 전략과 기록은 유지됩니다.'
 
   return (
     <div className="acct" ref={rootRef}>
@@ -93,7 +101,25 @@ export function AccountMenu({ displayName, emailAddress, runningSimulations, onL
         </div>
       )}
 
-      <LogoutConfirmModal open={confirmOpen} runningSimulations={runningSimulations} onCancel={cancelConfirm} onConfirm={confirmLogout} />
+      <ConfirmDialog
+        open={confirmOpen}
+        title="로그아웃할까요?"
+        description={logoutDescription}
+        detail={
+          runningSimulations !== null && runningSimulations > 0 ? (
+            <div className="state-detail logout-detail">
+              <div>
+                <span>운용 중 모의투자</span>
+                <strong>{runningSimulations}건</strong>
+              </div>
+            </div>
+          ) : undefined
+        }
+        confirmLabel="로그아웃"
+        pending={logoutPending}
+        onConfirm={confirmLogout}
+        onCancel={cancelConfirm}
+      />
     </div>
   )
 }

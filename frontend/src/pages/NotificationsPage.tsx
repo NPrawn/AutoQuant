@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router'
 
-import { to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { notificationLooks, notificationTime } from '../notification/labels'
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotifications } from '../notification/queries'
+import { targetRoute } from '../notification/targetRoute'
 import type { AppNotification } from '../notification/types'
 
 /*
@@ -30,9 +30,11 @@ export function NotificationsPage() {
             className="btn ghost"
             type="button"
             disabled={unreadCount === 0 || markAllRead.isPending}
+            aria-busy={markAllRead.isPending}
             onClick={() => markAllRead.mutate()}
           >
-            {markAllRead.isPending ? '처리 중…' : '모두 읽음'}
+            {markAllRead.isPending && <span className="spin" aria-hidden="true" />}
+            모두 읽음
           </button>
         </div>
       </div>
@@ -88,42 +90,34 @@ function NotificationRow({ notification }: NotificationRowProps) {
     }
   }
 
+  /* 이동 대상이 없는 알림은 읽음 처리만 할 수 있다. 읽은 뒤에는 누를 일이 없어 잠근다. */
+  const canOpen = target !== null || notification.unread
+
   return (
     <div className={notification.unread ? `notif unread ${look.tone}` : `notif ${look.tone}`}>
       <span className="notif-ic" aria-hidden="true">
         {look.icon}
       </span>
-      <div>
+      <button className="notif-main" type="button" onClick={open} disabled={!canOpen || markRead.isPending}>
         <b>{notification.title}</b>
         {notification.body !== null && <p>{notification.body}</p>}
-      </div>
+      </button>
       <div className="notif-side">
         <time dateTime={notification.createdAt.toISOString()}>
           {notificationTime(notification.createdAt, new Date())}
         </time>
-        {target !== null && (
-          <button className="rank-action" type="button" onClick={open}>
+        {target !== null ? (
+          <button className="rank-action" type="button" onClick={open} disabled={markRead.isPending}>
             {look.action}
           </button>
+        ) : (
+          notification.unread && (
+            <button className="rank-action" type="button" onClick={open} disabled={markRead.isPending}>
+              읽음
+            </button>
+          )
         )}
       </div>
     </div>
   )
-}
-
-/* 서버는 종류와 대상 식별자만 준다. 어디로 갈지는 화면이 정한다. */
-function targetRoute(notification: AppNotification): string | null {
-  if (notification.targetId === null) {
-    return null
-  }
-  switch (notification.type) {
-    case 'BACKTEST_COMPLETED':
-    case 'BACKTEST_FAILED':
-      return to.backtestRun(notification.targetId)
-    case 'SIMULATION_FAILED':
-      return to.simulationLive(notification.targetId)
-    /* 대회 알림의 targetId 는 회차 식별자다. 제출 하나의 성적과 순위를 결과 화면에서 본다. */
-    case 'CONTEST_SCORED':
-      return to.contestResult(notification.targetId)
-  }
 }

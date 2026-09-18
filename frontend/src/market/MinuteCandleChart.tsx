@@ -24,6 +24,15 @@ const line = (points: readonly IndicatorPoint[]) => points.map((point) => ({ tim
  * 굵기를 먼저 정하고 최근 구간만 보여 준다. 과거는 좌우 스크롤로 본다.
  */
 const barSpacing = 10
+/* 가격 축 폭. 1억 단위 BTC 라벨 "106,901,000" 이 들어가는 폭이라 종목이 바뀌어도 봉 영역이 같다. */
+const priceScaleWidth = 84
+/* 거래량·RSI 패널 높이. 꺼도 접지 않고 자리를 지켜 봉 패널 크기가 바뀌지 않는다. */
+const subPaneHeight = 88
+const paneTitles = ['거래량', `RSI ${rsiPeriod}`] as const
+
+function paneLabelText(index: number, off: boolean): string {
+  return off ? `${paneTitles[index]} · 꺼짐` : paneTitles[index]
+}
 
 /* RSI 과매수, 과매도 기준선. 값이 아니라 읽는 기준이다. */
 const strengthGuides = [70, 30]
@@ -55,14 +64,29 @@ export function MinuteCandleChart({ candles, data, indicators, markers }: Minute
   const volume = useRef<ISeriesApi<'Histogram'>>(null)
   const strength = useRef<ISeriesApi<'Line'>>(null)
   const paneLabels = useRef<ITextWatermarkPluginApi<Time>[]>([])
+  /* 꺼진 아래 패널. 라벨에 "꺼짐" 을 붙일 때와 테마가 바뀌어 라벨을 다시 그릴 때 함께 읽는다. */
+  const paneOff = useRef<boolean[]>([false, false])
   const tradeMarkers = useRef<ISeriesMarkersPluginApi<Time>>(null)
 
   useEffect(() => {
     if (!container.current) return
     const created = createChart(container.current, {
       autoSize: true,
-      timeScale: { timeVisible: true, secondsVisible: false, barSpacing, minBarSpacing: 0.5, rightOffset: 4, borderVisible: false },
-      rightPriceScale: { borderVisible: false },
+      /*
+       * 지표를 켜고 꺼도 봉 자리가 같아야 한다. 축 폭은 라벨 길이에 따라 자동으로 바뀌므로 고정하고,
+       * 오른쪽 끝을 최신 봉에 붙이며, 폭이 바뀌어도 같은 기간이 보이게 한다.
+       */
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+        barSpacing,
+        minBarSpacing: 0.5,
+        rightOffset: 4,
+        borderVisible: false,
+        fixRightEdge: true,
+        lockVisibleTimeRangeOnResize: true,
+      },
+      rightPriceScale: { borderVisible: false, minimumWidth: priceScaleWidth },
     })
     chart.current = created
 
@@ -88,12 +112,13 @@ export function MinuteCandleChart({ candles, data, indicators, markers }: Minute
     strength.current = created.addSeries(LineSeries, { lineWidth: 1, priceLineVisible: false }, 2)
 
     /* 아래 두 패널은 축이 달라 무엇을 그린 것인지 이름을 붙여야 읽힌다. 목업도 좌상단에 적는다. */
-    const paneTitles = ['거래량', `RSI ${rsiPeriod}`]
     const panes = created.panes()
     paneLabels.current = paneTitles
       .map((text, index) => [panes[index + 1], text] as const)
       .filter(([pane]) => pane !== undefined)
       .map(([pane]) => createTextWatermark(pane, { horzAlign: 'left', vertAlign: 'top' }))
+    panes[1]?.setHeight(subPaneHeight)
+    panes[2]?.setHeight(subPaneHeight)
 
     const applyTheme = () => {
       const style = getComputedStyle(document.documentElement)
@@ -101,7 +126,7 @@ export function MinuteCandleChart({ candles, data, indicators, markers }: Minute
       const panel = token('--panel')
       paneLabels.current.forEach((label, index) =>
         label.applyOptions({
-          lines: [{ text: paneTitles[index], color: token('--ink-3'), fontSize: 10, fontFamily: '"IBM Plex Mono", monospace' }],
+          lines: [{ text: paneLabelText(index, paneOff.current[index] ?? false), color: token('--ink-3'), fontSize: 10, fontFamily: '"IBM Plex Mono", monospace' }],
         }),
       )
       created.applyOptions({
@@ -167,10 +192,13 @@ export function MinuteCandleChart({ candles, data, indicators, markers }: Minute
     )
     strength.current?.setData(showRsi ? line(data.strength) : [])
 
-    /* 꺼진 패널은 높이를 0 으로 접어 봉이 넓게 보이게 한다. */
-    const panes = chart.current?.panes() ?? []
-    panes[1]?.setHeight(showVol ? 88 : 1)
-    panes[2]?.setHeight(showRsi ? 88 : 1)
+    /* 꺼진 패널도 자리를 지킨다. 접으면 봉 패널 높이가 바뀌어 지표를 누를 때마다 봉이 다시 잡힌다. 라벨로만 알린다. */
+    paneOff.current = [!showVol, !showRsi]
+    paneLabels.current.forEach((label, index) =>
+      label.applyOptions({
+        lines: [{ text: paneLabelText(index, paneOff.current[index] ?? false), color: token('--ink-3'), fontSize: 10, fontFamily: '"IBM Plex Mono", monospace' }],
+      }),
+    )
   }, [data, indicators])
 
   useEffect(() => {

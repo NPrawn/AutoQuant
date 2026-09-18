@@ -23,7 +23,7 @@ export function StrategySummaryCard({ draft, goal, issues, changed = false }: St
   const weight = draft.topN > 0 ? (100 / draft.topN).toFixed(1) : '—'
 
   return (
-    <section className={changed ? 'card card--lead sum-card changed' : 'card card--lead sum-card'} aria-live="polite">
+    <section className={changed ? 'card card--lead sum-card changed' : 'card card--lead sum-card'}>
       <h3>이 전략 요약</h3>
       <p>{goal ? `"${goal}"` : '목표 문장 없이 직접 구성하는 전략'}</p>
 
@@ -69,9 +69,15 @@ export function StrategySummaryCard({ draft, goal, issues, changed = false }: St
         <b>Top {draft.topN} 동일비중</b> · 매도는 <b>Top {draft.topN} 탈락</b>
       </div>
 
+      {/* 같은 문장은 한 번만. 조건 둘의 기간이 비면 같은 메시지가 두 번 붙어 있었다. 카드 전체를 낭독하지 않고 여기만 알린다. */}
       {issues.length > 0 && (
         <div className="sum-warn" role="alert">
-          <b>저장 전에 확인하세요.</b> {issues.map((issue) => issue.message).join(' ')}
+          <b>저장 전에 확인하세요.</b>
+          <ul>
+            {[...new Set(issues.map((issue) => issue.message))].map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
         </div>
       )}
     </section>

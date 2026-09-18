@@ -22,11 +22,12 @@ function useCurrentTitle(): string | undefined {
 
 type TopbarProps = {
   member: { displayName: string; emailAddress: string }
-  runningSimulations: number
+  runningSimulations: number | null
+  logoutPending?: boolean
   onLogout?: () => void
 }
 
-export function Topbar({ member, runningSimulations, onLogout }: TopbarProps) {
+export function Topbar({ member, runningSimulations, logoutPending, onLogout }: TopbarProps) {
   const title = useCurrentTitle()
   /* 아직 못 읽었으면 0 으로 두어 있지도 않은 알림을 배지로 알리지 않는다. */
   const unreadCount = useUnreadNotificationCount().data ?? 0
@@ -59,6 +60,7 @@ export function Topbar({ member, runningSimulations, onLogout }: TopbarProps) {
           displayName={member.displayName}
           emailAddress={member.emailAddress}
           runningSimulations={runningSimulations}
+          logoutPending={logoutPending}
           onLogout={onLogout}
         />
       </div>
