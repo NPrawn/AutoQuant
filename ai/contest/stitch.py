@@ -97,8 +97,8 @@ def _clamp(gain: float) -> float:
     return min(max(gain, SEAM_FLOOR), SEAM_CEILING)
 
 
-def _tail(points: list[tuple[int, float]], until: int, span: int) -> list[float]:
-    return [value for t, value in points if t >= until - span]
+def _slice(points: list[tuple[int, float]], start: int, end: int) -> list[float]:
+    return [value for t, value in points if start <= t < end]
 
 
 def _volume_ratio(track: Track, start: int, span: int, ref_weeks: int, generated: list[list[float]]) -> float:
@@ -134,9 +134,12 @@ def stitch(series: Series, universe: list[str], sequence: list[Week], span: int,
             head = [candle for candle in candles if candle.t < week.start + ramp]
             spread, level = 1.0, 1.0
             if seam_alpha > 0 and generated_close is not None and ramp > 0:
+                # the hours just before the seam. Matching the same hours one week back keeps the weekday rhythm
+                # but leaves the incoming week's own rhythm on top of it, and measured worse (ADR-0017)
                 seam = virtual_start + index * span
-                spread = _spread_gain(_tail(tail_closes, seam, ramp), [candle.c for candle in head], seam_alpha)
-                level = _level_gain(_tail(tail_volumes, seam, ramp),
+                spread = _spread_gain(_slice(tail_closes, seam - ramp, seam),
+                                      [candle.c for candle in head], seam_alpha)
+                level = _level_gain(_slice(tail_volumes, seam - ramp, seam),
                                     [candle.v * ratio for candle in head], seam_alpha)
             matched = spread != 1.0 or level != 1.0
             volumes = []
@@ -166,7 +169,7 @@ def stitch(series: Series, universe: list[str], sequence: list[Week], span: int,
                 current, source_previous = close, candle.c
             generated_volumes.append(volumes)
             generated_close = current
-            edge = virtual_start + (index + 1) * span - ramp
+            edge = virtual_start + index * span - ramp
             tail_closes = [point for point in tail_closes if point[0] >= edge]
             tail_volumes = [point for point in tail_volumes if point[0] >= edge]
     return bars

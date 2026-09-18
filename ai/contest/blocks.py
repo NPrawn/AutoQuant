@@ -109,20 +109,33 @@ def build_pool(series: Series, universe: list[str], weekday: int, block_days: in
     return pool
 
 
+def _below_floor(track: Track, floor: float) -> list[int]:
+    return [candle.t for candle in track.candles if candle.l < floor]
+
+
+def _touches(times: list[int], start: int, end: int) -> bool:
+    index = bisect.bisect_left(times, start)
+    return index < len(times) and times[index] < end
+
+
 def choose_window(series: Series, candidates: list[str], weekday: int, block_days: int, weeks: int,
-                  min_assets: int, rng: random.Random) -> tuple[tuple[int, int], list[str]]:
+                  min_assets: int, rng: random.Random,
+                  price_floor: float = 1.0) -> tuple[tuple[int, int], list[str]]:
     """A random `weeks`-block window and the candidates that trade through all of it.
 
     Candidates list today's most traded coins, so older windows hold fewer of them; windows with fewer than
-    `min_assets` are never picked."""
+    `min_assets` are never picked. A candidate trading below `price_floor` inside the window is dropped: the
+    backtest engine settles on a 1 KRW tick, so its fills would land on the wrong price."""
     span = block_days * DAY
     length = weeks * span
     start = first_week_start(min(series[asset].times[0] for asset in candidates), weekday)
     last = max(series[asset].times[-1] for asset in candidates)
+    cheap = {asset: _below_floor(series[asset], price_floor) for asset in candidates}
     options = []
     while start + length <= last:
         alive = [asset for asset in candidates
-                 if series[asset].times[0] < start and series[asset].times[-1] >= start + length]
+                 if series[asset].times[0] < start and series[asset].times[-1] >= start + length
+                 and not _touches(cheap[asset], start, start + length)]
         if len(alive) >= min_assets:
             options.append((start, alive))
         start += span

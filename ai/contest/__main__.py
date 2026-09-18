@@ -153,7 +153,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--candidates", type=int, default=Params().candidates)
         command.add_argument("--window-weeks", type=int, default=104,
                              help="과거에서 랜덤하게 고를 구간 길이(주). 0이면 전체 기간을 쓴다")
-        command.add_argument("--min-assets", type=int, default=10,
+        command.add_argument("--min-assets", type=int, default=12,
                              help="구간 내내 거래된 종목이 이 수 이상인 구간만 고른다")
         command.add_argument("--seam-alpha", type=float, default=SEAM_ALPHA,
                              help="이음매 정합 강도. 0이면 정합하지 않고 1이면 직전 주 수준에 맞춘다")
