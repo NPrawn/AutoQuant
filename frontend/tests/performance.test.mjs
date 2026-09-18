@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
-  chartFrame, closedPath, deepestDrawdown, drawdownDomain, equityDomain, formatMonth, indexAt, indexBenchmark,
-  indexEquity, linePath, linearScale, monthTicks, niceTicks, rebalanceCycles, shortSymbol, timeScale,
+  chartFrame, closedPath, equityDomain, formatMonth, indexAt, indexBenchmark, indexEquity, linePath,
+  linearScale, monthTicks, niceTicks, rebalanceCycles, shortSymbol, timeScale,
 } from '../src/backtest/performance.ts'
 
 const day = (iso, value, drawdownRate = 0) => ({
@@ -90,15 +90,13 @@ test('시간축은 첫 시점과 마지막 시점을 그림 영역 양 끝에 �
   assert.equal(x(points[3].valuationAt.getTime()), chartFrame.right)
 })
 
-test('지수 범위는 두 선을 모두 담고 여백을 두며 낙폭 바닥은 5% 를 밑돌지 않는다', () => {
+test('지수 범위는 두 선을 모두 담고 여백을 둔다', () => {
   const domain = equityDomain([indexEquity(points), [{ at: points[0].valuationAt, value: 80 }]])
   assert.ok(domain.lo < 80 && domain.hi > 110)
   assert.deepEqual(equityDomain([[]]), { lo: 90, hi: 110 })
-  assert.ok(drawdownDomain([]) >= 0.05)
-  assert.ok(drawdownDomain([{ at: points[2].valuationAt, rate: 0.5 }]) > 0.5)
-  const y = linearScale(0, 1, 320, 410)
-  assert.equal(y(0), 320)
-  assert.equal(y(1), 410)
+  const y = linearScale(0, 1, 286, 16)
+  assert.equal(y(0), 286)
+  assert.equal(y(1), 16)
   assert.equal(linearScale(5, 5, 0, 100)(5), 50)
 })
 
@@ -116,10 +114,7 @@ test('월 눈금은 기간 안의 매월 1 일이고 많으면 건너뛴다', ()
   assert.ok(long.length <= 9)
 })
 
-test('가장 깊은 낙폭과 경로 문자열', () => {
-  const deepest = deepestDrawdown([{ at: points[1].valuationAt, rate: 0.02 }, { at: points[2].valuationAt, rate: 0.14 }])
-  assert.equal(deepest.rate, 0.14)
-  assert.equal(deepestDrawdown([]), null)
+test('경로 문자열은 소수 첫째 자리까지 적고 닫힌 면은 기준선으로 내려온다', () => {
   assert.equal(linePath([{ x: 1, y: 2 }, { x: 3.25, y: 4 }]), 'M1.0,2.0L3.3,4.0')
   assert.equal(closedPath([{ x: 1, y: 2 }, { x: 3, y: 4 }], 10), 'M1.0,2.0L3.0,4.0L3.0,10.0L1.0,10.0Z')
   assert.equal(closedPath([], 10), '')

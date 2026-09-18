@@ -1,11 +1,9 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react'
 
-import { formatDate, formatDrawdown } from './labels'
+import { formatDate } from './labels'
 import {
   chartFrame,
   closedPath,
-  deepestDrawdown,
-  drawdownDomain,
   equityDomain,
   formatIndex,
   formatMonth,
@@ -15,12 +13,11 @@ import {
   niceTicks,
   timeScale,
 } from './performance'
-import type { DrawdownPoint, IndexedPoint, RebalanceCycle } from './performance'
+import type { IndexedPoint, RebalanceCycle } from './performance'
 
 type PerformanceChartProps = {
   indexed: readonly IndexedPoint[]
   benchmark: readonly IndexedPoint[]
-  drawdown: readonly DrawdownPoint[]
   cycles: readonly RebalanceCycle[]
   label?: string
 }
@@ -30,11 +27,11 @@ type Hover = { cycle: RebalanceCycle; cx: number; cy: number }
 const mono = 'IBM Plex Mono,monospace'
 
 /*
- * 목업 12 의 성과 차트. 위는 지수 100 기준 전략과 단순보유, 아래는 낙폭이다.
+ * 목업 12 의 성과 차트에서 위 구간만 가져왔다. 지수 100 기준 전략과 단순보유를 한 눈금에 놓는다.
  * 리밸런싱 회차마다 점을 찍고, 점을 가리키면 그 회차의 매수·매도와 수익을 담은 카드가 점 위에 뜬다.
  * 계산은 performance.ts 가 하고 여기서는 좌표를 SVG 로 옮기기만 한다.
  */
-export function PerformanceChart({ indexed, benchmark, drawdown, cycles, label = '누적 수익과 낙폭' }: PerformanceChartProps) {
+export function PerformanceChart({ indexed, benchmark, cycles, label = '누적 수익' }: PerformanceChartProps) {
   const id = useId()
   const wrap = useRef<HTMLDivElement>(null)
   const svg = useRef<SVGSVGElement>(null)
@@ -68,13 +65,9 @@ export function PerformanceChart({ indexed, benchmark, drawdown, cycles, label =
   const x = timeScale(indexed)
   const domain = equityDomain([indexed, benchmark])
   const yEquity = linearScale(domain.lo, domain.hi, chartFrame.equityBottom, chartFrame.equityTop)
-  const drawdownFloor = drawdownDomain(drawdown)
-  const yDrawdown = linearScale(0, drawdownFloor, chartFrame.drawdownTop, chartFrame.drawdownBottom)
 
   const strategyLine = indexed.map((point) => ({ x: x(point.at.getTime()), y: yEquity(point.value) }))
   const benchmarkLine = benchmark.map((point) => ({ x: x(point.at.getTime()), y: yEquity(point.value) }))
-  const drawdownLine = drawdown.map((point) => ({ x: x(point.at.getTime()), y: yDrawdown(point.rate) }))
-  const deepest = deepestDrawdown(drawdown)
   const lastBenchmark = benchmark[benchmark.length - 1]
   const clipAbove = `${id}-above`
   const clipBelow = `${id}-below`
@@ -99,24 +92,16 @@ export function PerformanceChart({ indexed, benchmark, drawdown, cycles, label =
         </defs>
 
         {niceTicks(domain.lo, domain.hi, 6).map((tick) => (
-          <g key={`e${tick}`}>
+          <g key={tick}>
             <line x1={chartFrame.left} y1={yEquity(tick)} x2={chartFrame.right} y2={yEquity(tick)} stroke="var(--grid)" />
             <text x={chartFrame.left - 6} y={yEquity(tick) + 3.5} textAnchor="end" fill="var(--ink-3)" fontSize="10" fontFamily={mono}>
               {tick}
             </text>
           </g>
         ))}
-        {niceTicks(0, drawdownFloor, 3).map((tick) => (
-          <g key={`d${tick}`}>
-            <line x1={chartFrame.left} y1={yDrawdown(tick)} x2={chartFrame.right} y2={yDrawdown(tick)} stroke="var(--grid)" />
-            <text x={chartFrame.left - 6} y={yDrawdown(tick) + 3.5} textAnchor="end" fill="var(--ink-3)" fontSize="10" fontFamily={mono}>
-              {tick === 0 ? '0%' : `-${Math.round(tick * 100)}%`}
-            </text>
-          </g>
-        ))}
         {monthTicks(first.at, last.at).map((month) => (
           <g key={month.getTime()}>
-            <line x1={x(month.getTime())} y1={chartFrame.equityTop} x2={x(month.getTime())} y2={chartFrame.drawdownBottom} stroke="var(--grid)" />
+            <line x1={x(month.getTime())} y1={chartFrame.equityTop} x2={x(month.getTime())} y2={chartFrame.equityBottom} stroke="var(--grid)" />
             <text x={x(month.getTime())} y={chartFrame.axisLabelY} textAnchor="middle" fill="var(--ink-3)" fontSize="10" fontFamily={mono}>
               {formatMonth(month)}
             </text>
@@ -132,22 +117,8 @@ export function PerformanceChart({ indexed, benchmark, drawdown, cycles, label =
         )}
         <path d={linePath(strategyLine)} fill="none" stroke="var(--ink)" strokeWidth="2" />
 
-        <path d={closedPath(drawdownLine, yDrawdown(0))} fill="var(--dd)" opacity=".16" />
-        <path d={linePath(drawdownLine)} fill="none" stroke="var(--dd)" strokeWidth="1.4" />
-        {deepest !== null && deepest.rate > 0 && (
-          <>
-            <circle cx={x(deepest.at.getTime())} cy={yDrawdown(deepest.rate)} r="3" fill="var(--dd)" />
-            <text x={x(deepest.at.getTime()) + 9} y={yDrawdown(deepest.rate) + 4} fill="var(--ink-2)" fontSize="10" fontFamily={mono}>
-              {formatDrawdown(deepest.rate)} · {formatDate(deepest.at)}
-            </text>
-          </>
-        )}
-
         <text x={chartFrame.left} y={chartFrame.equityTop + 12} fill="var(--ink-3)" fontSize="10">
           누적 수익 · 지수 100 시작
-        </text>
-        <text x={chartFrame.left} y={chartFrame.drawdownTop + 14} fill="var(--ink-3)" fontSize="10">
-          낙폭
         </text>
 
         <line
@@ -155,7 +126,7 @@ export function PerformanceChart({ indexed, benchmark, drawdown, cycles, label =
           x1={hover?.cx ?? 0}
           y1={chartFrame.equityTop}
           x2={hover?.cx ?? 0}
-          y2={chartFrame.drawdownBottom}
+          y2={chartFrame.equityBottom}
           stroke="var(--line-2)"
           opacity={hover === null ? 0 : 1}
         />

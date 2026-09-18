@@ -4,8 +4,8 @@ import { routes, to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/StateBlock'
 import type { SimulationEntryState } from '../simulation/simulationEntry'
-import { blank, formatDate, formatDrawdown, formatRate } from './labels'
-import { drawdownSeries, formatIndex, indexBenchmark, indexEquity, rebalanceCycles } from './performance'
+import { blank, formatDate, formatRate } from './labels'
+import { formatIndex, indexBenchmark, indexEquity, rebalanceCycles } from './performance'
 import { PerformanceChart } from './PerformanceChart'
 import {
   useBacktestBenchmark,
@@ -53,7 +53,6 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
   /* 차트가 쓰는 값은 전부 여기서 만든다. 체결이나 벤치마크가 아직 안 왔으면 그 부분만 비운 채 그린다. */
   const indexed = indexEquity(points)
   const benchmark = indexBenchmark(benchmarkCandles.data ?? [], points)
-  const drawdown = drawdownSeries(points)
   const cycles = rebalanceCycles(trades.data ?? [], indexed)
   const lastIndex = indexed.at(-1)?.value ?? null
   const lastBenchmark = benchmark.at(-1)?.value ?? null
@@ -83,7 +82,7 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
       <section className="card card--lead perf-stack">
         <div className="perf-head">
           <div>
-            <div className="sec-title">누적 수익과 낙폭</div>
+            <div className="sec-title">누적 수익</div>
             <div className="sec-sub">
               {formatDate(run.periodStart)} ~ {formatDate(run.periodEnd)}
               {cycles.length > 0 && ` · ${cycles.length}회 리밸런싱 · 점은 종목이 교체된 회차`}
@@ -117,7 +116,7 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
             <p className="goal-note">평가 시점 기록이 없어 곡선을 그릴 수 없습니다.</p>
           </div>
         ) : (
-          <PerformanceChart indexed={indexed} benchmark={benchmark} drawdown={drawdown} cycles={cycles} />
+          <PerformanceChart indexed={indexed} benchmark={benchmark} cycles={cycles} />
         )}
         <div className="perf-foot">
           <span>
@@ -130,8 +129,8 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
             )}
           </span>
           <span className="mono">
-            전략 {lastIndex === null ? blank : formatIndex(lastIndex)} · BTC {lastBenchmark === null ? blank : formatIndex(lastBenchmark)} · 최대 낙폭{' '}
-            {formatDrawdown(metrics.mdd)} · 연평균 {formatRate(metrics.cagr, { signed: true })}
+            전략 {lastIndex === null ? blank : formatIndex(lastIndex)} · BTC {lastBenchmark === null ? blank : formatIndex(lastBenchmark)} · 연평균{' '}
+            {formatRate(metrics.cagr, { signed: true })}
           </span>
         </div>
       </section>

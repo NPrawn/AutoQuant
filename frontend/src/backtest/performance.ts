@@ -10,7 +10,6 @@ export const baseIndex = 100
 export const benchmarkMarketCode = 'KRW-BTC'
 
 export type IndexedPoint = { at: Date; value: number }
-export type DrawdownPoint = { at: Date; rate: number }
 export type BenchmarkCandle = { openTimeUnixMilli: number; closePrice: string }
 
 export function indexEquity(points: readonly EquityPoint[]): IndexedPoint[] {
@@ -20,11 +19,6 @@ export function indexEquity(points: readonly EquityPoint[]): IndexedPoint[] {
   }
   /* 곱셈을 먼저 해 정수 원화끼리 나누면 90 이 90.000…1 로 흐르지 않는다. */
   return points.map((point) => ({ at: point.valuationAt, value: (point.totalAssetValue * baseIndex) / first }))
-}
-
-/* 낙폭은 잃은 비율이라 0 이상이다. 서버가 음수를 주더라도 0 으로 눌러 아래 구간이 위로 튀지 않게 한다. */
-export function drawdownSeries(points: readonly EquityPoint[]): DrawdownPoint[] {
-  return points.map((point) => ({ at: point.valuationAt, rate: Math.max(0, point.drawdownRate) }))
 }
 
 /*
@@ -121,17 +115,15 @@ export function rebalanceCycles(trades: readonly BacktestTrade[], indexed: reado
     })
 }
 
-/* 목업의 viewBox 와 두 구간의 세로 자리. 위는 지수, 아래는 낙폭이다. */
+/* 목업의 viewBox 에서 위 구간만 남긴 자리. 낙폭 구간은 두지 않는다. */
 export const chartFrame = {
   width: 1000,
-  height: 440,
+  height: 320,
   left: 46,
   right: 946,
   equityTop: 16,
   equityBottom: 286,
-  drawdownTop: 320,
-  drawdownBottom: 410,
-  axisLabelY: 428,
+  axisLabelY: 306,
 } as const
 
 export type Scale = (value: number) => number
@@ -166,12 +158,6 @@ export function equityDomain(series: readonly (readonly IndexedPoint[])[]): { lo
   return { lo: lo - pad, hi: hi + pad }
 }
 
-/* 낙폭 구간의 바닥. 낙폭이 거의 없어도 눈금 몇 개는 보이게 5% 는 확보한다. */
-export function drawdownDomain(drawdown: readonly DrawdownPoint[]): number {
-  const deepest = drawdown.reduce((max, point) => Math.max(max, point.rate), 0)
-  return Math.max(0.05, deepest) * 1.12
-}
-
 /* 1·2·2.5·5 배수의 눈금. 값 범위가 어떻든 라벨이 대여섯 개로 읽힌다. */
 export function niceTicks(lo: number, hi: number, count = 5): number[] {
   const span = hi - lo
@@ -199,13 +185,6 @@ export function monthTicks(start: Date, end: Date, maxCount = 9): Date[] {
   }
   const every = Math.max(1, Math.ceil(ticks.length / maxCount))
   return ticks.filter((_, index) => index % every === 0)
-}
-
-export function deepestDrawdown(drawdown: readonly DrawdownPoint[]): DrawdownPoint | null {
-  return drawdown.reduce<DrawdownPoint | null>(
-    (deepest, point) => (deepest === null || point.rate > deepest.rate ? point : deepest),
-    null,
-  )
 }
 
 export type Coordinate = { x: number; y: number }

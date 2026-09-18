@@ -50,7 +50,6 @@ export function TradeTable({ backtestId, page, onPageChange }: TradeTableProps) 
                 <th className="r">수량</th>
                 <th className="r">거래대금</th>
                 <th className="r">수수료</th>
-                <th>사유</th>
               </tr>
             </thead>
             <tbody>
@@ -67,7 +66,6 @@ export function TradeTable({ backtestId, page, onPageChange }: TradeTableProps) 
                   <td className="r mono">{formatQuantity(trade.quantity)}</td>
                   <td className="r mono">{formatKrw(trade.notional)}</td>
                   <td className="r mono muted-cell">{formatKrw(trade.feeAmount)}</td>
-                  <td className="muted-cell">{trade.reason ?? '—'}</td>
                 </tr>
               ))}
             </tbody>
