@@ -5,7 +5,7 @@ import { to } from '../app/routes'
 import { blank, formatDate, formatKrw, formatRate, trendClass } from '../backtest/labels'
 import { rebalanceMeta, timeframeLabels } from '../strategy/labels'
 import { assetCode, type AssetLookup } from './assetLookup'
-import { statusMeta } from './labels'
+import { statusOf } from './labels'
 import { useSimulationEquityCurve, useSimulationPositions, useSimulationResult } from './queries'
 import { sparkFromEquity, sparkHeight, sparkWidth } from './sparkline'
 import type { SimulationRun } from './types'
@@ -23,9 +23,10 @@ type SimulationCardProps = {
  */
 export function SimulationCard({ run, strategyName, lookup, onOpen }: SimulationCardProps) {
   const live = run.status === 'RUNNING'
-  const result = useSimulationResult(run.id, live)
-  const positions = useSimulationPositions(run.id, live)
-  const status = statusMeta[run.status]
+  /* 카드는 한 번만 읽는다. 카드마다 15초 폴링이면 12건이면 15초에 36요청이다. 실시간 갱신은 상세 화면이 한다. */
+  const result = useSimulationResult(run.id, false)
+  const positions = useSimulationPositions(run.id, false)
+  const status = statusOf(run.status)
   const metrics = result.data ?? null
   const held = positions.data ?? []
 
@@ -50,7 +51,7 @@ export function SimulationCard({ run, strategyName, lookup, onOpen }: Simulation
         </div>
         <span className={status.chip}>{status.label}</span>
       </div>
-      <EquitySpark simulationId={run.id} live={live} />
+      <EquitySpark simulationId={run.id} />
       <div className="sims">
         <div>
           <span className="k">평가자산</span>
@@ -78,8 +79,8 @@ export function SimulationCard({ run, strategyName, lookup, onOpen }: Simulation
  * 카드 안 수익 곡선. 평가 시점이 둘 미만이면 그릴 모양이 없어 자리를 비운다.
  * 곡선은 마지막 봉 기준 평가자산이라 실시간 체결보다 늦게 움직인다.
  */
-function EquitySpark({ simulationId, live }: { simulationId: string; live: boolean }) {
-  const curve = useSimulationEquityCurve(simulationId, live)
+function EquitySpark({ simulationId }: { simulationId: string }) {
+  const curve = useSimulationEquityCurve(simulationId, false)
   const spark = sparkFromEquity(curve.data ?? [])
   if (spark === null) {
     /* 자리는 남긴다. 첫 봉이 마감돼 곡선이 생기는 순간 카드가 커지면 아래 카드가 밀린다. */

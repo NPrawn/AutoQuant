@@ -8,6 +8,11 @@ export const statusMeta: Record<BacktestRunStatus, { label: string; chip: string
   FAILED: { label: '실패', chip: 'chip crit' },
 }
 
+/* 모르는 상태는 중립 칩이다. */
+export function statusOf(status: string): { label: string; chip: string } {
+  return (statusMeta as Record<string, { label: string; chip: string }>)[status] ?? { label: status, chip: 'chip mute' }
+}
+
 /* 아직 끝나지 않은 실행. 이 동안만 조건 폼을 잠근다. 끝난 실행은 결과가 떠 있어도 폼을 막지 않는다. */
 export function isRunInProgress(status: BacktestRunStatus): boolean {
   return status === 'QUEUED' || status === 'RUNNING'

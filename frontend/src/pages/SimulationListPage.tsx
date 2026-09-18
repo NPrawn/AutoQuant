@@ -34,8 +34,8 @@ export function SimulationListPage() {
   const [showIssues, setShowIssues] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
-  /* 전략 목록이 도착하면 선택이 비어 있을 때만 첫 전략을 채운다. */
-  if (form.strategyId === '' && strategies.data !== undefined && strategies.data.length > 0) {
+  /* 전략 목록이 도착하면 선택이 비어 있거나 목록에 없을 때 첫 전략을 채운다. 진입 상태가 지워진 전략을 가리킬 수 있다. */
+  if (strategies.data !== undefined && strategies.data.length > 0 && !strategies.data.some((strategy) => strategy.id === form.strategyId)) {
     setForm(setStrategyId(form, strategies.data[0].id))
   }
 

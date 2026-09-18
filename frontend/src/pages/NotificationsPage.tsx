@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router'
 
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
-import { notificationLooks, notificationTime } from '../notification/labels'
+import { notificationLook, notificationTime } from '../notification/labels'
 import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotifications } from '../notification/queries'
 import { targetRoute } from '../notification/targetRoute'
 import type { AppNotification } from '../notification/types'
@@ -77,7 +77,7 @@ type NotificationRowProps = {
 function NotificationRow({ notification }: NotificationRowProps) {
   const navigate = useNavigate()
   const markRead = useMarkNotificationRead()
-  const look = notificationLooks[notification.type]
+  const look = notificationLook(notification.type)
   const target = targetRoute(notification)
 
   /* 대상으로 옮기는 김에 읽음으로 바꾼다. 실패해도 이동은 막지 않는다. */

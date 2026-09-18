@@ -32,8 +32,8 @@ export function ContestDetailPage() {
   const round = contest.data ?? null
   const available = strategies.data ?? []
 
-  /* 전략 목록이 도착하면 이미 제출한 전략을, 없으면 첫 전략을 고른다. */
-  if (strategyId === '' && available.length > 0) {
+  /* 전략 목록과 회차가 모두 온 뒤에 고른다. 목록이 먼저 오면 제출한 전략을 모른 채 첫 전략을 골라 버린다. */
+  if (strategyId === '' && available.length > 0 && contest.isSuccess) {
     const submitted = round?.mySubmission ? String(round.mySubmission.strategyId) : ''
     setStrategyId(available.some((strategy) => strategy.id === submitted) ? submitted : available[0].id)
   }

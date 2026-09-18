@@ -15,6 +15,9 @@ export function useChartAssets() {
   return useQuery({ queryKey: ['chart-assets'], queryFn: ({ signal }) => fetchChartAssets(signal), select: (items) => items.map(toChartAsset) })
 }
 
+/* 이 시간 안에 STOMP 가 붙지 않으면 확정 봉만 먼저 조회한다. */
+const streamFallbackMs = 4000
+
 // 종목별 keyed 화면에서 사용한다. 재연결마다 새 조회를 만들어 이전 연결의 늦은 응답을 격리한다.
 export function useMarketFeed(asset: ChartAsset, interval: CandleInterval) {
   const [generation, setGeneration] = useState(0)
@@ -32,6 +35,16 @@ export function useMarketFeed(asset: ChartAsset, interval: CandleInterval) {
     onTrade: (trade) => setTrades((previous) => appendTrade(previous, trade)),
     onCandle: (candle) => setLive((previous) => upsertLive(previous, candle)),
   }, interval), [asset, interval])
+
+  /*
+   * 연결이 늦거나 막히면 조회를 먼저 켠다. 확정 봉은 REST 로 오므로 실시간이 없어도 차트는 보여야 한다.
+   * 연결되면 generation 이 올라 다시 조회한다.
+   */
+  useEffect(() => {
+    if (connected || generation > 0) return
+    const timer = setTimeout(() => setGeneration((previous) => (previous === 0 ? 1 : previous)), streamFallbackMs)
+    return () => clearTimeout(timer)
+  }, [connected, generation])
 
   const history = useQuery({
     queryKey: ['market-candles', asset.id, interval, generation],

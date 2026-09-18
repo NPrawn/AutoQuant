@@ -14,7 +14,7 @@ import type { ChartAsset } from '../market/types'
 import type { Timeframe } from '../strategy/types'
 import { useAssetLookup, type AssetLookup } from '../simulation/assetLookup'
 import { describeTransitionError } from '../simulation/errorMessage'
-import { formatTime, statusMeta } from '../simulation/labels'
+import { formatTime, statusOf } from '../simulation/labels'
 import { totalEquity, valuePositions } from '../simulation/positions'
 import { PositionsTable } from '../simulation/PositionsTable'
 import {
@@ -128,7 +128,7 @@ function LiveView({ run, strategy, lookup }: LiveViewProps) {
   }
 
   const strategyName = strategy?.name ?? `전략 #${run.strategyId}`
-  const status = statusMeta[run.status]
+  const status = statusOf(run.status)
 
   return (
     <section className="view active" id="view-simulation">

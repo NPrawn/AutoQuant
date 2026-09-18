@@ -28,7 +28,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 사이드바 항목은 `src/app/navigation.tsx`에만 추가한다.
 - 모달은 네이티브 `dialog`를 `showModal()`로 열고 겉모습만 목업의 `.mbd`·`.modal`을 쓴다. 포커스 트랩, Esc 닫기, 바깥 요소 비활성화는 브라우저에 맡기고 직접 구현하지 않는다. 되돌릴 수 없는 동작의 확인은 `src/components/ConfirmDialog`를 쓴다.
 - 드롭다운 메뉴는 열렸을 때만 렌더링하고 바깥 `pointerdown`과 Esc 로 닫으며, 닫힐 때 여는 버튼으로 포커스를 되돌린다.
-- 정의되지 않은 경로는 `AppShell` 안의 `NotFoundPage`가 받아 사이드바와 상단바가 남는다. 960px 이하에서는 상단바의 `MobileNav`가 `navigation.tsx`의 같은 항목을 dialog 시트로 연다.
+- 정의되지 않은 경로는 `AppShell` 안의 `NotFoundPage`가 받아 사이드바와 상단바가 남는다. 화면이 렌더 중 던진 예외는 `AppShell` 안 pathless 라우트의 `errorElement`(`RouteErrorPage`)가 셸 안에서 받는다. 960px 이하에서는 상단바의 `MobileNav`가 `navigation.tsx`의 같은 항목을 dialog 시트로 연다.
 - 비활성 버튼은 `extensions.css`의 `.btn:disabled` 한 벌로 흐려지고 hover 가 걸리지 않는다. 컴포넌트가 비활성 모양을 따로 그리지 않는다.
 - 조작마다 화면이 움직이지 않게 한다. 문서와 스크롤 컨테이너에는 `scrollbar-gutter: stable`, 처리 중 버튼은 라벨을 바꾸지 않고 `.spin` 만 붙이며 `aria-busy` 를 켠다. 상태 문구가 여러 가지인 자리는 가장 긴 문구에 `min-width` 를 맞춘다. 로딩 블록과 빈·오류 블록은 같은 최소 높이다. `Pager` 는 한 페이지여도 자리를 비워 둔다.
 
@@ -36,7 +36,9 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 
 - 모든 API 호출은 `src/api/client.ts`의 `request`를 지난다. 컴포넌트가 `fetch`를 직접 부르지 않는다.
 - 실패는 `ApiError` 하나로 던진다. 응답 본문은 backend/api 의 `ApiErrorResponse`와 같다.
-- 서버 데이터는 TanStack Query 훅으로 읽는다. 훅은 `src/{feature}/queries.ts`에 두고 쿼리 키는 그 파일에서만 정한다.
+- 서버 데이터는 TanStack Query 훅으로 읽는다. 훅은 `src/{feature}/queries.ts`에 두고 쿼리 키는 그 파일에서만 정한다. 상태 폴링의 `refetchInterval` 은 오류 상태에서도 멈춰야 한다. 인터벌은 실패해도 돌아간다.
+- 서버 enum 을 `Record` 로 바로 읽지 않는다. 상태 칩은 `statusOf`, 알림 모양은 `notificationLook`, 봉 주기는 `toTimeframe` 처럼 모르는 값에 기본을 돌려주는 함수를 거친다. 서버에 값이 하나 늘어도 화면이 깨지지 않아야 한다.
+- 목록 카드는 폴링하지 않고 한 번만 읽는다. 카드 수만큼 요청이 곱해진다. 실시간 갱신은 상세 화면이 한다. 검색 입력은 300ms 디바운스한 뒤 서버 조건에 넣는다.
 - 토큰은 `httpOnly` 쿠키라 프론트가 읽거나 저장하지 않는다. 로그인 여부의 유일한 근거는 `useCurrentMember`(`GET /members/me`) 결과다.
 - 인증이 필요한 화면은 `RequireAuth` 아래에, 로그인 화면은 `GuestOnly` 아래에 둔다.
 - API 응답 타입(`XxxResponse`)과 화면 모델은 `src/{feature}/types.ts`에서 분리하고 변환 함수를 거친다.
@@ -72,6 +74,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 백테스트 KPI 줄(`.bt-result-kpis`)은 목업이 상단바에 붙이려고 윗선을 뺐지만 우리는 `overrides.css` 에서 윗선을 되살린다. 거래 내역 표에는 사유 열을 두지 않는다.
 - 가격·수량과 int64 체결 순번은 문자열로 보존하며 차트 좌표만 number로 변환한다. 진행 봉은 확정 봉을 덮어쓰지 않고 최대 1,000개, 체결은 최대 30건만 유지한다.
 - 지원 간격은 `market/model.ts`의 1·2·5·15·60·240·1440분으로 제한한다. 조회·STOMP 목적지에 동일 간격을 사용하며 UTC 버킷을 검증한다. 1440분봉은 KST 09:00부터다.
+- STOMP 가 4초 안에 붙지 않으면 확정 봉 REST 조회를 먼저 켠다. 실시간이 없어도 차트는 보여야 하고 연결되면 다시 조회한다.
 - 선택 종목·간격 화면이 연결 하나와 구독 두 개를 소유한다. 종목·간격 전환·언마운트 때 종료하며, 재연결 후 구독을 전송하고 확정 봉을 다시 조회한다. 쿼리 키에 종목·간격·연결 세대를 포함해 조회 결과와 진행 봉 버퍼를 격리한다. 확정/보정 결과는 1분마다 재조회한다.
 
 - 브라우저는 `/api`를 통해 Spring API만 호출한다.

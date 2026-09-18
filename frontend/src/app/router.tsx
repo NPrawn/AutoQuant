@@ -9,6 +9,7 @@ import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { NotificationsPage } from '../pages/NotificationsPage'
+import { RouteErrorPage } from '../pages/RouteErrorPage'
 import { RankingPage } from '../pages/RankingPage'
 import { SimulationLivePage } from '../pages/SimulationLivePage'
 import { SimulationListPage } from '../pages/SimulationListPage'
@@ -36,6 +37,10 @@ export const router = createBrowserRouter([
       {
         element: <AppShell />,
         children: [
+          {
+            /* 화면이 렌더 중 던진 예외는 여기서 받아 셸 안에 보인다. 서버 enum 이 늘어 Record 조회가 깨질 때가 흔한 경로다. */
+            errorElement: <RouteErrorPage />,
+            children: [
       { path: routes.home, element: <HomePage />, handle: { title: '전략 만들기' } },
       { path: routes.chart, element: <ChartPage />, handle: { title: '차트' } },
       { path: routes.contests, element: <ContestListPage />, handle: { title: '대회' } },
@@ -52,6 +57,8 @@ export const router = createBrowserRouter([
       { path: routes.notifications, element: <NotificationsPage />, handle: { title: '알림' } },
       /* 없는 주소도 셸 안에서 받아 사이드바와 상단바가 남는다. 로그인 전이면 RequireAuth 가 먼저 로그인으로 보낸다. */
       { path: '*', element: <NotFoundPage />, handle: { title: '찾을 수 없음' } },
+            ],
+          },
         ],
       },
     ],

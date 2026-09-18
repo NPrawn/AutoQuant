@@ -48,6 +48,11 @@ export const timeframeLabels: Record<Timeframe, string> = {
 
 export const timeframes = Object.keys(timeframeLabels) as Timeframe[]
 
+/* 서버 문자열을 봉 주기로 좁힌다. 모르는 값은 일봉으로 본다. 잘못된 값이 그대로 조회 주소에 들어가면 안 된다. */
+export function toTimeframe(value: string): Timeframe {
+  return (timeframes as string[]).includes(value) ? (value as Timeframe) : '1D'
+}
+
 export const directionLabels: Record<RankingDirection, string> = {
   DESC: '높은 순',
   ASC: '낮은 순',

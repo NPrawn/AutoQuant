@@ -34,7 +34,7 @@ export function describeRunError(error: unknown): RunErrorView {
       description:
         issues.length > 0
           ? `${issues.length}개 항목이 실행 규칙에 맞지 않습니다. 고치면 다시 실행할 수 있습니다.`
-          : '입력한 조건이 실행 규칙에 맞지 않습니다. 조건을 확인해 주세요.',
+          : `${error.message} 조건을 확인해 주세요.`,
       details: issues.map((issue) => ({ label: labelForField(issue.field), value: issue.reason })),
     }
   }

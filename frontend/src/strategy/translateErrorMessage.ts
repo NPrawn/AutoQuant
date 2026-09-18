@@ -41,7 +41,7 @@ export function describeTranslateError(error: unknown): string {
     return messagesByCode[error.code]
   }
   if (error.status === 400) {
-    const reasons = error.response?.validationErrors.map((issue) => issue.reason) ?? []
+    const reasons = error.response?.validationErrors?.map((issue) => issue.reason) ?? []
     return reasons.length > 0 ? `입력을 확인해 주세요. ${reasons.join(' ')}` : '입력을 확인해 주세요.'
   }
   return fallbackMessage

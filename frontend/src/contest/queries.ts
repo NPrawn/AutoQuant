@@ -56,7 +56,7 @@ export function useContestProgress(roundId: string | undefined) {
   })
 }
 
-/* 결과 세 가지는 종료 전에 부르면 CONTEST-409-003 이라 진행 상황이 종료를 알린 뒤에만 켠다. */
+/* 결과는 채점 중에도 200 이다. 종료 전 409 는 데이터셋 조회만이고, 화면은 진행 상황으로 켜고 끈다. */
 export function useContestResults(roundId: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: contestResultsQueryKey(roundId ?? ''),

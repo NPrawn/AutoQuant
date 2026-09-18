@@ -9,7 +9,7 @@ import {
   formatScore,
   progressRatio,
 } from '../src/contest/labels.ts'
-import { describeSubmitError, isEntryNotFound, isResultNotPublished } from '../src/contest/submitErrorMessage.ts'
+import { describeSubmitError, isEntryNotFound } from '../src/contest/submitErrorMessage.ts'
 import { awaitingScore, parseSourceWeeks } from '../src/contest/types.ts'
 
 const apiError = (status, code) =>
@@ -66,8 +66,6 @@ test('제출 실패는 코드마다 다음 행동이 다르다', () => {
 })
 
 test('결과 미공개와 미제출은 오류가 아니라 상태다', () => {
-  assert.equal(isResultNotPublished(apiError(409, 'CONTEST-409-003')), true)
-  assert.equal(isResultNotPublished(apiError(409, 'CONTEST-409-001')), false)
   assert.equal(isEntryNotFound(apiError(404, 'CONTEST-404-002')), true)
   assert.equal(isEntryNotFound(apiError(404, 'CONTEST-404-001')), false)
 })
