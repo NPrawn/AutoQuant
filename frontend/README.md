@@ -154,6 +154,8 @@ COMPLETED                /result 지표, /equity 자산 곡선, /trades 거래 �
 
 ## 모의투자
 
+체결 내역이 없다는 사실만으로 첫 재선정 대기 상태라고 표시하지 않는다. 데이터 준비를 기다리거나, 정상 재선정에서도 조건에 맞는 종목이 없어 현금을 보유할 수 있으므로 거래 표는 체결 내역 유무만 안내한다.
+
 ```text
 /simulations             GET /api/simulations 실행 카드(12건 페이지). 카드마다 /result 평가자산·수익률, /positions 보유 종목
 시작                     패널에서 전략·초기 모의자산 → ConfirmDialog 동의 → POST /api/simulations → POST …/{id}/start → /simulations/{id}
