@@ -41,6 +41,7 @@ import com.ssafy.a107.trading.backtest.engine.marketdata.HistoricalCandleProvide
 import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestPortfolioOrderExecutionService;
 import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestRebalanceOrderPlanner;
 import com.ssafy.a107.trading.backtest.engine.portfolio.PortfolioValuationCalculator;
+import com.ssafy.a107.trading.backtest.repository.BacktestMinuteCandleRepository;
 import com.ssafy.a107.trading.simulation.domain.SimulationPosition;
 import com.ssafy.a107.trading.simulation.domain.SimulationRun;
 import com.ssafy.a107.trading.simulation.domain.SimulationTrade;
@@ -50,12 +51,15 @@ import com.ssafy.a107.trading.simulation.repository.SimulationResultRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationRunRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationTradeRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationUniverseAssetRepository;
+import com.ssafy.a107.trading.simulation.repository.SimulationRebalanceAttemptRepository;
+import com.ssafy.a107.trading.simulation.domain.SimulationRebalanceAttemptStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -71,6 +75,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
@@ -90,9 +95,12 @@ class SimulationCandleReadinessTest {
     private final SimulationEquityRepository equities = mock(SimulationEquityRepository.class);
     private final SimulationResultRepository results = mock(SimulationResultRepository.class);
     private final SimulationUniverseAssetRepository universeRecords = mock(SimulationUniverseAssetRepository.class);
+    private final SimulationRebalanceAttemptRepository rebalanceAttempts = mock(SimulationRebalanceAttemptRepository.class);
+    private final BacktestMinuteCandleRepository minuteCandles = mock(BacktestMinuteCandleRepository.class);
     private final CollectedAssetReadService collectedAssets = mock(CollectedAssetReadService.class);
     private final HistoricalCandleProvider history = mock(HistoricalCandleProvider.class);
     private final SimulationMarketPriceCache prices = mock(SimulationMarketPriceCache.class);
+    private final PlatformTransactionManager transactionManager = mock(PlatformTransactionManager.class);
     private final List<Asset> universe = new ArrayList<>();
     private final Map<UUID, List<MinuteCandle>> candles = new HashMap<>();
     private final PortfolioValuationCalculator valuation = new PortfolioValuationCalculator();
@@ -129,7 +137,9 @@ class SimulationCandleReadinessTest {
             assetIds.forEach(assetId -> snapshot.put(assetId, new BigDecimal("121")));
             return Optional.of(snapshot);
         });
+        given(transactionManager.getTransaction(any())).willReturn(mock(TransactionStatus.class));
         service = new SimulationCandleExecutionService(runs, positions, trades, equities, results, universeRecords,
+                rebalanceAttempts, minuteCandles,
                 collectedAssets, history, new BacktestWarmupCandleCountResolver(),
                 new StrategyExecutionPipeline(new Ta4jFactorCalculator(), new FilterEvaluator(),
                         new RankingEvaluator(), new SelectionEvaluator(), new TargetPortfolioEvaluator()),
@@ -138,7 +148,7 @@ class SimulationCandleReadinessTest {
                         new SlippagePriceCalculator(), new OrderPrecisionCalculator(new KrwPriceTickSizeResolver()),
                         new TradeFeeCalculator(), new SlippageAmountCalculator())),
                 valuation, new BacktestExecutionPolicyProperties(new BigDecimal("5000"), new BigDecimal("0.00000001")),
-                prices, mock(PlatformTransactionManager.class), mock(SimulationExecutionFailureService.class));
+                prices, transactionManager, mock(SimulationExecutionFailureService.class));
     }
 
     @Test
@@ -186,6 +196,33 @@ class SimulationCandleReadinessTest {
         assertThat(run.getLastRebalanceAt()).isEqualTo(EXECUTION_AT);
         assertThat(run.getCashBalance()).isLessThan(INITIAL_CAPITAL);
         verify(trades).save(any(SimulationTrade.class));
+    }
+
+    @Test
+    @DisplayName("누락된 일일 재선정은 09시 확정 1분봉 시가로 복구한다")
+    void recoverDailyRebalanceWithOneMinuteOpenPrice() {
+        Asset asset = addAsset(null, 21);
+        MinuteCandle executionCandle = MinuteCandle.detached(
+                new MinuteCandleId(asset.getAssetId(), 1, EXECUTION_AT),
+                new BigDecimal("121"), new BigDecimal("121"), new BigDecimal("121"), new BigDecimal("121"),
+                BigDecimal.ONE, new BigDecimal("121"), EXECUTION_AT.plusSeconds(59)
+        );
+        given(minuteCandles
+                .findAllByIdAssetIdInAndIdIntervalMinutesAndIdOpenTimeGreaterThanEqualAndIdOpenTimeLessThanOrderByIdAssetIdAscIdOpenTimeAsc(
+                        any(), anyShort(), any(), any()
+                ))
+                .willReturn(List.of(executionCandle));
+        given(rebalanceAttempts.findById(any())).willReturn(Optional.empty());
+
+        SimulationCandleExecutionService.DailyRecoveryOutcome outcome = service.recoverDailyRebalance(
+                simulationId, EXECUTION_AT
+        );
+
+        assertThat(outcome.status()).isEqualTo(SimulationRebalanceAttemptStatus.COMPLETED);
+        assertThat(run.getLastRebalanceAt()).isEqualTo(EXECUTION_AT);
+        verify(trades).save(any(SimulationTrade.class));
+        verify(rebalanceAttempts).save(any());
+        verifyNoInteractions(prices);
     }
 
     @Test

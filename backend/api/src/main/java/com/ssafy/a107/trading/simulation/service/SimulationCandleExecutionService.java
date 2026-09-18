@@ -33,12 +33,18 @@ import com.ssafy.a107.trading.simulation.domain.SimulationRunStatus;
 import com.ssafy.a107.trading.simulation.domain.SimulationTrade;
 import com.ssafy.a107.trading.simulation.domain.SimulationUniverseAsset;
 import com.ssafy.a107.trading.simulation.domain.SimulationUniverseAssetId;
+import com.ssafy.a107.trading.simulation.domain.SimulationRebalanceAttempt;
+import com.ssafy.a107.trading.simulation.domain.SimulationRebalanceAttemptId;
+import com.ssafy.a107.trading.simulation.domain.SimulationRebalanceAttemptStatus;
+import com.ssafy.a107.strategy.domain.dsl.RebalancePeriod;
 import com.ssafy.a107.trading.simulation.repository.SimulationEquityRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationPositionRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationResultRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationRunRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationTradeRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationUniverseAssetRepository;
+import com.ssafy.a107.trading.simulation.repository.SimulationRebalanceAttemptRepository;
+import com.ssafy.a107.trading.backtest.repository.BacktestMinuteCandleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.TransientDataAccessException;
@@ -79,6 +85,8 @@ public class SimulationCandleExecutionService {
     private final SimulationEquityRepository simulationEquityRepository;
     private final SimulationResultRepository simulationResultRepository;
     private final SimulationUniverseAssetRepository simulationUniverseAssetRepository;
+    private final SimulationRebalanceAttemptRepository simulationRebalanceAttemptRepository;
+    private final BacktestMinuteCandleRepository minuteCandleRepository;
     private final CollectedAssetReadService collectedAssetReadService;
     private final HistoricalCandleProvider historicalCandleProvider;
     private final BacktestWarmupCandleCountResolver warmupCandleCountResolver;
@@ -99,6 +107,8 @@ public class SimulationCandleExecutionService {
             SimulationEquityRepository simulationEquityRepository,
             SimulationResultRepository simulationResultRepository,
             SimulationUniverseAssetRepository simulationUniverseAssetRepository,
+            SimulationRebalanceAttemptRepository simulationRebalanceAttemptRepository,
+            BacktestMinuteCandleRepository minuteCandleRepository,
             CollectedAssetReadService collectedAssetReadService,
             HistoricalCandleProvider historicalCandleProvider,
             BacktestWarmupCandleCountResolver warmupCandleCountResolver,
@@ -118,6 +128,8 @@ public class SimulationCandleExecutionService {
         this.simulationEquityRepository = simulationEquityRepository;
         this.simulationResultRepository = simulationResultRepository;
         this.simulationUniverseAssetRepository = simulationUniverseAssetRepository;
+        this.simulationRebalanceAttemptRepository = simulationRebalanceAttemptRepository;
+        this.minuteCandleRepository = minuteCandleRepository;
         this.collectedAssetReadService = collectedAssetReadService;
         this.historicalCandleProvider = historicalCandleProvider;
         this.warmupCandleCountResolver = warmupCandleCountResolver;
@@ -256,6 +268,43 @@ public class SimulationCandleExecutionService {
         return ForceRebalanceOutcome.from(simulationRun, executionAt, result);
     }
 
+    /**
+     * 실시간 신호를 놓친 일일 모의투자를 당일 09:00의 확정 1분봉 시가로 한 번 복구한다.
+     */
+    public DailyRecoveryOutcome recoverDailyRebalance(UUID simulationId, Instant executionAt) {
+        return transactionTemplate.execute(transactionStatus -> recoverDailyRebalanceInTransaction(simulationId, executionAt));
+    }
+
+    private DailyRecoveryOutcome recoverDailyRebalanceInTransaction(UUID simulationId, Instant executionAt) {
+        SimulationRun simulationRun = simulationRunRepository.findBySimulationIdForUpdate(simulationId).orElse(null);
+        if (simulationRun == null || simulationRun.getStatus() != SimulationRunStatus.RUNNING
+                || simulationRun.getTimeframe() != Timeframe.ONE_DAY
+                || simulationRun.getRebalanceInterval() != RebalancePeriod.DAILY
+                || executionAt.isBefore(simulationRun.getStartedAt())) {
+            return DailyRecoveryOutcome.skipped(simulationId, executionAt);
+        }
+        if (simulationRun.getLastRebalanceAt() != null && !simulationRun.getLastRebalanceAt().isBefore(executionAt)) {
+            recordRecoveryAttempt(simulationRun, executionAt, SimulationRebalanceAttemptStatus.COMPLETED,
+                    "LIVE_EVENT_COMPLETED");
+            return DailyRecoveryOutcome.completed(simulationId, executionAt);
+        }
+
+        Instant evaluationCandleOpenAt = executionAt.minus(candleDuration(simulationRun.getTimeframe()));
+        CandleProcessResult result = processCandle(
+                simulationRun,
+                evaluationCandleOpenAt,
+                executionAt,
+                assetIds -> loadOneMinuteOpenPrices(assetIds, executionAt)
+        );
+        SimulationRebalanceAttemptStatus status = result == CandleProcessResult.ADVANCED
+                ? SimulationRebalanceAttemptStatus.COMPLETED
+                : SimulationRebalanceAttemptStatus.WAITING_FOR_DATA;
+        recordRecoveryAttempt(simulationRun, executionAt, status, result.name());
+        log.info("Daily simulation rebalance recovery: simulationId={}, executionAt={}, result={}",
+                simulationId, executionAt, result);
+        return DailyRecoveryOutcome.from(simulationId, executionAt, status);
+    }
+
     private boolean recoverMissedCandles(SimulationRun simulationRun, Instant currentExecutionAt) {
         Instant lastCandleAt = simulationRun.getLastCandleAt();
         if (lastCandleAt == null) return false;
@@ -389,6 +438,35 @@ public class SimulationCandleExecutionService {
             openPrices.put(assetId, candle.getOpenPrice());
         }
         return java.util.Optional.of(Map.copyOf(openPrices));
+    }
+
+    private java.util.Optional<Map<UUID, BigDecimal>> loadOneMinuteOpenPrices(
+            Collection<UUID> assetIds,
+            Instant executionAt
+    ) {
+        if (assetIds.isEmpty()) return java.util.Optional.of(Map.of());
+        Map<UUID, BigDecimal> openPrices = new HashMap<>();
+        minuteCandleRepository
+                .findAllByIdAssetIdInAndIdIntervalMinutesAndIdOpenTimeGreaterThanEqualAndIdOpenTimeLessThanOrderByIdAssetIdAscIdOpenTimeAsc(
+                        assetIds, (short) 1, executionAt, executionAt.plus(Duration.ofMinutes(1))
+                )
+                .forEach(candle -> openPrices.put(candle.getId().getAssetId(), candle.getOpenPrice()));
+        return openPrices.size() == assetIds.size()
+                ? java.util.Optional.of(Map.copyOf(openPrices))
+                : java.util.Optional.empty();
+    }
+
+    private void recordRecoveryAttempt(
+            SimulationRun simulationRun,
+            Instant executionAt,
+            SimulationRebalanceAttemptStatus status,
+            String reason
+    ) {
+        SimulationRebalanceAttemptId id = new SimulationRebalanceAttemptId(simulationRun.getSimulationId(), executionAt);
+        SimulationRebalanceAttempt attempt = simulationRebalanceAttemptRepository.findById(id)
+                .orElseGet(() -> new SimulationRebalanceAttempt(id, status, reason));
+        attempt.update(status, reason);
+        simulationRebalanceAttemptRepository.save(attempt);
     }
 
     private Optional<TargetPortfolio> executeStrategy(
@@ -530,6 +608,22 @@ public class SimulationCandleExecutionService {
     }
 
     private record RunLookup(List<UUID> simulationIds, boolean retryRequired) {
+    }
+
+    public record DailyRecoveryOutcome(UUID simulationId, Instant executionAt, SimulationRebalanceAttemptStatus status) {
+        private static DailyRecoveryOutcome completed(UUID simulationId, Instant executionAt) {
+            return new DailyRecoveryOutcome(simulationId, executionAt, SimulationRebalanceAttemptStatus.COMPLETED);
+        }
+
+        private static DailyRecoveryOutcome skipped(UUID simulationId, Instant executionAt) {
+            return new DailyRecoveryOutcome(simulationId, executionAt, SimulationRebalanceAttemptStatus.SKIPPED);
+        }
+
+        private static DailyRecoveryOutcome from(
+                UUID simulationId, Instant executionAt, SimulationRebalanceAttemptStatus status
+        ) {
+            return new DailyRecoveryOutcome(simulationId, executionAt, status);
+        }
     }
 
     public record ForceRebalanceOutcome(
