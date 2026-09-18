@@ -91,7 +91,7 @@ export function RankingPage() {
       )}
       {contests.isSuccess && finished.length === 0 && (
         <EmptyState
-          title="아직 열린 회차가 없습니다"
+          title="순위를 볼 회차가 없습니다"
           description="회차가 열리고 제출이 채점되면 순위가 여기에 나옵니다."
           actions={
             openRound && (
