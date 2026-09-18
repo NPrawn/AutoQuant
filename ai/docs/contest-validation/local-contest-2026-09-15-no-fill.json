@@ -1,0 +1,381 @@
+{
+  "seed": 20260915,
+  "window": {
+    "start": "2019-10-07T00:00:00Z",
+    "end": "2021-10-04T00:00:00Z"
+  },
+  "results": {
+    "equal-weight-hold": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 1.72070121,
+        "mdd": 0.18935083,
+        "exposure": 0.9891304347825868,
+        "trades": 40
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 0.05881524,
+        "mdd": 0.40374874,
+        "exposure": 0.9891304347825506,
+        "trades": 39
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": -0.1090588,
+        "mdd": 0.41494779,
+        "exposure": 0.9891304347823784,
+        "trades": 40
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": 0.11821776,
+        "mdd": 0.44928369,
+        "exposure": 0.9891304347825043,
+        "trades": 39
+      }
+    },
+    "momentum-7d": {
+      "GENERAL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BULL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BEAR": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "SIDEWAYS": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      }
+    },
+    "momentum-24h": {
+      "GENERAL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BULL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BEAR": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "SIDEWAYS": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      }
+    },
+    "rsi-reversion": {
+      "GENERAL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BULL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BEAR": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "SIDEWAYS": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      }
+    },
+    "trend-filter": {
+      "GENERAL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BULL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BEAR": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "SIDEWAYS": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      }
+    },
+    "low-volatility": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 1.62609467,
+        "mdd": 0.25273471,
+        "exposure": 0.9981551623210403,
+        "trades": 126
+      },
+      "BULL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BEAR": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "SIDEWAYS": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      }
+    },
+    "volume-surge": {
+      "GENERAL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BULL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BEAR": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "SIDEWAYS": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      }
+    },
+    "all-in-one": {
+      "GENERAL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BULL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BEAR": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "SIDEWAYS": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      }
+    },
+    "cash-only": {
+      "GENERAL": {
+        "status": "COMPLETED",
+        "return": 0.0,
+        "mdd": 0.0,
+        "exposure": 0.0,
+        "trades": 0
+      },
+      "BULL": {
+        "status": "COMPLETED",
+        "return": 0.0,
+        "mdd": 0.0,
+        "exposure": 0.0,
+        "trades": 0
+      },
+      "BEAR": {
+        "status": "COMPLETED",
+        "return": 0.0,
+        "mdd": 0.0,
+        "exposure": 0.0,
+        "trades": 0
+      },
+      "SIDEWAYS": {
+        "status": "COMPLETED",
+        "return": 0.0,
+        "mdd": 0.0,
+        "exposure": 0.0,
+        "trades": 0
+      }
+    },
+    "drawdown-dip": {
+      "GENERAL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BULL": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "BEAR": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      },
+      "SIDEWAYS": {
+        "status": "FAILED",
+        "failure": "ENGINE_ERROR",
+        "return": null,
+        "mdd": null,
+        "exposure": null
+      }
+    }
+  },
+  "scores": [
+    {
+      "strategy": "equal-weight-hold",
+      "return_score": 100.0,
+      "stability_score": 100.0,
+      "total": 100.0,
+      "disqualified": ""
+    },
+    {
+      "strategy": "momentum-7d",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "GENERAL 백테스트 미완료"
+    },
+    {
+      "strategy": "momentum-24h",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "GENERAL 백테스트 미완료"
+    },
+    {
+      "strategy": "rsi-reversion",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "GENERAL 백테스트 미완료"
+    },
+    {
+      "strategy": "trend-filter",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "GENERAL 백테스트 미완료"
+    },
+    {
+      "strategy": "low-volatility",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "BULL 백테스트 미완료"
+    },
+    {
+      "strategy": "volume-surge",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "GENERAL 백테스트 미완료"
+    },
+    {
+      "strategy": "all-in-one",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "GENERAL 백테스트 미완료"
+    },
+    {
+      "strategy": "cash-only",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "평균 투자 비중 0.0% < 30%"
+    },
+    {
+      "strategy": "drawdown-dip",
+      "return_score": null,
+      "stability_score": null,
+      "total": null,
+      "disqualified": "GENERAL 백테스트 미완료"
+    }
+  ]
+}

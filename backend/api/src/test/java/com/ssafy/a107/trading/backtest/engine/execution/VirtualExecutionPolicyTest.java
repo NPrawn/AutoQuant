@@ -13,7 +13,6 @@ class VirtualExecutionPolicyTest {
     private static final BigDecimal FEE_RATE = BigDecimal.valueOf(0.0005);
     private static final BigDecimal SLIPPAGE_BPS = BigDecimal.valueOf(5);
     private static final BigDecimal MINIMUM_ORDER_AMOUNT = BigDecimal.valueOf(5_000);
-    private static final BigDecimal PRICE_TICK_SIZE = BigDecimal.valueOf(1_000);
     private static final BigDecimal QUANTITY_STEP_SIZE = new BigDecimal("0.00000001");
 
     @DisplayName("유효한 가상 체결 정책을 생성한다")
@@ -24,7 +23,6 @@ class VirtualExecutionPolicyTest {
         assertThat(policy.feeRate()).isEqualByComparingTo(FEE_RATE);
         assertThat(policy.slippageBps()).isEqualByComparingTo(SLIPPAGE_BPS);
         assertThat(policy.minimumOrderAmount()).isEqualByComparingTo(MINIMUM_ORDER_AMOUNT);
-        assertThat(policy.priceTickSize()).isEqualByComparingTo(PRICE_TICK_SIZE);
         assertThat(policy.quantityStepSize()).isEqualByComparingTo(QUANTITY_STEP_SIZE);
     }
 
@@ -36,7 +34,6 @@ class VirtualExecutionPolicyTest {
                         BigDecimal.valueOf(-0.0005),
                         SLIPPAGE_BPS,
                         MINIMUM_ORDER_AMOUNT,
-                        PRICE_TICK_SIZE,
                         QUANTITY_STEP_SIZE
                 ));
     }
@@ -49,7 +46,6 @@ class VirtualExecutionPolicyTest {
                         BigDecimal.ONE,
                         SLIPPAGE_BPS,
                         MINIMUM_ORDER_AMOUNT,
-                        PRICE_TICK_SIZE,
                         QUANTITY_STEP_SIZE
                 ));
     }
@@ -62,7 +58,6 @@ class VirtualExecutionPolicyTest {
                         FEE_RATE,
                         BigDecimal.valueOf(-1),
                         MINIMUM_ORDER_AMOUNT,
-                        PRICE_TICK_SIZE,
                         QUANTITY_STEP_SIZE
                 ));
     }
@@ -75,7 +70,6 @@ class VirtualExecutionPolicyTest {
                         FEE_RATE,
                         BigDecimal.valueOf(10_000),
                         MINIMUM_ORDER_AMOUNT,
-                        PRICE_TICK_SIZE,
                         QUANTITY_STEP_SIZE
                 ));
     }
@@ -87,20 +81,6 @@ class VirtualExecutionPolicyTest {
                 .isThrownBy(() -> new VirtualExecutionPolicy(
                         FEE_RATE,
                         SLIPPAGE_BPS,
-                        BigDecimal.ZERO,
-                        PRICE_TICK_SIZE,
-                        QUANTITY_STEP_SIZE
-                ));
-    }
-
-    @DisplayName("가격 주문 단위는 0보다 커야 한다")
-    @Test
-    void rejectZeroPriceTickSize() {
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> new VirtualExecutionPolicy(
-                        FEE_RATE,
-                        SLIPPAGE_BPS,
-                        MINIMUM_ORDER_AMOUNT,
                         BigDecimal.ZERO,
                         QUANTITY_STEP_SIZE
                 ));
@@ -114,7 +94,6 @@ class VirtualExecutionPolicyTest {
                         FEE_RATE,
                         SLIPPAGE_BPS,
                         MINIMUM_ORDER_AMOUNT,
-                        PRICE_TICK_SIZE,
                         BigDecimal.ZERO
                 ));
     }
@@ -124,7 +103,6 @@ class VirtualExecutionPolicyTest {
                 FEE_RATE,
                 SLIPPAGE_BPS,
                 MINIMUM_ORDER_AMOUNT,
-                PRICE_TICK_SIZE,
                 QUANTITY_STEP_SIZE
         );
     }

@@ -3,7 +3,7 @@ package com.ssafy.a107.trading.backtest.engine.marketdata;
 import com.ssafy.a107.candle.domain.MinuteCandle;
 import com.ssafy.a107.candle.domain.MinuteCandleId;
 import com.ssafy.a107.strategy.domain.dsl.Timeframe;
-import com.ssafy.a107.trading.backtest.repository.MinuteCandleRepository;
+import com.ssafy.a107.trading.backtest.repository.BacktestMinuteCandleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,7 +30,7 @@ class JpaHistoricalCandleProviderTest {
     private static final Instant TO = Instant.parse("2026-01-02T00:00:00Z");
 
     @Mock
-    private MinuteCandleRepository minuteCandleRepository;
+    private BacktestMinuteCandleRepository minuteCandleRepository;
 
     @Mock
     private MinuteCandle candle;

@@ -1,6 +1,7 @@
 package com.ssafy.a107.strategy.controller;
 
 import com.ssafy.a107.auth.jwt.MemberPrincipal;
+import com.ssafy.a107.strategy.controller.request.ChangeStrategyVisibilityRequest;
 import com.ssafy.a107.strategy.controller.request.CreateStrategyRequest;
 import com.ssafy.a107.strategy.controller.response.StrategyResponse;
 import com.ssafy.a107.strategy.service.StrategyCommandService;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -62,6 +64,25 @@ public class StrategyController {
             @PathVariable Long strategyId
     ) {
         return StrategyResponse.from(strategyReadService.getStrategy(principal.memberId(), strategyId));
+    }
+
+    @PatchMapping("/{strategyId}/visibility")
+    public StrategyResponse changeVisibility(
+            @AuthenticationPrincipal MemberPrincipal principal,
+            @PathVariable Long strategyId,
+            @Valid @RequestBody ChangeStrategyVisibilityRequest request
+    ) {
+        return StrategyResponse.from(
+                strategyCommandService.changeVisibility(principal.memberId(), strategyId, request.published()));
+    }
+
+    @PostMapping("/{strategyId}/copy")
+    @ResponseStatus(HttpStatus.CREATED)
+    public StrategyResponse copyStrategy(
+            @AuthenticationPrincipal MemberPrincipal principal,
+            @PathVariable Long strategyId
+    ) {
+        return StrategyResponse.from(strategyCommandService.copyStrategy(principal.memberId(), strategyId));
     }
 
     @DeleteMapping("/{strategyId}")

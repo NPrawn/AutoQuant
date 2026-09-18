@@ -58,3 +58,6 @@ venv/
 !.vscode/extensions.json
 .DS_Store
 Thumbs.db
+
+# OOM 힘 덤프. 테스트가 남기면 커밋되지 않게 막는다.
+*.hprof

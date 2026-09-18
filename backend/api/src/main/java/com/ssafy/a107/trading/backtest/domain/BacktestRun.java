@@ -101,6 +101,10 @@ public class BacktestRun extends BaseEntity {
     @Column(name = "market_data_version", nullable = false, length = MAX_MARKET_DATA_VERSION_LENGTH, updatable = false)
     private String marketDataVersion;
 
+    // 대회 채점용 실행만 값을 가진다. 값이 있으면 그 데이터셋의 캔들과 종목만 쓴다 (ADR-0014).
+    @Column(name = "contest_dataset_id", updatable = false)
+    private UUID contestDatasetId;
+
     @Column(name = "queued_at", nullable = false, updatable = false)
     private Instant queuedAt;
 
@@ -112,6 +116,10 @@ public class BacktestRun extends BaseEntity {
 
     @Column(name = "failure_reason", columnDefinition = "TEXT")
     private String failureReason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "failure_code", length = 30)
+    private BacktestFailureCode failureCode;
 
     protected BacktestRun() {
     }
@@ -149,6 +157,32 @@ public class BacktestRun extends BaseEntity {
         this.status = BacktestRunStatus.QUEUED;
     }
 
+    public BacktestRun(
+            Member member,
+            Strategy strategy,
+            Instant periodStart,
+            Instant periodEnd,
+            Timeframe timeframe,
+            String quoteCurrency,
+            BigDecimal initialCapital,
+            BigDecimal feeRate,
+            BigDecimal slippageBps,
+            RebalancePeriod rebalanceInterval,
+            ExecutionPriceRule executionPriceRule,
+            String engineVersion,
+            String marketDataVersion,
+            Instant queuedAt,
+            UUID contestDatasetId
+    ) {
+        this(member, strategy, periodStart, periodEnd, timeframe, quoteCurrency, initialCapital, feeRate,
+                slippageBps, rebalanceInterval, executionPriceRule, engineVersion, marketDataVersion, queuedAt);
+        this.contestDatasetId = Objects.requireNonNull(contestDatasetId);
+    }
+
+    public boolean isContest() {
+        return contestDatasetId != null;
+    }
+
     public void markRunning(Instant startedAt) {
         ensureStatus(BacktestRunStatus.QUEUED);
         this.startedAt = requireAtOrAfterQueuedAt(startedAt);
@@ -161,13 +195,17 @@ public class BacktestRun extends BaseEntity {
         this.status = BacktestRunStatus.COMPLETED;
     }
 
-    public void fail(String failureReason) {
+    public void fail(
+            BacktestFailureCode failureCode,
+            String failureReason
+    ) {
         if (status != BacktestRunStatus.QUEUED
                 && status != BacktestRunStatus.RUNNING) {
             throw new IllegalStateException(
                     "Backtest run must be queued or running"
             );
         }
+        this.failureCode = Objects.requireNonNull(failureCode);
         this.failureReason = requireNonBlank(failureReason, Integer.MAX_VALUE, "Failure reason");
         this.status = BacktestRunStatus.FAILED;
     }
@@ -300,6 +338,10 @@ public class BacktestRun extends BaseEntity {
         return marketDataVersion;
     }
 
+    public UUID getContestDatasetId() {
+        return contestDatasetId;
+    }
+
     public Instant getQueuedAt() {
         return queuedAt;
     }
@@ -314,5 +356,9 @@ public class BacktestRun extends BaseEntity {
 
     public String getFailureReason() {
         return failureReason;
+    }
+
+    public BacktestFailureCode getFailureCode() {
+        return failureCode;
     }
 }

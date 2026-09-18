@@ -5,6 +5,7 @@ import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.strategy.domain.Strategy;
 import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
+import com.ssafy.a107.trading.backtest.domain.ExecutionPriceRule;
 import com.ssafy.a107.trading.backtest.messaging.BacktestJobMessage;
 import com.ssafy.a107.trading.backtest.messaging.BacktestJobOutboxService;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
@@ -74,6 +75,60 @@ public class BacktestRunCommandService {
         );
 
         return savedBacktestRun;
+    }
+
+    /*
+     * 채점이 부르는 경로다. 제출 뒤 전략을 삭제해도 채점하므로 소유자와 삭제 여부로 거르지 않는다 (대회 기능 설계 3절).
+     */
+    public BacktestRun createContestBacktestRun(CreateContestBacktestRunCommand command) {
+        validate(command);
+
+        Strategy strategy = strategyRepository.findById(command.strategyId())
+                .orElseThrow(() -> new ApiException(ApiErrorCode.STRATEGY_NOT_FOUND));
+
+        BacktestRun backtestRun = new BacktestRun(
+                strategy.getMember(),
+                strategy,
+                command.periodStart(),
+                command.periodEnd(),
+                strategy.getStrategyDsl().timeframe(),
+                "KRW",
+                command.initialCapital(),
+                command.feeRate(),
+                command.slippageBps(),
+                strategy.getStrategyDsl().rebalance().period(),
+                ExecutionPriceRule.NEXT_CANDLE_OPEN,
+                command.engineVersion(),
+                command.marketDataVersion(),
+                Instant.now(),
+                command.contestDatasetId()
+        );
+
+        BacktestRun savedBacktestRun = backtestRunRepository.save(backtestRun);
+
+        BacktestJobMessage message = BacktestJobMessage.from(
+                UUID.randomUUID(),
+                savedBacktestRun
+        );
+        backtestJobOutboxService.enqueue(message);
+        applicationEventPublisher.publishEvent(
+                new BacktestJobQueuedEvent(message)
+        );
+
+        return savedBacktestRun;
+    }
+
+    private void validate(CreateContestBacktestRunCommand command) {
+        if (command == null || command.periodStart() == null || command.periodEnd() == null
+                || !command.periodStart().isBefore(command.periodEnd())) {
+            throw new ApiException(ApiErrorCode.BACKTEST_INVALID_PERIOD);
+        }
+        if (command.strategyId() == null || command.strategyId() <= 0
+                || command.contestDatasetId() == null
+                || isInvalidVersion(command.engineVersion())
+                || isInvalidVersion(command.marketDataVersion())) {
+            throw new ApiException(ApiErrorCode.BACKTEST_INVALID_CONFIGURATION);
+        }
     }
 
     private void validate(CreateBacktestRunCommand command) {

@@ -1,4 +1,5 @@
 import { LoadingState } from '../components/LoadingState'
+import { Pager } from '../components/Pager'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { formatDateTime, formatKrw, formatQuantity, sideLabels } from './labels'
 import { tradePageSize, useBacktestTrades } from './queries'
@@ -74,24 +75,7 @@ export function TradeTable({ backtestId, page, onPageChange }: TradeTableProps) 
         </div>
       </div>
 
-      {totalPages > 1 && (
-        <div className="backtest-pager">
-          <button className="btn ghost sm" type="button" disabled={page === 0} onClick={() => onPageChange(page - 1)}>
-            이전
-          </button>
-          <span className="mono">
-            {page + 1} / {totalPages}
-          </span>
-          <button
-            className="btn ghost sm"
-            type="button"
-            disabled={page + 1 >= totalPages}
-            onClick={() => onPageChange(page + 1)}
-          >
-            다음
-          </button>
-        </div>
-      )}
+      <Pager page={page} totalPages={totalPages} onPageChange={onPageChange} />
     </>
   )
 }

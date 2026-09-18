@@ -113,6 +113,60 @@ class BacktestRunCommandServiceTest {
                 .isEqualTo(eventCaptor.getValue().message());
     }
 
+    @DisplayName("대회 백테스트는 데이터셋 ID를 달고 소유자·삭제 확인 없이 만든다")
+    @Test
+    void createContestBacktestRun() {
+        BacktestRunCommandService service = createService();
+        Strategy strategy = strategy();
+        UUID datasetId = UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd");
+        given(strategyRepository.findById(STRATEGY_ID)).willReturn(Optional.of(strategy));
+        given(backtestRunRepository.save(any(BacktestRun.class)))
+                .willAnswer(invocation -> {
+                    BacktestRun savedBacktestRun = invocation.getArgument(0);
+                    ReflectionTestUtils.setField(savedBacktestRun, "backtestId", BACKTEST_ID);
+                    return savedBacktestRun;
+                });
+
+        BacktestRun backtestRun = service.createContestBacktestRun(new CreateContestBacktestRunCommand(
+                STRATEGY_ID,
+                datasetId,
+                Instant.parse("2030-02-11T00:00:00Z"),
+                Instant.parse("2030-05-13T00:00:00Z"),
+                BigDecimal.valueOf(10_000_000),
+                BigDecimal.valueOf(0.0005),
+                BigDecimal.valueOf(10),
+                "engine-v1",
+                "contest-round-1"
+        ));
+
+        assertThat(backtestRun.isContest()).isTrue();
+        assertThat(backtestRun.getContestDatasetId()).isEqualTo(datasetId);
+        assertThat(backtestRun.getExecutionPriceRule()).isEqualTo(ExecutionPriceRule.NEXT_CANDLE_OPEN);
+        assertThat(backtestRun.getStatus()).isEqualTo(BacktestRunStatus.QUEUED);
+        then(backtestJobOutboxService).should().enqueue(any(BacktestJobMessage.class));
+    }
+
+    @DisplayName("없는 전략으로는 대회 백테스트를 만들 수 없다")
+    @Test
+    void rejectContestBacktestRunForMissingStrategy() {
+        BacktestRunCommandService service = createService();
+        given(strategyRepository.findById(STRATEGY_ID)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.createContestBacktestRun(new CreateContestBacktestRunCommand(
+                STRATEGY_ID,
+                UUID.fromString("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                Instant.parse("2030-02-11T00:00:00Z"),
+                Instant.parse("2030-05-13T00:00:00Z"),
+                BigDecimal.valueOf(10_000_000),
+                BigDecimal.valueOf(0.0005),
+                BigDecimal.valueOf(10),
+                "engine-v1",
+                "contest-round-1"
+        ))).isInstanceOfSatisfying(ApiException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.STRATEGY_NOT_FOUND)
+        );
+    }
+
     @DisplayName("소유하지 않은 전략으로 백테스트 실행을 생성할 수 없다")
     @Test
     void rejectBacktestRunForStrategyOutsideMemberOwnership() {

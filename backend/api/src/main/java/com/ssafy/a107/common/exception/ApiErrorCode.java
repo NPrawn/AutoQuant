@@ -59,7 +59,23 @@ public enum ApiErrorCode {
     BACKTEST_INVALID_INITIAL_CAPITAL(HttpStatus.BAD_REQUEST, "BACKTEST-400-003", "초기 자본은 0보다 커야 합니다."),
     BACKTEST_INVALID_COST(HttpStatus.BAD_REQUEST, "BACKTEST-400-004", "수수료와 슬리피지는 음수일 수 없습니다."),
     BACKTEST_INVALID_CONFIGURATION(HttpStatus.BAD_REQUEST, "BACKTEST-400-005", "백테스트 실행 설정이 올바르지 않습니다."),
-    BACKTEST_NOT_FOUND(HttpStatus.NOT_FOUND, "BACKTEST-404-001", "요청한 백테스트 실행을 찾을 수 없습니다.");
+    BACKTEST_NOT_FOUND(HttpStatus.NOT_FOUND, "BACKTEST-404-001", "요청한 백테스트 실행을 찾을 수 없습니다."),
+
+    // 모의투자
+    SIMULATION_INVALID_CONFIGURATION(HttpStatus.BAD_REQUEST, "SIMULATION-400-001", "모의투자 실행 설정이 올바르지 않습니다."),
+    SIMULATION_NOT_FOUND(HttpStatus.NOT_FOUND, "SIMULATION-404-001", "요청한 모의투자 실행을 찾을 수 없습니다."),
+    SIMULATION_INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "SIMULATION-409-001", "현재 모의투자 실행 상태에서는 요청한 상태로 변경할 수 없습니다."),
+
+    // 대회
+    CONTEST_FACTOR_PERIOD_TOO_LONG(HttpStatus.BAD_REQUEST, "CONTEST-400-001", "대회 데이터의 워밍업보다 긴 팩터 기간은 제출할 수 없습니다."),
+    CONTEST_ROUND_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTEST-404-001", "요청한 대회 회차를 찾을 수 없습니다."),
+    CONTEST_ENTRY_NOT_FOUND(HttpStatus.NOT_FOUND, "CONTEST-404-002", "이 회차에 제출한 전략이 없습니다."),
+    CONTEST_SUBMISSION_CLOSED(HttpStatus.CONFLICT, "CONTEST-409-001", "지금은 대회 제출 기간이 아닙니다."),
+    CONTEST_SUBMISSION_LIMIT_EXCEEDED(HttpStatus.CONFLICT, "CONTEST-409-002", "대회 제출 횟수를 모두 사용했습니다."),
+    CONTEST_RESULT_NOT_PUBLISHED(HttpStatus.CONFLICT, "CONTEST-409-003", "대회 결과는 채점이 끝난 뒤에 공개됩니다."),
+
+    // 알림
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION-404-001", "요청한 알림을 찾을 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

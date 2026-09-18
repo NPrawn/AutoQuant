@@ -3,6 +3,7 @@ package com.ssafy.a107.trading.backtest.controller.response;
 import com.ssafy.a107.strategy.domain.dsl.RebalancePeriod;
 import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
+import com.ssafy.a107.trading.backtest.domain.BacktestFailureCode;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
 import com.ssafy.a107.trading.backtest.domain.ExecutionPriceRule;
 
@@ -27,7 +28,8 @@ public record BacktestRunResponse(
         String marketDataVersion,
         Instant queuedAt,
         Instant startedAt,
-        Instant completedAt
+        Instant completedAt,
+        BacktestFailureCode failureCode
 ) {
 
     public static BacktestRunResponse from(BacktestRun backtestRun) {
@@ -48,7 +50,8 @@ public record BacktestRunResponse(
                 backtestRun.getMarketDataVersion(),
                 backtestRun.getQueuedAt(),
                 backtestRun.getStartedAt(),
-                backtestRun.getCompletedAt()
+                backtestRun.getCompletedAt(),
+                backtestRun.getFailureCode()
         );
     }
 }

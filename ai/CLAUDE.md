@@ -165,13 +165,19 @@ AI 파트에만 해당하는 것 셋.
 
 ## Jira
 
-프로젝트 `S15P21A107`, 에픽 [S15P21A107-12](https://ssafy.atlassian.net/browse/S15P21A107-12).
+프로젝트 `S15P21A107`. AI 에픽은 셋이고, 새 티켓은 진행 중인 에픽 아래에 만든다.
+
+| 에픽 | 내용 | 상태 |
+|---|---|---|
+| [S15P21A107-12](https://ssafy.atlassian.net/browse/S15P21A107-12) | 전략 DSL 변환 서버 구축 | 완료 |
+| [S15P21A107-131](https://ssafy.atlassian.net/browse/S15P21A107-131) | 프롬프트 튜닝과 통합 | 완료 |
+| [S15P21A107-215](https://ssafy.atlassian.net/browse/S15P21A107-215) | 대회 데이터 생성과 검증 ([docs/PLAN-CONTEST-DATA.md](docs/PLAN-CONTEST-DATA.md)) | 진행 중 |
 
 티켓 제목과 설명 구조는 [`../docs/git-convention.md`](../docs/git-convention.md) 1절을 따른다. 제목은 `[AI] 대상과 작업 내용`이고 Jira 키를 제목에 쓰지 않는다. 설명은 `## 목적` / `## 작업 내용` / `## 완료 조건`이 최소 구조다.
 
 **`docs/TASKS.md`의 작업 ID(`E-1` 등)는 제목이 아니라 설명 본문에 적는다.** 정본 형식이 제목 앞자리를 영역 태그에 쓰기 때문이다. 보드와 문서는 본문에서 이 ID로 연결한다.
 
-**에픽 `S15P21A107-12` 밖의 티켓은 읽기만 한다.** 수정·삭제·상태 변경·담당자 변경 금지. 담당자가 비어 있어도 마찬가지다.
+**위 AI 에픽 밖의 티켓은 읽기만 한다.** 수정·삭제·상태 변경·담당자 변경 금지. 담당자가 비어 있어도 마찬가지다.
 
 ## 반려 사유 정리
 

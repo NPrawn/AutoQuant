@@ -1,3 +1,5 @@
+import type { FactorType, Timeframe } from '../strategy/types'
+
 export type ChartAssetResponse = { assetId: string; marketCode: string; koreanName: string }
 export type ChartAsset = { id: string; marketCode: string; name: string }
 
@@ -26,7 +28,7 @@ export type Trade = {
   tradedAtUnixMilli: number
   sequenceId: string
 }
-export type Candle = { time: number; open: number; high: number; low: number; close: number }
+export type Candle = { time: number; open: number; high: number; low: number; close: number; volume: number }
 
 // 그리기에만 number를 사용한다. 체결 표시와 원본 응답의 금액은 문자열 그대로 유지한다.
 export function toCandle(response: CandleResponse): Candle {
@@ -34,5 +36,10 @@ export function toCandle(response: CandleResponse): Candle {
     time: response.openTimeUnixMilli / 1000,
     open: Number(response.openPrice), high: Number(response.highPrice),
     low: Number(response.lowPrice), close: Number(response.closePrice),
+    volume: Number(response.tradeVolume),
   }
 }
+
+/* 팩터 값은 전략 엔진이 쓰는 계산기가 만든 그대로다. 기간도 서버가 정해 함께 온다. */
+export type FactorValueResponse = { factor: FactorType; period: number; value: number | null }
+export type AssetFactorsResponse = { assetId: string; timeframe: Timeframe; asOf: string | null; factors: FactorValueResponse[] }

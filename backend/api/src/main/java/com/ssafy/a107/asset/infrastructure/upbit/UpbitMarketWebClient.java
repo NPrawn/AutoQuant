@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientException;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
@@ -17,6 +20,9 @@ import java.util.concurrent.TimeoutException;
 public class UpbitMarketWebClient implements UpbitMarketClient {
 
     private final WebClient webClient;
+    private static final int CANDLE_PAGE_SIZE = 200;
+    private static final int MAXIMUM_CANDLE_PAGES = 40;
+
     private final UpbitProperties properties;
 
     public UpbitMarketWebClient(
@@ -35,6 +41,55 @@ public class UpbitMarketWebClient implements UpbitMarketClient {
                 .filter(market -> exchangeMarketCode.equals(market.exchangeMarketCode()))
                 .findFirst()
                 .map(this::toMarketInformation);
+    }
+
+    /*
+     * 일봉을 200개씩 과거로 따라가 더 받을 것이 없을 때의 가장 오래된 봉을 상장일로 본다.
+     * 업비트 개장일(2017-09-25)부터면 약 18번이면 끝난다. 정해진 횟수를 넘으면 포기한다.
+     */
+    @Override
+    public Optional<Instant> findTradingSupportStartedAt(String exchangeMarketCode) {
+        String to = null;
+        Instant oldest = null;
+        for (int page = 0; page < MAXIMUM_CANDLE_PAGES; page++) {
+            List<UpbitDailyCandleResponse> candles = requestDailyCandles(exchangeMarketCode, to);
+            if (candles.isEmpty()) {
+                return Optional.ofNullable(oldest);
+            }
+
+            String last = candles.getLast().candleDateTimeUtc();
+            if (last == null || last.isBlank()) {
+                return Optional.ofNullable(oldest);
+            }
+            oldest = LocalDateTime.parse(last).toInstant(ZoneOffset.UTC);
+            to = last;
+        }
+        return Optional.ofNullable(oldest);
+    }
+
+    private List<UpbitDailyCandleResponse> requestDailyCandles(String exchangeMarketCode, String to) {
+        try {
+            List<UpbitDailyCandleResponse> candles = webClient.get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/v1/candles/days")
+                                .queryParam("market", exchangeMarketCode)
+                                .queryParam("count", CANDLE_PAGE_SIZE);
+                        if (to != null) {
+                            uriBuilder.queryParam("to", to);
+                        }
+                        return uriBuilder.build();
+                    })
+                    .retrieve()
+                    .bodyToFlux(UpbitDailyCandleResponse.class)
+                    .collectList()
+                    .timeout(properties.timeout())
+                    .block();
+
+            return candles == null ? List.of() : candles;
+        } catch (RuntimeException exception) {
+            /* 상장일은 없어도 등록을 막지 않는다. 조회가 실패하면 그때까지 찾은 값을 쓴다. */
+            return List.of();
+        }
     }
 
     private List<UpbitMarketResponse> requestMarkets() {

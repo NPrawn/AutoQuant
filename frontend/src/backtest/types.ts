@@ -3,6 +3,9 @@ export type BacktestRunStatus = 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED'
 
 export type ExecutionPriceRule = 'NEXT_CANDLE_OPEN'
 
+/* 계산이 멈춘 이유. backend/api 의 BacktestFailureCode 와 같다. 실패가 아니면 null 이다. */
+export type BacktestFailureCode = 'INSUFFICIENT_CANDLES' | 'EMPTY_UNIVERSE' | 'ENGINE_ERROR'
+
 export type TradeSide = 'BUY' | 'SELL'
 
 export type PositionSide = 'LONG' | 'SHORT'
@@ -31,6 +34,7 @@ export type BacktestRunResponse = {
   queuedAt: string
   startedAt: string | null
   completedAt: string | null
+  failureCode: BacktestFailureCode | null
 }
 
 /* 수익률과 낙폭은 비율이다. cumulativeReturn 0.589 는 58.9% 이고 mdd 는 양수로 온다. */
@@ -62,6 +66,13 @@ export type BacktestTradeResponse = {
   feeAmount: number
   slippageAmount: number
   reason: string | null
+}
+
+/* 봉이 하나도 없으면 두 값이 null 이다. 조회 실패가 아니라 아직 쌓인 봉이 없다는 뜻이다. */
+export type CandleCoverageResponse = {
+  intervalMinutes: number
+  start: string | null
+  end: string | null
 }
 
 export type BacktestEquityResponse = {
@@ -107,6 +118,7 @@ export type BacktestRun = {
   queuedAt: Date
   startedAt: Date | null
   completedAt: Date | null
+  failureCode: BacktestFailureCode | null
 }
 
 export type BacktestResult = {
@@ -155,6 +167,7 @@ export function toBacktestRun(response: BacktestRunResponse): BacktestRun {
     queuedAt: new Date(response.queuedAt),
     startedAt: response.startedAt === null ? null : new Date(response.startedAt),
     completedAt: response.completedAt === null ? null : new Date(response.completedAt),
+    failureCode: response.failureCode ?? null,
   }
 }
 

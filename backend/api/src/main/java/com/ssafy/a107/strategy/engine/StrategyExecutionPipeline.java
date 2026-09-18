@@ -15,9 +15,12 @@ import com.ssafy.a107.strategy.engine.portfolio.TargetPortfolio;
 import com.ssafy.a107.strategy.engine.portfolio.TargetPortfolioEvaluator;
 import com.ssafy.a107.strategy.engine.ranking.RankingEvaluator;
 import com.ssafy.a107.strategy.engine.selection.SelectionEvaluator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -29,6 +32,8 @@ import java.util.UUID;
 
 @Component
 public class StrategyExecutionPipeline {
+
+    private static final Logger log = LoggerFactory.getLogger(StrategyExecutionPipeline.class);
 
     private final Ta4jFactorCalculator factorCalculator;
     private final FilterEvaluator filterEvaluator;
@@ -57,13 +62,27 @@ public class StrategyExecutionPipeline {
 
         return executeInternal(
                 strategyExecutionContext.strategyDsl(),
-                strategyExecutionContext.candlesByAssetId()
+                strategyExecutionContext.candlesByAssetId(),
+                false
+        );
+    }
+
+    public TargetPortfolio executeExcludingInsufficientCandleAssets(
+            StrategyExecutionContext strategyExecutionContext
+    ) {
+        Objects.requireNonNull(strategyExecutionContext);
+
+        return executeInternal(
+                strategyExecutionContext.strategyDsl(),
+                strategyExecutionContext.candlesByAssetId(),
+                true
         );
     }
 
     private TargetPortfolio executeInternal(
             StrategyDsl strategyDsl,
-            Map<UUID, List<MinuteCandle>> assetCandles
+            Map<UUID, List<MinuteCandle>> assetCandles,
+            boolean excludeInsufficientCandleAssets
     ) {
         Objects.requireNonNull(strategyDsl);
         Objects.requireNonNull(assetCandles);
@@ -73,9 +92,11 @@ public class StrategyExecutionPipeline {
 
         Set<FactorOperand> requiredFactors = collectRequiredFactors(strategyDsl);
         Map<UUID, Map<FactorOperand, BigDecimal>> assetFactorValues = calculateFactorValues(assetCandles, requiredFactors);
-        validateRequiredFactorValues(assetFactorValues, requiredFactors);
+        Map<UUID, Map<FactorOperand, BigDecimal>> completeAssetFactorValues = excludeInsufficientCandleAssets
+                ? excludeAssetsWithInsufficientCandles(assetFactorValues, requiredFactors)
+                : validateRequiredFactorValues(assetFactorValues, requiredFactors);
         Map<UUID, Map<FactorOperand, BigDecimal>> eligibleAssetFactorValues = filterEligibleAssets(
-                assetFactorValues,
+                completeAssetFactorValues,
                 strategyDsl
         );
         List<UUID> rankedAssetIds = rankingEvaluator.rank(eligibleAssetFactorValues, strategyDsl.ranking());
@@ -213,7 +234,7 @@ public class StrategyExecutionPipeline {
         return assetFactorValues;
     }
 
-    private void validateRequiredFactorValues(
+    private Map<UUID, Map<FactorOperand, BigDecimal>> validateRequiredFactorValues(
             Map<UUID, Map<FactorOperand, BigDecimal>> assetFactorValues,
             Set<FactorOperand> requiredFactors
     ) {
@@ -223,7 +244,7 @@ public class StrategyExecutionPipeline {
                     .toList();
 
             if (!missingFactors.isEmpty()) {
-                throw new StrategyExecutionException(
+                throw new InsufficientCandleDataException(
                         "Insufficient candle data for asset "
                                 + assetFactorValueEntry.getKey()
                                 + ": "
@@ -231,6 +252,43 @@ public class StrategyExecutionPipeline {
                 );
             }
         }
+        return assetFactorValues;
+    }
+
+    private Map<UUID, Map<FactorOperand, BigDecimal>> excludeAssetsWithInsufficientCandles(
+            Map<UUID, Map<FactorOperand, BigDecimal>> assetFactorValues,
+            Set<FactorOperand> requiredFactors
+    ) {
+        if (assetFactorValues.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, Map<FactorOperand, BigDecimal>> completeAssetFactorValues = new LinkedHashMap<>();
+        List<UUID> excludedAssetIds = new ArrayList<>();
+        for (Map.Entry<UUID, Map<FactorOperand, BigDecimal>> assetFactorValueEntry : assetFactorValues.entrySet()) {
+            if (assetFactorValueEntry.getValue().keySet().containsAll(requiredFactors)) {
+                completeAssetFactorValues.put(
+                        assetFactorValueEntry.getKey(),
+                        assetFactorValueEntry.getValue()
+                );
+            } else {
+                excludedAssetIds.add(assetFactorValueEntry.getKey());
+            }
+        }
+
+        if (completeAssetFactorValues.isEmpty()) {
+            throw new InsufficientCandleDataException(
+                    "Insufficient candle data for all candidate assets"
+            );
+        }
+
+        if (!excludedAssetIds.isEmpty()) {
+            log.info(
+                    "Excluded backtest candidate assets with insufficient candle data: {}",
+                    excludedAssetIds
+            );
+        }
+        return completeAssetFactorValues;
     }
 
     private Map<UUID, Map<FactorOperand, BigDecimal>> filterEligibleAssets(

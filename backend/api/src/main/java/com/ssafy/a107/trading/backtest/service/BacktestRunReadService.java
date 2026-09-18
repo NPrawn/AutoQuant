@@ -39,11 +39,15 @@ public class BacktestRunReadService {
     }
 
     public Page<BacktestRun> getBacktestRuns(UUID memberId, Pageable pageable) {
-        return backtestRunRepository.findAllByMemberMemberIdOrderByQueuedAtDesc(memberId, pageable);
+        return backtestRunRepository.findAllByMemberMemberIdAndContestDatasetIdIsNullOrderByQueuedAtDesc(
+                memberId,
+                pageable
+        );
     }
 
     public BacktestRun getBacktestRun(UUID memberId, UUID backtestId) {
-        return backtestRunRepository.findByBacktestIdAndMemberMemberId(backtestId, memberId)
+        return backtestRunRepository
+                .findByBacktestIdAndMemberMemberIdAndContestDatasetIdIsNull(backtestId, memberId)
                 .orElseThrow(() -> new ApiException(ApiErrorCode.BACKTEST_NOT_FOUND));
     }
 

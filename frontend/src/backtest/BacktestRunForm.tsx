@@ -1,8 +1,10 @@
 import { useId } from 'react'
 
+import { useUniverseSize } from '../market/universe'
 import { timeframeLabels } from '../strategy/labels'
 import type { Strategy } from '../strategy/types'
 import { formatKrw } from './labels'
+import type { PeriodBounds } from './periodBounds'
 import {
   applyPreset,
   detectPreset,
@@ -11,7 +13,6 @@ import {
   setPeriodEnd,
   setPeriodStart,
   slippageBps,
-  universeSize,
   validateRunForm,
   type BacktestRunForm as RunForm,
   type PresetRange,
@@ -21,6 +22,9 @@ type BacktestRunFormProps = {
   form: RunForm
   strategy: Strategy | null
   today: Date
+  bounds: PeriodBounds
+  /* 보유 구간을 아직 읽는 중이다. 하한이 확정되지 않아 안내만 다르게 보인다. */
+  loadingCoverage: boolean
   pending: boolean
   showIssues: boolean
   onChange: (form: RunForm) => void
@@ -28,16 +32,17 @@ type BacktestRunFormProps = {
 }
 
 const presets: Array<{ id: PresetRange; label: string }> = [
-  { id: 'all', label: '전체' },
-  { id: '3y', label: '최근 3년' },
-  { id: '1y', label: '최근 1년' },
+  { id: 'all', label: '보유 전체' },
+  { id: '3m', label: '최근 3개월' },
+  { id: '1m', label: '최근 1개월' },
 ]
 
 /* 목업 10 의 좌측 카드. 봉 주기는 전략 DSL 에서 정해져 오므로 읽기 전용으로 보여 준다. */
-export function BacktestRunForm({ form, strategy, today, pending, showIssues, onChange, onSubmit }: BacktestRunFormProps) {
+export function BacktestRunForm({ form, strategy, today, bounds, loadingCoverage, pending, showIssues, onChange, onSubmit }: BacktestRunFormProps) {
+  const universeSize = useUniverseSize()
   const id = useId()
-  const issues = validateRunForm(form, today)
-  const activePreset = detectPreset(form, today)
+  const issues = validateRunForm(form, today, bounds)
+  const activePreset = detectPreset(form, today, bounds)
   const issueFor = (field: string) => (showIssues ? issues.find((issue) => issue.field === field) : undefined)
   const periodIssue = issueFor('periodStart') ?? issueFor('periodEnd')
   const capitalIssue = issueFor('initialCapital')
@@ -59,7 +64,7 @@ export function BacktestRunForm({ form, strategy, today, pending, showIssues, on
               className={preset.id === activePreset ? 'on' : undefined}
               aria-pressed={preset.id === activePreset}
               disabled={pending}
-              onClick={() => onChange(applyPreset(form, preset.id, today))}
+              onClick={() => onChange(applyPreset(form, preset.id, today, bounds))}
             >
               {preset.label}
             </button>
@@ -87,7 +92,11 @@ export function BacktestRunForm({ form, strategy, today, pending, showIssues, on
             onChange={(event) => onChange(setPeriodEnd(form, event.target.value))}
           />
         </div>
-        {periodIssue && <p className="field-note crit">{periodIssue.message}</p>}
+        {periodIssue ? (
+          <p className="field-note crit">{periodIssue.message}</p>
+        ) : (
+          <p className={bounds.tooShort ? 'field-note crit' : 'field-note'}>{periodNote(bounds, loadingCoverage)}</p>
+        )}
       </div>
 
       <div className="fld">
@@ -121,9 +130,26 @@ export function BacktestRunForm({ form, strategy, today, pending, showIssues, on
         {(feeRate * 100).toFixed(2)}%와 슬리피지 {slippageBps}bp를 적용합니다.
       </p>
 
-      <button className="btn primary" type="button" style={{ width: '100%' }} disabled={pending} onClick={onSubmit}>
+      <button className="btn primary" type="button" style={{ width: '100%' }} disabled={pending || bounds.tooShort} onClick={onSubmit}>
         {pending ? '실행 중…' : '백테스트 실행'}
       </button>
     </div>
   )
+}
+
+/* 기간 입력 아래 안내. 왜 그 날짜부터인지, 무엇이 평가되지 않는지 알린다. */
+function periodNote(bounds: PeriodBounds, loadingCoverage: boolean): string {
+  if (loadingCoverage) {
+    return '캔들 보유 구간을 확인하는 중…'
+  }
+  if (bounds.coverage === null) {
+    return '보유 캔들을 확인할 수 없어 기간 하한 없이 실행합니다.'
+  }
+  if (bounds.tooShort) {
+    return `캔들이 ${bounds.coverage.start}부터 있는데 이 전략은 앞선 봉 ${bounds.warmupCandles}개가 필요해 아직 평가할 구간이 없습니다. 데이터가 더 쌓이거나 팩터 기간이 짧은 전략이 필요합니다.`
+  }
+  if (bounds.warmupCandles === 0) {
+    return `캔들은 ${bounds.coverage.start} ~ ${bounds.coverage.end} 구간에 있습니다.`
+  }
+  return `캔들은 ${bounds.coverage.start} ~ ${bounds.coverage.end} 구간에 있습니다. 이 전략은 판단에 앞선 봉 ${bounds.warmupCandles}개가 필요해 ${bounds.earliestStart}부터 평가합니다.`
 }

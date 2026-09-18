@@ -1,0 +1,352 @@
+{
+  "seed": 20260915,
+  "window": {
+    "start": "2019-10-07T00:00:00Z",
+    "end": "2021-10-04T00:00:00Z"
+  },
+  "universe": [
+    "88516978-74fb-5cfb-a018-25f06666cec8",
+    "c69e3749-081e-51b5-803b-6d67edaa22fd",
+    "854477b1-a78a-5bd1-9497-5510c68748b4",
+    "4fee4c85-0cd4-5084-b5dd-040427936e5c",
+    "481fe15b-92b0-5c42-8b74-beba1ab269f5",
+    "5404d663-3a1c-5b9b-aad9-f7ca2c0e8621",
+    "4b351895-2d7f-5fec-a149-2d1830e29ad3",
+    "4296a5cd-29bc-543d-aec6-1ba06320baff",
+    "e1c4cde7-29b7-53d9-bd0c-be46bbacf11f",
+    "f03f099d-8128-518f-a2d5-efd813581422"
+  ],
+  "markets": {
+    "88516978-74fb-5cfb-a018-25f06666cec8": "KRW-XRP",
+    "c69e3749-081e-51b5-803b-6d67edaa22fd": "KRW-BTC",
+    "854477b1-a78a-5bd1-9497-5510c68748b4": "KRW-ETH",
+    "4fee4c85-0cd4-5084-b5dd-040427936e5c": "KRW-ONG",
+    "481fe15b-92b0-5c42-8b74-beba1ab269f5": "KRW-LSK",
+    "5404d663-3a1c-5b9b-aad9-f7ca2c0e8621": "KRW-XLM",
+    "4b351895-2d7f-5fec-a149-2d1830e29ad3": "KRW-ADA",
+    "4296a5cd-29bc-543d-aec6-1ba06320baff": "KRW-IOST",
+    "e1c4cde7-29b7-53d9-bd0c-be46bbacf11f": "KRW-SC",
+    "f03f099d-8128-518f-a2d5-efd813581422": "KRW-CVC"
+  },
+  "period_start": "2030-02-11T00:00:00Z",
+  "period_end": "2030-05-13T00:00:00Z",
+  "max_factor_period": {
+    "1H": 839,
+    "4H": 209,
+    "1D": 34
+  },
+  "datasets": {
+    "GENERAL": {
+      "evaluation_return": 1.5493202575743306,
+      "filled_hours": 302,
+      "weeks": [
+        {
+          "source_start": "2019-12-30T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-02-24T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2019-11-18T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-12-21T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-05-03T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-05-18T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-04-20T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2021-01-04T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-07-27T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-09-28T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-03-02T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-05-31T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-03-30T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-07-06T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-01-27T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-08-24T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-09-07T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2019-11-25T00:00:00Z",
+          "label": "UP"
+        }
+      ]
+    },
+    "BULL": {
+      "evaluation_return": 0.23170603869653084,
+      "filled_hours": 346,
+      "weeks": [
+        {
+          "source_start": "2020-08-31T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-10-26T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-09-27T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-07-20T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2019-11-04T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-12-07T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-05-04T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-07-06T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2021-02-01T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2019-12-02T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-11-16T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2021-02-22T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-05-10T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-04-26T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2021-05-24T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-06-08T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2019-11-18T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2019-12-30T00:00:00Z",
+          "label": "FLAT"
+        }
+      ]
+    },
+    "BEAR": {
+      "evaluation_return": -0.18308021575780642,
+      "filled_hours": 198,
+      "weeks": [
+        {
+          "source_start": "2021-03-01T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-02-10T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-03-09T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-09-07T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2021-01-11T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-07-27T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2021-04-19T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-07-19T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2021-09-13T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-11-02T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2019-11-18T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-08-09T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-05-04T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-06-15T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-10-05T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2019-12-09T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-02-17T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-08-23T00:00:00Z",
+          "label": "FLAT"
+        }
+      ]
+    },
+    "SIDEWAYS": {
+      "evaluation_return": 0.005156497383432157,
+      "filled_hours": 237,
+      "weeks": [
+        {
+          "source_start": "2021-09-06T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2019-12-30T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2021-05-03T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-09-21T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-01-25T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2021-05-17T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2019-11-11T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-08-17T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2021-04-26T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-06-01T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-04-06T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-06-22T00:00:00Z",
+          "label": "FLAT"
+        },
+        {
+          "source_start": "2020-12-21T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-09-13T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-07-12T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2021-07-26T00:00:00Z",
+          "label": "UP"
+        },
+        {
+          "source_start": "2020-12-07T00:00:00Z",
+          "label": "DOWN"
+        },
+        {
+          "source_start": "2020-11-16T00:00:00Z",
+          "label": "UP"
+        }
+      ]
+    }
+  }
+}

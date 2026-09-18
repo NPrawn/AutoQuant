@@ -1,5 +1,6 @@
-import { isApiError } from '../api/error'
+import { isApiError } from '../api/error.ts'
 import type { ErrorDetailRow } from '../components/StateBlock'
+import type { BacktestFailureCode } from './types'
 
 /* 백테스트 실행 실패를 화면 문장으로 바꾼다. 400 은 백엔드가 필드별로 보내므로 항목으로 풀어 보인다. */
 export type RunErrorView = {
@@ -51,8 +52,34 @@ export function describeRunError(error: unknown): RunErrorView {
   }
 }
 
-/* 계산이 실패한 경우. 목업 24 처럼 왜 멈췄는지와 다음 행동을 함께 보여 준다. */
-export function describeFailedRun(): RunErrorView {
+/*
+ * 계산이 실패한 경우. 목업 24 처럼 왜 멈췄는지와 다음 행동을 함께 보여 준다.
+ * 원인은 서버가 failureCode 로 알려 주므로 화면이 추측하지 않는다.
+ */
+export function describeFailedRun(failureCode: BacktestFailureCode | null): RunErrorView {
+  if (failureCode === 'INSUFFICIENT_CANDLES') {
+    return {
+      title: '평가 기간의 캔들이 부족해 계산을 멈췄습니다',
+      description:
+        '후보군 종목 중 일부가 요청한 시작일보다 늦게 상장되어 같은 기준으로 순위를 매길 수 없습니다. 평가 기간을 좁혀 다시 실행하세요.',
+      details: [],
+    }
+  }
+  if (failureCode === 'EMPTY_UNIVERSE') {
+    return {
+      title: '후보에 남는 종목이 없었습니다',
+      description:
+        '평가 기간 내내 조건을 통과한 종목이 하나도 없었습니다. 후보 조건을 느슨하게 하거나 순위 기준을 바꿔 다시 실행하세요.',
+      details: [],
+    }
+  }
+  if (failureCode === 'ENGINE_ERROR') {
+    return {
+      title: '계산 중 오류가 발생했습니다',
+      description: '엔진이 이 전략을 끝까지 계산하지 못했습니다. 같은 조건으로 다시 실행해도 같은 지점에서 멈추면 알려 주세요.',
+      details: [],
+    }
+  }
   return {
     title: '계산을 마치지 못했습니다',
     description:

@@ -1,11 +1,13 @@
 import { Link } from 'react-router'
 
-import { to } from '../app/routes'
+import { routes, to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/StateBlock'
-import { EquityChart } from './EquityChart'
-import { blank, formatDate, formatDrawdown, formatKrw, formatRate, formatRatio, trendClass } from './labels'
-import { useBacktestEquityCurve, useBacktestResult } from './queries'
+import { EquityChart } from '../components/EquityChart'
+import type { SimulationEntryState } from '../simulation/simulationEntry'
+import { blank, formatDate, formatRate } from './labels'
+import { useBacktestEquityCurve, useBacktestResult, useCandleCoverage } from './queries'
+import { ResultKpis } from './ResultKpis'
 import { TradeTable } from './TradeTable'
 import type { BacktestRun, EquityPoint } from './types'
 
@@ -28,6 +30,7 @@ function peakDrawdownAt(points: EquityPoint[]): Date | null {
 export function BacktestResult({ run, strategyName, tradePage, onTradePageChange }: BacktestResultProps) {
   const result = useBacktestResult(run.id, true)
   const equity = useBacktestEquityCurve(run.id, true)
+  const coverage = useCandleCoverage()
 
   if (result.isPending) {
     return <LoadingState label="결과를 불러오는 중…" />
@@ -37,9 +40,11 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
   }
 
   const metrics = result.data
-  const profit = metrics.finalAssetValue - run.initialCapital
   const points = equity.data ?? []
-  const drawdownAt = peakDrawdownAt(points)
+  const simulationEntry: SimulationEntryState = { strategyId: run.strategyId }
+  /* 요청 시작일이 캔들 보유 시작일보다 앞서면 그 앞은 평가되지 않았다. 연평균 수익률 해석이 달라져 알린다. */
+  const coverageStart = coverage.data?.start ?? null
+  const startsBeforeCoverage = coverageStart !== null && formatDate(run.periodStart) < coverageStart
 
   return (
     <div className="bt-res on">
@@ -48,38 +53,16 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
         <b>{strategyName}</b>
       </div>
 
-      <div className="bt-result-kpis">
-        <div className="live-kpi">
-          <span>최종 평가자산</span>
-          <strong className="mono">{formatKrw(metrics.finalAssetValue)}</strong>
-          <small>KRW</small>
+      {startsBeforeCoverage && (
+        <div className="callout warn" role="note" style={{ marginBottom: 16 }}>
+          <span>
+            요청 기간은 {formatDate(run.periodStart)}부터지만 캔들은 <b>{coverageStart}</b>부터 있어 그 이후만 평가됐습니다. 연평균 수익률은 요청 기간
+            전체로 나눈 값이라 실제보다 낮게 보일 수 있습니다.
+          </span>
         </div>
-        <div className="live-kpi">
-          <span>누적 평가손익</span>
-          <strong className={`mono ${trendClass(profit)}`}>
-            {profit > 0 ? '+' : ''}
-            {formatKrw(profit)}
-          </strong>
-          <small>{formatRate(metrics.cumulativeReturn, { signed: true })}</small>
-        </div>
-        <div className="live-kpi">
-          <span>최대 낙폭</span>
-          <strong className="mono dd-val">{formatDrawdown(metrics.mdd)}</strong>
-          <small>{drawdownAt === null ? '기간 중 최대' : formatDate(drawdownAt)}</small>
-        </div>
-        <div className="live-kpi">
-          <span>Sharpe</span>
-          <strong className="mono">{formatRatio(metrics.sharpeRatio)}</strong>
-          <small>연 변동성 {formatRate(metrics.volatility)}</small>
-        </div>
-        <div className="live-kpi">
-          <span>전체 체결</span>
-          <strong className="mono">{formatKrw(metrics.tradeCount)}</strong>
-          <small>
-            승률 {formatRate(metrics.winRate)} · 수수료 {formatKrw(metrics.totalFee)} KRW
-          </small>
-        </div>
-      </div>
+      )}
+
+      <ResultKpis metrics={metrics} initialCapital={run.initialCapital} drawdownAt={peakDrawdownAt(points)} />
 
       <section className="card card--lead perf-stack">
         <div className="perf-head">
@@ -122,9 +105,9 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
         <Link className="btn ghost" to={to.strategyEdit(run.strategyId)}>
           전략 수정
         </Link>
-        <button className="btn primary" type="button" disabled title="모의투자는 백엔드 준비 후 열립니다">
+        <Link className="btn primary" to={routes.simulations} state={simulationEntry}>
           이 전략으로 모의투자
-        </button>
+        </Link>
       </div>
     </div>
   )

@@ -25,6 +25,19 @@ export function fetchStrategy(strategyId: string): Promise<StrategyResponse> {
   return request<StrategyResponse>(`/strategies/${encodeURIComponent(strategyId)}`)
 }
 
+/* 공개 여부를 바꾼다. 서버가 바뀐 전략을 그대로 돌려주므로 화면이 상태를 따로 만들지 않는다. */
+export function changeStrategyVisibility(strategyId: string, published: boolean): Promise<StrategyResponse> {
+  return request<StrategyResponse>(`/strategies/${encodeURIComponent(strategyId)}/visibility`, {
+    method: 'PATCH',
+    body: { published },
+  })
+}
+
+/* 복제본은 새 전략이라 서버가 201 과 함께 새 식별자를 준다. */
+export function copyStrategy(strategyId: string): Promise<StrategyResponse> {
+  return request<StrategyResponse>(`/strategies/${encodeURIComponent(strategyId)}/copy`, { method: 'POST' })
+}
+
 export function deleteStrategy(strategyId: string): Promise<void> {
   return request<void>(`/strategies/${encodeURIComponent(strategyId)}`, { method: 'DELETE' })
 }

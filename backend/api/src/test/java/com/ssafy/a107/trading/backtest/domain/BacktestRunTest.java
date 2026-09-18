@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -43,6 +44,7 @@ class BacktestRunTest {
         assertThat(backtestRun.getQuoteCurrency()).isEqualTo("KRW");
         assertThat(backtestRun.getInitialCapital()).isEqualByComparingTo("1000000");
         assertThat(backtestRun.getQueuedAt()).isEqualTo(QUEUED_AT);
+        assertThat(backtestRun.getFailureCode()).isNull();
     }
 
     @DisplayName("QUEUED 백테스트 실행은 RUNNING으로 전이한다")
@@ -72,9 +74,13 @@ class BacktestRunTest {
     void failBacktestRun() {
         BacktestRun backtestRun = runningBacktestRun();
 
-        backtestRun.fail("시장 데이터가 부족합니다.");
+        backtestRun.fail(
+                BacktestFailureCode.INSUFFICIENT_CANDLES,
+                "시장 데이터가 부족합니다."
+        );
 
         assertThat(backtestRun.getStatus()).isEqualTo(BacktestRunStatus.FAILED);
+        assertThat(backtestRun.getFailureCode()).isEqualTo(BacktestFailureCode.INSUFFICIENT_CANDLES);
         assertThat(backtestRun.getFailureReason()).isEqualTo("시장 데이터가 부족합니다.");
     }
 
@@ -85,7 +91,10 @@ class BacktestRunTest {
         backtestRun.complete(COMPLETED_AT);
 
         assertThatIllegalStateException()
-                .isThrownBy(() -> backtestRun.fail("실패 원인"));
+                .isThrownBy(() -> backtestRun.fail(
+                        BacktestFailureCode.ENGINE_ERROR,
+                        "실패 원인"
+                ));
     }
 
     @DisplayName("백테스트 기간은 종료 시각이 시작 시각보다 이후여야 한다")
@@ -115,6 +124,35 @@ class BacktestRunTest {
     void rejectFeeRateAtUpperBound() {
         assertThatIllegalArgumentException()
                 .isThrownBy(() -> backtestRun(BigDecimal.ONE));
+    }
+
+    @DisplayName("대회 백테스트만 데이터셋 ID를 가진다")
+    @Test
+    void createContestBacktestRun() {
+        UUID datasetId = UUID.randomUUID();
+
+        BacktestRun contestRun = new BacktestRun(
+                member(),
+                strategy(),
+                Instant.parse("2030-02-11T00:00:00Z"),
+                Instant.parse("2030-05-13T00:00:00Z"),
+                Timeframe.ONE_HOUR,
+                "KRW",
+                BigDecimal.valueOf(10_000_000),
+                BigDecimal.valueOf(0.0005),
+                BigDecimal.valueOf(10),
+                RebalancePeriod.DAILY,
+                ExecutionPriceRule.NEXT_CANDLE_OPEN,
+                "engine-v1",
+                "contest-round-1",
+                QUEUED_AT,
+                datasetId
+        );
+
+        assertThat(contestRun.getContestDatasetId()).isEqualTo(datasetId);
+        assertThat(contestRun.isContest()).isTrue();
+        assertThat(backtestRun().isContest()).isFalse();
+        assertThat(backtestRun().getContestDatasetId()).isNull();
     }
 
     private BacktestRun runningBacktestRun() {

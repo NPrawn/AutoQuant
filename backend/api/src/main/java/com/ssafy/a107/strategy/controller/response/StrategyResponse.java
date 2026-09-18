@@ -10,6 +10,7 @@ public record StrategyResponse(
         String name,
         String description,
         StrategyDsl strategyDsl,
+        boolean published,
         Instant createdAt
 ) {
 
@@ -19,6 +20,7 @@ public record StrategyResponse(
                 strategy.getName(),
                 strategy.getDescription(),
                 strategy.getStrategyDsl(),
+                strategy.isPublished(),
                 strategy.getCreatedAt()
         );
     }

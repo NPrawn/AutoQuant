@@ -3,6 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router'
 
 import { isApiError } from '../api/error'
 import { routes, to, type StrategyDetailTab } from '../app/routes'
+import { latestCompletedRun, runsForStrategy } from '../backtest/history'
+import { formatDate, formatDateTime, formatKrw } from '../backtest/labels'
+import { useBacktestHistory, useBacktestResult } from '../backtest/queries'
+import { ResultKpis } from '../backtest/ResultKpis'
+import { RunHistoryTable } from '../backtest/RunHistoryTable'
+import { TradeChart } from '../backtest/TradeChart'
+import type { BacktestRun } from '../backtest/types'
+import { useUniverseSize } from '../market/universe'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
@@ -10,22 +18,21 @@ import { describeStrategy } from '../strategy/assistant/conversation'
 import type { BacktestEntryState } from '../strategy/backtestEntry'
 import { draftFromDsl } from '../strategy/draft'
 import { describeRanking, directionLabels, factorMeta, rebalanceMeta, timeframeLabels } from '../strategy/labels'
-import { useDeleteStrategy, useStrategy } from '../strategy/queries'
+import { useChangeStrategyVisibility, useCopyStrategy, useDeleteStrategy, useStrategy } from '../strategy/queries'
 import { summarizeFilters } from '../strategy/summary'
-import type { Strategy } from '../strategy/types'
+import { describeCopyError, describeVisibilityError } from '../strategy/translateErrorMessage'
+import type { Strategy, Timeframe } from '../strategy/types'
 
 type DetailTab = 'overview' | StrategyDetailTab
 
 /* sv-SE 로케일은 로컬 시간 기준 YYYY-MM-DD 를 준다. 목업의 날짜 표기와 같다. */
 const dateFormat = new Intl.DateTimeFormat('sv-SE')
 
-/* 서비스 고정 정책. 빌더 요약 카드와 같은 값이다. */
-const universeSize = 30
 
 /*
  * 전략 상세(목업 07·08·09). 목업은 공개 전략을 기준으로 그렸지만 지금은 내 전략만 있으므로
- * 작성자·대회 이력 대신 수정·백테스트·삭제 동작을 둔다. 성과 탭은 백테스트 결과 API 가
- * 없어 빈 상태다. 탭은 라우트 세그먼트로 정해 새로고침과 공유에 살아남는다.
+ * 작성자·대회 이력 대신 수정·백테스트·삭제 동작을 둔다. 성과 탭은 이 전략의 백테스트
+ * 이력에서 최근 완료 결과를 보인다. 탭은 라우트 세그먼트로 정해 새로고침과 공유에 살아남는다.
  */
 export function StrategyDetailPage() {
   const { strategyId, tab } = useParams<{ strategyId: string; tab?: string }>()
@@ -68,8 +75,24 @@ type StrategyDetailProps = {
 function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProps) {
   const navigate = useNavigate()
   const remove = useDeleteStrategy()
+  const visibility = useChangeStrategyVisibility()
+  const copy = useCopyStrategy()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [publishOpen, setPublishOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<unknown>(null)
+
+  const confirmPublish = () => {
+    visibility.mutate(
+      { strategyId: strategy.id, published: true },
+      { onSettled: () => setPublishOpen(false) },
+    )
+  }
+
+  const confirmCopy = () => {
+    copy.mutate(strategy.id, {
+      onSuccess: (created) => navigate(to.strategyDetail(String(created.strategyId))),
+    })
+  }
 
   const openBacktest = () => {
     const entry: BacktestEntryState = { strategyId: strategy.id }
@@ -106,17 +129,25 @@ function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProp
             </span>
             <span>내 전략</span>
             <i aria-hidden="true" />
+            <span>{strategy.published ? '공개' : '비공개'}</span>
+            <i aria-hidden="true" />
             <span>v1 · {dateFormat.format(strategy.createdAt)}</span>
           </div>
           <h1>{strategy.name}</h1>
           <p>{strategy.description || describeStrategy(draftFromDsl(strategy.dsl))}</p>
         </div>
         <div className="detail-actions">
-          <button className="btn ghost" type="button" disabled title="공개 기능은 백엔드 준비 후 열립니다">
-            공개
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={visibility.isPending}
+            aria-pressed={strategy.published}
+            onClick={() => (strategy.published ? visibility.mutate({ strategyId: strategy.id, published: false }) : setPublishOpen(true))}
+          >
+            {strategy.published ? '공개 중지' : '공개'}
           </button>
-          <button className="btn ghost" type="button" disabled title="복제 기능은 백엔드 준비 후 열립니다">
-            복제
+          <button className="btn ghost" type="button" disabled={copy.isPending} onClick={confirmCopy}>
+            {copy.isPending ? '복제 중…' : '복제'}
           </button>
           <button className="btn ghost" type="button" onClick={() => setConfirmOpen(true)}>
             삭제
@@ -136,6 +167,18 @@ function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProp
         </div>
       )}
 
+      {visibility.isError && (
+        <div className="callout crit" role="alert" style={{ marginBottom: 16 }}>
+          <span>{describeVisibilityError(visibility.error)}</span>
+        </div>
+      )}
+
+      {copy.isError && (
+        <div className="callout crit" role="alert" style={{ marginBottom: 16 }}>
+          <span>{describeCopyError(copy.error)}</span>
+        </div>
+      )}
+
       <nav className="detail-tabs" aria-label="전략 상세 메뉴">
         {tabs.map((item) => (
           <button
@@ -152,10 +195,20 @@ function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProp
       </nav>
 
       <div className="detail-pane on">
-        {activeTab === 'overview' && <OverviewPane onBacktest={openBacktest} />}
+        {activeTab === 'overview' && <OverviewPane strategy={strategy} onBacktest={openBacktest} />}
         {activeTab === 'strategy' && <StrategyPane strategy={strategy} />}
         {activeTab === 'code' && <CodePane strategy={strategy} />}
       </div>
+
+      <ConfirmDialog
+        open={publishOpen}
+        title="이 전략을 공개할까요?"
+        description="공개하면 다른 사용자가 이 전략의 구성을 보고 복제할 수 있습니다. 언제든 다시 비공개로 바꿀 수 있습니다."
+        confirmLabel="공개"
+        pending={visibility.isPending}
+        onConfirm={confirmPublish}
+        onCancel={() => setPublishOpen(false)}
+      />
 
       <ConfirmDialog
         open={confirmOpen}
@@ -171,23 +224,125 @@ function StrategyDetail({ strategy, activeTab, onTabChange }: StrategyDetailProp
   )
 }
 
-/* 성과 탭. 백테스트 결과 API 가 생기면 목업 07 의 지표 격자와 국면별 성과가 여기에 들어온다. */
-function OverviewPane({ onBacktest }: { onBacktest: () => void }) {
+type OverviewPaneProps = {
+  strategy: Strategy
+  onBacktest: () => void
+}
+
+/*
+ * 성과 탭. 목업 07 의 종합 점수와 국면별 성과는 대회 채점이 있어야 나오는 값이라 아직 없다.
+ * 대신 이 전략으로 돌린 백테스트 중 가장 최근 완료 결과의 KPI 와 실행 이력을 보인다.
+ */
+function OverviewPane({ strategy, onBacktest }: OverviewPaneProps) {
+  const navigate = useNavigate()
+  const history = useBacktestHistory()
+
+  if (history.isPending) {
+    return <LoadingState label="백테스트 이력을 불러오는 중…" />
+  }
+  if (history.isError) {
+    return (
+      <ErrorState
+        title="백테스트 이력을 불러오지 못했습니다"
+        error={history.error}
+        onRetry={() => history.refetch()}
+        actions={
+          <button className="btn" type="button" onClick={onBacktest}>
+            백테스트 실행
+          </button>
+        }
+      />
+    )
+  }
+
+  const runs = runsForStrategy(history.data, strategy.id)
+  if (runs.length === 0) {
+    return (
+      <EmptyState
+        title="아직 백테스트 결과가 없습니다"
+        description="백테스트를 실행하면 최종 평가자산, 누적 손익, 최대 낙폭, Sharpe, 체결 수와 실행 이력이 여기에 표시됩니다."
+        actions={
+          <button className="btn primary" type="button" onClick={onBacktest}>
+            백테스트 실행
+          </button>
+        }
+      />
+    )
+  }
+
+  const latest = latestCompletedRun(runs)
+  const unsettled = runs.filter((run) => run.status === 'QUEUED' || run.status === 'RUNNING').length
+
   return (
-    <EmptyState
-      title="아직 백테스트 결과가 없습니다"
-      description="백테스트를 실행하면 종합 점수, 국면별 수익률과 최대 낙폭, 체결 차트가 여기에 표시됩니다."
-      actions={
+    <>
+      {latest !== null ? (
+        <LatestResult run={latest} />
+      ) : (
+        <p className="goal-note" style={{ margin: '0 0 16px' }}>
+          완료된 백테스트가 아직 없습니다.{' '}
+          {unsettled > 0 ? `${unsettled}건이 계산 중이라 끝나면 여기에 결과가 표시됩니다.` : '실패한 실행만 있어 다시 실행해 주세요.'}
+        </p>
+      )}
+
+      {latest !== null && (
+        <section className="card pad shared-market-card" style={{ marginBottom: 20 }}>
+          <div className="sec-title" style={{ marginBottom: 2 }}>전략 체결 차트</div>
+          <TradeChart backtestId={latest.id} timeframe={latest.timeframe as Timeframe} />
+        </section>
+      )}
+
+      <div className="sec-head">
+        <div>
+          <div className="sec-title">실행 이력</div>
+          <div className="sec-sub">이 전략으로 실행한 백테스트 {runs.length}건 · 행을 누르면 그 결과로 이동합니다</div>
+        </div>
         <button className="btn primary" type="button" onClick={onBacktest}>
           백테스트 실행
         </button>
-      }
-    />
+      </div>
+      <RunHistoryTable
+        runs={runs}
+        strategyNames={new Map([[strategy.id, strategy.name]])}
+        showStrategy={false}
+        onOpen={(backtestId) => navigate(to.backtestRun(backtestId))}
+      />
+    </>
+  )
+}
+
+/* 최근 완료 실행의 KPI. 자산 곡선은 받지 않아 최대 낙폭 날짜는 비운다. */
+function LatestResult({ run }: { run: BacktestRun }) {
+  const result = useBacktestResult(run.id, true)
+
+  if (result.isPending) {
+    return <LoadingState label="최근 결과를 불러오는 중…" />
+  }
+  if (result.isError) {
+    return <ErrorState title="최근 결과를 불러오지 못했습니다" error={result.error} onRetry={() => result.refetch()} />
+  }
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div className="result-context">
+        <span>최근 완료 백테스트</span>
+        <b>
+          {formatDate(run.periodStart)} ~ {formatDate(run.periodEnd)} · 초기자산 {formatKrw(run.initialCapital)} KRW
+          {run.completedAt !== null && ` · ${formatDateTime(run.completedAt)} 완료`}
+        </b>
+      </div>
+      <ResultKpis metrics={result.data} initialCapital={run.initialCapital} />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+        <Link className="btn" to={to.backtestRun(run.id)}>
+          자산 곡선과 거래 내역 보기
+        </Link>
+      </div>
+    </div>
   )
 }
 
 /* 전략 구성 탭. DSL 을 판단 순서대로 문장으로 읽어 준다. */
 function StrategyPane({ strategy }: { strategy: Strategy }) {
+  const universeSize = useUniverseSize()
   const { dsl } = strategy
   const filters = summarizeFilters(dsl)
   const weight = (100 / dsl.selection.topN).toFixed(1)
@@ -291,6 +446,7 @@ function StrategyPane({ strategy }: { strategy: Strategy }) {
 
 /* 전략 코드 탭. 백엔드에 저장된 DSL 그대로다. 사용자는 코드를 쓰지 않고 빌더에서 고른다. */
 function CodePane({ strategy }: { strategy: Strategy }) {
+  const universeSize = useUniverseSize()
   const [copied, setCopied] = useState(false)
   const copiedTimer = useRef<number | null>(null)
   useEffect(() => () => {

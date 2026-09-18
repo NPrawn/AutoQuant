@@ -40,6 +40,8 @@ Upbit KRW 시장을 우선 지원하는 암호화폐 전략 설계·백테스트
 - 브랜치·커밋·MR: `docs/git-convention.md`
 - 서비스 기획: `docs/서비스 기획서.md`
 - 백테스트·모의투자 ERD: `docs/backtest_simulation_erd.md`
+- 대회 기능 설계: `docs/대회 기능 설계.md`
+- 모듈을 넘는 설계 결정 기록(ADR): `docs/adr/`
 
 Git 작업 전에는 `docs/git-convention.md`를 읽는다. Git 규칙을 모듈별 지침에 복제하지 않는다.
 

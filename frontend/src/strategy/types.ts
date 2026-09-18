@@ -63,6 +63,7 @@ export type StrategyResponse = {
   name: string
   description: string | null
   strategyDsl: StrategyDsl
+  published: boolean
   createdAt: string
 }
 
@@ -78,6 +79,8 @@ export type Strategy = {
   name: string
   description: string
   dsl: StrategyDsl
+  /* 공개하면 남이 조회하고 복제할 수 있다. */
+  published: boolean
   createdAt: Date
 }
 
@@ -87,6 +90,7 @@ export function toStrategy(response: StrategyResponse): Strategy {
     name: response.name,
     description: response.description ?? '',
     dsl: response.strategyDsl,
+    published: response.published,
     createdAt: new Date(response.createdAt),
   }
 }

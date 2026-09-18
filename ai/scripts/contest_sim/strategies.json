@@ -1,0 +1,112 @@
+[
+  {
+    "name": "equal-weight-hold",
+    "description": "전 종목 균등 보유, 월 리밸런싱 (기준선)",
+    "dsl": {
+      "timeframe": "1D",
+      "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "VOLATILITY", "period": 20}, "operator": "GTE", "right": {"type": "VALUE", "value": 0}},
+      "ranking": {"factor": "RETURN", "period": 20, "direction": "DESC"},
+      "selection": {"topN": 30},
+      "rebalance": {"period": "MONTHLY"}
+    }
+  },
+  {
+    "name": "momentum-7d",
+    "description": "7일 수익률 상위 5종목, 주 리밸런싱",
+    "dsl": {
+      "timeframe": "1H",
+      "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "VOLATILITY", "period": 24}, "operator": "GTE", "right": {"type": "VALUE", "value": 0}},
+      "ranking": {"factor": "RETURN", "period": 168, "direction": "DESC"},
+      "selection": {"topN": 5},
+      "rebalance": {"period": "WEEKLY"}
+    }
+  },
+  {
+    "name": "momentum-24h",
+    "description": "24시간 수익률 상위 3종목, 일 리밸런싱",
+    "dsl": {
+      "timeframe": "1H",
+      "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "VOLATILITY", "period": 24}, "operator": "GTE", "right": {"type": "VALUE", "value": 0}},
+      "ranking": {"factor": "RETURN", "period": 24, "direction": "DESC"},
+      "selection": {"topN": 3},
+      "rebalance": {"period": "DAILY"}
+    }
+  },
+  {
+    "name": "rsi-reversion",
+    "description": "RSI(14) 30 미만 중 RSI 낮은 5종목",
+    "dsl": {
+      "timeframe": "1H",
+      "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "RSI", "period": 14}, "operator": "LT", "right": {"type": "VALUE", "value": 30}},
+      "ranking": {"factor": "RSI", "period": 14, "direction": "ASC"},
+      "selection": {"topN": 5},
+      "rebalance": {"period": "DAILY"}
+    }
+  },
+  {
+    "name": "trend-filter",
+    "description": "120시간 이평 위 종목 중 72시간 수익률 상위 5",
+    "dsl": {
+      "timeframe": "1H",
+      "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "SMA_DISPARITY", "period": 120}, "operator": "GT", "right": {"type": "VALUE", "value": 0}},
+      "ranking": {"factor": "RETURN", "period": 72, "direction": "DESC"},
+      "selection": {"topN": 5},
+      "rebalance": {"period": "DAILY"}
+    }
+  },
+  {
+    "name": "low-volatility",
+    "description": "4시간봉 7일 변동성 낮은 10종목",
+    "dsl": {
+      "timeframe": "4H",
+      "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "VOLATILITY", "period": 42}, "operator": "GTE", "right": {"type": "VALUE", "value": 0}},
+      "ranking": {"factor": "VOLATILITY", "period": 42, "direction": "ASC"},
+      "selection": {"topN": 10},
+      "rebalance": {"period": "WEEKLY"}
+    }
+  },
+  {
+    "name": "volume-surge",
+    "description": "24시간 거래량 비율 상위 5종목",
+    "dsl": {
+      "timeframe": "1H",
+      "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "VOLUME_RATIO", "period": 24}, "operator": "GT", "right": {"type": "VALUE", "value": 0}},
+      "ranking": {"factor": "VOLUME_RATIO", "period": 24, "direction": "DESC"},
+      "selection": {"topN": 5},
+      "rebalance": {"period": "DAILY"}
+    }
+  },
+  {
+    "name": "all-in-one",
+    "description": "7일 수익률 1위 한 종목만 (실격 확인용)",
+    "dsl": {
+      "timeframe": "1H",
+      "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "VOLATILITY", "period": 24}, "operator": "GTE", "right": {"type": "VALUE", "value": 0}},
+      "ranking": {"factor": "RETURN", "period": 168, "direction": "DESC"},
+      "selection": {"topN": 1},
+      "rebalance": {"period": "DAILY"}
+    }
+  },
+  {
+    "name": "cash-only",
+    "description": "통과하지 못하는 필터로 현금만 보유 (투자 비중 실격 확인용)",
+    "dsl": {
+      "timeframe": "1H",
+      "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "RSI", "period": 14}, "operator": "LT", "right": {"type": "VALUE", "value": 0}},
+      "ranking": {"factor": "RETURN", "period": 24, "direction": "DESC"},
+      "selection": {"topN": 5},
+      "rebalance": {"period": "DAILY"}
+    }
+  },
+  {
+    "name": "drawdown-dip",
+    "description": "7일 낙폭 큰 5종목, 주 리밸런싱",
+    "dsl": {
+      "timeframe": "1H",
+      "filters": {"type": "CONDITION", "left": {"type": "FACTOR", "factor": "VOLATILITY", "period": 24}, "operator": "GTE", "right": {"type": "VALUE", "value": 0}},
+      "ranking": {"factor": "DRAWDOWN", "period": 168, "direction": "ASC"},
+      "selection": {"topN": 5},
+      "rebalance": {"period": "WEEKLY"}
+    }
+  }
+]

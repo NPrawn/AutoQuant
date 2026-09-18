@@ -98,7 +98,7 @@ SSAFY OAuth2 Authorization Code로 로그인한다. `client_secret`을 가진 �
 ## 종목 등록 API
 
 ```http
-POST /api/admin/assets
+POST /admin/assets
 ```
 
 요청에는 `exchange`와 `exchangeMarketCode`만 받는다. API가 Upbit 공개 페어 목록에서 실제 거래지원 여부와 종목명을 검증한 뒤 `reference.asset`과 `ops.market_data_collection_target`을 함께 저장한다.
@@ -107,12 +107,12 @@ POST /api/admin/assets
 
 ## 최근 확정 봉 조회
 
-차트 종목 선택은 JWT 인증이 필요한 `GET /api/assets`를 사용한다. 등록된 Upbit KRW 종목 중 `TRADING` 상태를 마켓 코드 오름차순으로 반환한다. 응답은 `[{"assetId":"UUID","marketCode":"KRW-BTC","koreanName":"비트코인"}]`이며 없으면 빈 배열이다. 수집 연결·봉 존재를 보장하는 목록은 아니다. Controller → AssetReadService → AssetRepository로 조회하며 REST Docs/OpenAPI에 포함한다.
+차트 종목 선택은 JWT 인증이 필요한 `GET /assets`를 사용한다(브라우저는 `/api/assets`로 부르고 프록시가 접두사를 뗀다). 등록된 Upbit KRW 종목 중 `TRADING` 상태를 마켓 코드 오름차순으로 반환한다. 응답은 `[{"assetId":"UUID","marketCode":"KRW-BTC","koreanName":"비트코인"}]`이며 없으면 빈 배열이다. 수집 연결·봉 존재를 보장하는 목록은 아니다. Controller → AssetReadService → AssetRepository로 조회하며 REST Docs/OpenAPI에 포함한다.
 
 ```http
-GET /api/assets/{assetId}/candles/1m?limit=1000
-GET /api/assets/{assetId}/candles/5m?limit=1000
-GET /api/assets/{assetId}/candles/1440m?limit=1000
+GET /assets/{assetId}/candles/1m?limit=1000
+GET /assets/{assetId}/candles/5m?limit=1000
+GET /assets/{assetId}/candles/1440m?limit=1000
 ```
 
 기존 JWT 쿠키 또는 Bearer 인증으로 호출한다. `assetId`는 종목의 UUID이며, `limit`은 1~1,000(생략 시 1,000)이다. 최신 봉을 선택한 뒤 **봉 시작 시간 오름차순**으로 반환한다.
@@ -148,6 +148,7 @@ GET /api/assets/{assetId}/candles/1440m?limit=1000
 
 패키지는 Controller → Facade → 캐시 port / DB ReadService로 나눈다. DB 트랜잭션은 cache miss 이후의 ReadService에서만 열고, 캐시 형식·오류 처리는 Redis adapter가 담당한다. 성공·400 응답과 사용법은 RestAssuredMockMvc + REST Docs 테스트에서 OpenAPI로 생성한다.
 
+
 전용 Redis·PostgreSQL을 준비한 경우 아래 환경변수로 실제 캐시 계약·조회 쿼리 테스트를 추가 실행한다. PostgreSQL은 테스트 전용 `candle_test` DB/사용자/비밀번호를 사용하고 Flyway로 스키마를 적용한다. 공용·운영 인스턴스를 지정하지 않는다.
 
 ```powershell
@@ -155,6 +156,38 @@ $env:CANDLE_TEST_REDIS_PORT = '16379'
 $env:CANDLE_TEST_DB_PORT = '15432'
 .\gradlew.bat test --tests 'com.ssafy.a107.candle.*' --rerun-tasks
 ```
+
+## 현재 팩터 값 조회
+
+```http
+GET /assets/{assetId}/factors?timeframe=1D
+```
+
+차트가 종목의 현재 팩터 값을 보이는 데 쓴다. 전략 엔진이 선별과 순위에 쓰는 `Ta4jFactorCalculator`를 그대로 불러 같은 값을 계산한다. 화면이 따로 계산하면 사용자가 보고 조건을 정한 숫자와 실제 판단이 어긋난다.
+
+```json
+{
+  "assetId": "11111111-1111-1111-1111-111111111111",
+  "timeframe": "1D",
+  "asOf": "2026-09-13T00:00:00Z",
+  "factors": [
+    { "factor": "RSI", "period": 14, "value": 62.1 },
+    { "factor": "RETURN", "period": 20, "value": 4.1 },
+    { "factor": "SMA_DISPARITY", "period": 20, "value": -1.8 },
+    { "factor": "VOLATILITY", "period": 20, "value": 3.42 },
+    { "factor": "VOLUME_RATIO", "period": 20, "value": 1.237 },
+    { "factor": "DRAWDOWN", "period": 60, "value": null }
+  ]
+}
+```
+
+- 기간과 순서는 서버가 정한다. RSI 14, 낙폭 60, 나머지 20이며 요청으로 바꿀 수 없다. 응답에 실어 화면이 기간과 차례를 다시 정의하지 않게 한다.
+- 값의 단위는 전략 DSL과 같다. 수익률, SMA 이격률, 변동성, 낙폭은 백분율(4.1 = 4.1%)이고 거래량 비율은 배수다. 빌더에서 입력하는 조건 값과 같은 축이라 그대로 비교할 수 있다.
+- 봉이 기간을 채우지 못한 팩터는 `value`가 `null`이다. 오류가 아니며 나머지 팩터는 그대로 반환한다.
+- `asOf`는 값을 만든 마지막 확정 봉의 시작 시각이다. 봉이 하나도 없으면 `null`이고 모든 값도 `null`이다. 봉 조회와 같이 종목 존재를 따로 확인하지 않아 미등록 UUID도 같은 모양으로 응답한다.
+- `timeframe`은 `1H`, `4H`, `1D`만 지원하며 생략하면 `1D`다. 그 밖의 값과 잘못된 UUID는 `400 COMMON-400-001`이다.
+- ta4j BarSeries를 만들어야 해 `MinuteCandleReadService.findRecentCandles`로 엔티티를 읽는다. 기간 최댓값을 채울 만큼만 읽고 진행 봉은 쓰지 않는다.
+- 거래대금 순위처럼 전 종목 비교가 필요한 값은 이 조회에 넣지 않는다.
 
 ## 실시간 시세 WebSocket
 

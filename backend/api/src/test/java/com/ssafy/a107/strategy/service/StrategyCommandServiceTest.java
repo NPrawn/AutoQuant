@@ -2,7 +2,6 @@ package com.ssafy.a107.strategy.service;
 
 import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
-import com.ssafy.a107.member.domain.LoginProvider;
 import com.ssafy.a107.member.domain.Member;
 import com.ssafy.a107.member.repository.MemberRepository;
 import com.ssafy.a107.strategy.domain.Strategy;
@@ -22,6 +21,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class StrategyCommandServiceTest {
@@ -79,11 +81,111 @@ class StrategyCommandServiceTest {
                 );
     }
 
+    @DisplayName("전략을 공개로 바꾼다")
+    @Test
+    void publishStrategy() {
+        StrategyCommandService service = createService();
+        Strategy strategy = strategy(member());
+        given(strategyRepository.findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(STRATEGY_ID, MEMBER_ID))
+                .willReturn(Optional.of(strategy));
+
+        assertThat(service.changeVisibility(MEMBER_ID, STRATEGY_ID, true).isPublished()).isTrue();
+    }
+
+    @DisplayName("소유하지 않은 전략의 공개 여부는 바꿀 수 없다")
+    @Test
+    void rejectVisibilityChangeOutsideMemberOwnership() {
+        StrategyCommandService service = createService();
+        given(strategyRepository.findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(STRATEGY_ID, MEMBER_ID))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.changeVisibility(MEMBER_ID, STRATEGY_ID, true))
+                .isInstanceOfSatisfying(ApiException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.STRATEGY_NOT_FOUND)
+                );
+    }
+
+    @DisplayName("공개된 남의 전략을 복제하면 내 것이 되고 사본은 비공개로 시작한다")
+    @Test
+    void copyPublishedStrategyOfOtherMember() {
+        StrategyCommandService service = createService();
+        Strategy source = strategy(otherMember());
+        source.changeVisibility(true);
+        Member me = member();
+        given(strategyRepository.findByStrategyIdAndDeletedAtIsNull(STRATEGY_ID)).willReturn(Optional.of(source));
+        given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.of(me));
+        given(strategyRepository.save(any(Strategy.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        Strategy copy = service.copyStrategy(MEMBER_ID, STRATEGY_ID);
+
+        assertThat(copy.getMember()).isSameAs(me);
+        assertThat(copy.getName()).isEqualTo("RSI 전략 (사본)");
+        assertThat(copy.getStrategyDsl()).isSameAs(source.getStrategyDsl());
+        assertThat(copy.isPublished()).isFalse();
+    }
+
+    @DisplayName("비공개인 남의 전략은 복제할 수 없다")
+    @Test
+    void rejectCopyOfUnpublishedStrategyOfOtherMember() {
+        StrategyCommandService service = createService();
+        Strategy source = strategy(otherMember());
+        given(strategyRepository.findByStrategyIdAndDeletedAtIsNull(STRATEGY_ID)).willReturn(Optional.of(source));
+
+        assertThatThrownBy(() -> service.copyStrategy(MEMBER_ID, STRATEGY_ID))
+                .isInstanceOfSatisfying(ApiException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.STRATEGY_NOT_FOUND)
+                );
+
+        then(strategyRepository).should(never()).save(any());
+    }
+
+    @DisplayName("비공개여도 내 전략은 복제할 수 있다")
+    @Test
+    void copyOwnUnpublishedStrategy() {
+        StrategyCommandService service = createService();
+        Member me = member();
+        Strategy source = strategy(me);
+        given(strategyRepository.findByStrategyIdAndDeletedAtIsNull(STRATEGY_ID)).willReturn(Optional.of(source));
+        given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.of(me));
+        given(strategyRepository.save(any(Strategy.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        assertThat(service.copyStrategy(MEMBER_ID, STRATEGY_ID).getName()).isEqualTo("RSI 전략 (사본)");
+    }
+
+    @DisplayName("이름이 상한에 닿아도 사본 표시를 남긴다")
+    @Test
+    void keepCopyMarkerWithinNameLimit() {
+        StrategyCommandService service = createService();
+        Member me = member();
+        Strategy source = new Strategy(me, "가".repeat(100), null, StrategyFixture.strategyDsl());
+        given(strategyRepository.findByStrategyIdAndDeletedAtIsNull(STRATEGY_ID)).willReturn(Optional.of(source));
+        given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.of(me));
+        given(strategyRepository.save(any(Strategy.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        String copiedName = service.copyStrategy(MEMBER_ID, STRATEGY_ID).getName();
+
+        assertThat(copiedName).hasSize(100).endsWith(" (사본)");
+    }
+
     private StrategyCommandService createService() {
         return new StrategyCommandService(strategyRepository, memberRepository);
     }
 
-    private Member member() {
-        return new Member(LoginProvider.SSAFY, "ssafy-member-107", "strategy@example.com", "전략 사용자");
+    private Strategy strategy(Member owner) {
+        return new Strategy(owner, "RSI 전략", "설명", StrategyFixture.strategyDsl());
     }
+
+    /* 식별자는 DB 가 채우므로 소유 판단이 필요한 곳에서는 목으로 흉내 낸다. */
+    private Member member() {
+        Member member = mock(Member.class);
+        lenient().when(member.getMemberId()).thenReturn(MEMBER_ID);
+        return member;
+    }
+
+    private Member otherMember() {
+        Member member = mock(Member.class);
+        lenient().when(member.getMemberId()).thenReturn(UUID.fromString("00000000-0000-0000-0000-0000000000ff"));
+        return member;
+    }
+
 }

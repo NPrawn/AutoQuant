@@ -3,19 +3,26 @@ import { Link, useLocation, useSearchParams } from 'react-router'
 
 import { routes } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
+import { Pager } from '../components/Pager'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { BacktestResult } from '../backtest/BacktestResult'
 import { BacktestRunForm } from '../backtest/BacktestRunForm'
-import { statusMeta } from '../backtest/labels'
-import { useBacktestRun, useCreateBacktestRun } from '../backtest/queries'
+import { formatKrw, statusMeta } from '../backtest/labels'
+import { periodBounds } from '../backtest/periodBounds'
+import { useBacktestRun, useBacktestRuns, useCandleCoverage, useCreateBacktestRun } from '../backtest/queries'
 import { describeFailedRun, describeRunError } from '../backtest/runErrorMessage'
-import { createRunForm, setStrategyId, toCreateRequest, validateRunForm } from '../backtest/runForm'
+import { applyPreset, clampPeriodStart, createRunForm, setStrategyId, toCreateRequest, validateRunForm } from '../backtest/runForm'
+import { RunHistoryTable } from '../backtest/RunHistoryTable'
 import { StrategyPicker } from '../backtest/StrategyPicker'
 import { readBacktestEntry } from '../strategy/backtestEntry'
 import { useStrategies } from '../strategy/queries'
+import type { Strategy } from '../strategy/types'
 
 /* 대기가 이 시간을 넘기면 워커가 집어가지 못하고 있다는 뜻이라 사용자에게 알린다. */
 const longQueueWarningMs = 30_000
+
+/* 보유 구간과 전략을 아직 모를 때의 경계. 첫 렌더의 초안 기간에만 쓰인다. */
+const unknownBounds = (today: Date) => periodBounds(null, null, today)
 
 /*
  * 백테스트(목업 10, 11, 12, 24). 실행 식별자를 주소의 run 파라미터에 두어 화면을 떠났다 돌아와도
@@ -28,8 +35,11 @@ export function BacktestPage() {
   const entry = readBacktestEntry(location.state)
 
   const strategies = useStrategies()
+  const coverage = useCandleCoverage()
   const [today] = useState(() => new Date())
-  const [form, setForm] = useState(() => createRunForm(entry?.strategyId ?? '', today))
+  const [form, setForm] = useState(() => createRunForm(entry?.strategyId ?? '', today, unknownBounds(today)))
+  /* 하한을 이미 반영한 전략. 전략이 바뀐 순간에만 시작일을 끌어올리려고 기억한다. */
+  const [clampedFor, setClampedFor] = useState<string | null>(null)
   const [showIssues, setShowIssues] = useState(false)
   const [tradePage, setTradePage] = useState(0)
 
@@ -42,10 +52,23 @@ export function BacktestPage() {
   }
 
   const selectedStrategy = strategies.data?.find((strategy) => strategy.id === form.strategyId) ?? null
+  /* 하한은 보유 구간과 전략이 함께 정한다. 전략마다 필요한 워밍업 봉 수가 다르다. */
+  const bounds = periodBounds(coverage.data ?? null, selectedStrategy?.dsl ?? null, today)
+
+  /*
+   * 하한이 정해지면 기본 기간을 거기에 맞춘다. 그 뒤 전략을 바꿔 워밍업이 늘어나면 그때 한 번만
+   * 시작일을 끌어올린다. 매 렌더마다 끌어올리면 사용자가 이른 날짜를 고를 수도, 왜 안 되는지
+   * 알 수도 없다. 직접 고른 날짜는 그대로 두고 검증이 이유를 말한다.
+   */
+  if (coverage.isSuccess && selectedStrategy !== null && clampedFor !== selectedStrategy.id) {
+    const first = clampedFor === null
+    setClampedFor(selectedStrategy.id)
+    setForm(first ? applyPreset(form, 'all', today, bounds) : clampPeriodStart(form, bounds))
+  }
 
   const startRun = () => {
     setShowIssues(true)
-    if (validateRunForm(form, today).length > 0) {
+    if (validateRunForm(form, today, bounds).length > 0) {
       return
     }
     setTradePage(0)
@@ -53,6 +76,25 @@ export function BacktestPage() {
       onSuccess: (created) => setSearchParams({ run: created.backtestId }),
     })
   }
+
+  /*
+   * 캔들이 모자라 멈춘 실행의 복구. 하한으로 시작일을 옮기고 같은 조건으로 다시 접수한다.
+   * 하한을 아직 못 읽었거나 이미 하한이면 되돌릴 여지가 없어 버튼을 내지 않는다.
+   */
+  const retryFromEarliest =
+    coverage.isSuccess && form.periodStart > bounds.earliestStart
+      ? {
+          from: bounds.earliestStart,
+          run: () => {
+            const next = clampPeriodStart({ ...form, periodStart: bounds.earliestStart }, bounds)
+            setForm(next)
+            setTradePage(0)
+            create.mutate(toCreateRequest(next), {
+              onSuccess: (created) => setSearchParams({ run: created.backtestId }),
+            })
+          },
+        }
+      : null
 
   const clearRun = () => {
     create.reset()
@@ -101,6 +143,8 @@ export function BacktestPage() {
               form={form}
               strategy={selectedStrategy}
               today={today}
+              bounds={bounds}
+              loadingCoverage={coverage.isPending}
               pending={create.isPending || runId !== null}
               showIssues={showIssues}
               onChange={setForm}
@@ -116,12 +160,55 @@ export function BacktestPage() {
                 tradePage={tradePage}
                 onTradePageChange={setTradePage}
                 onClear={clearRun}
+                onRetryFromEarliest={retryFromEarliest}
               />
             </div>
           </div>
+
+          {runId === null && !create.isError && (
+            <RecentRuns strategies={strategies.data} onOpen={(backtestId) => setSearchParams({ run: backtestId })} />
+          )}
         </>
       )}
     </section>
+  )
+}
+
+type RecentRunsProps = {
+  strategies: Strategy[]
+  onOpen: (backtestId: string) => void
+}
+
+/*
+ * 실행 전 상태 아래의 최근 실행 이력. 주소의 run 파라미터를 잃어도 여기서 결과로 돌아간다.
+ * 이력이 없으면 안내 패널만 남기고 표를 그리지 않는다.
+ */
+function RecentRuns({ strategies, onOpen }: RecentRunsProps) {
+  const [page, setPage] = useState(0)
+  const runs = useBacktestRuns(page)
+  const strategyNames = new Map(strategies.map((strategy) => [strategy.id, strategy.name]))
+
+  if (runs.isPending) {
+    return <LoadingState label="실행 이력을 불러오는 중…" />
+  }
+  if (runs.isError) {
+    return <ErrorState title="실행 이력을 불러오지 못했습니다" error={runs.error} onRetry={() => runs.refetch()} />
+  }
+  if (runs.data.totalElements === 0) {
+    return null
+  }
+
+  return (
+    <div style={{ marginTop: 24 }}>
+      <div className="sec-head">
+        <div>
+          <div className="sec-title">최근 실행</div>
+          <div className="sec-sub">전체 {formatKrw(runs.data.totalElements)}건 · 행을 누르면 그 결과를 다시 봅니다</div>
+        </div>
+      </div>
+      <RunHistoryTable runs={runs.data.content} strategyNames={strategyNames} onOpen={onOpen} />
+      <Pager page={page} totalPages={runs.data.totalPages} disabled={runs.isPlaceholderData} onPageChange={setPage} />
+    </div>
   )
 }
 
@@ -133,10 +220,12 @@ type RunPanelProps = {
   tradePage: number
   onTradePageChange: (page: number) => void
   onClear: () => void
+  /* 캔들 부족으로 멈춘 실행만 쓰는 복구 동작. 되돌릴 여지가 없으면 null 이다. */
+  onRetryFromEarliest: { from: string; run: () => void } | null
 }
 
 /* 실행 전, 접수 실패, 계산 중, 완료, 실패 다섯 상태를 고른다. */
-function RunPanel({ runId, run, strategyName, createError, tradePage, onTradePageChange, onClear }: RunPanelProps) {
+function RunPanel({ runId, run, strategyName, createError, tradePage, onTradePageChange, onClear, onRetryFromEarliest }: RunPanelProps) {
   if (createError !== null) {
     const view = describeRunError(createError)
     return <ErrorState title={view.title} description={view.description} details={view.details} error={createError} />
@@ -175,15 +264,24 @@ function RunPanel({ runId, run, strategyName, createError, tradePage, onTradePag
   const { status, queuedAt } = run.data
 
   if (status === 'FAILED') {
-    const view = describeFailedRun()
+    const view = describeFailedRun(run.data.failureCode)
+    /* 캔들이 모자라 멈춘 실행은 가능한 시작일을 알고 있으므로 그 날짜로 바로 다시 돌릴 수 있게 한다. */
+    const canRetryFromEarliest = run.data.failureCode === 'INSUFFICIENT_CANDLES' && onRetryFromEarliest !== null
     return (
       <ErrorState
         title={view.title}
         description={view.description}
         actions={
-          <button className="btn primary" type="button" onClick={onClear}>
-            조건 다시 설정
-          </button>
+          <>
+            {canRetryFromEarliest && (
+              <button className="btn primary" type="button" onClick={onRetryFromEarliest.run}>
+                {onRetryFromEarliest.from}부터 다시 실행
+              </button>
+            )}
+            <button className={canRetryFromEarliest ? 'btn' : 'btn primary'} type="button" onClick={onClear}>
+              조건 다시 설정
+            </button>
+          </>
         }
       />
     )

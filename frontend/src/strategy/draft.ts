@@ -279,7 +279,7 @@ function sameCondition(before: ConditionDraft, after: ConditionDraft): boolean {
     )
   }
   if (before.kind === 'raw' && after.kind === 'raw') {
-    /* ponytail: 원본 노드는 직렬화해서 비교한다. 양쪽 다 같은 서버 응답에서 와 키 순서가 같다. */
+    /* 원본 노드는 직렬화해서 비교한다. 양쪽 다 같은 서버 응답에서 와 키 순서가 같다. */
     return JSON.stringify(before.node) === JSON.stringify(after.node)
   }
   return false

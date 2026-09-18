@@ -67,10 +67,12 @@ export const rebalanceMeta: Record<RebalancePeriod, { label: string; note: strin
 
 export const rebalancePeriods = Object.keys(rebalanceMeta) as RebalancePeriod[]
 
-/* 수익률처럼 부호가 의미 있는 지표에만 + 를 붙인다. RSI 와 거래량 비율은 절대값이다. */
+/* 수익률처럼 부호가 의미 있는 지표에만 + 를 붙인다. RSI, 변동성, 거래량 비율은 크기만 뜻해 부호를 붙이지 않는다. */
+const unsignedFactors: ReadonlySet<FactorType> = new Set<FactorType>(['RSI', 'VOLATILITY', 'VOLUME_RATIO'])
+
 export function formatFactorValue(factor: FactorType, value: number): string {
   const meta = factorMeta[factor]
-  const signed = value > 0 && factor !== 'RSI' && factor !== 'VOLUME_RATIO' ? '+' : ''
+  const signed = value > 0 && !unsignedFactors.has(factor) ? '+' : ''
   return `${signed}${value.toFixed(meta.decimals)}${meta.unit}`
 }
 

@@ -24,7 +24,7 @@ class VirtualExecutionCalculatorTest {
 
     private final VirtualExecutionCalculator calculator = new VirtualExecutionCalculator(
             new SlippagePriceCalculator(),
-            new OrderPrecisionCalculator(),
+            new OrderPrecisionCalculator(new KrwPriceTickSizeResolver()),
             new TradeFeeCalculator(),
             new SlippageAmountCalculator()
     );
@@ -36,11 +36,11 @@ class VirtualExecutionCalculatorTest {
 
         VirtualFill fill = calculator.execute(order, policy()).orElseThrow();
 
-        assertThat(fill.executedPrice()).isEqualByComparingTo("100050");
-        assertThat(fill.quantity()).isEqualByComparingTo("4.9975");
-        assertThat(fill.notional()).isEqualByComparingTo("499999.87500000");
-        assertThat(fill.feeAmount()).isEqualByComparingTo("249.99993750");
-        assertThat(fill.slippageAmount()).isEqualByComparingTo("249.87500000");
+        assertThat(fill.executedPrice()).isEqualByComparingTo("100100");
+        assertThat(fill.quantity()).isEqualByComparingTo("4.9950");
+        assertThat(fill.notional()).isEqualByComparingTo("499999.50000000");
+        assertThat(fill.feeAmount()).isEqualByComparingTo("249.99975000");
+        assertThat(fill.slippageAmount()).isEqualByComparingTo("499.50000000");
     }
 
     @DisplayName("매도 주문에 불리한 방향의 슬리피지를 적용한다")
@@ -55,6 +55,22 @@ class VirtualExecutionCalculatorTest {
         assertThat(fill.notional()).isEqualByComparingTo("499999.87500000");
         assertThat(fill.feeAmount()).isEqualByComparingTo("249.99993750");
         assertThat(fill.slippageAmount()).isEqualByComparingTo("250.12500000");
+    }
+
+    @DisplayName("저가 종목 매도 주문은 원화 호가 단위 적용 후 체결한다")
+    @Test
+    void executeLowPriceSellOrder() {
+        VirtualFill fill = calculator.execute(
+                order(
+                        TradeSide.SELL,
+                        new BigDecimal("0.01559"),
+                        BigDecimal.valueOf(10_000)
+                ),
+                policy()
+        ).orElseThrow();
+
+        assertThat(fill.executedPrice()).isEqualByComparingTo("0.0155");
+        assertThat(fill.executedPrice()).isPositive();
     }
 
     @DisplayName("주문 단위 적용 후 체결금액이 최소 주문금액보다 작으면 체결하지 않는다")
@@ -75,7 +91,6 @@ class VirtualExecutionCalculatorTest {
                 BigDecimal.valueOf(0.0005),
                 BigDecimal.valueOf(5),
                 BigDecimal.valueOf(5_000),
-                BigDecimal.TEN,
                 BigDecimal.ONE
         );
 
@@ -95,7 +110,7 @@ class VirtualExecutionCalculatorTest {
                 availableCash
         ).orElseThrow();
 
-        assertThat(fill.quantity()).isEqualByComparingTo("0.9990");
+        assertThat(fill.quantity()).isEqualByComparingTo("0.9985");
         assertThat(fill.notional().add(fill.feeAmount()))
                 .isLessThanOrEqualTo(availableCash);
     }
@@ -157,13 +172,21 @@ class VirtualExecutionCalculatorTest {
             TradeSide side,
             BigDecimal requestedNotional
     ) {
+        return order(side, REFERENCE_PRICE, requestedNotional);
+    }
+
+    private VirtualOrder order(
+            TradeSide side,
+            BigDecimal referencePrice,
+            BigDecimal requestedNotional
+    ) {
         return new VirtualOrder(
                 ASSET_ID,
                 PositionSide.LONG,
                 side,
                 SIGNAL_AT,
                 FILLED_AT,
-                REFERENCE_PRICE,
+                referencePrice,
                 requestedNotional
         );
     }
@@ -173,7 +196,6 @@ class VirtualExecutionCalculatorTest {
                 BigDecimal.valueOf(0.0005),
                 BigDecimal.valueOf(5),
                 BigDecimal.valueOf(5_000),
-                BigDecimal.TEN,
                 new BigDecimal("0.0001")
         );
     }

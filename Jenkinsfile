@@ -162,64 +162,9 @@ pipeline {
             steps {
                 sh '''
                     set -eu
-
-                    for attempt in $(seq 1 12); do
-                        frontend_status=$(curl -sS -o /dev/null -w '%{http_code}' \
-                          --max-time 5 http://127.0.0.1:3000 || true)
-                        backend_status=$(curl -sS -o /dev/null -w '%{http_code}' \
-                          --max-time 5 http://127.0.0.1:18080 || true)
-
-                        if [ "$frontend_status" = "200" ] \
-                            && { [ "$backend_status" = "200" ] || [ "$backend_status" = "401" ]; }; then
-                            break
-                        fi
-
-                        if [ "$attempt" = "12" ]; then
-                            echo "Smoke test failed: frontend=$frontend_status backend=$backend_status"
-                            exit 1
-                        fi
-
-                        sleep 5
-                    done
-
-                    for container in \
-                        a107-postgres \
-                        a107-redis \
-                        a107-kafka \
-                        a107-rabbitmq \
-                        a107-backend-api \
-                        a107-ai \
-                        a107-frontend \
-                        a107-ingest-producer \
-                        a107-ingest-consumer \
-                        a107-ingest-backfill; do
-                        state=$(docker inspect --format '{{.State.Status}}' "$container")
-
-                        if [ "$state" != "running" ]; then
-                            echo "$container is not running: $state"
-                            exit 1
-                        fi
-                    done
-
-                    for container in a107-postgres a107-redis a107-kafka a107-rabbitmq; do
-                        health=$(docker inspect --format '{{.State.Health.Status}}' "$container")
-
-                        if [ "$health" != "healthy" ]; then
-                            echo "$container is not healthy: $health"
-                            exit 1
-                        fi
-                    done
-
-                    worker_count=$(docker compose --env-file "$PRODUCTION_ENV_FILE" \
-                      -f "$PRODUCTION_COMPOSE" ps --status running --services \
-                      | grep -cx 'backtest-worker' || true)
-
-                    if [ "$worker_count" -lt 1 ]; then
-                        echo 'backtest-worker is not running'
-                        exit 1
-                    fi
-
-                    echo 'Smoke test passed.'
+                    bash infra/verify-production-services.sh \
+                      "$PRODUCTION_COMPOSE" \
+                      "$PRODUCTION_ENV_FILE"
                 '''
             }
         }

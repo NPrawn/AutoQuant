@@ -183,6 +183,44 @@ func TestLoadBackfill(t *testing.T) {
 	})
 }
 
+func TestLoadHealthcheck(t *testing.T) {
+	t.Run("Kafka를 사용하는 서비스의 의존성 설정을 구성한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("KAFKA_BOOTSTRAP_SERVERS", "kafka-1:9092, kafka-2:9092")
+
+		got, err := config.LoadHealthcheck()
+		if err != nil {
+			t.Fatalf("LoadHealthcheck() error = %v", err)
+		}
+		wantKafkaBootstrapServers := []string{"kafka-1:9092", "kafka-2:9092"}
+		if !reflect.DeepEqual(got.KafkaBootstrapServers, wantKafkaBootstrapServers) {
+			t.Fatalf("KafkaBootstrapServers = %v, want %v", got.KafkaBootstrapServers, wantKafkaBootstrapServers)
+		}
+	})
+
+	t.Run("Kafka를 사용하지 않는 서비스의 의존성 설정을 구성한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("KAFKA_BOOTSTRAP_SERVERS", "")
+
+		got, err := config.LoadHealthcheck()
+		if err != nil {
+			t.Fatalf("LoadHealthcheck() error = %v", err)
+		}
+		if len(got.KafkaBootstrapServers) != 0 {
+			t.Fatalf("KafkaBootstrapServers = %v, want empty", got.KafkaBootstrapServers)
+		}
+	})
+
+	t.Run("필수 의존성 설정이 없으면 오류를 반환한다", func(t *testing.T) {
+		setRequiredEnvironment(t)
+		t.Setenv("REDIS_HOST", "")
+
+		if _, err := config.LoadHealthcheck(); err == nil {
+			t.Fatal("LoadHealthcheck() error = nil, want error")
+		}
+	})
+}
+
 func setRequiredEnvironment(t *testing.T) {
 	t.Helper()
 	t.Setenv("DB_HOST", "localhost")

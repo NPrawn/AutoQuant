@@ -3,19 +3,20 @@
  * 변형만 두고 새 컴포넌트 계층을 만들지 않는다.
  */
 
-.market-chart-page { display: grid; gap: 12px; }
-.market-chart-shell { grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); }
-.market-chart-shell > .card { min-width: 0; }
-.market-chart-page select { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); padding: 8px; border-radius: var(--r-s); }
-.market-candle-chart { height: 440px; width: 100%; }
-.market-chart-note { padding: 8px 20px; color: var(--ink-3); font-size: 12px; }
-.market-trades { padding: 16px; }
-.market-trades h2 { font-size: 15px; }
-.market-trades p { color: var(--ink-3); font-size: 12px; margin: 8px 0; }
-.market-trade-scroll { overflow: auto; max-height: 520px; }
-.market-trades table { width: 100%; font-size: 11px; white-space: nowrap; }
-.market-trades th, .market-trades td { text-align: right; padding: 6px; }
-@media (max-width: 1100px) { .market-chart-shell { grid-template-columns: minmax(0, 1fr); } }
+/*
+ * 차트의 레이아웃과 종목 목록, 봉 간격 버튼은 base.css 의 목업 클래스를 그대로 쓴다.
+ * 여기에는 목업이 정하지 않은 두 가지만 둔다. 하나는 차트 자리의 상태 표시가
+ * 카드 높이를 채우게 하는 것이고, 다른 하나는 키보드로 고를 수 있는 종목 행의 초점 표시다.
+ */
+.chart-area > .bt-load,
+.chart-area > .state-block {
+  flex: 1;
+  align-self: center;
+}
+.coin-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
 
 /* 오류 콜아웃. 색 계약상 오류는 주황(--crit)이다. 빨강은 상승에 배정돼 있다. */
 .callout.crit {
@@ -155,8 +156,17 @@
   cursor: default;
 }
 
-/* 거래 내역 페이지 이동. 목업에는 표 페이지가 없다. */
-.backtest-pager {
+/*
+ * 모의투자 실시간 화면의 카드 묶음. 목업 18 의 .live-layout 은 오른쪽에 랭킹 보드와 활동
+ * 피드를 두는 두 열인데 대응 API 가 없어 한 열로 쌓는다.
+ */
+.sim-live-stack {
+  display: grid;
+  gap: 16px;
+}
+
+/* 표 아래 페이지 이동. 목업에는 표 페이지가 없다. 거래 내역과 실행 이력이 같이 쓴다. */
+.pager {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -196,4 +206,37 @@
     animation: none;
     box-shadow: inset 0 0 0 1px var(--section, var(--cat-neutral));
   }
+}
+
+/* 차트 우측 열은 목업에 체결 카드 하나뿐이라 카드가 이어질 때의 간격이 없다. */
+#view-chart .chart-shell > div:last-child > .card + .card {
+  margin-top: 10px;
+}
+
+/* 모의투자 실시간의 보유 종목 차트. 목업 04 의 #candle 크기 규칙은 차트 화면에만 걸려 있다. */
+.sim-live-stack #candle {
+  height: 320px;
+}
+
+/* 전략 체결 차트. 목업 04 의 #candle 크기 규칙은 차트 화면에만 걸려 있다. */
+.shared-market-card #candle {
+  height: 340px;
+}
+
+/* 랭킹 필터의 검색 칸. 목업 06 은 select 세 개만 그려 입력 칸 모양이 없다. select 와 같게 둔다. */
+.rfilt input {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: var(--r-s);
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--ink);
+  outline: none;
+  min-width: 200px;
+}
+.rfilt input::placeholder {
+  color: var(--ink-3);
+}
+.rfilt input:focus-visible {
+  border-color: var(--line-2);
 }

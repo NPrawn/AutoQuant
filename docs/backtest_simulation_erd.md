@@ -301,6 +301,7 @@ erDiagram
 
 - 모든 FK 컬럼에 인덱스를 둔다.
 - `backtest_run(user_id, status)` 및 `simulation_run(user_id, status)` 조회를 지원한다.
+- 실시간 실행 대상 조회를 위해 `simulation_run(status, timeframe, simulation_id)` 인덱스를 둔다.
 - `backtest_trade(backtest_id, filled_at)`와 `simulation_trade(simulation_id, filled_at)`에 인덱스를 둔다.
 - `backtest_equity(backtest_id, valuation_at)`와 `simulation_equity(simulation_id, valuation_at)`는 복합 PK를 인덱스로 사용한다.
 - `FAILED` 상태에서는 `failure_reason`을 필수로 하고, 완료 상태에서는 `completed_at`과 결과 행을 필수로 한다.

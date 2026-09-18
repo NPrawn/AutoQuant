@@ -25,6 +25,8 @@ import static org.mockito.BDDMockito.then;
 @ExtendWith(MockitoExtension.class)
 class AssetRegistrationFacadeTest {
 
+    private static final Instant LISTED_AT = Instant.parse("2017-09-25T00:00:00Z");
+
     @Mock
     private UpbitMarketClient upbitMarketClient;
 
@@ -53,7 +55,8 @@ class AssetRegistrationFacadeTest {
                 Instant.parse("2026-08-31T00:00:00Z")
         );
         given(upbitMarketClient.findMarket("KRW-BTC")).willReturn(Optional.of(marketInformation));
-        given(assetCommandService.createAsset(Exchange.UPBIT, marketInformation, "BTC", "KRW"))
+        given(upbitMarketClient.findTradingSupportStartedAt("KRW-BTC")).willReturn(Optional.of(LISTED_AT));
+        given(assetCommandService.createAsset(Exchange.UPBIT, marketInformation, "BTC", "KRW", LISTED_AT))
                 .willReturn(expectedResult);
 
         AssetRegistrationResult result = facade.registerAsset(Exchange.UPBIT, "KRW-BTC");

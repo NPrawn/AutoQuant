@@ -4,22 +4,16 @@ import { useEffect, useRef } from 'react'
 /*
  * 네이티브 dialog 를 showModal 로 열어 포커스 트랩, Esc 닫기, 바깥 요소 비활성화를
  * 브라우저에 맡긴다. 겉모습은 목업의 .mbd 스크림과 .modal 카드를 그대로 쓴다.
+ * 목업의 "저장되지 않은 편집" 행은 그 상태를 아는 곳이 없어 두지 않는다.
  */
 type LogoutConfirmModalProps = {
   open: boolean
   runningSimulations: number
-  hasUnsavedEdits: boolean
   onCancel: () => void
   onConfirm: () => void
 }
 
-export function LogoutConfirmModal({
-  open,
-  runningSimulations,
-  hasUnsavedEdits,
-  onCancel,
-  onConfirm,
-}: LogoutConfirmModalProps) {
+export function LogoutConfirmModal({ open, runningSimulations, onCancel, onConfirm }: LogoutConfirmModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
@@ -58,16 +52,14 @@ export function LogoutConfirmModal({
       <div className="modal">
         <h3 id="logout-confirm-title">로그아웃할까요?</h3>
         <p className="s">{description}</p>
-        <div className="state-detail" style={{ width: '100%', margin: '0 0 20px' }}>
-          <div>
-            <span>운용 중 전략</span>
-            <strong>{runningSimulations}건</strong>
+        {runningSimulations > 0 && (
+          <div className="state-detail" style={{ width: '100%', margin: '0 0 20px' }}>
+            <div>
+              <span>운용 중 모의투자</span>
+              <strong>{runningSimulations}건</strong>
+            </div>
           </div>
-          <div>
-            <span>저장되지 않은 편집</span>
-            <strong>{hasUnsavedEdits ? '있음' : '없음'}</strong>
-          </div>
-        </div>
+        )}
         <div className="macts">
           <button className="btn" type="button" onClick={onCancel}>
             취소

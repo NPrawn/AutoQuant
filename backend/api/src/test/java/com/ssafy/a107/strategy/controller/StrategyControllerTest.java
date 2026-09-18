@@ -165,6 +165,53 @@ class StrategyControllerTest {
         then(strategyCommandService).should().deleteStrategy(MEMBER_ID, STRATEGY_ID);
     }
 
+    @DisplayName("전략을 공개로 바꾼다")
+    @Test
+    void changeVisibility() {
+        Strategy published = strategy();
+        published.changeVisibility(true);
+        org.mockito.BDDMockito.given(strategyCommandService.changeVisibility(MEMBER_ID, STRATEGY_ID, true))
+                .willReturn(published);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body("{\"published\": true}")
+                .when()
+                .patch("/strategies/{strategyId}/visibility", STRATEGY_ID)
+                .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("published", equalTo(true));
+    }
+
+    @DisplayName("공개 여부를 주지 않으면 400으로 거부한다")
+    @Test
+    void rejectVisibilityWithoutValue() {
+        given()
+                .contentType(ContentType.JSON)
+                .body("{}")
+                .when()
+                .patch("/strategies/{strategyId}/visibility", STRATEGY_ID)
+                .then()
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .body("code", equalTo("COMMON-400-001"));
+
+        then(strategyCommandService).shouldHaveNoInteractions();
+    }
+
+    @DisplayName("전략을 복제하면 201과 새 전략을 반환한다")
+    @Test
+    void copyStrategy() {
+        org.mockito.BDDMockito.given(strategyCommandService.copyStrategy(MEMBER_ID, STRATEGY_ID))
+                .willReturn(strategy());
+
+        given()
+                .when()
+                .post("/strategies/{strategyId}/copy", STRATEGY_ID)
+                .then()
+                .statusCode(HttpStatus.CREATED.value())
+                .body("published", equalTo(false));
+    }
+
     private Strategy strategy() {
         Strategy strategy = new Strategy(
                 new Member(LoginProvider.SSAFY, "ssafy-member-107", "strategy@example.com", "전략 사용자"),
