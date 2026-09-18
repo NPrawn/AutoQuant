@@ -5,8 +5,6 @@ import com.ssafy.a107.trading.backtest.engine.marketdata.BacktestWarmupCandleCou
 import com.ssafy.a107.trading.backtest.engine.marketdata.HistoricalCandleProvider;
 import com.ssafy.a107.trading.simulation.domain.SimulationRun;
 import com.ssafy.a107.trading.simulation.repository.SimulationPositionRepository;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,8 +12,6 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 
-@Profile("simulation-debug")
-@ConditionalOnProperty(prefix = "simulation.debug", name = "enabled", havingValue = "true")
 @Service
 @Transactional(readOnly = true)
 public class SimulationReadinessDebugService {

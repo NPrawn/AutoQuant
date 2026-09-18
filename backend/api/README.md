@@ -330,7 +330,7 @@ WebSocket/STOMP 계약은 이 절에서 관리하며 REST Docs/OpenAPI에는 포
 
 ### 즉시 준비 상태 진단
 
-로컬 또는 스테이징에서 `simulation-debug` 프로필과 `simulation.debug.enabled=true`를 함께 설정하면 아래 읽기 전용 API가 생긴다. 기본 환경과 운영 프로필에는 등록되지 않는다. 호출자는 자신의 모의투자만 확인할 수 있고, 실행·재선정 시각·체결·보유·평가 기록을 바꾸지 않는다.
+아래 읽기 전용 API는 별도 프로필이나 환경변수 설정 없이 사용할 수 있다. 호출자는 자신의 모의투자만 확인할 수 있고, 실행·재선정 시각·체결·보유·평가 기록을 바꾸지 않는다.
 
 ```http
 GET /debug/simulations/{simulationId}/readiness?executionAt=2026-09-18T00:00:00Z

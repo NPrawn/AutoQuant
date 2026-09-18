@@ -3,8 +3,6 @@ package com.ssafy.a107.trading.simulation.controller;
 import com.ssafy.a107.auth.jwt.MemberPrincipal;
 import com.ssafy.a107.trading.simulation.controller.response.SimulationReadinessDebugResponse;
 import com.ssafy.a107.trading.simulation.service.SimulationReadinessDebugService;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Profile;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,10 +15,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * 로컬·스테이징에서만 켜는 읽기 전용 준비 상태 진단 API다.
+ * 모의투자의 봉 준비 상태를 확인하는 읽기 전용 진단 API다.
  */
-@Profile("simulation-debug")
-@ConditionalOnProperty(prefix = "simulation.debug", name = "enabled", havingValue = "true")
 @RestController
 @RequestMapping("/debug/simulations")
 public class SimulationReadinessDebugController {
