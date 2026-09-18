@@ -250,6 +250,66 @@ class SimulationCandleReadinessTest {
         assertUnchanged();
     }
 
+    @Test
+    @DisplayName("수집 중단 종목이 있어도 정상 종목의 확정 봉을 기다렸다가 한 번만 매수한다")
+    void buyAfterDelayedCandleWithStaleAssetInUniverse() {
+        Asset healthy = addAsset(null, 20);
+        // 운영 STORJ와 동일하게 8월 28일부터 9월 14일까지 18개만 남아 있다.
+        addAsset(null, 18);
+
+        assertThat(process()).isTrue();
+        assertUnchanged();
+        candles.get(healthy.getAssetId()).add(candle(healthy.getAssetId(), EVALUATION_AT, 120));
+        assertThat(process()).isFalse();
+        assertThat(process()).isFalse();
+
+        ArgumentCaptor<SimulationTrade> trade = ArgumentCaptor.forClass(SimulationTrade.class);
+        verify(trades).save(trade.capture());
+        assertThat(trade.getValue().getAsset().getAssetId()).isEqualTo(healthy.getAssetId());
+        assertThat(trade.getValue().getSide()).isEqualTo(TradeSide.BUY);
+        assertThat(run.getCashBalance()).isLessThan(INITIAL_CAPITAL);
+        assertThat(run.getLastRebalanceAt()).isEqualTo(EXECUTION_AT);
+    }
+
+    @Test
+    @DisplayName("모든 종목의 수집이 멈췄으면 현금 보유로 완료하지 않는다")
+    void waitWhenAllAssetsHaveStaleHistory() {
+        addAsset(null, 18);
+        addAsset(null, 0);
+
+        assertThat(process()).isTrue();
+        assertUnchanged();
+    }
+
+    @Test
+    @DisplayName("일부 후보의 과거 이력이 부족하면 충분한 이력을 가진 종목으로 선정한다")
+    void excludeIncompleteHistoricalSeries() {
+        Asset healthy = addAsset(null, 21);
+        Asset incomplete = addAsset(null, 21);
+        candles.get(incomplete.getAssetId()).remove(5);
+
+        assertThat(process()).isFalse();
+
+        ArgumentCaptor<SimulationTrade> trade = ArgumentCaptor.forClass(SimulationTrade.class);
+        verify(trades).save(trade.capture());
+        assertThat(trade.getValue().getAsset().getAssetId()).isEqualTo(healthy.getAssetId());
+    }
+
+    @Test
+    @DisplayName("다른 후보가 준비돼도 보유 종목의 이력이 부족하면 임의로 청산하지 않는다")
+    void protectIncompleteHoldingWhenOtherAssetsAreReady() {
+        addAsset(null, 21);
+        Asset held = addAsset(null, 21);
+        candles.get(held.getAssetId()).remove(5);
+        given(positions.findAllBySimulationRunSimulationIdOrderByIdAssetIdAsc(simulationId)).willReturn(List.of(
+                new SimulationPosition(run, held, PositionSide.LONG, BigDecimal.TEN, new BigDecimal("100"), EVALUATION_AT)
+        ));
+
+        assertThat(process()).isTrue();
+        assertUnchanged();
+        verify(positions, times(0)).deleteAllBySimulationRunSimulationId(any());
+    }
+
     private boolean process() {
         return service.process(simulationId, EVALUATION_AT, EXECUTION_AT);
     }
