@@ -57,13 +57,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 public class SimulationCandleExecutionService {
@@ -266,6 +264,8 @@ public class SimulationCandleExecutionService {
             Instant executionAt,
             Function<Collection<UUID>, java.util.Optional<Map<UUID, BigDecimal>>> executionPriceLoader
     ) {
+        Instant lastCandleAt = simulationRun.getLastCandleAt();
+        if (lastCandleAt != null && !executionAt.isAfter(lastCandleAt)) return CandleProcessResult.IGNORED;
         List<Asset> universe = collectedAssetReadService.findAvailableAt(
                 Exchange.UPBIT, simulationRun.getQuoteCurrency(), evaluationCandleOpenAt
         );
@@ -282,12 +282,16 @@ public class SimulationCandleExecutionService {
                     : CandleProcessResult.IGNORED;
         }
 
-        TargetPortfolio targetPortfolio = executeStrategy(simulationRun, universe, executionAt);
+        Set<UUID> heldAssetIds = new java.util.HashSet<>();
+        persistedPositions.forEach(position -> heldAssetIds.add(position.getAsset().getAssetId()));
+        Optional<TargetPortfolio> strategyResult = executeStrategy(simulationRun, universe, executionAt, heldAssetIds);
+        if (strategyResult.isEmpty()) return CandleProcessResult.NOT_READY;
+        TargetPortfolio targetPortfolio = strategyResult.get();
         Map<UUID, Asset> assetsById = assetsById(universe, persistedPositions);
         Set<UUID> pricedAssetIds = new java.util.HashSet<>(targetPortfolio.assetWeights().stream()
                 .map(targetAssetWeight -> targetAssetWeight.assetId())
                 .toList());
-        persistedPositions.forEach(position -> pricedAssetIds.add(position.getAsset().getAssetId()));
+        pricedAssetIds.addAll(heldAssetIds);
         Map<UUID, BigDecimal> evaluationPrices = loadClosePrices(
                 pricedAssetIds, simulationRun.getTimeframe(), evaluationCandleOpenAt, executionAt
         ).orElse(null);
@@ -350,36 +354,21 @@ public class SimulationCandleExecutionService {
         return java.util.Optional.of(Map.copyOf(openPrices));
     }
 
-    private TargetPortfolio executeStrategy(SimulationRun simulationRun, List<Asset> universe, Instant candleAt) {
-        List<UUID> assetIds = universe.stream().map(Asset::getAssetId).toList();
-        int warmupCount = warmupCandleCountResolver.resolve(simulationRun.getStrategy().getStrategyDsl());
-        Duration candleDuration = candleDuration(simulationRun.getTimeframe());
-        Instant fromInclusive = candleAt.minus(candleDuration.multipliedBy(warmupCount));
-        Map<UUID, List<MinuteCandle>> candlesByAssetId = historicalCandleProvider
-                .load(assetIds, simulationRun.getTimeframe(), fromInclusive, candleAt)
-                .entrySet().stream()
-                .map(entry -> Map.entry(
-                        entry.getKey(),
-                        entry.getValue().stream()
-                                .filter(candle -> {
-                                    Instant openTime = candle.getId().getOpenTime();
-                                    return !openTime.isBefore(fromInclusive)
-                                            && !openTime.plus(candleDuration).isAfter(candleAt);
-                                })
-                                .toList()
-                ))
-                .filter(entry -> entry.getValue().size() >= warmupCount)
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (left, right) -> left,
-                        LinkedHashMap::new
-                ));
-        return strategyExecutionPipeline.execute(new StrategyExecutionContext(
+    private Optional<TargetPortfolio> executeStrategy(
+            SimulationRun simulationRun, List<Asset> universe, Instant candleAt, Set<UUID> heldAssetIds
+    ) {
+        SimulationStrategyReadinessEvaluator.Evaluation readiness = new SimulationStrategyReadinessEvaluator(
+                historicalCandleProvider, warmupCandleCountResolver
+        ).evaluate(
+                simulationRun.getStrategy().getStrategyDsl(), simulationRun.getTimeframe(), universe,
+                heldAssetIds, candleAt, false
+        );
+        if (!readiness.isReady()) return Optional.empty();
+        return Optional.of(strategyExecutionPipeline.execute(new StrategyExecutionContext(
                 simulationRun.getStrategy().getStrategyDsl(),
                 candleAt,
-                candlesByAssetId
-        ));
+                readiness.readyCandlesByAssetId()
+        )));
     }
 
     private BacktestPortfolio restorePortfolio(SimulationRun simulationRun, List<SimulationPosition> persistedPositions) {

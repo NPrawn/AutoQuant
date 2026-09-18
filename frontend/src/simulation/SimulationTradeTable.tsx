@@ -24,7 +24,7 @@ export function SimulationTradeTable({ simulationId, live, lookup, page, onPageC
     return <ErrorState title="체결 기록을 불러오지 못했습니다" error={trades.error} onRetry={() => trades.refetch()} />
   }
   if (trades.data.totalElements === 0) {
-    return <p className="goal-note" style={{ margin: 0 }}>{live ? '첫 재선정을 기다리고 있습니다. 봉이 마감되면 매수·매도가 여기에 기록됩니다.' : '체결된 거래가 없습니다.'}</p>
+    return <p className="goal-note" style={{ margin: 0 }}>{live ? '체결된 거래가 없습니다. 재선정 결과에 따라 매수·매도가 여기에 기록됩니다.' : '체결된 거래가 없습니다.'}</p>
   }
 
   const { content, totalElements, totalPages } = trades.data
