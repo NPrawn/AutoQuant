@@ -10,7 +10,10 @@ import {
   fetchCandleCoverage,
   maxPageSize,
 } from './api'
+import { fetchCandles, fetchChartAssets } from '../market/api'
+import { CANDLE_LIMIT } from '../market/model'
 import { hasUnsettledRun } from './history'
+import { benchmarkMarketCode, type BenchmarkCandle } from './performance'
 import { coverageFromInstants, type CandleCoverage } from './periodBounds'
 import { toBacktestResult, toBacktestRun, toBacktestTrade, toEquityPoint } from './types'
 import type { BacktestRunResponse, BacktestRunStatus, BacktestTrade, EquityPoint } from './types'
@@ -150,6 +153,29 @@ export function useCandleCoverage() {
       const response = await fetchCandleCoverage(coverageIntervalMinutes)
       return coverageFromInstants(response.start, response.end)
     },
+    staleTime: 60 * 60 * 1000,
+  })
+}
+
+/*
+ * 단순보유 비교선. 종목 목록에서 벤치마크 종목을 찾아 일봉을 받는다. 없으면 빈 목록이라 비교선만 빠진다.
+ * 일봉 조회 상한이 1,000개라 그보다 긴 백테스트는 앞부분 비교가 비지만 전략 곡선은 그대로 그린다.
+ */
+export const backtestBenchmarkQueryKey = [...backtestsQueryKey, 'benchmark', benchmarkMarketCode] as const
+
+export function useBacktestBenchmark(enabled: boolean) {
+  return useQuery({
+    queryKey: backtestBenchmarkQueryKey,
+    queryFn: async ({ signal }): Promise<BenchmarkCandle[]> => {
+      const assets = await fetchChartAssets(signal)
+      const benchmark = assets.find((asset) => asset.marketCode === benchmarkMarketCode)
+      if (benchmark === undefined) {
+        return []
+      }
+      const response = await fetchCandles(benchmark.assetId, 1440, CANDLE_LIMIT, signal)
+      return response.candles
+    },
+    enabled,
     staleTime: 60 * 60 * 1000,
   })
 }
