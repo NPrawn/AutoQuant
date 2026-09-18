@@ -33,8 +33,9 @@ OUT_OF_SCOPE_CATEGORIES = frozenset({"지원 범위 밖 요청", "전략이 아�
 def load_holdout_cases(fixtures_dir: Path) -> list[dict[str, str]]:
     """홀드아웃 발화를 표에서 읽는다."""
     text = (fixtures_dir / "holdout_inputs.md").read_text(encoding="utf-8")
+    input_table, _, _ = text.partition("## 대조 결과")
     cases = []
-    for line in text.splitlines():
+    for line in input_table.splitlines():
         match = _INPUT_ROW.match(line)
         if match is None:
             continue

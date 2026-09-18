@@ -37,10 +37,10 @@ def strategy_with(factor: str, value: float) -> dict:
 def test_the_holdout_set_loads_with_its_categories():
     cases = load_holdout_cases(FIXTURES_DIR)
 
-    assert len(cases) == 28
+    assert len(cases) == 26
     assert cases[0]["id"] == "H-01"
     assert all(case["userInput"] for case in cases)
-    assert sum(case["scope"] == "in-scope" for case in cases) == 9
+    assert sum(case["scope"] == "in-scope" for case in cases) == 7
     assert sum(case["scope"] == "out-of-scope" for case in cases) == 19
 
 

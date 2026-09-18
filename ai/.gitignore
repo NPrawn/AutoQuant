@@ -6,4 +6,5 @@ __pycache__/
 reports/golden-live-*.json
 reports/edit-live-*.json
 reports/holdout-live-*.json
+reports/claim-live-*.json
 .contest/

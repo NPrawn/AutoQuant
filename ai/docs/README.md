@@ -16,7 +16,10 @@ AI 서버 문서. 코드와 같은 저장소에 두어 함께 버전 관리한�
 | [contract/](contract/) | OpenAPI·DSL JSON Schema·응답 예시 5건 | 백엔드·프론트가 계약을 볼 때. **손으로 고치지 않는다** — `python scripts/export_contract.py`가 만든다 |
 | [REVIEW-MOCKUP.md](REVIEW-MOCKUP.md) | 화면 시안 피드백 (AI 서버 관점) | 기획과 계약을 맞출 때 |
 | [REVIEW-STRATEGY-MVP.md](REVIEW-STRATEGY-MVP.md) | 전략팀 MVP 문서 검토 (AI 서버 관점) | 전략 도메인 스펙과 계약을 맞출 때 |
+| [REVIEW-STRATEGY-SPEC.md](REVIEW-STRATEGY-SPEC.md) | 전략 도메인 확정 명세 검토 (AI 서버 관점) | 확정 명세와 구현이 어긋나는 지 볼 때 |
 | [PROPOSAL-FACTORS.md](PROPOSAL-FACTORS.md) | Factor 18개 제안 (ta4j 기준) | 팩터를 늘릴 때, 엔진에 지표를 붙일 때 |
+| [DESIGN-PROMPT-AXES.md](DESIGN-PROMPT-AXES.md) | 프롬프트를 관용구 표에서 팩터 축 정의로 옮기는 설계와 검증 계획 | 변환 품질을 고칠 때, 일반화를 측정할 때 |
+| [PLAN-PROMPT-AXES.md](PLAN-PROMPT-AXES.md) | 위 설계의 구현 계획 (작업 7건) | 그 작업을 실제로 잡았을 때 |
 | [PLAN-CONTEST-DATA.md](PLAN-CONTEST-DATA.md) | 대회 데이터 생성·검증·로컬 적재 설계 (결정은 `adr/`와 `../../docs/adr/`) | 대회 데이터 코드를 만들거나 검증 결과를 볼 때 |
 | [adr/](adr/) | 대회 데이터 생성기 내부 결정: 조작 방식(0008·0009·0011)과 검증(0012·0015) | 생성·검증 방식을 바꿀 때 |
 | [contest-validation/](contest-validation/) | 대회 데이터 1·2단계 확인과 로컬 대회 결과 JSON | 조작 데이터가 어디까지 검증됐는지 볼 때 |
