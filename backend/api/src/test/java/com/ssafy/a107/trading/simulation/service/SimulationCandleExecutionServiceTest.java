@@ -32,6 +32,7 @@ import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestPortfolioOrderEx
 import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestRebalanceOrder;
 import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestRebalanceOrderPlanner;
 import com.ssafy.a107.trading.backtest.engine.portfolio.PortfolioValuationCalculator;
+import com.ssafy.a107.trading.backtest.repository.BacktestMinuteCandleRepository;
 import com.ssafy.a107.trading.backtest.engine.execution.VirtualOrder;
 import com.ssafy.a107.trading.backtest.domain.PositionSide;
 import com.ssafy.a107.trading.backtest.domain.TradeSide;
@@ -43,6 +44,7 @@ import com.ssafy.a107.trading.simulation.repository.SimulationResultRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationRunRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationTradeRepository;
 import com.ssafy.a107.trading.simulation.repository.SimulationUniverseAssetRepository;
+import com.ssafy.a107.trading.simulation.repository.SimulationRebalanceAttemptRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -73,6 +75,8 @@ class SimulationCandleExecutionServiceTest {
     private final SimulationEquityRepository simulationEquityRepository = mock(SimulationEquityRepository.class);
     private final SimulationResultRepository simulationResultRepository = mock(SimulationResultRepository.class);
     private final SimulationUniverseAssetRepository simulationUniverseAssetRepository = mock(SimulationUniverseAssetRepository.class);
+    private final SimulationRebalanceAttemptRepository simulationRebalanceAttemptRepository = mock(SimulationRebalanceAttemptRepository.class);
+    private final BacktestMinuteCandleRepository minuteCandleRepository = mock(BacktestMinuteCandleRepository.class);
     private final CollectedAssetReadService collectedAssetReadService = mock(CollectedAssetReadService.class);
     private final HistoricalCandleProvider historicalCandleProvider = mock(HistoricalCandleProvider.class);
     private final BacktestWarmupCandleCountResolver warmupCandleCountResolver = mock(BacktestWarmupCandleCountResolver.class);
@@ -368,6 +372,8 @@ class SimulationCandleExecutionServiceTest {
                 simulationEquityRepository,
                 simulationResultRepository,
                 simulationUniverseAssetRepository,
+                simulationRebalanceAttemptRepository,
+                minuteCandleRepository,
                 collectedAssetReadService,
                 historicalCandleProvider,
                 warmupCandleCountResolver,
