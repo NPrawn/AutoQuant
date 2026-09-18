@@ -171,6 +171,37 @@ class SimulationCandleReadinessTest {
     }
 
     @Test
+    @DisplayName("강제 재선정은 과거 확정 봉의 시가로 한 번만 체결한다")
+    void forceRebalanceWithHistoricalOpenPrice() {
+        Asset asset = addAsset(null, 21);
+        candles.get(asset.getAssetId()).add(candle(asset.getAssetId(), EXECUTION_AT, 121));
+        ReflectionTestUtils.setField(run, "startedAt", EXECUTION_AT.plus(Duration.ofHours(1)));
+
+        SimulationCandleExecutionService.ForceRebalanceOutcome outcome = service.forceRebalance(
+                simulationId, EXECUTION_AT
+        );
+
+        assertThat(outcome.state()).isEqualTo(SimulationCandleExecutionService.ForceRebalanceOutcome.State.COMPLETED);
+        assertThat(run.getStartedAt()).isEqualTo(EXECUTION_AT);
+        assertThat(run.getLastRebalanceAt()).isEqualTo(EXECUTION_AT);
+        assertThat(run.getCashBalance()).isLessThan(INITIAL_CAPITAL);
+        verify(trades).save(any(SimulationTrade.class));
+    }
+
+    @Test
+    @DisplayName("이미 처리한 모의투자는 강제 재선정을 중복 실행하지 않는다")
+    void rejectForcedRebalanceAfterCandleProcessed() {
+        addAsset(null, 21);
+        process();
+
+        SimulationCandleExecutionService.ForceRebalanceOutcome outcome = service.forceRebalance(
+                simulationId, EXECUTION_AT.plus(Duration.ofDays(1))
+        );
+
+        assertThat(outcome.state()).isEqualTo(SimulationCandleExecutionService.ForceRebalanceOutcome.State.ALREADY_PROCESSED);
+    }
+
+    @Test
     @DisplayName("일부 종목만 준비되어도 불완전한 후보군으로 매수하지 않는다")
     void waitForAllMatureAssets() {
         addAsset(null, 21);

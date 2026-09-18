@@ -222,6 +222,40 @@ public class SimulationCandleExecutionService {
         ) == CandleProcessResult.NOT_READY;
     }
 
+    /**
+     * 검증용으로 과거 확정 봉 시점의 재선정을 즉시 재생한다.
+     * 이미 봉을 처리한 모의투자는 중복 체결을 막기 위해 재생하지 않는다.
+     */
+    public ForceRebalanceOutcome forceRebalance(UUID simulationId, Instant executionAt) {
+        SimulationRun simulationRun = simulationRunRepository.findBySimulationIdForUpdate(simulationId).orElse(null);
+        if (simulationRun == null) {
+            return ForceRebalanceOutcome.notFound(simulationId, executionAt);
+        }
+        if (simulationRun.getStatus() != SimulationRunStatus.RUNNING) {
+            return ForceRebalanceOutcome.notRunning(simulationRun, executionAt);
+        }
+        if (simulationRun.getLastCandleAt() != null) {
+            return ForceRebalanceOutcome.alreadyProcessed(simulationRun, executionAt);
+        }
+
+        simulationRun.rewindStartAtForDebug(executionAt);
+        Instant evaluationCandleOpenAt = executionAt.minus(candleDuration(simulationRun.getTimeframe()));
+        CandleProcessResult result = processCandle(
+                simulationRun,
+                evaluationCandleOpenAt,
+                executionAt,
+                assetIds -> loadOpenPrices(
+                        assetIds,
+                        simulationRun.getTimeframe(),
+                        executionAt,
+                        executionAt.plus(candleDuration(simulationRun.getTimeframe()))
+                )
+        );
+        log.info("Forced simulation rebalance finished: simulationId={}, executionAt={}, result={}",
+                simulationId, executionAt, result);
+        return ForceRebalanceOutcome.from(simulationRun, executionAt, result);
+    }
+
     private boolean recoverMissedCandles(SimulationRun simulationRun, Instant currentExecutionAt) {
         Instant lastCandleAt = simulationRun.getLastCandleAt();
         if (lastCandleAt == null) return false;
@@ -307,6 +341,9 @@ public class SimulationCandleExecutionService {
         );
 
         persistLedger(simulationRun, executionAt, universe, targetPortfolio, assetsById, portfolio, executionResult, executionPrices);
+        log.info("Simulation rebalance completed: simulationId={}, executionAt={}, selectedAssetCount={}, orderCount={}, fillCount={}",
+                simulationRun.getSimulationId(), executionAt, targetPortfolio.assetWeights().size(), orders.size(),
+                executionResult.fills().size());
         return CandleProcessResult.ADVANCED;
     }
 
@@ -363,12 +400,26 @@ public class SimulationCandleExecutionService {
                 simulationRun.getStrategy().getStrategyDsl(), simulationRun.getTimeframe(), universe,
                 heldAssetIds, candleAt, false
         );
-        if (!readiness.isReady()) return Optional.empty();
-        return Optional.of(strategyExecutionPipeline.execute(new StrategyExecutionContext(
+        if (!readiness.isReady()) {
+            log.info("Simulation rebalance waits for candles: simulationId={}, executionAt={}, state={}, readyAssetCount={}",
+                    simulationRun.getSimulationId(), candleAt, readiness.state(), readiness.readyCandlesByAssetId().size());
+            return Optional.empty();
+        }
+        TargetPortfolio targetPortfolio = strategyExecutionPipeline.execute(new StrategyExecutionContext(
                 simulationRun.getStrategy().getStrategyDsl(),
                 candleAt,
                 readiness.readyCandlesByAssetId()
-        )));
+        ));
+        Map<UUID, String> marketCodesByAssetId = universe.stream()
+                .filter(asset -> asset.getExchangeMarketCode() != null)
+                .collect(java.util.stream.Collectors.toMap(Asset::getAssetId, Asset::getExchangeMarketCode));
+        List<String> selectedMarketCodes = targetPortfolio.assetWeights().stream()
+                .map(assetWeight -> marketCodesByAssetId.get(assetWeight.assetId()))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        log.info("Simulation rebalance target evaluated: simulationId={}, executionAt={}, readyAssetCount={}, selectedMarketCodes={}",
+                simulationRun.getSimulationId(), candleAt, readiness.readyCandlesByAssetId().size(), selectedMarketCodes);
+        return Optional.of(targetPortfolio);
     }
 
     private BacktestPortfolio restorePortfolio(SimulationRun simulationRun, List<SimulationPosition> persistedPositions) {
@@ -479,6 +530,54 @@ public class SimulationCandleExecutionService {
     }
 
     private record RunLookup(List<UUID> simulationIds, boolean retryRequired) {
+    }
+
+    public record ForceRebalanceOutcome(
+            UUID simulationId,
+            State state,
+            Instant executionAt,
+            Instant lastCandleAt,
+            Instant lastRebalanceAt
+    ) {
+        private static ForceRebalanceOutcome from(
+                SimulationRun simulationRun, Instant executionAt, CandleProcessResult result
+        ) {
+            State state = switch (result) {
+                case ADVANCED -> State.COMPLETED;
+                case NOT_READY -> State.WAITING_FOR_CANDLES;
+                case IGNORED -> State.ALREADY_PROCESSED;
+            };
+            return new ForceRebalanceOutcome(
+                    simulationRun.getSimulationId(), state, executionAt,
+                    simulationRun.getLastCandleAt(), simulationRun.getLastRebalanceAt()
+            );
+        }
+
+        private static ForceRebalanceOutcome notFound(UUID simulationId, Instant executionAt) {
+            return new ForceRebalanceOutcome(simulationId, State.NOT_FOUND, executionAt, null, null);
+        }
+
+        private static ForceRebalanceOutcome notRunning(SimulationRun simulationRun, Instant executionAt) {
+            return new ForceRebalanceOutcome(
+                    simulationRun.getSimulationId(), State.NOT_RUNNING, executionAt,
+                    simulationRun.getLastCandleAt(), simulationRun.getLastRebalanceAt()
+            );
+        }
+
+        private static ForceRebalanceOutcome alreadyProcessed(SimulationRun simulationRun, Instant executionAt) {
+            return new ForceRebalanceOutcome(
+                    simulationRun.getSimulationId(), State.ALREADY_PROCESSED, executionAt,
+                    simulationRun.getLastCandleAt(), simulationRun.getLastRebalanceAt()
+            );
+        }
+
+        public enum State {
+            COMPLETED,
+            WAITING_FOR_CANDLES,
+            ALREADY_PROCESSED,
+            NOT_RUNNING,
+            NOT_FOUND
+        }
     }
 
     private enum CandleProcessResult {

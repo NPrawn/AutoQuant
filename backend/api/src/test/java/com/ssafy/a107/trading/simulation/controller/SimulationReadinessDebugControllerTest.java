@@ -2,6 +2,8 @@ package com.ssafy.a107.trading.simulation.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ssafy.a107.auth.jwt.MemberPrincipal;
+import com.ssafy.a107.trading.simulation.service.SimulationCandleExecutionService;
+import com.ssafy.a107.trading.simulation.service.SimulationDebugCommandService;
 import com.ssafy.a107.trading.simulation.service.SimulationReadinessDebugService;
 import com.ssafy.a107.trading.simulation.service.SimulationStrategyReadinessEvaluator;
 import org.junit.jupiter.api.AfterEach;
@@ -38,10 +40,16 @@ class SimulationReadinessDebugControllerTest {
     @Mock
     private SimulationReadinessDebugService simulationReadinessDebugService;
 
+    @Mock
+    private SimulationDebugCommandService simulationDebugCommandService;
+
     @BeforeEach
     void setUp() {
         io.restassured.module.mockmvc.RestAssuredMockMvc.mockMvc(MockMvcBuilders
-                .standaloneSetup(new SimulationReadinessDebugController(simulationReadinessDebugService))
+                .standaloneSetup(new SimulationReadinessDebugController(
+                        simulationReadinessDebugService,
+                        simulationDebugCommandService
+                ))
                 .setMessageConverters(new org.springframework.http.converter.json.MappingJackson2HttpMessageConverter(
                         new ObjectMapper().findAndRegisterModules()
                 ))
@@ -92,6 +100,29 @@ class SimulationReadinessDebugControllerTest {
                 .body("state", equalTo("WAITING_FOR_CANDLES"));
 
         then(simulationReadinessDebugService).should().inspect(MEMBER_ID, SIMULATION_ID, EXECUTION_AT, true);
+    }
+
+    @DisplayName("강제 재선정은 실행 시각을 전달하고 처리 결과를 반환한다")
+    @Test
+    void forceRebalance() {
+        given(simulationDebugCommandService.forceRebalance(MEMBER_ID, SIMULATION_ID, EXECUTION_AT))
+                .willReturn(new SimulationCandleExecutionService.ForceRebalanceOutcome(
+                        SIMULATION_ID,
+                        SimulationCandleExecutionService.ForceRebalanceOutcome.State.COMPLETED,
+                        EXECUTION_AT,
+                        EXECUTION_AT,
+                        EXECUTION_AT
+                ));
+
+        given()
+                .queryParam("executionAt", EXECUTION_AT.toString())
+                .when()
+                .post("/debug/simulations/{simulationId}/rebalances", SIMULATION_ID)
+                .then()
+                .statusCode(200)
+                .body("state", equalTo("COMPLETED"));
+
+        then(simulationDebugCommandService).should().forceRebalance(MEMBER_ID, SIMULATION_ID, EXECUTION_AT);
     }
 
     private SimulationStrategyReadinessEvaluator.Evaluation evaluation(

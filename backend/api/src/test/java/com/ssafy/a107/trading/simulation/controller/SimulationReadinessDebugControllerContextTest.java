@@ -1,6 +1,7 @@
 package com.ssafy.a107.trading.simulation.controller;
 
 import com.ssafy.a107.trading.simulation.service.SimulationReadinessDebugService;
+import com.ssafy.a107.trading.simulation.service.SimulationDebugCommandService;
 import com.ssafy.a107.auth.jwt.JwtAuthenticationFilter;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,9 @@ class SimulationReadinessDebugControllerContextTest {
 
     @MockBean
     private SimulationReadinessDebugService simulationReadinessDebugService;
+
+    @MockBean
+    private SimulationDebugCommandService simulationDebugCommandService;
 
     @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;

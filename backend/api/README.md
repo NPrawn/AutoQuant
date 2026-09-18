@@ -338,6 +338,20 @@ GET /debug/simulations/{simulationId}/readiness?executionAt=2026-09-18T00:00:00Z
 
 응답의 전체 `state`가 `READY`면 해당 시각의 전략 판단에 필요한 봉이 준비됐다는 뜻이다. 종목별 `state`는 마지막 봉을 기다리는지, 과거 이력이 부족해 제외되는지, 신규 상장이라 제외되는지를 보여 준다. `hideLatestCompletedCandle=true`을 추가하면 마지막 확정 봉이 아직 저장되지 않은 상황을 메모리에서만 재현한다. 이 옵션도 기록을 바꾸지 않으며, 같은 요청을 옵션 없이 다시 호출해 `WAITING_FOR_CANDLES`와 `READY`를 즉시 비교할 수 있다.
 
+### 강제 재선정 검증
+
+아직 봉을 한 번도 처리하지 않은 실행 중 모의투자는 아래 API로 과거 확정 봉 시점의 재선정을 한 번 즉시 재생할 수 있다. 판단에는 직전 확정 봉 종가를, 체결에는 요청 시각의 봉 시가를 사용하며 일반 재선정과 같이 체결·보유 종목·평가자산·후보군 기록을 저장한다.
+
+```http
+POST /debug/simulations/{simulationId}/rebalances?executionAt=2026-09-18T00:00:00Z
+```
+
+- 호출자는 자신의 모의투자만 실행할 수 있다.
+- 첫 봉을 이미 처리한 모의투자는 `ALREADY_PROCESSED`로 응답하며 중복 체결하지 않는다. 강제 검증에는 새 모의투자를 사용한다.
+- 요청 시각이 시작 시각보다 과거면 아직 봉 이력이 없는 실행의 시작 시각을 요청 시각으로 맞춘다.
+- 과거 확정 봉 또는 시가가 아직 없으면 `WAITING_FOR_CANDLES`로 응답하고 체결·보유 종목·평가·후보군 기록을 만들지 않는다.
+- 서버 로그에는 재선정 대기 사유, 준비된 후보 수, 선정 종목 코드, 주문 수와 체결 수를 남긴다.
+
 ## API 문서
 
 Controller 테스트는 `RestAssuredMockMvc`로 실행하고 REST Docs 리소스 스니펫을 생성한다. 성공·오류 응답은 각각 문서화하며 `openapi3` 작업이 동일 API의 응답들을 하나의 OpenAPI 3 YAML로 합친다.

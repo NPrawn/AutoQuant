@@ -1,12 +1,15 @@
 package com.ssafy.a107.trading.simulation.controller;
 
 import com.ssafy.a107.auth.jwt.MemberPrincipal;
+import com.ssafy.a107.trading.simulation.controller.response.SimulationForceRebalanceResponse;
 import com.ssafy.a107.trading.simulation.controller.response.SimulationReadinessDebugResponse;
+import com.ssafy.a107.trading.simulation.service.SimulationDebugCommandService;
 import com.ssafy.a107.trading.simulation.service.SimulationReadinessDebugService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -22,9 +25,25 @@ import java.util.UUID;
 public class SimulationReadinessDebugController {
 
     private final SimulationReadinessDebugService simulationReadinessDebugService;
+    private final SimulationDebugCommandService simulationDebugCommandService;
 
-    public SimulationReadinessDebugController(SimulationReadinessDebugService simulationReadinessDebugService) {
+    public SimulationReadinessDebugController(
+            SimulationReadinessDebugService simulationReadinessDebugService,
+            SimulationDebugCommandService simulationDebugCommandService
+    ) {
         this.simulationReadinessDebugService = simulationReadinessDebugService;
+        this.simulationDebugCommandService = simulationDebugCommandService;
+    }
+
+    @PostMapping("/{simulationId}/rebalances")
+    public SimulationForceRebalanceResponse forceRebalance(
+            @AuthenticationPrincipal MemberPrincipal principal,
+            @PathVariable UUID simulationId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant executionAt
+    ) {
+        return SimulationForceRebalanceResponse.from(simulationDebugCommandService.forceRebalance(
+                principal.memberId(), simulationId, executionAt
+        ));
     }
 
     @GetMapping("/{simulationId}/readiness")
