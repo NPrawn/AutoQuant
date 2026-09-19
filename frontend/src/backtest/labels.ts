@@ -10,7 +10,7 @@ export const statusMeta: Record<BacktestRunStatus, { label: string; chip: string
 
 /* 모르는 상태는 중립 칩이다. */
 export function statusOf(status: string): { label: string; chip: string } {
-  return (statusMeta as Record<string, { label: string; chip: string }>)[status] ?? { label: status, chip: 'chip mute' }
+  return (statusMeta as Record<string, { label: string; chip: string }>)[status] ?? { label: '알 수 없음', chip: 'chip mute' }
 }
 
 /* 아직 끝나지 않은 실행. 이 동안만 조건 폼을 잠근다. 끝난 실행은 결과가 떠 있어도 폼을 막지 않는다. */
@@ -42,7 +42,9 @@ export function priceDecimals(value: number): number {
   if (size >= 100) return 1
   if (size >= 10) return 2
   if (size >= 1) return 3
-  return 4
+  if (size >= 0.01) return 4
+  /* 1전 미만 코인은 네 자리로 반올림하면 0 이 된다. 유효 숫자가 보이는 자리까지 내린다. */
+  return 8
 }
 
 export function formatPriceKrw(value: number | null): string {

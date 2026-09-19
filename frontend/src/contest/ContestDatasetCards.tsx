@@ -78,17 +78,17 @@ export function ContestOutcomeGrid({ outcomes }: { outcomes: ContestDatasetOutco
 export function ContestDatasetTable({ datasets }: { datasets: ContestDatasetItemResponse[] }) {
   return (
     <div className="card">
-      <div className="table-scroll">
+      <div className="table-scroll" tabIndex={0} role="region" aria-label="데이터셋 표">
         <table>
           <thead>
             <tr>
-              <th>장세</th>
-              <th>평가 기간</th>
-              <th className="r">시장 수익률</th>
-              <th>원본 구간</th>
-              <th className="r">뽑은 주</th>
-              <th className="r">시드</th>
-              <th>생성기</th>
+              <th scope="col">장세</th>
+              <th scope="col">평가 기간</th>
+              <th scope="col" className="r">시장 수익률</th>
+              <th scope="col">원본 구간</th>
+              <th scope="col" className="r">뽑은 주</th>
+              <th scope="col" className="r">시드</th>
+              <th scope="col">생성기</th>
             </tr>
           </thead>
           <tbody>

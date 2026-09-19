@@ -119,16 +119,16 @@ export function ContestResultPage() {
 function RankingTable({ rankings }: { rankings: ContestRankingItemResponse[] }) {
   return (
     <div className="card">
-      <div className="table-scroll">
+      <div className="table-scroll" tabIndex={0} role="region" aria-label="회차 결과 표">
         <table>
           <thead>
             <tr>
-              <th style={{ width: 72 }}>순위</th>
-              <th>전략</th>
-              <th className="r">종합</th>
-              <th className="r">수익률</th>
-              <th className="r">안정성</th>
-              <th>판정</th>
+              <th scope="col" style={{ width: 72 }}>순위</th>
+              <th scope="col">전략</th>
+              <th scope="col" className="r">종합</th>
+              <th scope="col" className="r">수익률</th>
+              <th scope="col" className="r">안정성</th>
+              <th scope="col">판정</th>
             </tr>
           </thead>
           <tbody>

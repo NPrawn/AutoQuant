@@ -1,6 +1,6 @@
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/StateBlock'
-import { timeframeLabels } from '../strategy/labels'
+import { timeframeLabel } from '../strategy/labels'
 import type { Timeframe } from '../strategy/types'
 import { factorRows, missingFactorNote } from './factors'
 import type { TradeAmountRank } from './factors'
@@ -23,7 +23,7 @@ export function FactorCard({ assetId, timeframe, rank }: FactorCardProps) {
     <section className="card pad">
       <div className="sec-title" style={{ marginBottom: 2 }}>팩터 값</div>
       <div className="sec-sub" style={{ marginBottom: 12 }}>
-        {timeframeLabels[timeframe]} 기준, 전략이 이 숫자로 후보를 걸러내고 순위를 매깁니다
+        {timeframeLabel(timeframe)} 기준, 전략이 이 숫자로 후보를 걸러내고 순위를 매깁니다
       </div>
 
       {factors.isPending ? (

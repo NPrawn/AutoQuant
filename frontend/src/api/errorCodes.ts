@@ -21,7 +21,6 @@ export const errorCodes = {
   contestEntryNotFound: 'CONTEST-404-002',
   contestSubmissionClosed: 'CONTEST-409-001',
   contestSubmissionLimitExceeded: 'CONTEST-409-002',
-  contestResultNotPublished: 'CONTEST-409-003',
 } as const
 
 export type ErrorCode = (typeof errorCodes)[keyof typeof errorCodes]

@@ -13,6 +13,16 @@ export function MobileNav() {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
 
+  /* 시트를 연 채 창을 넓히면 여는 버튼은 사라지는데 시트만 남아 화면을 덮는다. 사이드바가 돌아오는 폭에서 닫는다. */
+  useEffect(() => {
+    if (!open) return
+    const wide = window.matchMedia('(min-width: 961px)')
+    const close = () => setOpen(false)
+    if (wide.matches) close()
+    wide.addEventListener('change', close)
+    return () => wide.removeEventListener('change', close)
+  }, [open])
+
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) {

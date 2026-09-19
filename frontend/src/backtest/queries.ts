@@ -13,6 +13,7 @@ import {
 import { fetchCandles, fetchChartAssets } from '../market/api'
 import { CANDLE_LIMIT } from '../market/model'
 import { hasUnsettledRun } from './history'
+import { isRunInProgress } from './labels'
 import { benchmarkMarketCode, type BenchmarkCandle } from './performance'
 import { coverageFromInstants, type CandleCoverage } from './periodBounds'
 import { toBacktestResult, toBacktestRun, toBacktestTrade, toEquityPoint } from './types'
@@ -34,7 +35,8 @@ const statusPollIntervalMs = 2000
 /* 목록은 결과 화면만큼 급하지 않아 느슨하게 갱신한다. 진행 중인 실행이 없으면 멈춘다. */
 const listPollIntervalMs = 5000
 
-const isSettled = (status: BacktestRunStatus): boolean => status === 'COMPLETED' || status === 'FAILED'
+/* 모르는 상태는 끝난 것으로 본다. 진행 중으로 보면 서버가 상태를 하나 늘렸을 때 폴링과 폼 잠금이 영원히 풀리지 않는다. */
+const isSettled = (status: BacktestRunStatus): boolean => !isRunInProgress(status)
 
 export function useCreateBacktestRun() {
   const queryClient = useQueryClient()

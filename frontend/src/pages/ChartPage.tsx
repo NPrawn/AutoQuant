@@ -250,43 +250,35 @@ function ChartLegend({ asset, interval, candle }: { asset: ChartAsset; interval:
 }
 
 /* 범례 둘째 줄. 켜 둔 지표의 마지막 값만 보인다. 값이 아직 없으면 그 지표는 적지 않는다. */
-/* 꺼진 지표도 흐린 글자로 자리를 남긴다. 줄이 사라졌다 나타나면 지표를 누를 때마다 범례가 튄다. */
+/*
+ * 지표를 켜고 꺼도 항목 수와 구조가 같다. 꺼진 지표와 아직 값이 없는 지표는 같은 자리에 "—" 로 남긴다.
+ * 항목이 늘고 줄면 지표를 누를 때마다 범례 줄 폭이 요동친다.
+ */
 function IndicatorLegend({ data, indicators }: { data: IndicatorData; indicators: ReadonlySet<IndicatorKey> }) {
-  const entries: Array<{ key: string; token: string; text: string }> = []
   const off = '--ink-4'
+  const value = (on: boolean, point: number | null, format: (value: number) => string) => (on && point !== null ? format(point) : '—')
 
-  if (indicators.has('bb')) {
-    const upper = lastValue(data.bands.upper)
-    const middle = lastValue(data.bands.middle)
-    const lower = lastValue(data.bands.lower)
-    if (upper !== null && middle !== null && lower !== null) {
-      entries.push({
-        key: 'bb',
-        token: '--bb',
-        text: `BB ${bollingerPeriod} ${bollingerMultiplier} ${formatIndicator(upper)} / ${formatIndicator(middle)} / ${formatIndicator(lower)}`,
-      })
-    }
-  } else {
-    entries.push({ key: 'bb', token: off, text: `BB ${bollingerPeriod} ${bollingerMultiplier} 꺼짐` })
-  }
-  if (indicators.has('ma')) {
-    movingAveragePeriods.forEach((period, index) => {
-      const value = lastValue(data.averages[index])
-      if (value !== null) {
-        entries.push({ key: `ma${period}`, token: `--ma${period}`, text: `MA${period} ${formatIndicator(value)}` })
-      }
-    })
-  } else {
-    entries.push({ key: 'ma', token: off, text: `MA ${movingAveragePeriods.join('·')} 꺼짐` })
-  }
-  if (indicators.has('rsi')) {
-    const value = lastValue(data.strength)
-    if (value !== null) {
-      entries.push({ key: 'rsi', token: '--accent', text: `RSI ${value.toFixed(1)}` })
-    }
-  } else {
-    entries.push({ key: 'rsi', token: off, text: 'RSI 꺼짐' })
-  }
+  const bbOn = indicators.has('bb')
+  const upper = lastValue(data.bands.upper)
+  const middle = lastValue(data.bands.middle)
+  const lower = lastValue(data.bands.lower)
+  const entries: Array<{ key: string; token: string; text: string }> = [
+    {
+      key: 'bb',
+      token: bbOn ? '--bb' : off,
+      text: `BB ${bollingerPeriod} ${bollingerMultiplier} ${value(bbOn, upper, formatIndicator)} / ${value(bbOn, middle, formatIndicator)} / ${value(bbOn, lower, formatIndicator)}`,
+    },
+    ...movingAveragePeriods.map((period, index) => ({
+      key: `ma${period}`,
+      token: indicators.has('ma') ? `--ma${period}` : off,
+      text: `MA${period} ${value(indicators.has('ma'), lastValue(data.averages[index]), formatIndicator)}`,
+    })),
+    {
+      key: 'rsi',
+      token: indicators.has('rsi') ? '--accent' : off,
+      text: `RSI ${value(indicators.has('rsi'), lastValue(data.strength), (point) => point.toFixed(1))}`,
+    },
+  ]
 
   return (
     <>

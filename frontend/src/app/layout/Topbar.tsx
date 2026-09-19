@@ -2,6 +2,7 @@ import { Link, useMatches } from 'react-router'
 
 import { useUnreadNotificationCount } from '../../notification/queries'
 import { ThemeToggle } from '../../styles/ThemeToggle'
+import { useRouteErrorShown } from '../routeErrorState'
 import { routes } from '../routes'
 import { AccountMenu } from './AccountMenu'
 import { MobileNav } from './MobileNav'
@@ -24,11 +25,14 @@ type TopbarProps = {
   member: { displayName: string; emailAddress: string }
   runningSimulations: number | null
   logoutPending?: boolean
+  logoutFailed?: boolean
   onLogout?: () => void
 }
 
-export function Topbar({ member, runningSimulations, logoutPending, onLogout }: TopbarProps) {
-  const title = useCurrentTitle()
+export function Topbar({ member, runningSimulations, logoutPending, logoutFailed, onLogout }: TopbarProps) {
+  const routeTitle = useCurrentTitle()
+  const routeErrorShown = useRouteErrorShown()
+  const title = routeErrorShown ? '오류' : routeTitle
   /* 아직 못 읽었으면 0 으로 두어 있지도 않은 알림을 배지로 알리지 않는다. */
   const unreadCount = useUnreadNotificationCount().data ?? 0
 
@@ -61,6 +65,7 @@ export function Topbar({ member, runningSimulations, logoutPending, onLogout }: 
           emailAddress={member.emailAddress}
           runningSimulations={runningSimulations}
           logoutPending={logoutPending}
+          logoutFailed={logoutFailed}
           onLogout={onLogout}
         />
       </div>

@@ -8,10 +8,12 @@ type AccountMenuProps = {
   /* 운용 중인 모의투자 수. 아직 못 읽었으면 null 이라 모달이 근거 없는 말을 하지 않는다. */
   runningSimulations: number | null
   logoutPending?: boolean
+  /* 로그아웃 요청이 실패했는지. 모달을 열어 둔 채 사유를 보인다. */
+  logoutFailed?: boolean
   onLogout?: () => void
 }
 
-export function AccountMenu({ displayName, emailAddress, runningSimulations, logoutPending = false, onLogout }: AccountMenuProps) {
+export function AccountMenu({ displayName, emailAddress, runningSimulations, logoutPending = false, logoutFailed = false, onLogout }: AccountMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -106,14 +108,21 @@ export function AccountMenu({ displayName, emailAddress, runningSimulations, log
         title="로그아웃할까요?"
         description={logoutDescription}
         detail={
-          runningSimulations !== null && runningSimulations > 0 ? (
-            <div className="state-detail logout-detail">
-              <div>
-                <span>운용 중 모의투자</span>
-                <strong>{runningSimulations}건</strong>
+          <>
+            {runningSimulations !== null && runningSimulations > 0 && (
+              <div className="state-detail logout-detail">
+                <div>
+                  <span>운용 중 모의투자</span>
+                  <strong>{runningSimulations}건</strong>
+                </div>
               </div>
-            </div>
-          ) : undefined
+            )}
+            {logoutFailed && (
+              <p className="field-note crit logout-error" role="alert">
+                로그아웃하지 못했습니다. 잠시 후 다시 시도해 주세요.
+              </p>
+            )}
+          </>
         }
         confirmLabel="로그아웃"
         pending={logoutPending}

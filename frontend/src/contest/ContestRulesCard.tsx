@@ -1,4 +1,4 @@
-import { timeframeLabels, timeframes } from '../strategy/labels'
+import { timeframeLabel, timeframes } from '../strategy/labels'
 import { formatPercent } from './labels'
 import type { ContestRoundDetailResponse } from './types'
 
@@ -73,7 +73,7 @@ export function ContestFactorCapsCard({ round }: { round: ContestRoundDetailResp
         .filter((timeframe) => round.factorPeriodCaps[timeframe] !== undefined)
         .map((timeframe) => (
           <div className="krow" key={timeframe}>
-            <span>{timeframeLabels[timeframe]}</span>
+            <span>{timeframeLabel(timeframe)}</span>
             <span className="mono">{round.factorPeriodCaps[timeframe]}봉 이하</span>
           </div>
         ))}

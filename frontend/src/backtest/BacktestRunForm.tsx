@@ -1,7 +1,7 @@
 import { useId } from 'react'
 
 import { useUniverseSize } from '../market/universe'
-import { timeframeLabels } from '../strategy/labels'
+import { timeframeLabel } from '../strategy/labels'
 import type { Strategy } from '../strategy/types'
 import { formatKrw } from './labels'
 import type { PeriodBounds } from './periodBounds'
@@ -105,7 +105,7 @@ export function BacktestRunForm({ form, strategy, today, bounds, loadingCoverage
           id={`${id}-timeframe`}
           type="text"
           readOnly
-          value={strategy ? timeframeLabels[strategy.dsl.timeframe] : '전략을 선택하면 표시됩니다'}
+          value={strategy ? timeframeLabel(strategy.dsl.timeframe) : '전략을 선택하면 표시됩니다'}
         />
         <p className="field-note">전략에 저장된 주기를 그대로 씁니다.</p>
       </div>

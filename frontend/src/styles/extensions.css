@@ -345,6 +345,10 @@ dialog.nav-sheet-scrim {
 html {
   scrollbar-gutter: stable;
 }
+/* 차트 화면은 문서가 스크롤되지 않아 빈 띠만 남는다. 거기서는 비워 두지 않는다. */
+html:has(#view-chart.active) {
+  scrollbar-gutter: auto;
+}
 .coin-list,
 .live-feed,
 .bot-body,
@@ -452,4 +456,18 @@ html {
 .modal .state-detail.logout-detail {
   width: 100%;
   margin: 0 0 20px;
+}
+
+/* 알림 본문. button 안에는 p 를 둘 수 없어 span 을 블록으로 쓴다. 모양은 목업의 .notif p 와 같다. */
+.notif .notif-body {
+  display: block;
+  margin-top: 4px;
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 로그아웃 실패 문구. 모달 안에서 확정 버튼 위에 놓인다. */
+.modal .logout-error {
+  margin: 0 0 16px;
 }

@@ -3,7 +3,7 @@ import { useId, useState } from 'react'
 import { formatKrw } from '../backtest/labels'
 import { feeRate, slippageBps } from '../backtest/runForm'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { rebalanceMeta, timeframeLabels } from '../strategy/labels'
+import { rebalanceOf, timeframeLabel } from '../strategy/labels'
 import { summarizeDsl } from '../strategy/summary'
 import type { Strategy } from '../strategy/types'
 import type { SimulationStartForm } from './startForm'
@@ -47,7 +47,7 @@ export function SimulationStartDialog({ open, strategy, form, pending, onConfirm
           </div>
           <div className="krow">
             <span>판단 주기 · 재선정</span>
-            <span>{strategy ? `${timeframeLabels[strategy.dsl.timeframe]} 종가 · ${rebalanceMeta[strategy.dsl.rebalance.period].label}` : '—'}</span>
+            <span>{strategy ? `${timeframeLabel(strategy.dsl.timeframe)} 종가 · ${rebalanceOf(strategy.dsl.rebalance.period).label}` : '—'}</span>
           </div>
           <div className="krow">
             <span>비용 · 체결</span>

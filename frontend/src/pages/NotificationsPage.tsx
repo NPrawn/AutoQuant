@@ -100,7 +100,7 @@ function NotificationRow({ notification }: NotificationRowProps) {
       </span>
       <button className="notif-main" type="button" onClick={open} disabled={!canOpen || markRead.isPending}>
         <b>{notification.title}</b>
-        {notification.body !== null && <p>{notification.body}</p>}
+        {notification.body !== null && <span className="notif-body">{notification.body}</span>}
       </button>
       <div className="notif-side">
         <time dateTime={notification.createdAt.toISOString()}>
