@@ -11,10 +11,20 @@ import { formatKrw, isRunInProgress, statusOf } from '../backtest/labels'
 import { periodBounds } from '../backtest/periodBounds'
 import { useBacktestRun, useBacktestRuns, useCandleCoverage, useCreateBacktestRun } from '../backtest/queries'
 import { describeFailedRun, describeRunError } from '../backtest/runErrorMessage'
-import { applyPreset, clampPeriodStart, createRunForm, setStrategyId, toCreateRequest, validateRunForm } from '../backtest/runForm'
+import {
+  applyPreset,
+  clampPeriodStart,
+  createRunForm,
+  setInitialCapital,
+  setPeriodEnd,
+  setPeriodStart,
+  setStrategyId,
+  toCreateRequest,
+  validateRunForm,
+} from '../backtest/runForm'
 import { RunHistoryTable } from '../backtest/RunHistoryTable'
 import { StrategyPicker } from '../backtest/StrategyPicker'
-import { readBacktestEntry } from '../strategy/backtestEntry'
+import { hasPeriod, readBacktestEntry } from '../strategy/backtestEntry'
 import { useStrategies } from '../strategy/queries'
 import type { Strategy } from '../strategy/types'
 
@@ -49,7 +59,17 @@ export function BacktestPage() {
   const strategies = useStrategies()
   const coverage = useCandleCoverage()
   const today = useToday()
-  const [form, setForm] = useState(() => createRunForm(entry?.strategyId ?? '', today, unknownBounds(today)))
+  /* "같은 조건 다시" 로 들어오면 그 기간과 초기자산으로 시작한다. 아니면 기본 폼이다. */
+  const [form, setForm] = useState(() => {
+    let initial = createRunForm(entry?.strategyId ?? '', today, unknownBounds(today))
+    if (hasPeriod(entry)) {
+      initial = setPeriodEnd(setPeriodStart(initial, entry.periodStart), entry.periodEnd)
+    }
+    if (entry?.initialCapital !== undefined) {
+      initial = setInitialCapital(initial, entry.initialCapital)
+    }
+    return initial
+  })
   /* 하한을 이미 반영한 전략. 전략이 바뀐 순간에만 시작일을 끌어올리려고 기억한다. */
   const [clampedFor, setClampedFor] = useState<string | null>(null)
   const [showIssues, setShowIssues] = useState(false)
@@ -84,7 +104,8 @@ export function BacktestPage() {
   if (coverage.isSuccess && selectedStrategy !== null && clampedFor !== selectedStrategy.id) {
     const first = clampedFor === null
     setClampedFor(selectedStrategy.id)
-    setForm(first ? applyPreset(form, 'all', today, bounds) : clampPeriodStart(form, bounds))
+    /* 진입 상태가 기간을 들고 왔으면 기본 프리셋으로 덮지 않고 하한만 지킨다. */
+    setForm(first && !hasPeriod(entry) ? applyPreset(form, 'all', today, bounds) : clampPeriodStart(form, bounds))
   }
 
   const startRun = () => {

@@ -471,3 +471,134 @@ html:has(#view-chart.active) {
 .modal .logout-error {
   margin: 0 0 16px;
 }
+
+/*
+ * 전략 상세를 관리 화면으로. 위에 지금 상태 카드 셋, 아래에 이 전략으로 한 일, 맨 아래에 접어 둔 구성·코드·공개.
+ * 목업 07 은 공개 전략 보기라 이 배치가 없어 여기서 정한다. 카드는 목업의 .card 를, 표는 .table-scroll 을 그대로 쓴다.
+ */
+.detail-actions .btn.quiet {
+  color: var(--ink-3);
+  border-color: transparent;
+}
+.detail-actions .btn.quiet:hover {
+  color: var(--ink);
+  border-color: var(--line);
+}
+.now-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 24px;
+}
+.now-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 108px;
+}
+.now-card > span {
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 600;
+}
+.now-card strong {
+  font-size: 20px;
+  letter-spacing: -0.025em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+.now-card a,
+.now-card button.link {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.now-card a:hover,
+.now-card button.link:hover {
+  color: var(--ink);
+}
+.now-card .muted {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.hist-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 12px;
+}
+.hist-tabs button {
+  border: 1px solid transparent;
+  background: none;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-family: inherit;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.hist-tabs button.on {
+  background: var(--panel-3);
+  color: var(--ink);
+  font-weight: 600;
+}
+.hist-tabs button i {
+  font-style: normal;
+  color: var(--ink-3);
+  margin-left: 6px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+}
+.row-acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.detail-fold {
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+}
+.detail-fold details {
+  border-bottom: 1px solid var(--line);
+}
+.detail-fold summary {
+  cursor: pointer;
+  padding: 14px 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.detail-fold summary::-webkit-details-marker {
+  display: none;
+}
+.detail-fold summary::after {
+  content: "펼치기";
+  color: var(--ink-4);
+  font-size: 11px;
+  flex: none;
+}
+.detail-fold details[open] summary::after {
+  content: "접기";
+}
+.detail-fold .fold-body {
+  padding: 4px 0 24px;
+}
+@media (max-width: 900px) {
+  .now-grid {
+    grid-template-columns: 1fr;
+  }
+}
