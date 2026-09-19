@@ -20,8 +20,8 @@ export const routes = {
   notifications: '/notifications',
 } as const
 
-/* 전략 상세의 탭. 기본 탭인 성과는 세그먼트를 붙이지 않는다. */
-export type StrategyDetailTab = 'strategy' | 'code'
+/* 전략 상세의 기록 탭. 기본인 백테스트는 세그먼트를 붙이지 않는다. */
+export type StrategyDetailTab = 'simulations'
 
 export const to = {
   contestDetail: (contestId: string) => `/contests/${contestId}`,

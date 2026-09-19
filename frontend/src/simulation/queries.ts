@@ -54,6 +54,35 @@ export function useSimulationRuns(page: number) {
  */
 export const runningSimulationCountQueryKey = [...simulationListQueryKey, 'running-count'] as const
 
+/*
+ * 전략 상세가 전략별로 거르는 전체 이력. 서버에 전략 필터가 없어 앞에서부터 정해진 페이지까지 이어 받는다.
+ * 백테스트 이력과 같은 방식이다. 운용 중이 하나라도 있으면 상태가 바뀔 수 있어 15초로 다시 묻는다.
+ */
+export const simulationHistoryQueryKey = [...simulationListQueryKey, 'all'] as const
+const maxHistoryPages = 5
+
+async function fetchAllSimulationRuns(): Promise<SimulationRunResponse[]> {
+  const runs: SimulationRunResponse[] = []
+  let page = 0
+  let totalPages = 1
+  while (page < totalPages && page < maxHistoryPages) {
+    const response = await fetchSimulationRuns(page, maxPageSize)
+    runs.push(...response.content)
+    totalPages = response.totalPages
+    page += 1
+  }
+  return runs
+}
+
+export function useSimulationHistory() {
+  return useQuery({
+    queryKey: simulationHistoryQueryKey,
+    queryFn: fetchAllSimulationRuns,
+    select: (responses) => responses.map(toSimulationRun),
+    refetchInterval: (query) => (query.state.data?.some((run) => run.status === 'RUNNING') ? livePollIntervalMs : false),
+  })
+}
+
 export function useRunningSimulationCount() {
   return useQuery({
     queryKey: runningSimulationCountQueryKey,

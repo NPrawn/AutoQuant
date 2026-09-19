@@ -58,6 +58,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 알림이 어디로 가는지는 화면이 정한다. 서버는 종류와 `targetId` 만 주므로 경로 대응은 `notification/targetRoute.ts` 의 `targetRoute` 하나에 둔다. 모르는 종류는 null 이다. 대회 채점 알림(`CONTEST_SCORED`)의 `targetId` 는 백테스트가 아니라 회차라 결과 화면으로 보낸다. 시각 표기와 아이콘·색은 `notification/labels.ts` 가 맡는다.
 - 알림 색도 색 계약을 따른다. 실패는 `--crit` 을 쓰는 `alert`, 완료는 `--good` 을 쓰는 `done` 이다.
 - 전략 공개는 남에게 보이기 시작하는 동작이라 ConfirmDialog 로 한 번 묻는다. 되돌리는 비공개는 묻지 않는다.
+- 전략 상세는 이 전략으로 한 일을 모아 관리하는 화면이다. 위에 지금 상태 카드(운용 중 모의투자, 최근 백테스트, 대회), 아래에 백테스트·모의투자 기록 탭, 맨 아래 접어 둔 구성·코드·공개. 단계 판정과 주 버튼은 `strategy/stage.ts` 의 순수 함수가 정한다. 모의투자 전체 이력은 `useSimulationHistory` 로 받아 화면이 전략별로 거른다. "같은 조건 다시" 는 `BacktestEntryState` 에 기간·초기자산을 실어 보내고 백테스트 화면은 그 값이 있으면 기본 기간 프리셋을 적용하지 않는다.
 - 오류 코드는 `src/api/errorCodes.ts`의 상수만 쓰고 `'AUTH-401-…'` 문자열을 화면 코드에 직접 쓰지 않는다.
 - 401 은 화면이 처리하지 않는다. `QueryClient` 캐시의 `onError`가 회원 쿼리를 "로그인 안 됨"으로 바꾸고 `RequireAuth`가 이유를 붙여 로그인 화면으로 보낸다.
 - 로딩·빈·오류 상태는 `src/components`의 `LoadingState`, `EmptyState`, `ErrorState`를 쓴다. 화면이 같은 구조를 다시 그리지 않는다.
