@@ -46,13 +46,15 @@ type ErrorStateProps = {
   /* 목업 24·27 의 .state-detail. 무엇이 잘못됐는지 항목별로 보일 때 쓴다. */
   details?: ErrorDetailRow[]
   onRetry?: () => void
+  /* 재시도 버튼 글자. 새로고침처럼 동작이 다르면 그렇게 적는다. */
+  retryLabel?: string
   actions?: ReactNode
 }
 
 const defaultErrorTitle = '문제가 발생했습니다'
 const defaultErrorDescription = '잠시 후 다시 시도해 주세요. 계속되면 관리자에게 알려 주세요.'
 
-export function ErrorState({ title = defaultErrorTitle, description, error, details, onRetry, actions }: ErrorStateProps) {
+export function ErrorState({ title = defaultErrorTitle, description, error, details, onRetry, retryLabel = '다시 시도', actions }: ErrorStateProps) {
   const apiError = isApiError(error) ? error : null
 
   return (
@@ -89,7 +91,7 @@ export function ErrorState({ title = defaultErrorTitle, description, error, deta
           <>
             {onRetry && (
               <button className="btn primary" type="button" onClick={onRetry}>
-                다시 시도
+                {retryLabel}
               </button>
             )}
             {actions}

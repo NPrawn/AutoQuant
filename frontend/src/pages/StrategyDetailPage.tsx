@@ -17,7 +17,7 @@ import { EmptyState, ErrorState } from '../components/StateBlock'
 import { describeStrategy } from '../strategy/assistant/conversation'
 import type { BacktestEntryState } from '../strategy/backtestEntry'
 import { draftFromDsl } from '../strategy/draft'
-import { describeRanking, directionLabels, factorMeta, rebalanceMeta, timeframeLabels, toTimeframe } from '../strategy/labels'
+import { describeRanking, directionLabel, factorOf, rebalanceOf, timeframeLabel, toTimeframe } from '../strategy/labels'
 import { useChangeStrategyVisibility, useCopyStrategy, useDeleteStrategy, useStrategy } from '../strategy/queries'
 import { summarizeFilters } from '../strategy/summary'
 import { describeCopyError, describeVisibilityError } from '../strategy/translateErrorMessage'
@@ -347,7 +347,7 @@ function StrategyPane({ strategy }: { strategy: Strategy }) {
   const { dsl } = strategy
   const filters = summarizeFilters(dsl)
   const weight = (100 / dsl.selection.topN).toFixed(1)
-  const rebalance = rebalanceMeta[dsl.rebalance.period]
+  const rebalance = rebalanceOf(dsl.rebalance.period)
 
   return (
     <>
@@ -388,7 +388,7 @@ function StrategyPane({ strategy }: { strategy: Strategy }) {
                 <b>{describeRanking(dsl.ranking)}</b> 으로 통과 종목을 정렬
               </li>
               <li>
-                {factorMeta[dsl.ranking.factor].label}이 {directionLabels[dsl.ranking.direction]}인 종목이 앞에 옵니다
+                {factorOf(dsl.ranking.factor).label}이 {directionLabel(dsl.ranking.direction)}인 종목이 앞에 옵니다
               </li>
               <li>종목 간 비교가 가능하도록 절대가격이 아닌 비율 팩터만 사용</li>
             </ul>
@@ -421,7 +421,7 @@ function StrategyPane({ strategy }: { strategy: Strategy }) {
               <li>
                 <b>{rebalance.label}</b> Filter와 Ranking을 다시 수행
               </li>
-              <li>{timeframeLabels[dsl.timeframe]} 종가 기준으로 판단</li>
+              <li>{timeframeLabel(dsl.timeframe)} 종가 기준으로 판단</li>
               <li>{rebalance.note}</li>
             </ul>
           </div>
@@ -501,7 +501,7 @@ function CodePane({ strategy }: { strategy: Strategy }) {
         </div>
         <div>
           <span>데이터 주기</span>
-          <strong>{timeframeLabels[strategy.dsl.timeframe]}</strong>
+          <strong>{timeframeLabel(strategy.dsl.timeframe)}</strong>
         </div>
         <div>
           <span>자산 배분</span>

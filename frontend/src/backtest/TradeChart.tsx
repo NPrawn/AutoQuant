@@ -68,7 +68,7 @@ export function TradeChart({ backtestId, timeframe }: TradeChartProps) {
         <p className="goal-note" style={{ margin: 0 }}>아직 이 종목의 봉이 없습니다.</p>
       ) : (
         <Suspense fallback={<LoadingState label="차트를 준비하는 중…" />}>
-          <MinuteCandleChart candles={candles.data ?? []} data={data} indicators={chartIndicators} markers={markers} />
+          <MinuteCandleChart candles={candles.data ?? []} data={data} indicators={chartIndicators} markers={markers} subPanes={false} />
         </Suspense>
       )}
     </>

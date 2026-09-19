@@ -27,6 +27,7 @@ export function AppShell() {
           member={data.member}
           runningSimulations={runningSimulations.data ?? null}
           logoutPending={logout.isPending}
+          logoutFailed={logout.isError}
           onLogout={() => logout.mutate()}
         />
         <main className="wrap">

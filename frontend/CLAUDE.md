@@ -26,7 +26,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 로그인은 사이드바가 없는 화면이라 공통 레이아웃 라우트(`AppShell`) 바깥에 둔다.
 - 상단바 제목은 라우트 정의의 `handle.title`로 정하고 페이지 컴포넌트가 제목을 그리지 않는다.
 - 사이드바 항목은 `src/app/navigation.tsx`에만 추가한다.
-- 모달은 네이티브 `dialog`를 `showModal()`로 열고 겉모습만 목업의 `.mbd`·`.modal`을 쓴다. 포커스 트랩, Esc 닫기, 바깥 요소 비활성화는 브라우저에 맡기고 직접 구현하지 않는다. 되돌릴 수 없는 동작의 확인은 `src/components/ConfirmDialog`를 쓴다.
+- 모달은 네이티브 `dialog`를 `showModal()`로 열고 겉모습만 목업의 `.mbd`·`.modal`을 쓴다. 포커스 트랩, Esc 닫기, 바깥 요소 비활성화는 브라우저에 맡기고 직접 구현하지 않는다. 되돌릴 수 없는 동작의 확인은 `src/components/ConfirmDialog`를 쓴다. 처리 중에는 Esc 와 바깥 클릭을 막고, 실패 문구는 `detail` 로 모달 안에 보여 모달을 닫지 않는다.
 - 드롭다운 메뉴는 열렸을 때만 렌더링하고 바깥 `pointerdown`과 Esc 로 닫으며, 닫힐 때 여는 버튼으로 포커스를 되돌린다.
 - 정의되지 않은 경로는 `AppShell` 안의 `NotFoundPage`가 받아 사이드바와 상단바가 남는다. 화면이 렌더 중 던진 예외는 `AppShell` 안 pathless 라우트의 `errorElement`(`RouteErrorPage`)가 셸 안에서 받는다. 960px 이하에서는 상단바의 `MobileNav`가 `navigation.tsx`의 같은 항목을 dialog 시트로 연다.
 - 비활성 버튼은 `extensions.css`의 `.btn:disabled` 한 벌로 흐려지고 hover 가 걸리지 않는다. 컴포넌트가 비활성 모양을 따로 그리지 않는다.
@@ -37,7 +37,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 모든 API 호출은 `src/api/client.ts`의 `request`를 지난다. 컴포넌트가 `fetch`를 직접 부르지 않는다.
 - 실패는 `ApiError` 하나로 던진다. 응답 본문은 backend/api 의 `ApiErrorResponse`와 같다.
 - 서버 데이터는 TanStack Query 훅으로 읽는다. 훅은 `src/{feature}/queries.ts`에 두고 쿼리 키는 그 파일에서만 정한다. 상태 폴링의 `refetchInterval` 은 오류 상태에서도 멈춰야 한다. 인터벌은 실패해도 돌아간다.
-- 서버 enum 을 `Record` 로 바로 읽지 않는다. 상태 칩은 `statusOf`, 알림 모양은 `notificationLook`, 봉 주기는 `toTimeframe` 처럼 모르는 값에 기본을 돌려주는 함수를 거친다. 서버에 값이 하나 늘어도 화면이 깨지지 않아야 한다.
+- 서버 enum 을 `Record` 로 바로 읽지 않는다. 상태 칩은 `statusOf`, 알림 모양은 `notificationLook`, 봉 주기는 `toTimeframe`·`timeframeLabel`, 재선정은 `rebalanceOf`, 팩터는 `factorOf`, 정렬은 `directionLabel` 처럼 모르는 값에 기본을 돌려주는 함수를 거친다. 빌더가 스스로 만든 초안 값은 `Record` 를 바로 읽어도 된다. "끝났는지" 같은 판정은 모르는 값을 끝난 것으로 본다. 진행 중으로 보면 폴링과 잠금이 영원히 풀리지 않는다. 서버에 값이 하나 늘어도 화면이 깨지지 않아야 한다.
 - 목록 카드는 폴링하지 않고 한 번만 읽는다. 카드 수만큼 요청이 곱해진다. 실시간 갱신은 상세 화면이 한다. 검색 입력은 300ms 디바운스한 뒤 서버 조건에 넣는다.
 - 토큰은 `httpOnly` 쿠키라 프론트가 읽거나 저장하지 않는다. 로그인 여부의 유일한 근거는 `useCurrentMember`(`GET /members/me`) 결과다.
 - 인증이 필요한 화면은 `RequireAuth` 아래에, 로그인 화면은 `GuestOnly` 아래에 둔다.
@@ -67,7 +67,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 차트 책임은 `src/market`의 API·queries, STOMP 연결(선택 종목은 `stream.ts`, 여러 종목 현재가는 `priceStream.ts`), 데이터 검증·병합(`model.ts`), 표시값 계산(`ticker.ts`), 차트 렌더러로 나눈다. `ChartPage`는 종목 선택과 표시만 한다.
 - 차트 화면은 목업 04 의 클래스(`.chart-shell` `.coin-list` `.coin-row` `.tick-stats` `.tfs` `.inds` `.chart-legend` `.tr-head` `.trr`)를 쓴다. 이미 `base.css`에 있으므로 같은 목적의 클래스를 새로 만들지 않는다.
 - 보조지표 계산은 `src/market/indicators.ts` 의 순수 함수에만 두고 차트는 그린 결과만 받는다. 값은 한 번 계산해 범례와 차트가 함께 쓴다. 기간이 채워지기 전 구간은 값을 만들지 않는다.
-- `MinuteCandleChart` 는 차트, 모의투자 실시간, 전략 상세가 함께 쓴다. 크기는 화면마다 다르므로 `#candle` 높이 규칙을 `extensions.css` 에 두고 컴포넌트는 크기를 정하지 않는다. 지표를 켜고 꺼도 봉 자리가 같아야 하므로 가격 축 폭을 고정하고, 오른쪽 끝을 최신 봉에 붙이고, 거래량·RSI 패널은 접지 않고 라벨에 "꺼짐" 만 붙인다. 범례도 꺼진 지표를 흐린 글자로 남긴다.- 체결 마커는 표시 전용이다. 종목 선택과 좌표 변환은 `backtest/tradeMarkers.ts` 의 순수 함수에 두고 차트는 받은 것만 찍는다. 마커가 있으면 그 구간에 화면을 맞춘다.
+- `MinuteCandleChart` 는 차트, 모의투자 실시간, 전략 상세가 함께 쓴다. 크기는 화면마다 다르므로 `#candle` 높이 규칙을 `extensions.css` 에 두고 컴포넌트는 크기를 정하지 않는다. 지표를 켜고 꺼도 봉 자리가 같아야 하므로 가격 축 폭을 고정하고, 오른쪽 끝을 최신 봉에 붙이고, 거래량·RSI 패널은 접지 않고 라벨에 "꺼짐" 만 붙인다. 이 고정은 지표 토글이 있는 차트 화면에만 해당하고, 토글이 없는 전략 상세 체결 차트는 `subPanes={false}` 로 패널을 만들지 않는다. 범례는 지표를 켜고 꺼도 항목 수와 구조가 같고 꺼진 값은 "—" 다.- 체결 마커는 표시 전용이다. 종목 선택과 좌표 변환은 `backtest/tradeMarkers.ts` 의 순수 함수에 두고 차트는 받은 것만 찍는다. 마커가 있으면 그 구간에 화면을 맞춘다.
 - 화면 표시용 지표와 전략이 쓰는 팩터를 섞지 않는다. 전자는 프론트가 계산하고 후자는 서버가 계산한 값을 그대로 받는다. 둘이 어긋나면 사용자가 본 숫자와 전략 판단이 달라진다.
 - 팩터 값은 `GET /assets/{assetId}/factors` 로 받아 `src/market/factors.ts` 가 표기만 만든다. 기간은 서버가 정하므로 화면에 기간을 적어 두지 않는다. 단위와 소수 자리는 `strategy/labels.ts` 의 `factorMeta` 하나로 빌더와 맞춘다.
 - 백테스트 결과의 성과 차트는 목업 12 의 SVG 에서 위 구간(지수 100 기준 누적 수익)만 가져온다. 낙폭 구간은 두지 않는다. 지수화·회차 묶기·좌표는 `backtest/performance.ts` 의 순수 함수에 두고 `PerformanceChart` 는 그린 결과만 받는다. 단순보유 비교는 `KRW-BTC` 일봉을 평가 시각 앞에 시작한 마지막 봉의 종가로 맞춘다. 모의투자 실시간 화면의 `EquityChart` 와는 다른 차트라 서로 바꿔 쓰지 않는다. 목업 클래스 `.perf-plot` `.rb-mark` `.rb-tip` `.rb-cursor` `.legend` 는 `base.css` 에 있으므로 새로 만들지 않는다.

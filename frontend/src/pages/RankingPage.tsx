@@ -60,10 +60,15 @@ export function RankingPage() {
   const rankings = useContestRankings(roundId, params)
   const myResult = useMyContestResult(roundId ?? undefined, roundId !== null)
 
-  const changeRound = (nextRoundId: string) => {
-    setSelectedRoundId(nextRoundId)
+  /* 서버 조건과 입력 칸을 함께 비운다. 조건만 비우면 입력 칸에 검색어가 남은 채 전체 결과가 나온다. */
+  const resetFilters = () => {
     setQuery(defaultRankingQuery)
     setSearchInput(defaultRankingQuery.search)
+  }
+
+  const changeRound = (nextRoundId: string) => {
+    setSelectedRoundId(nextRoundId)
+    resetFilters()
   }
 
   const copyStrategy = (strategyId: number) => {
@@ -217,7 +222,7 @@ export function RankingPage() {
               }
               actions={
                 isFiltered(query) && (
-                  <button className="btn primary" type="button" onClick={() => setQuery(defaultRankingQuery)}>
+                  <button className="btn primary" type="button" onClick={resetFilters}>
                     필터 초기화
                   </button>
                 )

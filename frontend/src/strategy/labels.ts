@@ -72,6 +72,26 @@ export const rebalanceMeta: Record<RebalancePeriod, { label: string; note: strin
 
 export const rebalancePeriods = Object.keys(rebalanceMeta) as RebalancePeriod[]
 
+/*
+ * 서버가 준 값으로 읽을 때는 이 함수들을 거친다. Record 를 바로 읽으면 서버에 값이 하나 늘 때
+ * undefined.label 로 화면이 깨진다. 모르는 값은 원문을 그대로 적거나 중립값을 준다.
+ */
+export function rebalanceOf(period: string): { label: string; note: string } {
+  return (rebalanceMeta as Record<string, { label: string; note: string }>)[period] ?? { label: period, note: '' }
+}
+
+export function timeframeLabel(timeframe: string): string {
+  return (timeframeLabels as Record<string, string>)[timeframe] ?? timeframe
+}
+
+export function factorOf(factor: string): FactorMeta {
+  return (factorMeta as Record<string, FactorMeta>)[factor] ?? { label: factor, short: factor, unit: '', decimals: 2, defaultPeriod: 20 }
+}
+
+export function directionLabel(direction: string): string {
+  return (directionLabels as Record<string, string>)[direction] ?? direction
+}
+
 /* 수익률처럼 부호가 의미 있는 지표에만 + 를 붙인다. RSI, 변동성, 거래량 비율은 크기만 뜻해 부호를 붙이지 않는다. */
 const unsignedFactors: ReadonlySet<FactorType> = new Set<FactorType>(['RSI', 'VOLATILITY', 'VOLUME_RATIO'])
 

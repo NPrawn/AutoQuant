@@ -14,6 +14,8 @@ type MinuteCandleChartProps = {
   indicators: ReadonlySet<IndicatorKey>
   /* 봉 위에 찍을 체결. 지난 실행을 되짚는 화면만 넘긴다. */
   markers?: readonly TradeMarker[]
+  /* 거래량·RSI 패널을 둘지. 지표 토글이 있는 화면만 true 다. 자리 고정 규칙은 토글이 있을 때만 의미가 있다. */
+  subPanes?: boolean
 }
 
 const toTime = (time: number) => time as UTCTimestamp
@@ -54,7 +56,7 @@ function withAlpha(color: string, alpha: number): string {
  * 봉 차트와 보조지표. 지표는 같은 창의 별도 패널에 둔다. 거래량과 RSI 는 가격과 축이 달라
  * 같은 패널에 그리면 봉이 눌린다.
  */
-export function MinuteCandleChart({ candles, data, indicators, markers }: MinuteCandleChartProps) {
+export function MinuteCandleChart({ candles, data, indicators, markers, subPanes = true }: MinuteCandleChartProps) {
   const container = useRef<HTMLDivElement>(null)
   const chart = useRef<IChartApi>(null)
   const price = useRef<ISeriesApi<'Candlestick'>>(null)
@@ -107,18 +109,23 @@ export function MinuteCandleChart({ candles, data, indicators, markers }: Minute
     tradeMarkers.current = createSeriesMarkers(price.current, [])
     averages.current = movingAveragePeriods.map(() => created.addSeries(LineSeries, { lineWidth: 1, priceLineVisible: false, lastValueVisible: false }))
     bands.current = [0, 1, 2].map(() => created.addSeries(LineSeries, { lineWidth: 1, priceLineVisible: false, lastValueVisible: false }))
-    /* 패널 1 은 거래량, 패널 2 는 RSI 다. 순서를 바꾸면 축 눈금이 뒤섞인다. */
-    volume.current = created.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceLineVisible: false }, 1)
-    strength.current = created.addSeries(LineSeries, { lineWidth: 1, priceLineVisible: false }, 2)
+    /*
+     * 패널 1 은 거래량, 패널 2 는 RSI 다. 순서를 바꾸면 축 눈금이 뒤섞인다.
+     * 토글이 없는 화면(전략 상세 체결 차트)은 패널을 만들지 않는다. 빈 패널이 봉 영역을 먹는다.
+     */
+    if (subPanes) {
+      volume.current = created.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceLineVisible: false }, 1)
+      strength.current = created.addSeries(LineSeries, { lineWidth: 1, priceLineVisible: false }, 2)
 
-    /* 아래 두 패널은 축이 달라 무엇을 그린 것인지 이름을 붙여야 읽힌다. 목업도 좌상단에 적는다. */
-    const panes = created.panes()
-    paneLabels.current = paneTitles
-      .map((text, index) => [panes[index + 1], text] as const)
-      .filter(([pane]) => pane !== undefined)
-      .map(([pane]) => createTextWatermark(pane, { horzAlign: 'left', vertAlign: 'top' }))
-    panes[1]?.setHeight(subPaneHeight)
-    panes[2]?.setHeight(subPaneHeight)
+      /* 아래 두 패널은 축이 달라 무엇을 그린 것인지 이름을 붙여야 읽힌다. 목업도 좌상단에 적는다. */
+      const panes = created.panes()
+      paneLabels.current = paneTitles
+        .map((text, index) => [panes[index + 1], text] as const)
+        .filter(([pane]) => pane !== undefined)
+        .map(([pane]) => createTextWatermark(pane, { horzAlign: 'left', vertAlign: 'top' }))
+      panes[1]?.setHeight(subPaneHeight)
+      panes[2]?.setHeight(subPaneHeight)
+    }
 
     const applyTheme = () => {
       const style = getComputedStyle(document.documentElement)
@@ -163,8 +170,8 @@ export function MinuteCandleChart({ candles, data, indicators, markers }: Minute
       bandFill.current = []
       tradeMarkers.current = null
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- subPanes 는 화면마다 고정이라 마운트 때 한 번만 읽는다
   }, [])
-
 
   useEffect(() => {
     price.current?.setData(

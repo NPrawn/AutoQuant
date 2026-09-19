@@ -1,4 +1,4 @@
-import type { MouseEvent, ReactNode } from 'react'
+import type { MouseEvent, ReactNode, SyntheticEvent } from 'react'
 import { useEffect, useId, useRef } from 'react'
 
 /*
@@ -49,6 +49,15 @@ export function ConfirmDialog({
     }
   }, [open])
 
+  /* Esc. 처리 중에는 막는다. close 이벤트에는 따로 걸지 않아 Esc 한 번에 onCancel 이 한 번만 불린다. */
+  const handleCancel = (event: SyntheticEvent<HTMLDialogElement>) => {
+    if (pending) {
+      event.preventDefault()
+      return
+    }
+    onCancel()
+  }
+
   /* 스크림은 dialog 요소 자체가 화면을 덮어 만든다. 카드 바깥을 누르면 target 이 dialog 다. */
   const handleBackdropClick = (event: MouseEvent<HTMLDialogElement>) => {
     if (event.target === dialogRef.current && !pending) {
@@ -57,7 +66,7 @@ export function ConfirmDialog({
   }
 
   return (
-    <dialog ref={dialogRef} className="mbd on" aria-labelledby={titleId} onCancel={onCancel} onClose={onCancel} onClick={handleBackdropClick}>
+    <dialog ref={dialogRef} className="mbd on" aria-labelledby={titleId} onCancel={handleCancel} onClick={handleBackdropClick}>
       <div className="modal">
         <h3 id={titleId}>{title}</h3>
         <p className="s">{description}</p>

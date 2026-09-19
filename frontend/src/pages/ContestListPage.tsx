@@ -71,13 +71,13 @@ export function ContestListPage() {
             </div>
           </div>
           <div className="card">
-            <div className="table-scroll">
+            <div className="table-scroll" tabIndex={0} role="region" aria-label="대회 회차 표">
               <table>
                 <thead>
                   <tr>
-                    <th>이름</th>
-                    <th className="r">제출 시작</th>
-                    <th className="r">마감</th>
+                    <th scope="col">이름</th>
+                    <th scope="col" className="r">제출 시작</th>
+                    <th scope="col" className="r">마감</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -104,16 +104,16 @@ export function ContestListPage() {
             </div>
           </div>
           <div className="card">
-            <div className="table-scroll">
+            <div className="table-scroll" tabIndex={0} role="region" aria-label="대회 회차 표">
               <table>
                 <thead>
                   <tr>
-                    <th>이름</th>
-                    <th className="r">참가</th>
-                    <th>1위 전략</th>
-                    <th className="r">내 순위</th>
-                    <th className="r">종합 점수</th>
-                    <th />
+                    <th scope="col">이름</th>
+                    <th scope="col" className="r">참가</th>
+                    <th scope="col">1위 전략</th>
+                    <th scope="col" className="r">내 순위</th>
+                    <th scope="col" className="r">종합 점수</th>
+                    <th scope="col"><span className="sr-only">작업</span></th>
                   </tr>
                 </thead>
                 <tbody>

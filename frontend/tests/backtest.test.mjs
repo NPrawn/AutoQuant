@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { formatPriceKrw, isRunInProgress } from '../src/backtest/labels.ts'
+import { formatPriceKrw, isRunInProgress, statusOf } from '../src/backtest/labels.ts'
 import { periodBounds } from '../src/backtest/periodBounds.ts'
 import {
   applyPreset, clampPeriodStart, createRunForm, detectPreset, setInitialCapital,
@@ -111,4 +111,12 @@ test('코인 가격은 금액이 작을수록 소수를 더 남겨 저가 코인
   assert.equal(formatPriceKrw(2.3456), '2.346')
   assert.equal(formatPriceKrw(0.4523), '0.4523')
   assert.equal(formatPriceKrw(null), '—')
+})
+
+test('모르는 상태는 알 수 없음 칩이고 1전 미만 가격은 0 으로 뭉개지지 않는다', () => {
+  assert.deepEqual(statusOf('CANCELED'), { label: '알 수 없음', chip: 'chip mute' })
+  assert.equal(statusOf('RUNNING').label, '계산 중')
+  assert.equal(isRunInProgress('CANCELED'), false)
+  assert.equal(formatPriceKrw(0.00005), '0.00005000')
+  assert.equal(formatPriceKrw(0.0523), '0.0523')
 })

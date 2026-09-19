@@ -1,4 +1,4 @@
-import { factorMeta, formatFactorValue } from '../strategy/labels.ts'
+import { factorOf, formatFactorValue } from '../strategy/labels.ts'
 import type { FactorType, Timeframe } from '../strategy/types'
 import type { CandleInterval } from './model'
 import { changeClass } from './ticker.ts'
@@ -49,7 +49,7 @@ export function factorRows(response: AssetFactorsResponse | undefined): FactorRo
   }
   return response.factors.map((entry) => ({
     factor: entry.factor,
-    label: `${factorMeta[entry.factor].short} (${entry.period})`,
+    label: `${factorOf(entry.factor).short} (${entry.period})`,
     text: entry.value === null ? '—' : formatFactorValue(entry.factor, entry.value),
     tone: tone(entry.factor, entry.value),
   }))
@@ -61,7 +61,7 @@ export function missingFactorNote(response: AssetFactorsResponse | undefined): s
   if (missing.length === 0) {
     return null
   }
-  const names = missing.map((entry) => `${factorMeta[entry.factor].short} ${entry.period}`).join(', ')
+  const names = missing.map((entry) => `${factorOf(entry.factor).short} ${entry.period}`).join(', ')
   return `봉이 기간을 채우지 못해 아직 값이 없습니다: ${names}`
 }
 

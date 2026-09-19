@@ -29,7 +29,7 @@ import {
 import { SimulationTradeTable } from '../simulation/SimulationTradeTable'
 import type { SimulationEntryState } from '../simulation/simulationEntry'
 import type { SimulationResult, SimulationRun } from '../simulation/types'
-import { rebalanceMeta, timeframeLabels } from '../strategy/labels'
+import { rebalanceOf, timeframeLabel } from '../strategy/labels'
 import { useStrategy } from '../strategy/queries'
 import { summarizeDsl } from '../strategy/summary'
 import type { Strategy } from '../strategy/types'
@@ -163,7 +163,7 @@ function LiveView({ run, strategy, lookup }: LiveViewProps) {
             <h1>{strategyName}</h1>
             <p>
               {strategy !== null && `${summarizeDsl(strategy.dsl)} · `}
-              {timeframeLabels[run.timeframe]} 종가 판단 · {rebalanceMeta[run.rebalanceInterval].label} 재선정 · 초기 모의자산 {formatKrw(run.initialCapital)} KRW
+              {timeframeLabel(run.timeframe)} 종가 판단 · {rebalanceOf(run.rebalanceInterval).label} 재선정 · 초기 모의자산 {formatKrw(run.initialCapital)} KRW
             </p>
           </div>
         </div>
@@ -205,7 +205,7 @@ function LiveView({ run, strategy, lookup }: LiveViewProps) {
           <div className="live-kpi">
             <span>마지막 재선정</span>
             <strong className="mono">{run.lastRebalanceAt === null ? '아직 없음' : formatDateTime(run.lastRebalanceAt)}</strong>
-            <small>주기 {rebalanceMeta[run.rebalanceInterval].label}{metrics !== null && ` · 최대 낙폭 -${(Math.abs(metrics.mdd) * 100).toFixed(1)}%`}</small>
+            <small>주기 {rebalanceOf(run.rebalanceInterval).label}{metrics !== null && ` · 최대 낙폭 -${(Math.abs(metrics.mdd) * 100).toFixed(1)}%`}</small>
           </div>
         </div>
 
