@@ -5,11 +5,12 @@ No week is moved. A dataset is one contiguous stretch of real candles: `warmup_w
 """
 
 import bisect
+import math
 import random
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP
 
-from contest.blocks import Series, first_week_start
+from contest.blocks import DAY, Series, first_week_start
 from contest.sampling import GenerationError, KINDS, Params, in_target, rebalanced_return, stitched_return
 from contest.stitch import AMOUNT_PLACES, VOLUME_PLACES, WIDE, Bar, to_decimal
 
@@ -156,3 +157,52 @@ def lift(series: Series, universe: list[str], selection: Selection, virtual_star
                             to_decimal(candle.v).quantize(VOLUME_PLACES, rounding=ROUND_HALF_UP, context=WIDE),
                             to_decimal(candle.a).quantize(AMOUNT_PLACES, rounding=ROUND_HALF_UP, context=WIDE)))
     return bars
+
+
+def integrity(series: Series, selection: Selection, hourly: list[Bar], virtual_start: int) -> dict:
+    """Stage 2: moving the window to virtual dates must not change a single value (ADR-0018)."""
+    offset = virtual_start - selection.start
+    problems: list[str] = []
+    if offset % (7 * DAY):
+        problems.append("offset is not a whole number of weeks, so weekdays shift")
+    moved: dict[str, list[Bar]] = {}
+    for bar in hourly:
+        moved.setdefault(bar.asset, []).append(bar)
+    compared = 0
+    for asset in selection.universe:
+        source = series[asset].between(selection.start, selection.end)
+        bars = sorted(moved.get(asset, []), key=lambda item: item.t)
+        if len(bars) != len(source):
+            problems.append(f"{asset}: {len(bars)} bars for {len(source)} source candles")
+            continue
+        for bar, candle in zip(bars, source):
+            compared += 1
+            if bar.t - offset != candle.t:
+                problems.append(f"{asset} t={bar.t}: moved by {bar.t - candle.t} instead of {offset}")
+                break
+            if (float(bar.o), float(bar.h), float(bar.l), float(bar.c)) != (candle.o, candle.h, candle.l, candle.c):
+                problems.append(f"{asset} t={bar.t}: price changed")
+                break
+    return {"compared": compared, "problems": problems, "passed": not problems}
+
+
+def identifiability(series: Series, candidates: list[str], params: Params, universe: list[str], kind: str,
+                    floor: float = PRICE_FLOOR) -> dict:
+    """Stage 3: how far the public facts narrow the window down, with the universe hidden and disclosed."""
+    index = build_index(series, candidates, floor)
+    length = (params.warmup_weeks + params.eval_weeks) * params.span
+    starts = window_starts(series, candidates, params, len(universe), floor, index)
+    disclosed = 0
+    combinations = 0.0
+    for start in starts:
+        alive_here = alive_in(index, candidates, start, start + length)
+        combinations += math.comb(len(alive_here), len(universe))
+        if not set(universe) <= set(alive_here):
+            continue
+        if kind not in params.targets or in_target(kind, evaluation_returns(series, universe, start, params), params):
+            disclosed += 1
+    return {
+        "windows": len(starts),
+        "disclosed_windows": disclosed,
+        "hidden_candidates_log10": math.log10(combinations) if combinations else 0.0,
+    }

@@ -13,7 +13,7 @@ from contest.blocks import (
 )
 from contest.checks import check_bars, feasibility, stage2
 from contest.sampling import KINDS, Params, evaluation_returns, max_factor_period, sample_sequence
-from contest.windows import GenerationError, choose, lift, reachable
+from contest.windows import GenerationError, choose, identifiability, integrity, lift, reachable
 from contest.stitch import (
     SEAM_ALPHA, SEAM_HOURS, Bar, aggregate, fill_gaps, stitch, tick_table, write_load_csv,
 )
@@ -85,6 +85,47 @@ def _check(args: argparse.Namespace) -> int:
                          args.seam_alpha, args.seam_hours),
     }
     report["passed"] = report["stage1"]["passed"] and report["stage2"]["passed"]
+    text = json.dumps(report, ensure_ascii=False, indent=2)
+    if args.out:
+        os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+        with open(args.out, "w", encoding="utf-8", newline="\n") as file:
+            file.write(text + "\n")
+    print(text)
+    return 0 if report["passed"] else 1
+
+
+def _check_real(args: argparse.Namespace) -> int:
+    """ADR-0018 stages 1-3: are there enough windows, did moving them change anything, can one be pinned down."""
+    params = _params(args)
+    series, candidates = _load(args)
+    report = {
+        "mode": "real",
+        "candidates": len(candidates),
+        "universe_size": args.universe_size,
+        "stage1": reachable(series, candidates, params, random.Random(args.seed),
+                            universe_size=args.universe_size, samples=args.generated),
+        "datasets": {},
+    }
+    try:
+        selections = choose(series, candidates, params, random.Random(args.seed),
+                            universe_size=args.universe_size, tries=args.candidates)
+    except GenerationError as error:
+        report["passed"] = False
+        report["reason"] = str(error)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 1
+
+    for selection in selections:
+        hourly = lift(series, selection.universe, selection, params.virtual_start)
+        report["datasets"][selection.kind] = {
+            "source_start": format_time(selection.start),
+            "source_end": format_time(selection.end),
+            "evaluation_return": selection.held,
+            "rebalanced_return": selection.rebalanced,
+            "stage2": integrity(series, selection, hourly, params.virtual_start),
+            "stage3": identifiability(series, candidates, params, selection.universe, selection.kind),
+        }
+    report["passed"] = all(dataset["stage2"]["passed"] for dataset in report["datasets"].values())
     text = json.dumps(report, ensure_ascii=False, indent=2)
     if args.out:
         os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
@@ -208,25 +249,26 @@ def main(argv: list[str] | None = None) -> int:
                              help="이음매 정합 강도. 0이면 정합하지 않고 1이면 직전 주 수준에 맞춘다")
         command.add_argument("--seam-hours", type=int, default=SEAM_HOURS,
                              help="이음매 정합이 옅어지는 시간(시간). 이 시간이 지나면 원래 주 그대로다")
+        command.add_argument(
+            "--mode", choices=("real", "stitch"), default="real",
+            help="real 은 공개하지 않은 실제 구간을 그대로 쓴다 (ADR-0018). stitch 는 주를 섞던 옛 방식이다 (ADR-0011)",
+        )
+        command.add_argument("--universe-size", type=int, default=20,
+                             help="real 모드에서 회차 universe 에 넣을 종목 수")
     commands.choices["check"].add_argument("--min-weeks", type=int, default=30)
     commands.choices["check"].add_argument("--generated", type=int, default=200)
     commands.choices["check"].add_argument("--seam-datasets", type=int, default=50)
     commands.choices["check"].add_argument("--out", help="결과 JSON을 저장할 경로")
     commands.choices["build"].add_argument("--out", required=True, help="CSV 4개와 요약 JSON을 쓸 디렉터리")
-    commands.choices["build"].add_argument(
-        "--mode", choices=("real", "stitch"), default="real",
-        help="real 은 공개하지 않은 실제 구간을 그대로 쓴다 (ADR-0018). stitch 는 주를 섞던 옛 방식이다 (ADR-0011)",
-    )
-    commands.choices["build"].add_argument("--universe-size", type=int, default=20,
-                                           help="real 모드에서 회차 universe 에 넣을 종목 수")
+
     commands.choices["build"].add_argument(
         "--fill-gaps", action="store_true",
         help="거래 없는 시간을 직전 종가·거래량 0 봉으로 채운다. 엔진이 빈 시간을 처리하기 전까지 쓰는 임시 옵션",
     )
 
     args = parser.parse_args(argv)
-    if args.command == "build" and args.mode == "real":
-        return _build_real(args)
+    if args.mode == "real":
+        return _build_real(args) if args.command == "build" else _check_real(args)
     return {"check": _check, "build": _build}[args.command](args)
 
 

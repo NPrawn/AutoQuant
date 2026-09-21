@@ -1,12 +1,16 @@
 """Real source windows: who trades through them, which ones hit a regime target, and that they never overlap."""
 
+import math
 import random
+from dataclasses import replace
 
 import pytest
 
-from contest.blocks import HOUR, Candle
+from contest.blocks import HOUR
 from contest.sampling import BULL, GenerationError, Params
-from contest.windows import alive, choose, evaluation_returns, reachable, window_starts
+from contest.windows import (
+    Selection, alive, choose, evaluation_returns, identifiability, integrity, lift, reachable, window_starts,
+)
 from tests.contest_fixtures import MONDAY, WEEK, weekly_track
 
 PARAMS = Params(warmup_weeks=1, eval_weeks=2)
@@ -75,3 +79,46 @@ def test_reachable_counts_windows_and_hit_rates():
     assert report["windows"] > 0 and report["samples"] == 20
     assert report["hit_rates"][BULL] == 1.0
     assert report["held_return"]["median"] == pytest.approx(0.21)
+
+
+def test_integrity_passes_when_the_window_only_moved():
+    series = _series({"a": [10.0, 12.0, 15.0, 15.0]})
+    selection = Selection("GENERAL", MONDAY, MONDAY + 3 * WEEK, ["a"], 0.0, 0.0)
+    virtual = MONDAY + 100 * WEEK
+
+    report = integrity(series, selection, lift(series, ["a"], selection, virtual), virtual)
+
+    assert report["passed"] and report["compared"] == 3 * 7 * 24
+
+
+def test_integrity_catches_a_changed_price():
+    series = _series({"a": [10.0, 12.0, 15.0, 15.0]})
+    selection = Selection("GENERAL", MONDAY, MONDAY + 3 * WEEK, ["a"], 0.0, 0.0)
+    virtual = MONDAY + 100 * WEEK
+    bars = lift(series, ["a"], selection, virtual)
+    bars[5] = replace(bars[5], c=bars[5].c * 2)
+
+    assert integrity(series, selection, bars, virtual)["problems"] == ["a t=%d: price changed" % bars[5].t]
+
+
+def test_integrity_catches_a_shift_that_moves_the_weekday():
+    series = _series({"a": [10.0, 12.0, 15.0, 15.0]})
+    selection = Selection("GENERAL", MONDAY, MONDAY + 3 * WEEK, ["a"], 0.0, 0.0)
+    virtual = MONDAY + 100 * WEEK + 3 * 24 * HOUR
+
+    report = integrity(series, selection, lift(series, ["a"], selection, virtual), virtual)
+
+    assert report["problems"] == ["offset is not a whole number of weeks, so weekdays shift"]
+
+
+def test_identifiability_counts_what_a_public_universe_would_give_away():
+    rising = [10.0 * 1.1 ** step for step in range(30)]
+    series = _series({"a": rising, "b": rising, "c": rising})
+    params = Params(warmup_weeks=1, eval_weeks=2, targets={BULL: (0.15, 0.25)})
+
+    report = identifiability(series, ["a", "b", "c"], params, ["a", "b"], BULL)
+
+    # every window rises 21%, so a public universe leaves every window standing
+    assert report["disclosed_windows"] == report["windows"] > 0
+    # three assets choose two: three universes per window, so the hidden space is larger
+    assert report["hidden_candidates_log10"] > math.log10(report["windows"])

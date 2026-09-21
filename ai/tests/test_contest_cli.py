@@ -52,7 +52,7 @@ def test_check_reports_both_stages_and_exit_code(tmp_path, capsys):
 
     code = main(["check", "--source", source, "--universe", universe, "--seed", "1", "--out", str(out),
                  "--min-weeks", "5", "--warmup-weeks", "2", "--eval-weeks", "3", "--candidates", "10",
-                 "--generated", "30", "--seam-datasets", "2", "--window-weeks", "0"])
+                 "--generated", "30", "--seam-datasets", "2", "--window-weeks", "0", "--mode", "stitch"])
 
     report = json.loads(out.read_text(encoding="utf-8"))
     assert set(report) == {"window", "universe", "stage1", "stage2", "passed"}
@@ -111,3 +111,21 @@ def test_build_real_writes_one_window_per_dataset(tmp_path):
     assert all(earlier[1] <= later[0] for earlier, later in zip(spans, spans[1:]))
     for kind, (low, high) in Params().targets.items():
         assert low <= report["datasets"][kind]["evaluation_return"] <= high
+
+
+def test_check_real_reports_the_three_stages(tmp_path, capsys):
+    source, universe = _write(tmp_path, _regime_series())
+    out = tmp_path / "check.json"
+
+    code = main(["check", "--source", source, "--universe", universe, "--seed", "3", "--out", str(out),
+                 "--warmup-weeks", "1", "--eval-weeks", "2", "--universe-size", "2", "--candidates", "500",
+                 "--generated", "30"])
+
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert code == 0 and report["passed"] and report["mode"] == "real"
+    assert report["stage1"]["windows"] > 0
+    for kind in KINDS:
+        dataset = report["datasets"][kind]
+        assert dataset["stage2"]["passed"] and dataset["stage2"]["compared"] == 2 * 3 * 7 * 24
+        assert dataset["stage3"]["windows"] >= dataset["stage3"]["disclosed_windows"]
+    assert json.loads(capsys.readouterr().out) == report
