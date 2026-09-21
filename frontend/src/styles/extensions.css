@@ -603,7 +603,7 @@ html:has(#view-chart.active) {
   }
 }
 
-/* 전략 상세 · 판 이력과 옛 판 안내. 행은 base.css 의 .vrow 를 그대로 쓴다. */
+/* 전략 상세 · 버전 이력과 이전 버전 안내. 행은 base.css 의 .vrow 를 그대로 쓴다. */
 .version-list .vrow b {
   font-weight: 600;
 }
@@ -627,7 +627,7 @@ html:has(#view-chart.active) {
   flex: none;
 }
 
-/* 전략 목록 · 판이 둘 이상인 줄의 펼침 버튼과 그 밑에 들어오는 옛 판 줄 */
+/* 전략 목록 · 버전이 둘 이상인 줄의 펼침 버튼과 그 밑에 들어오는 이전 버전 줄 */
 .ver-toggle {
   display: inline-flex;
   align-items: center;
@@ -664,13 +664,26 @@ tbody tr.ver-row .strategy-name-cell {
   padding-left: 40px;
   box-shadow: inset 3px 0 0 var(--line-2);
 }
-tbody tr.ver-row .strategy-name-cell b {
-  font-weight: 500;
-  color: var(--ink-2);
+/* 버전 배지. 대표 줄은 요약 끝에, 이전 버전 줄은 이름 앞에 둔다. 펼침 버튼과 같은 크기라 한 세트로 읽힌다. */
+.ver-no {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--panel-3);
+  color: var(--ink);
+  font: 700 11px "IBM Plex Mono", monospace;
+  vertical-align: middle;
 }
-tbody tr.ver-row .ver-no {
+.strategy-name-cell small .ver-no {
+  margin-left: 6px;
+}
+tbody tr.ver-row .strategy-name-cell b .ver-no {
   margin-right: 8px;
-  color: var(--ink-3);
-  font-size: 11px;
-  font-weight: 700;
+}
+.strategy-name-cell small:has(.ver-no) {
+  line-height: 18px;
+  overflow: visible;
 }

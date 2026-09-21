@@ -53,7 +53,7 @@ type StrategyEditorProps = {
   initialDraft: StrategyDraft
   entry: BuilderEntryState | null
   mode: 'new' | 'edit'
-  /* 수정 모드의 바탕 판. 저장하면 이 판과 같은 뿌리의 다음 판이 만들어진다. */
+  /* 수정 모드의 바탕 버전. 저장하면 이 버전과 같은 뿌리의 새 버전이 만들어진다. */
   base?: { id: string; version: number }
 }
 
@@ -61,7 +61,7 @@ type StrategyEditorProps = {
  * 전략 빌더 본체(목업 19·27). 편집 상태는 draft.ts 의 순수 함수로만 바꾼다. 홈에서 넘어온 목표
  * 문장은 진입 즉시 변환해 블록을 채우고, 전략봇의 요청은 지금 블록을 함께 보내 고쳐 받는다.
  * 저장이 실패하면 블록 위에 안내를 보이되 편집 내용은 그대로 둔다. 전략 행은 바뀌지 않으므로 수정 모드의
- * 저장은 같은 전략의 다음 판을 만든다. base.css 가 #view-builder 로 블록 격자를 정하므로 목업의 id 를 그대로 둔다.
+ * 저장은 같은 전략의 새 버전을 만든다. base.css 가 #view-builder 로 블록 격자를 정하므로 목업의 id 를 그대로 둔다.
  */
 export function StrategyEditor({ initialDraft, entry, mode, base }: StrategyEditorProps) {
   const navigate = useNavigate()
@@ -227,7 +227,7 @@ export function StrategyEditor({ initialDraft, entry, mode, base }: StrategyEdit
       },
       onError: (error: unknown) => setSaveError(error),
     }
-    /* 수정은 바탕 판과 같은 뿌리의 다음 판이고, 새 전략은 뿌리 1판이다. */
+    /* 수정은 바탕 버전과 같은 뿌리의 새 버전이고, 새 전략은 뿌리의 첫 버전이다. */
     if (base !== undefined) {
       revise.mutate({ strategyId: base.id, body }, handlers)
     } else {
@@ -236,7 +236,7 @@ export function StrategyEditor({ initialDraft, entry, mode, base }: StrategyEdit
   }
 
   /* 처리 중에도 라벨을 바꾸지 않는다. 라벨이 바뀌면 버튼 폭이 달라져 옆 취소 버튼이 밀린다. 스피너만 붙인다. */
-  const saveLabel = mode === 'edit' ? '다음 판으로 저장' : '전략 저장'
+  const saveLabel = mode === 'edit' ? '수정' : '전략 저장'
   const saveSpinner = saving ? <span className="spin" aria-hidden="true" /> : null
   const saveErrorView = saveError ? describeSaveError(saveError) : null
 
@@ -246,7 +246,7 @@ export function StrategyEditor({ initialDraft, entry, mode, base }: StrategyEdit
         <div>
           <span className="eyebrow">
             {mode === 'edit'
-              ? `전략 수정 · v${base?.version ?? 1} 바탕 · 저장하면 다음 판이 만들어지고 이전 판의 결과는 그대로 남습니다`
+              ? `전략 수정 · v${base?.version ?? 1} 바탕 · 저장하면 새 버전이 만들어지고 이전 버전의 결과는 그대로 남습니다`
               : '새 전략'}
           </span>
           <label htmlFor="strategyName" className="sr-only">

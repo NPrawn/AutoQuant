@@ -92,8 +92,8 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
   const [deleteError, setDeleteError] = useState<unknown>(null)
 
   /*
-   * 이 전략으로 한 일. 판마다 전략 식별자가 다르므로 같은 뿌리의 모든 판으로 거른다. 네 조회는 목록 화면과
-   * 캐시를 나눠 쓴다. 전략 목록을 아직 못 받았으면 보고 있는 판 하나로만 거르고 받으면 넓어진다.
+   * 이 전략으로 한 일. 버전마다 전략 식별자가 다르므로 같은 뿌리의 모든 버전으로 거른다. 네 조회는 목록 화면과
+   * 캐시를 나눠 쓴다. 전략 목록을 아직 못 받았으면 보고 있는 버전 하나로만 거르고 받으면 넓어진다.
    */
   const strategies = useStrategies()
   const lineage = strategies.data === undefined ? null : lineageOf(strategies.data, strategy.id)
@@ -104,9 +104,15 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
   const contests = useContests()
   const runs = backtests.data === undefined ? [] : forVersions(backtests.data, versionIds)
   const sims = simulations.data === undefined ? [] : simulationsForVersions(simulations.data, versionIds)
-  const submission = submissionFor(contests.data?.contests ?? [], versionIds)
   const versionFor = (strategyId: string) => versionOf(lineage, strategyId)
-  const stageInput = { runs, simulations: sims, submitted: submission !== null }
+  /*
+   * 단계·주 버튼·지금 카드는 보고 있는 버전 자신의 기록으로만 판정한다. 이전 버전이 검증됐다고 새 버전을
+   * 검증됨이라 적으면 사용자를 속인다. 기록 표는 모든 버전을 보이고 삭제 경고는 모든 버전의 운용 중을 센다.
+   */
+  const ownRuns = forVersions(runs, [strategy.id])
+  const ownSims = simulationsForVersions(sims, [strategy.id])
+  const ownSubmission = submissionFor(contests.data?.contests ?? [], [strategy.id])
+  const stageInput = { runs: ownRuns, simulations: ownSims, submitted: ownSubmission !== null }
   const stage = strategyStage(stageInput)
   const primary = primaryAction(stageInput)
   const running = runningSimulations(sims)
@@ -193,15 +199,15 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
         </div>
       </header>
 
-      {/* 옛 판을 보고 있으면 알린다. 여기서 수정·백테스트를 하면 이 판이 바탕이 된다. */}
+      {/* 이전 버전을 보고 있으면 알린다. 여기서 수정·백테스트를 하면 이 버전이 바탕이 된다. */}
       {head.id !== strategy.id && (
         <div className="callout version-note">
           <span>
-            <b>{versionLabel(strategy.version)}</b> 판을 보고 있습니다. 최신 판은 {versionLabel(head.version)}이고, 여기서 수정하면 이 판을 바탕으로
-            다음 판이 만들어집니다.
+            <b>{versionLabel(strategy.version)}</b> 버전을 보고 있습니다. 최신 버전은 {versionLabel(head.version)}이고, 여기서 수정하면 이 버전을 바탕으로
+            새 버전이 만들어집니다.
           </span>
           <Link className="btn ghost sm" to={to.strategyDetail(head.id)}>
-            최신 판 보기
+            최신 버전 보기
           </Link>
         </div>
       )}
@@ -218,9 +224,9 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
       )}
 
       <NowCards
-        runs={runs}
-        sims={sims}
-        submission={submission}
+        runs={ownRuns}
+        sims={ownSims}
+        submission={ownSubmission}
         loading={{ backtests: backtests.isPending, simulations: simulations.isPending, contests: contests.isPending }}
         onBacktest={() => openBacktest()}
       />
@@ -267,7 +273,7 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
       <div className="detail-fold">
         <details>
           <summary>
-            판 이력 · {lineage === null ? versionLabel(strategy.version) : `${lineage.versions.length}판 · 최신 ${versionLabel(head.version)}`}
+            버전 이력 · {lineage === null ? versionLabel(strategy.version) : `${lineage.versions.length}개 · 최신 ${versionLabel(head.version)}`}
           </summary>
           <div className="fold-body">
             <VersionHistory lineage={lineage} current={strategy} />
@@ -292,8 +298,8 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
           <summary>공개 설정 · {strategy.published ? '공개' : '비공개'}</summary>
           <div className="fold-body">
             <p className="goal-note" style={{ margin: 0 }}>
-              공개하면 랭킹에서 다른 사람이 이 판의 구성을 보고 복제할 수 있습니다. 공개는 확인을 한 번 묻고 비공개로 되돌리기는 바로 됩니다. 공개 여부는
-              판마다 따로이고 다음 판은 비공개로 시작합니다.
+              공개하면 랭킹에서 다른 사람이 이 버전의 구성을 보고 복제할 수 있습니다. 공개는 확인을 한 번 묻고 비공개로 되돌리기는 바로 됩니다. 공개 여부는
+              버전마다 따로이고 새 버전은 비공개로 시작합니다.
             </p>
           </div>
         </details>
@@ -323,23 +329,23 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
   )
 }
 
-/* 대회 목록에서 이 전략의 어느 판이든 낸 회차. 여럿이면 마감이 늦은 회차를 본다. */
+/* 대회 목록에서 이 전략의 어느 버전이든 낸 회차. 여럿이면 마감이 늦은 회차를 본다. */
 function submissionFor(rounds: readonly ContestRoundItemResponse[], strategyIds: readonly string[]): ContestRoundItemResponse | null {
   const mine = rounds.filter((round) => round.mySubmission !== null && strategyIds.includes(String(round.mySubmission.strategyId)))
   mine.sort((left, right) => right.submissionEndsAt.localeCompare(left.submissionEndsAt))
   return mine[0] ?? null
 }
 
-/* 삭제는 전략 단위라 모든 판이 함께 지워진다. 운용 중 모의투자가 있으면 그 수를 적어 경고한다. */
+/* 삭제는 전략 단위라 모든 버전이 함께 지워진다. 운용 중 모의투자가 있으면 그 수를 적어 경고한다. */
 function deleteDescription(name: string, versionCount: number, runningCount: number): string {
-  const target = versionCount > 1 ? `"${name}"의 모든 판 ${versionCount}개와 그 설정이 지워집니다.` : `"${name}"과 그 설정이 지워집니다.`
+  const target = versionCount > 1 ? `"${name}"의 모든 버전 ${versionCount}개와 그 설정이 지워집니다.` : `"${name}"과 그 설정이 지워집니다.`
   if (runningCount > 0) {
     return `${target} 운용 중인 모의투자 ${runningCount}건이 이 전략을 쓰고 있습니다. 먼저 정지하는 것이 안전합니다. 되돌릴 수 없습니다.`
   }
   return `${target} 백테스트와 모의투자 기록은 남습니다. 되돌릴 수 없습니다.`
 }
 
-/* 판 이력. 최신이 위다. 보고 있는 판은 표시만 하고 다른 판은 그 상세로 간다. */
+/* 버전 이력. 최신이 위다. 보고 있는 버전은 표시만 하고 다른 버전은 그 상세로 간다. */
 function VersionHistory({ lineage, current }: { lineage: StrategyLineage | null; current: Strategy }) {
   const versions = lineage === null ? [current] : lineage.versions
   return (
@@ -363,7 +369,7 @@ function VersionHistory({ lineage, current }: { lineage: StrategyLineage | null;
           </span>
         </div>
       ))}
-      <p className="goal-note">수정해 저장하면 다음 판이 만들어지고 이전 판의 결과는 그대로 남습니다. 삭제는 모든 판을 함께 지웁니다.</p>
+      <p className="goal-note">수정해 저장하면 새 버전이 만들어지고 이전 버전의 결과는 그대로 남습니다. 삭제는 모든 버전을 함께 지웁니다.</p>
     </div>
   )
 }
@@ -453,7 +459,7 @@ function NowCards({ runs, sims, submission, loading, onBacktest }: NowCardsProps
   )
 }
 
-/* 실행이 어느 판으로 돌았는지. 전략 목록을 아직 못 받았으면 null 이고 빈 칸으로 둔다. */
+/* 실행이 어느 버전으로 돌았는지. 전략 목록을 아직 못 받았으면 null 이고 빈 칸으로 둔다. */
 type VersionFor = (strategyId: string) => number | null
 
 type BacktestHistoryProps = {
@@ -493,7 +499,7 @@ function BacktestHistory({ query, runs, versionFor, onOpen, onRerun, onNew }: Ba
           <thead>
             <tr>
               <th scope="col">상태</th>
-              <th scope="col">판</th>
+              <th scope="col">버전</th>
               <th scope="col">평가 기간</th>
               <th scope="col" className="r">
                 초기자산
@@ -603,7 +609,7 @@ function SimulationHistory({ query, sims, versionFor, onOpen, onNew }: Simulatio
           <thead>
             <tr>
               <th scope="col">상태</th>
-              <th scope="col">판</th>
+              <th scope="col">버전</th>
               <th scope="col">운용 기간</th>
               <th scope="col" className="r">
                 초기자산

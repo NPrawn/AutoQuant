@@ -52,7 +52,7 @@ export function useCreateStrategy() {
   })
 }
 
-/* 다음 판은 새 행이라 목록도 바뀐다. 호출한 화면이 응답의 식별자로 옮겨 간다. */
+/* 새 버전은 새 행이라 목록도 바뀐다. 호출한 화면이 응답의 식별자로 옮겨 간다. */
 export function useReviseStrategy() {
   const queryClient = useQueryClient()
 

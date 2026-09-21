@@ -23,7 +23,7 @@ export function simulationsForStrategy(runs: readonly SimulationRun[], strategyI
   return simulationsForVersions(runs, [strategyId])
 }
 
-/* 한 전략의 모든 판으로 돌린 모의투자. 판마다 전략 식별자가 다르므로 묶음으로 거른다. */
+/* 한 전략의 모든 버전으로 돌린 모의투자. 버전마다 전략 식별자가 다르므로 묶음으로 거른다. */
 export function simulationsForVersions(runs: readonly SimulationRun[], strategyIds: readonly string[]): SimulationRun[] {
   const ids = new Set(strategyIds)
   return runs.filter((run) => ids.has(run.strategyId)).sort(byRecent)
