@@ -23,10 +23,10 @@ import type { BacktestEntryState } from '../strategy/backtestEntry'
 import { draftFromDsl } from '../strategy/draft'
 import { describeRanking, directionLabel, factorOf, rebalanceOf, timeframeLabel } from '../strategy/labels'
 import { forVersions, lineageIds, lineageOf, versionLabel, versionOf, type StrategyLineage } from '../strategy/lineage'
-import { useChangeStrategyVisibility, useCopyStrategy, useDeleteStrategy, useStrategies, useStrategy } from '../strategy/queries'
+import { useChangeStrategyVisibility, useDeleteStrategy, useStrategies, useStrategy } from '../strategy/queries'
 import { primaryAction, runningSimulations, simulationsForVersions, stageMeta, strategyStage } from '../strategy/stage'
 import { summarizeDsl, summarizeFilters } from '../strategy/summary'
-import { describeCopyError, describeVisibilityError } from '../strategy/translateErrorMessage'
+import { describeVisibilityError } from '../strategy/translateErrorMessage'
 import type { Strategy } from '../strategy/types'
 
 type HistoryTab = 'backtests' | StrategyDetailTab
@@ -87,7 +87,6 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
   const navigate = useNavigate()
   const remove = useDeleteStrategy()
   const visibility = useChangeStrategyVisibility()
-  const copy = useCopyStrategy()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [publishOpen, setPublishOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<unknown>(null)
@@ -115,12 +114,6 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
 
   const confirmPublish = () => {
     visibility.mutate({ strategyId: strategy.id, published: true }, { onSettled: () => setPublishOpen(false) })
-  }
-
-  const confirmCopy = () => {
-    copy.mutate(strategy.id, {
-      onSuccess: (created) => navigate(to.strategyDetail(String(created.strategyId))),
-    })
   }
 
   /* 실행 하나를 넘기면 "같은 조건 다시" 다. 그 기간과 초기자산이 폼에 채워진다. */
@@ -180,10 +173,6 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
           <Link className="btn ghost quiet" to={to.strategyEdit(strategy.id)}>
             수정
           </Link>
-          <button className="btn ghost quiet" type="button" disabled={copy.isPending} aria-busy={copy.isPending} onClick={confirmCopy}>
-            {copy.isPending && <span className="spin" aria-hidden="true" />}
-            복제
-          </button>
           <button className="btn ghost quiet danger" type="button" onClick={() => setConfirmOpen(true)}>
             삭제
           </button>
@@ -225,11 +214,6 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
       {visibility.isError && (
         <div className="callout crit" role="alert">
           <span>{describeVisibilityError(visibility.error)}</span>
-        </div>
-      )}
-      {copy.isError && (
-        <div className="callout crit" role="alert">
-          <span>{describeCopyError(copy.error)}</span>
         </div>
       )}
 

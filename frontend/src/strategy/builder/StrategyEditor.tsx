@@ -339,15 +339,6 @@ export function StrategyEditor({ initialDraft, entry, mode, base }: StrategyEdit
               onChange={(rebalance) => setDraft(setRebalance(draft, rebalance))}
             />
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-            <button className="btn ghost" type="button" onClick={() => navigate(routes.strategies)}>
-              취소
-            </button>
-            <button className="btn primary" type="button" onClick={handleSave} disabled={saving} aria-busy={saving}>
-              {saveSpinner}
-              {saveLabel}
-            </button>
-          </div>
         </div>
 
         <aside className="edit-side">
