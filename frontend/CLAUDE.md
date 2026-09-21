@@ -47,7 +47,8 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 캔들 보유 구간은 `GET /candles/coverage` 하나로 받는다. 종목별 최근 봉을 모아 추정하지 않는다. 봉 조회는 1,000개가 상한이라 과거가 쌓일수록 시작일이 잘리고, 화면이 DB 에 있는 구간을 못 쓰게 된다.
 - 모의투자 시작 조건은 `src/simulation/startForm.ts`, 보유 종목 평가는 `src/simulation/positions.ts` 의 순수 함수에만 둔다. 현재가가 없는 값은 비우고 추정하지 않는다. 종목 이름은 `assetLookup.ts` 로 맞추고 컴포넌트가 `/assets` 를 따로 부르지 않는다.
 - 전략 DSL 계약 타입은 `src/strategy/types.ts`, 열거형 문구·단위는 `src/strategy/labels.ts`, 빌더 편집 동작은 `src/strategy/draft.ts`의 순수 함수에만 둔다. 컴포넌트가 DSL 을 직접 조립하지 않는다. 종목 수는 `TopNBlock`이 `topNOptions`로 고르며 전략봇이 준 다른 값도 선택지에 남긴다.
-- 빌더는 저장하지 않은 변경이 있으면 `useBlocker`와 `beforeunload`로 이탈을 묻는다. 저장 실패는 편집 영역을 바꾸지 않고 위에 콜아웃으로 보인다. 편집해 저장하면 "새 전략"이 만들어진다고 모든 화면이 같은 말로 적는다. "새 버전"이라고 쓰지 않는다.
+- 빌더는 저장하지 않은 변경이 있으면 `useBlocker`와 `beforeunload`로 이탈을 묻는다. 저장 실패는 편집 영역을 바꾸지 않고 위에 콜아웃으로 보인다. 편집해 저장하면 같은 전략의 "다음 판"이 만들어지고 이전 판의 결과는 그대로 남는다고 모든 화면이 같은 말로 적는다. 수정 모드 저장은 `useReviseStrategy` 로 `/strategies/{id}/revisions` 를 부르고 새 전략 생성을 부르지 않는다. "새 전략"·"새 버전"이라고 쓰지 않는다.
+- 전략 행은 판마다 하나고 서버가 `rootStrategyId`·`versionNo` 를 준다. 판들을 한 전략으로 묶는 규칙은 `src/strategy/lineage.ts` 에만 둔다. 목록은 뿌리별 한 줄(최신 판)이고, 상세는 같은 뿌리의 모든 판으로 백테스트·모의투자·대회 기록을 거르며 기록 표에 판 열을 둔다. 복제는 새 뿌리의 1판이다.
 - 코인 가격은 `backtest/labels.ts`의 `formatPriceKrw`로 적어 금액이 작을수록 소수를 더 남긴다. 정수 반올림인 `formatKrw`는 평가액·거래대금·수수료처럼 원화 합계에만 쓴다.
 - 대회 응답 타입은 `src/contest/types.ts`, 상태·장세·실격 문구와 표기는 `src/contest/labels.ts`, 제출 실패 문구는 `src/contest/submitErrorMessage.ts` 에만 둔다. 채점 규칙 숫자는 회차 응답이 준 값만 쓰고 화면이 가중치나 투자 비중 하한을 다시 적어 두지 않는다. 결과와 내 결과는 마감 전에도 열리지만 데이터셋 조회는 종료 전에 부르면 409 라 `useContestProgress` 가 종료를 알린 뒤에만 켠다.
 - 내 제출 성적은 `src/contest/ContestMyScorePanel.tsx` 하나로 대회 상세와 결과 화면이 같이 쓴다. 점수가 비어 있으면 채점 중이라 진행률을 보여 주고, 마감 전 순위에는 잠정이라고 적는다.

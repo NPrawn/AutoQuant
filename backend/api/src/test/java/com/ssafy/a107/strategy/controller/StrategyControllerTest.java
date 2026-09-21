@@ -107,8 +107,53 @@ class StrategyControllerTest {
                 .then()
                 .statusCode(HttpStatus.CREATED.value())
                 .body("strategyId", equalTo(STRATEGY_ID.intValue()))
+                .body("rootStrategyId", equalTo(STRATEGY_ID.intValue()))
+                .body("versionNo", equalTo(1))
                 .body("name", equalTo("RSI 전략"))
                 .body("strategyDsl.filters.type", equalTo("CONDITION"));
+    }
+
+    @DisplayName("수정 저장은 201과 같은 뿌리의 다음 판을 반환한다")
+    @Test
+    void reviseStrategy() {
+        Strategy root = strategy();
+        Strategy revised = root.reviseWith("RSI 전략", "설명", strategyDsl(), 2);
+        ReflectionTestUtils.setField(revised, "strategyId", 2L);
+        ReflectionTestUtils.setField(revised, "createdAt", CREATED_AT);
+        org.mockito.BDDMockito.given(strategyCommandService.reviseStrategy(
+                eq(MEMBER_ID),
+                eq(STRATEGY_ID),
+                eq("RSI 전략"),
+                eq("설명"),
+                any(StrategyDsl.class)
+        ))
+                .willReturn(revised);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(validCreateRequest())
+                .when()
+                .post("/strategies/{strategyId}/revisions", STRATEGY_ID)
+                .then()
+                .statusCode(HttpStatus.CREATED.value())
+                .body("strategyId", equalTo(2))
+                .body("rootStrategyId", equalTo(STRATEGY_ID.intValue()))
+                .body("versionNo", equalTo(2));
+    }
+
+    @DisplayName("유효하지 않은 DSL 로는 다음 판을 만들지 않는다")
+    @Test
+    void rejectInvalidRevision() {
+        given()
+                .contentType(ContentType.JSON)
+                .body(validCreateRequest().replace("\"topN\": 5", "\"topN\": 0"))
+                .when()
+                .post("/strategies/{strategyId}/revisions", STRATEGY_ID)
+                .then()
+                .statusCode(HttpStatus.BAD_REQUEST.value())
+                .body("code", equalTo("COMMON-400-001"));
+
+        then(strategyCommandService).shouldHaveNoInteractions();
     }
 
     @DisplayName("유효하지 않은 DSL 요청은 생성 전에 400으로 거부한다")

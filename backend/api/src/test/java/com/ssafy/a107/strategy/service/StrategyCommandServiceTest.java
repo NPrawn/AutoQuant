@@ -12,7 +12,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,6 +32,7 @@ class StrategyCommandServiceTest {
 
     private static final UUID MEMBER_ID = UUID.fromString("b7ced58c-00e9-4617-9658-4f576ea2f6fe");
     private static final Long STRATEGY_ID = 1L;
+    private static final Long ROOT_ID = 100L;
 
     @Mock
     private StrategyRepository strategyRepository;
@@ -66,6 +69,62 @@ class StrategyCommandServiceTest {
                 );
 
         then(strategyRepository).shouldHaveNoInteractions();
+    }
+
+    @DisplayName("수정 저장은 뿌리의 최대 판 번호 다음 판을 만든다")
+    @Test
+    void reviseStrategyAsNextVersionOfRoot() {
+        StrategyCommandService service = createService();
+        Strategy second = strategy(member());
+        ReflectionTestUtils.setField(second, "strategyId", STRATEGY_ID);
+        ReflectionTestUtils.setField(second, "rootStrategyId", ROOT_ID);
+        ReflectionTestUtils.setField(second, "versionNo", 2);
+        StrategyDsl revisedDsl = StrategyFixture.strategyDsl();
+        given(strategyRepository.findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(STRATEGY_ID, MEMBER_ID))
+                .willReturn(Optional.of(second));
+        given(strategyRepository.findLatestVersionNo(ROOT_ID)).willReturn(4);
+        given(strategyRepository.save(any(Strategy.class))).willAnswer(invocation -> invocation.getArgument(0));
+
+        Strategy revised = service.reviseStrategy(MEMBER_ID, STRATEGY_ID, "RSI 전략", "고침", revisedDsl);
+
+        assertThat(revised.getRootStrategyId()).isEqualTo(ROOT_ID);
+        assertThat(revised.getVersionNo()).isEqualTo(5);
+        assertThat(revised.getDescription()).isEqualTo("고침");
+        assertThat(revised.getStrategyDsl()).isSameAs(revisedDsl);
+        assertThat(revised.isPublished()).isFalse();
+    }
+
+    @DisplayName("소유하지 않은 전략은 다음 판을 만들 수 없다")
+    @Test
+    void rejectRevisionOutsideMemberOwnership() {
+        StrategyCommandService service = createService();
+        given(strategyRepository.findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(STRATEGY_ID, MEMBER_ID))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.reviseStrategy(MEMBER_ID, STRATEGY_ID, "RSI 전략", null, StrategyFixture.strategyDsl()))
+                .isInstanceOfSatisfying(ApiException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ApiErrorCode.STRATEGY_NOT_FOUND)
+                );
+
+        then(strategyRepository).should(never()).save(any());
+    }
+
+    @DisplayName("전략을 삭제하면 같은 뿌리의 모든 판이 함께 삭제된다")
+    @Test
+    void deleteEveryVersionOfStrategy() {
+        StrategyCommandService service = createService();
+        Strategy root = strategy(member());
+        ReflectionTestUtils.setField(root, "strategyId", ROOT_ID);
+        Strategy second = root.reviseWith("RSI 전략", null, StrategyFixture.strategyDsl(), 2);
+        ReflectionTestUtils.setField(second, "strategyId", STRATEGY_ID);
+        given(strategyRepository.findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(STRATEGY_ID, MEMBER_ID))
+                .willReturn(Optional.of(second));
+        given(strategyRepository.findAllActiveByRoot(ROOT_ID, MEMBER_ID)).willReturn(List.of(root, second));
+
+        service.deleteStrategy(MEMBER_ID, STRATEGY_ID);
+
+        assertThat(root.getDeletedAt()).isNotNull();
+        assertThat(second.getDeletedAt()).isEqualTo(root.getDeletedAt());
     }
 
     @DisplayName("소유하지 않았거나 삭제된 Strategy는 삭제할 수 없다")

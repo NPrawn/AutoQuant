@@ -11,9 +11,17 @@ export function translateStrategy(body: TranslateStrategyRequest): Promise<Trans
   return request<TranslateStrategyResponse>('/ai/strategies/translate', { method: 'POST', body })
 }
 
-/* 전략을 새로 만든다. 수정 API 는 아직 없어 편집 화면의 저장도 이 함수로 새 전략을 만든다. */
+/* 전략을 새로 만든다. 뿌리 1판이다. */
 export function createStrategy(body: CreateStrategyRequest): Promise<StrategyResponse> {
   return request<StrategyResponse>('/strategies', { method: 'POST', body })
+}
+
+/*
+ * 수정 저장. 전략 행은 바뀌지 않으므로 같은 전략의 다음 판을 만든다. 판 번호는 서버가 정한다.
+ * 이미 돌린 백테스트·모의투자는 이전 판을 그대로 가리킨다.
+ */
+export function reviseStrategy(strategyId: string, body: CreateStrategyRequest): Promise<StrategyResponse> {
+  return request<StrategyResponse>(`/strategies/${encodeURIComponent(strategyId)}/revisions`, { method: 'POST', body })
 }
 
 /* 로그인한 회원의 전략만 온다. 회원 식별은 서버가 인증 주체에서 꺼낸다. */
