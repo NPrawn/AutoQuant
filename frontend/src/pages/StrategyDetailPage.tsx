@@ -166,7 +166,7 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
             </span>
             <span className={stageMeta[stage].chip}>{stageMeta[stage].label}</span>
             <i aria-hidden="true" />
-            <span className="mono">{versionLabel(strategy.version)}</span>
+            <span className="ver-no">{versionLabel(strategy.version)}</span>
             <i aria-hidden="true" />
             <span>{strategy.published ? '공개' : '비공개'}</span>
             <i aria-hidden="true" />
