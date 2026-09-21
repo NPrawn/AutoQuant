@@ -48,6 +48,7 @@ export function StrategyBuilderPage() {
       initialDraft={draftFromDsl(data.dsl, { name: data.name, description: data.description })}
       entry={null}
       mode="edit"
+      base={data}
     />
   )
 }

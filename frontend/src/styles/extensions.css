@@ -602,3 +602,27 @@ html:has(#view-chart.active) {
     grid-template-columns: 1fr;
   }
 }
+
+/* 전략 상세 · 판 이력과 옛 판 안내. 행은 base.css 의 .vrow 를 그대로 쓴다. */
+.version-list .vrow b {
+  font-weight: 600;
+}
+.version-list .vrow em {
+  margin-left: 8px;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--accent);
+}
+.version-list .vrow .rank-action {
+  margin-left: 8px;
+}
+.version-list .goal-note {
+  margin: 12px 0 0;
+}
+.callout.version-note {
+  align-items: center;
+  justify-content: space-between;
+}
+.callout.version-note .btn {
+  flex: none;
+}

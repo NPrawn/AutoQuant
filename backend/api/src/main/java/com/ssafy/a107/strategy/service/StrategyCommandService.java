@@ -35,6 +35,19 @@ public class StrategyCommandService {
         return strategyRepository.save(new Strategy(member, name, description, strategyDsl));
     }
 
+    /*
+     * 수정은 제자리 변경이 아니라 같은 전략의 다음 판이다. 이미 돌린 백테스트·모의투자·대회 제출이 그때의 DSL 을
+     * 그대로 가리켜야 한다. 판 번호는 뿌리 전체의 최대값 더하기 1 이고, (뿌리, 판) 유일 제약이 동시 저장을 막는다.
+     */
+    public Strategy reviseStrategy(UUID memberId, Long strategyId, String name, String description, StrategyDsl strategyDsl) {
+        Strategy base = strategyRepository
+                .findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(strategyId, memberId)
+                .orElseThrow(() -> new ApiException(ApiErrorCode.STRATEGY_NOT_FOUND));
+
+        int nextVersion = strategyRepository.findLatestVersionNo(base.getRootStrategyId()) + 1;
+        return strategyRepository.save(base.reviseWith(name, description, strategyDsl, nextVersion));
+    }
+
     /* 공개 여부는 주인만 바꾼다. 남의 전략은 있는지조차 알리지 않는다. */
     public Strategy changeVisibility(UUID memberId, Long strategyId, boolean published) {
         Strategy strategy = strategyRepository
@@ -60,11 +73,18 @@ public class StrategyCommandService {
         return strategyRepository.save(source.copyFor(owner));
     }
 
+    /*
+     * 삭제는 전략 단위다. 어느 판에서 지워도 그 전략의 모든 판이 함께 지워진다. 목록은 뿌리별 한 줄이라
+     * 한 판만 지우면 이전 판이 되살아난 것처럼 보인다.
+     */
     public void deleteStrategy(UUID memberId, Long strategyId) {
         Strategy strategy = strategyRepository
                 .findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(strategyId, memberId)
                 .orElseThrow(() -> new ApiException(ApiErrorCode.STRATEGY_NOT_FOUND));
 
-        strategy.delete(Instant.now());
+        Instant deletedAt = Instant.now();
+        strategy.delete(deletedAt);
+        strategyRepository.findAllActiveByRoot(strategy.getRootStrategyId(), memberId)
+                .forEach(version -> version.delete(deletedAt));
     }
 }

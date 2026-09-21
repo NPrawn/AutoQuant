@@ -76,6 +76,23 @@ public class StrategyController {
                 strategyCommandService.changeVisibility(principal.memberId(), strategyId, request.published()));
     }
 
+    /* 수정 저장. 같은 전략의 다음 판을 만든다. 본문은 생성과 같고 판 번호는 서버가 정한다. */
+    @PostMapping("/{strategyId}/revisions")
+    @ResponseStatus(HttpStatus.CREATED)
+    public StrategyResponse reviseStrategy(
+            @AuthenticationPrincipal MemberPrincipal principal,
+            @PathVariable Long strategyId,
+            @Valid @RequestBody CreateStrategyRequest request
+    ) {
+        return StrategyResponse.from(strategyCommandService.reviseStrategy(
+                principal.memberId(),
+                strategyId,
+                request.name(),
+                request.description(),
+                request.strategyDsl()
+        ));
+    }
+
     @PostMapping("/{strategyId}/copy")
     @ResponseStatus(HttpStatus.CREATED)
     public StrategyResponse copyStrategy(

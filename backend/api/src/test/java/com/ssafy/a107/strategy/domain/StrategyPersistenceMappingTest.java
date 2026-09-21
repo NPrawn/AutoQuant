@@ -36,6 +36,20 @@ class StrategyPersistenceMappingTest {
         assertThat(jdbcTypeCode.value()).isEqualTo(SqlTypes.JSON);
     }
 
+    @DisplayName("뿌리 전략과 판 번호는 만들어진 뒤 바뀌지 않는 컬럼으로 매핑한다")
+    @Test
+    void mapLineageColumnsAsImmutable() throws NoSuchFieldException {
+        Column root = Strategy.class.getDeclaredField("rootStrategyId").getAnnotation(Column.class);
+        Column version = Strategy.class.getDeclaredField("versionNo").getAnnotation(Column.class);
+
+        assertThat(root.name()).isEqualTo("root_strategy_id");
+        assertThat(root.nullable()).isTrue();
+        assertThat(root.updatable()).isFalse();
+        assertThat(version.name()).isEqualTo("version_no");
+        assertThat(version.nullable()).isFalse();
+        assertThat(version.updatable()).isFalse();
+    }
+
     @DisplayName("Strategy는 Member를 지연 로딩 다대일 관계로 매핑한다")
     @Test
     void mapMemberAsLazyManyToOne() throws NoSuchFieldException {

@@ -7,8 +7,10 @@ import {
   deleteStrategy,
   fetchStrategies,
   fetchStrategy,
+  reviseStrategy,
   translateStrategy,
 } from './api'
+import type { CreateStrategyRequest } from './types'
 import { toStrategy } from './types'
 
 /* 전략 목록·상세 쿼리의 키 뿌리. 저장·삭제가 성공하면 이 키 아래를 무효화한다. */
@@ -46,6 +48,16 @@ export function useCreateStrategy() {
 
   return useMutation({
     mutationFn: createStrategy,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: strategiesQueryKey }),
+  })
+}
+
+/* 다음 판은 새 행이라 목록도 바뀐다. 호출한 화면이 응답의 식별자로 옮겨 간다. */
+export function useReviseStrategy() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ strategyId, body }: { strategyId: string; body: CreateStrategyRequest }) => reviseStrategy(strategyId, body),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: strategiesQueryKey }),
   })
 }

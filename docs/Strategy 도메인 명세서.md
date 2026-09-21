@@ -30,6 +30,9 @@ user_id          BIGINT FK NOT NULL
 name             VARCHAR(100) NOT NULL
 description      TEXT
 strategy_dsl     JSONB NOT NULL
+published        BOOLEAN NOT NULL
+root_strategy_id BIGINT FK NULL      -- NULL 이면 이 행이 뿌리(1판)
+version_no       INTEGER NOT NULL    -- 뿌리 안에서 유일
 created_at       TIMESTAMPTZ NOT NULL
 deleted_at       TIMESTAMPTZ
 ```
@@ -46,16 +49,16 @@ STRATEGY
 
 한 사용자는 여러 개의 Strategy를 생성할 수 있다.
 
-Strategy 간에는 별도의 관계를 두지 않는다.
+Strategy 행은 만들어진 뒤 바뀌지 않는다. 수정은 `POST /strategies/{strategyId}/revisions` 로 같은 전략의 다음 판을 새 행으로 만든다. 이미 돌린 백테스트·모의투자·대회 제출이 그때의 DSL 을 그대로 가리켜야 하기 때문이다.
 
-따라서 다음과 같은 버전 관리 필드 및 테이블은 사용하지 않는다.
+판들을 한 전략으로 묶는 연결고리는 `root_strategy_id` 와 `version_no` 두 컬럼이다. 별도의 버전 테이블은 두지 않는다.
 
 ```text
-version
-parent_strategy_id
-strategy_group_id
-StrategyVersion
+root_strategy_id  NULL 이면 이 행이 뿌리(1판). 다음 판은 뿌리 행의 strategy_id 를 가리킨다.
+version_no        뿌리 안에서 유일. 뿌리 전체의 최대값 더하기 1 로 서버가 정하고 삭제된 판도 번호를 차지한다.
 ```
+
+복제(`/copy`)는 새 뿌리의 1판이다. 삭제는 전략 단위라 같은 뿌리의 모든 판이 함께 Soft Delete 된다.
 
 ---
 
@@ -854,7 +857,12 @@ Strategy 도메인에서는 다음 API를 제공한다.
 | `POST` | `/strategies` | 새로운 전략 생성 |
 | `GET` | `/strategies` | 내 전략 목록 조회 |
 | `GET` | `/strategies/{strategyId}` | 전략 상세 조회 |
-| `DELETE` | `/strategies/{strategyId}` | 전략 Soft Delete |
+| `POST` | `/strategies/{strategyId}/revisions` | 수정 저장. 같은 전략의 다음 판 생성 (본문은 생성과 같고 201) |
+| `POST` | `/strategies/{strategyId}/copy` | 복제. 새 뿌리의 1판 생성 |
+| `PATCH` | `/strategies/{strategyId}/visibility` | 공개 여부 변경 |
+| `DELETE` | `/strategies/{strategyId}` | 전략 Soft Delete (같은 뿌리의 모든 판) |
+
+응답 `StrategyResponse` 에는 `rootStrategyId`(뿌리 자신은 자기 번호)와 `versionNo` 가 들어간다.
 
 프로젝트에 `/api`, `/api/v1` 등의 공통 Prefix가 존재하는 경우 프로젝트 컨벤션을 따른다.
 

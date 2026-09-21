@@ -60,6 +60,9 @@ export type StrategyDsl = {
 
 export type StrategyResponse = {
   strategyId: number
+  /* 이 판이 속한 전략의 뿌리. 뿌리 자신은 자기 번호다. 화면은 이 값으로 판들을 한 전략으로 묶는다. */
+  rootStrategyId: number
+  versionNo: number
   name: string
   description: string | null
   strategyDsl: StrategyDsl
@@ -76,6 +79,9 @@ export type CreateStrategyRequest = {
 /* 화면이 쓰는 전략 모델. 식별자는 라우트 파라미터와 맞추기 위해 문자열로 둔다. */
 export type Strategy = {
   id: string
+  /* 같은 전략의 판들이 공유하는 뿌리 식별자. 묶는 규칙은 lineage.ts 에 있다. */
+  rootId: string
+  version: number
   name: string
   description: string
   dsl: StrategyDsl
@@ -87,6 +93,8 @@ export type Strategy = {
 export function toStrategy(response: StrategyResponse): Strategy {
   return {
     id: String(response.strategyId),
+    rootId: String(response.rootStrategyId),
+    version: response.versionNo,
     name: response.name,
     description: response.description ?? '',
     dsl: response.strategyDsl,

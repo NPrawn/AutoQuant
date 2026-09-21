@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 
 import { isApiError } from '../api/error'
 import { routes, to, type StrategyDetailTab } from '../app/routes'
-import { latestCompletedRun, runsForStrategy } from '../backtest/history'
+import { latestCompletedRun } from '../backtest/history'
 import { formatDate, formatDateTime, formatDrawdown, formatKrw, formatRate, statusOf as backtestStatusOf, trendClass } from '../backtest/labels'
 import { useBacktestHistory, useBacktestResult } from '../backtest/queries'
 import type { BacktestRun } from '../backtest/types'
@@ -22,9 +22,10 @@ import { describeStrategy } from '../strategy/assistant/conversation'
 import type { BacktestEntryState } from '../strategy/backtestEntry'
 import { draftFromDsl } from '../strategy/draft'
 import { describeRanking, directionLabel, factorOf, rebalanceOf, timeframeLabel } from '../strategy/labels'
-import { useChangeStrategyVisibility, useCopyStrategy, useDeleteStrategy, useStrategy } from '../strategy/queries'
-import { primaryAction, runningSimulations, simulationsForStrategy, stageMeta, strategyStage } from '../strategy/stage'
-import { summarizeFilters } from '../strategy/summary'
+import { forVersions, lineageIds, lineageOf, versionLabel, versionOf, type StrategyLineage } from '../strategy/lineage'
+import { useChangeStrategyVisibility, useCopyStrategy, useDeleteStrategy, useStrategies, useStrategy } from '../strategy/queries'
+import { primaryAction, runningSimulations, simulationsForVersions, stageMeta, strategyStage } from '../strategy/stage'
+import { summarizeDsl, summarizeFilters } from '../strategy/summary'
 import { describeCopyError, describeVisibilityError } from '../strategy/translateErrorMessage'
 import type { Strategy } from '../strategy/types'
 
@@ -91,13 +92,21 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
   const [publishOpen, setPublishOpen] = useState(false)
   const [deleteError, setDeleteError] = useState<unknown>(null)
 
-  /* 이 전략으로 한 일. 세 조회는 목록 화면과 캐시를 나눠 쓰고, 이 화면은 전략 하나로 거른다. */
+  /*
+   * 이 전략으로 한 일. 판마다 전략 식별자가 다르므로 같은 뿌리의 모든 판으로 거른다. 네 조회는 목록 화면과
+   * 캐시를 나눠 쓴다. 전략 목록을 아직 못 받았으면 보고 있는 판 하나로만 거르고 받으면 넓어진다.
+   */
+  const strategies = useStrategies()
+  const lineage = strategies.data === undefined ? null : lineageOf(strategies.data, strategy.id)
+  const versionIds = lineageIds(lineage, strategy.id)
+  const head = lineage?.head ?? strategy
   const backtests = useBacktestHistory()
   const simulations = useSimulationHistory()
   const contests = useContests()
-  const runs = backtests.data === undefined ? [] : runsForStrategy(backtests.data, strategy.id)
-  const sims = simulations.data === undefined ? [] : simulationsForStrategy(simulations.data, strategy.id)
-  const submission = submissionFor(contests.data?.contests ?? [], strategy.id)
+  const runs = backtests.data === undefined ? [] : forVersions(backtests.data, versionIds)
+  const sims = simulations.data === undefined ? [] : simulationsForVersions(simulations.data, versionIds)
+  const submission = submissionFor(contests.data?.contests ?? [], versionIds)
+  const versionFor = (strategyId: string) => versionOf(lineage, strategyId)
   const stageInput = { runs, simulations: sims, submitted: submission !== null }
   const stage = strategyStage(stageInput)
   const primary = primaryAction(stageInput)
@@ -158,6 +167,8 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
             </span>
             <span className={stageMeta[stage].chip}>{stageMeta[stage].label}</span>
             <i aria-hidden="true" />
+            <span className="mono">{versionLabel(strategy.version)}</span>
+            <i aria-hidden="true" />
             <span>{strategy.published ? '공개' : '비공개'}</span>
             <i aria-hidden="true" />
             <span>{dateFormat.format(strategy.createdAt)} 만듦</span>
@@ -192,6 +203,19 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
           </button>
         </div>
       </header>
+
+      {/* 옛 판을 보고 있으면 알린다. 여기서 수정·백테스트를 하면 이 판이 바탕이 된다. */}
+      {head.id !== strategy.id && (
+        <div className="callout version-note">
+          <span>
+            <b>{versionLabel(strategy.version)}</b> 판을 보고 있습니다. 최신 판은 {versionLabel(head.version)}이고, 여기서 수정하면 이 판을 바탕으로
+            다음 판이 만들어집니다.
+          </span>
+          <Link className="btn ghost sm" to={to.strategyDetail(head.id)}>
+            최신 판 보기
+          </Link>
+        </div>
+      )}
 
       {deleteError !== null && (
         <div className="callout crit" role="alert">
@@ -244,12 +268,27 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
         </button>
       </div>
       {historyTab === 'backtests' ? (
-        <BacktestHistory query={backtests} runs={runs} onOpen={(id) => navigate(to.backtestRun(id))} onRerun={openBacktest} onNew={() => openBacktest()} />
+        <BacktestHistory
+          query={backtests}
+          runs={runs}
+          versionFor={versionFor}
+          onOpen={(id) => navigate(to.backtestRun(id))}
+          onRerun={openBacktest}
+          onNew={() => openBacktest()}
+        />
       ) : (
-        <SimulationHistory query={simulations} sims={sims} onOpen={(id) => navigate(to.simulationLive(id))} onNew={openSimulation} />
+        <SimulationHistory query={simulations} sims={sims} versionFor={versionFor} onOpen={(id) => navigate(to.simulationLive(id))} onNew={openSimulation} />
       )}
 
       <div className="detail-fold">
+        <details>
+          <summary>
+            판 이력 · {lineage === null ? versionLabel(strategy.version) : `${lineage.versions.length}판 · 최신 ${versionLabel(head.version)}`}
+          </summary>
+          <div className="fold-body">
+            <VersionHistory lineage={lineage} current={strategy} />
+          </div>
+        </details>
         <details>
           <summary>
             전략 구성 자세히 · 조건 {filters.conditions.length + filters.otherCount}개 · {describeRanking(strategy.dsl.ranking)} ·{' '}
@@ -269,8 +308,8 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
           <summary>공개 설정 · {strategy.published ? '공개' : '비공개'}</summary>
           <div className="fold-body">
             <p className="goal-note" style={{ margin: 0 }}>
-              공개하면 랭킹에서 다른 사람이 이 전략의 구성을 보고 복제할 수 있습니다. 공개는 확인을 한 번 묻고 비공개로 되돌리기는 바로 됩니다. 수정해
-              저장하면 별도의 새 전략이 만들어집니다.
+              공개하면 랭킹에서 다른 사람이 이 판의 구성을 보고 복제할 수 있습니다. 공개는 확인을 한 번 묻고 비공개로 되돌리기는 바로 됩니다. 공개 여부는
+              판마다 따로이고 다음 판은 비공개로 시작합니다.
             </p>
           </div>
         </details>
@@ -289,11 +328,7 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
       <ConfirmDialog
         open={confirmOpen}
         title="이 전략을 삭제할까요?"
-        description={
-          running.length > 0
-            ? `"${strategy.name}"과 그 설정이 지워집니다. 운용 중인 모의투자 ${running.length}건이 이 전략을 쓰고 있습니다. 먼저 정지하는 것이 안전합니다. 되돌릴 수 없습니다.`
-            : `"${strategy.name}"과 그 설정이 지워집니다. 백테스트와 모의투자 기록은 남습니다. 되돌릴 수 없습니다.`
-        }
+        description={deleteDescription(strategy.name, lineage?.versions.length ?? 1, running.length)}
         confirmLabel="삭제"
         danger
         pending={remove.isPending}
@@ -304,11 +339,49 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
   )
 }
 
-/* 대회 목록에서 이 전략을 낸 회차. 여럿이면 마감이 늦은 회차를 본다. */
-function submissionFor(rounds: readonly ContestRoundItemResponse[], strategyId: string): ContestRoundItemResponse | null {
-  const mine = rounds.filter((round) => round.mySubmission !== null && String(round.mySubmission.strategyId) === strategyId)
+/* 대회 목록에서 이 전략의 어느 판이든 낸 회차. 여럿이면 마감이 늦은 회차를 본다. */
+function submissionFor(rounds: readonly ContestRoundItemResponse[], strategyIds: readonly string[]): ContestRoundItemResponse | null {
+  const mine = rounds.filter((round) => round.mySubmission !== null && strategyIds.includes(String(round.mySubmission.strategyId)))
   mine.sort((left, right) => right.submissionEndsAt.localeCompare(left.submissionEndsAt))
   return mine[0] ?? null
+}
+
+/* 삭제는 전략 단위라 모든 판이 함께 지워진다. 운용 중 모의투자가 있으면 그 수를 적어 경고한다. */
+function deleteDescription(name: string, versionCount: number, runningCount: number): string {
+  const target = versionCount > 1 ? `"${name}"의 모든 판 ${versionCount}개와 그 설정이 지워집니다.` : `"${name}"과 그 설정이 지워집니다.`
+  if (runningCount > 0) {
+    return `${target} 운용 중인 모의투자 ${runningCount}건이 이 전략을 쓰고 있습니다. 먼저 정지하는 것이 안전합니다. 되돌릴 수 없습니다.`
+  }
+  return `${target} 백테스트와 모의투자 기록은 남습니다. 되돌릴 수 없습니다.`
+}
+
+/* 판 이력. 최신이 위다. 보고 있는 판은 표시만 하고 다른 판은 그 상세로 간다. */
+function VersionHistory({ lineage, current }: { lineage: StrategyLineage | null; current: Strategy }) {
+  const versions = lineage === null ? [current] : lineage.versions
+  return (
+    <div className="version-list">
+      {versions.map((version) => (
+        <div className="vrow" key={version.id}>
+          <span className="vl">{versionLabel(version.version)}</span>
+          <span>
+            <b>{version.name}</b>
+            <span className="vd"> · {version.description || summarizeDsl(version.dsl)}</span>
+          </span>
+          <span className="vd">
+            {dateFormat.format(version.createdAt)}
+            {version.id === current.id ? (
+              <em>보는 중</em>
+            ) : (
+              <Link className="rank-action" to={to.strategyDetail(version.id)}>
+                보기
+              </Link>
+            )}
+          </span>
+        </div>
+      ))}
+      <p className="goal-note">수정해 저장하면 다음 판이 만들어지고 이전 판의 결과는 그대로 남습니다. 삭제는 모든 판을 함께 지웁니다.</p>
+    </div>
+  )
 }
 
 type NowCardsProps = {
@@ -396,15 +469,19 @@ function NowCards({ runs, sims, submission, loading, onBacktest }: NowCardsProps
   )
 }
 
+/* 실행이 어느 판으로 돌았는지. 전략 목록을 아직 못 받았으면 null 이고 빈 칸으로 둔다. */
+type VersionFor = (strategyId: string) => number | null
+
 type BacktestHistoryProps = {
   query: ReturnType<typeof useBacktestHistory>
   runs: BacktestRun[]
+  versionFor: VersionFor
   onOpen: (backtestId: string) => void
   onRerun: (run: BacktestRun) => void
   onNew: () => void
 }
 
-function BacktestHistory({ query, runs, onOpen, onRerun, onNew }: BacktestHistoryProps) {
+function BacktestHistory({ query, runs, versionFor, onOpen, onRerun, onNew }: BacktestHistoryProps) {
   if (query.isPending) {
     return <LoadingState label="백테스트 이력을 불러오는 중…" />
   }
@@ -432,6 +509,7 @@ function BacktestHistory({ query, runs, onOpen, onRerun, onNew }: BacktestHistor
           <thead>
             <tr>
               <th scope="col">상태</th>
+              <th scope="col">판</th>
               <th scope="col">평가 기간</th>
               <th scope="col" className="r">
                 초기자산
@@ -450,7 +528,7 @@ function BacktestHistory({ query, runs, onOpen, onRerun, onNew }: BacktestHistor
           </thead>
           <tbody>
             {runs.map((run) => (
-              <BacktestRow key={run.id} run={run} onOpen={() => onOpen(run.id)} onRerun={() => onRerun(run)} />
+              <BacktestRow key={run.id} run={run} version={versionFor(run.strategyId)} onOpen={() => onOpen(run.id)} onRerun={() => onRerun(run)} />
             ))}
           </tbody>
         </table>
@@ -470,7 +548,7 @@ function rowClick(open: () => void) {
 }
 
 /* 완료된 실행만 결과를 읽는다. 행 수가 전략 하나의 실행 수라 크지 않다. */
-function BacktestRow({ run, onOpen, onRerun }: { run: BacktestRun; onOpen: () => void; onRerun: () => void }) {
+function BacktestRow({ run, version, onOpen, onRerun }: { run: BacktestRun; version: number | null; onOpen: () => void; onRerun: () => void }) {
   const completed = run.status === 'COMPLETED'
   const result = useBacktestResult(run.id, completed)
   const status = backtestStatusOf(run.status)
@@ -481,6 +559,7 @@ function BacktestRow({ run, onOpen, onRerun }: { run: BacktestRun; onOpen: () =>
       <td>
         <span className={status.chip}>{status.label}</span>
       </td>
+      <td className="mono muted-cell">{version === null ? '—' : versionLabel(version)}</td>
       <td className="mono muted-cell">
         {formatDate(run.periodStart)} ~ {formatDate(run.periodEnd)}
       </td>
@@ -507,11 +586,12 @@ function BacktestRow({ run, onOpen, onRerun }: { run: BacktestRun; onOpen: () =>
 type SimulationHistoryProps = {
   query: ReturnType<typeof useSimulationHistory>
   sims: SimulationRun[]
+  versionFor: VersionFor
   onOpen: (simulationId: string) => void
   onNew: () => void
 }
 
-function SimulationHistory({ query, sims, onOpen, onNew }: SimulationHistoryProps) {
+function SimulationHistory({ query, sims, versionFor, onOpen, onNew }: SimulationHistoryProps) {
   if (query.isPending) {
     return <LoadingState label="모의투자 이력을 불러오는 중…" />
   }
@@ -539,6 +619,7 @@ function SimulationHistory({ query, sims, onOpen, onNew }: SimulationHistoryProp
           <thead>
             <tr>
               <th scope="col">상태</th>
+              <th scope="col">판</th>
               <th scope="col">운용 기간</th>
               <th scope="col" className="r">
                 초기자산
@@ -556,7 +637,7 @@ function SimulationHistory({ query, sims, onOpen, onNew }: SimulationHistoryProp
           </thead>
           <tbody>
             {sims.map((run) => (
-              <SimulationRow key={run.id} run={run} onOpen={() => onOpen(run.id)} />
+              <SimulationRow key={run.id} run={run} version={versionFor(run.strategyId)} onOpen={() => onOpen(run.id)} />
             ))}
           </tbody>
         </table>
@@ -566,7 +647,7 @@ function SimulationHistory({ query, sims, onOpen, onNew }: SimulationHistoryProp
 }
 
 /* 결과 행은 첫 봉이 마감되기 전에는 없다. 그 동안은 비운다. 목록 카드와 같이 폴링은 하지 않는다. */
-function SimulationRow({ run, onOpen }: { run: SimulationRun; onOpen: () => void }) {
+function SimulationRow({ run, version, onOpen }: { run: SimulationRun; version: number | null; onOpen: () => void }) {
   const result = useSimulationResult(run.id, false)
   const status = simulationStatusOf(run.status)
   const metrics = result.data ?? null
@@ -576,6 +657,7 @@ function SimulationRow({ run, onOpen }: { run: SimulationRun; onOpen: () => void
       <td>
         <span className={status.chip}>{status.label}</span>
       </td>
+      <td className="mono muted-cell">{version === null ? '—' : versionLabel(version)}</td>
       <td className="mono muted-cell">
         {run.startedAt === null ? '시작 전' : `${formatDate(run.startedAt)} ~ ${run.stoppedAt === null ? '' : formatDate(run.stoppedAt)}`}
       </td>

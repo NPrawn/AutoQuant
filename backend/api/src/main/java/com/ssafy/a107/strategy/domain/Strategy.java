@@ -25,6 +25,7 @@ import java.util.UUID;
 public class Strategy extends BaseEntity {
 
     private static final int MAX_NAME_LENGTH = 100;
+    private static final int FIRST_VERSION = 1;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,17 +55,34 @@ public class Strategy extends BaseEntity {
     @Column(name = "published", nullable = false)
     private boolean published;
 
+    /*
+     * 이 판이 속한 전략의 뿌리. NULL 이면 이 행이 뿌리(1판)다. 뿌리 행은 삽입 때 자기 번호를 모르므로 비워 두고
+     * getRootStrategyId 가 자기 번호로 읽는다. 수정은 제자리 변경이 아니라 같은 뿌리의 다음 판을 만드는 일이다.
+     */
+    @Column(name = "root_strategy_id", updatable = false)
+    private Long rootStrategyId;
+
+    @Column(name = "version_no", nullable = false, updatable = false)
+    private int versionNo;
+
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
     protected Strategy() {
     }
 
+    /* 새 전략은 뿌리 1판이다. */
     public Strategy(Member member, String name, String description, StrategyDsl strategyDsl) {
+        this(member, name, description, strategyDsl, null, FIRST_VERSION);
+    }
+
+    private Strategy(Member member, String name, String description, StrategyDsl strategyDsl, Long rootStrategyId, int versionNo) {
         this.member = Objects.requireNonNull(member);
         this.name = requireNonBlankName(name);
         this.description = description;
         this.strategyDsl = Objects.requireNonNull(strategyDsl);
+        this.rootStrategyId = rootStrategyId;
+        this.versionNo = versionNo;
     }
 
     public void delete(Instant deletedAt) {
@@ -81,6 +99,27 @@ public class Strategy extends BaseEntity {
      */
     public Strategy copyFor(Member owner) {
         return new Strategy(owner, copiedName(name), description, strategyDsl);
+    }
+
+    /*
+     * 같은 전략의 다음 판. 이름·설명·DSL 은 새 값이고 뿌리는 이 판과 같다. 판 번호는 서비스가 뿌리 전체를 보고 정한다.
+     * 공개 여부는 물려받지 않는다. 고친 내용을 확인하기 전에 남에게 보이면 안 된다.
+     */
+    public Strategy reviseWith(String name, String description, StrategyDsl strategyDsl, int versionNo) {
+        Long rootId = Objects.requireNonNull(getRootStrategyId(), "Strategy must be persisted before it is revised");
+        if (versionNo <= FIRST_VERSION) {
+            throw new IllegalArgumentException("Revision version must be greater than " + FIRST_VERSION);
+        }
+        return new Strategy(member, name, description, strategyDsl, rootId, versionNo);
+    }
+
+    /* 뿌리 전략 번호. 뿌리 자신은 자기 번호다. 저장 전이면 아직 모른다. */
+    public Long getRootStrategyId() {
+        return rootStrategyId != null ? rootStrategyId : strategyId;
+    }
+
+    public int getVersionNo() {
+        return versionNo;
     }
 
     public boolean isPublished() {

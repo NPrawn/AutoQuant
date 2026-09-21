@@ -20,7 +20,13 @@ export type PrimaryAction =
   | { kind: 'live'; label: '실시간 보기'; simulationId: string }
 
 export function simulationsForStrategy(runs: readonly SimulationRun[], strategyId: string): SimulationRun[] {
-  return runs.filter((run) => run.strategyId === strategyId).sort(byRecent)
+  return simulationsForVersions(runs, [strategyId])
+}
+
+/* 한 전략의 모든 판으로 돌린 모의투자. 판마다 전략 식별자가 다르므로 묶음으로 거른다. */
+export function simulationsForVersions(runs: readonly SimulationRun[], strategyIds: readonly string[]): SimulationRun[] {
+  const ids = new Set(strategyIds)
+  return runs.filter((run) => ids.has(run.strategyId)).sort(byRecent)
 }
 
 /* 시작한 것이 최근인 순. 시작 전(CREATED) 은 맨 위다. */
