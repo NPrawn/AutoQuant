@@ -7,9 +7,11 @@ No week is moved. A dataset is one contiguous stretch of real candles: `warmup_w
 import bisect
 import random
 from dataclasses import dataclass
+from decimal import ROUND_HALF_UP
 
 from contest.blocks import Series, first_week_start
 from contest.sampling import GenerationError, KINDS, Params, in_target, rebalanced_return, stitched_return
+from contest.stitch import AMOUNT_PLACES, VOLUME_PLACES, WIDE, Bar, to_decimal
 
 PRICE_FLOOR = 1.0
 
@@ -141,3 +143,16 @@ def reachable(series: Series, candidates: list[str], params: Params, rng: random
             "p90": returns[len(returns) * 9 // 10] if returns else None,
         },
     }
+
+
+def lift(series: Series, universe: list[str], selection: Selection, virtual_start: int) -> list[Bar]:
+    """Copy the window's real candles onto virtual dates. Prices, volumes and the hour of the week are untouched."""
+    offset = virtual_start - selection.start
+    bars = []
+    for asset in universe:
+        for candle in series[asset].between(selection.start, selection.end):
+            bars.append(Bar(asset, 60, candle.t + offset,
+                            to_decimal(candle.o), to_decimal(candle.h), to_decimal(candle.l), to_decimal(candle.c),
+                            to_decimal(candle.v).quantize(VOLUME_PLACES, rounding=ROUND_HALF_UP, context=WIDE),
+                            to_decimal(candle.a).quantize(AMOUNT_PLACES, rounding=ROUND_HALF_UP, context=WIDE)))
+    return bars

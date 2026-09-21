@@ -33,7 +33,7 @@ class Bar:
     a: Decimal
 
 
-def _decimal(x: float) -> Decimal:
+def to_decimal(x: float) -> Decimal:
     return Decimal(repr(x))
 
 
@@ -44,7 +44,7 @@ def tick_table(series: Series) -> dict[int, Decimal]:
         for candle in track.candles:
             for price in (candle.o, candle.h, candle.l, candle.c):
                 if price > 0:
-                    prices.setdefault(math.floor(math.log10(price)), set()).add(_decimal(price))
+                    prices.setdefault(math.floor(math.log10(price)), set()).add(to_decimal(price))
     table = {}
     for exponent, values in prices.items():
         ordered = sorted(values)
@@ -66,7 +66,7 @@ def tick_for(price: float, table: dict[int, Decimal]) -> Decimal:
 
 def snap(price: float, table: dict[int, Decimal]) -> Decimal:
     tick = tick_for(price, table)
-    steps = (_decimal(price) / tick).to_integral_value(rounding=ROUND_HALF_UP)
+    steps = (to_decimal(price) / tick).to_integral_value(rounding=ROUND_HALF_UP)
     return (tick * max(steps, Decimal(1))).quantize(PRICE_PLACES, context=WIDE)
 
 
@@ -160,8 +160,8 @@ def stitch(series: Series, universe: list[str], sequence: list[Week], span: int,
                 bars.append(Bar(
                     asset, 60, candle.t + offset,
                     prices[0], max(prices), min(prices), prices[3],
-                    _decimal(volume).quantize(VOLUME_PLACES, rounding=ROUND_HALF_UP, context=WIDE),
-                    _decimal(candle.a * scale * ratio * (1.0 + weight * (level - 1.0)))
+                    to_decimal(volume).quantize(VOLUME_PLACES, rounding=ROUND_HALF_UP, context=WIDE),
+                    to_decimal(candle.a * scale * ratio * (1.0 + weight * (level - 1.0)))
                     .quantize(AMOUNT_PLACES, rounding=ROUND_HALF_UP, context=WIDE),
                 ))
                 tail_closes.append((candle.t + offset, close))

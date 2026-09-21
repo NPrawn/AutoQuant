@@ -13,6 +13,7 @@ from contest.blocks import (
 )
 from contest.checks import check_bars, feasibility, stage2
 from contest.sampling import KINDS, Params, evaluation_returns, max_factor_period, sample_sequence
+from contest.windows import GenerationError, choose, lift, reachable
 from contest.stitch import (
     SEAM_ALPHA, SEAM_HOURS, Bar, aggregate, fill_gaps, stitch, tick_table, write_load_csv,
 )
@@ -93,6 +94,54 @@ def _check(args: argparse.Namespace) -> int:
     return 0 if report["passed"] else 1
 
 
+def _build_real(args: argparse.Namespace) -> int:
+    """ADR-0018: each dataset is one real window, copied onto virtual dates."""
+    params = _params(args)
+    series, candidates = _load(args)
+    ticks = tick_table(series)
+    try:
+        selections = choose(series, candidates, params, random.Random(args.seed),
+                            universe_size=args.universe_size, tries=args.candidates)
+    except GenerationError as error:
+        raise SystemExit(str(error)) from error
+
+    period_start = params.virtual_start + params.warmup_weeks * params.span
+    summary = {
+        "seed": args.seed,
+        "mode": "real",
+        "period_start": format_time(period_start),
+        "period_end": format_time(period_start + params.eval_weeks * params.span),
+        "max_factor_period": max_factor_period(params),
+        "datasets": {},
+    }
+    os.makedirs(args.out, exist_ok=True)
+    for selection in selections:
+        hourly = lift(series, selection.universe, selection, params.virtual_start)
+        filled = 0
+        if args.fill_gaps:
+            hourly, filled = fill_gaps(hourly)
+        bars = hourly + aggregate(hourly, 240) + aggregate(hourly, 1440)
+        problems = check_bars(bars, ticks)
+        if problems:
+            raise SystemExit(f"{selection.kind}: {len(problems)} bar check failures, first: {problems[:5]}")
+        write_load_csv(os.path.join(args.out, f"{selection.kind}.csv"), bars)
+        summary["datasets"][selection.kind] = {
+            "source_start": format_time(selection.start),
+            "source_end": format_time(selection.end),
+            "evaluation_return": selection.held,
+            "rebalanced_return": selection.rebalanced,
+            "filled_hours": filled,
+            "universe": selection.universe,
+            "markets": {asset: series[asset].market for asset in selection.universe},
+        }
+    with open(os.path.join(args.out, "windows.json"), "w", encoding="utf-8", newline="\n") as file:
+        json.dump(summary, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+    keys = ("seed", "period_start", "period_end", "max_factor_period")
+    print(json.dumps({key: summary[key] for key in keys}, ensure_ascii=False))
+    return 0
+
+
 def _build(args: argparse.Namespace) -> int:
     params, series, universe = _select(args)
     pool = build_pool(series, universe, params.block_start, params.block_days, params.window)
@@ -163,13 +212,21 @@ def main(argv: list[str] | None = None) -> int:
     commands.choices["check"].add_argument("--generated", type=int, default=200)
     commands.choices["check"].add_argument("--seam-datasets", type=int, default=50)
     commands.choices["check"].add_argument("--out", help="결과 JSON을 저장할 경로")
-    commands.choices["build"].add_argument("--out", required=True, help="CSV 4개와 weeks.json을 쓸 디렉터리")
+    commands.choices["build"].add_argument("--out", required=True, help="CSV 4개와 요약 JSON을 쓸 디렉터리")
+    commands.choices["build"].add_argument(
+        "--mode", choices=("real", "stitch"), default="real",
+        help="real 은 공개하지 않은 실제 구간을 그대로 쓴다 (ADR-0018). stitch 는 주를 섞던 옛 방식이다 (ADR-0011)",
+    )
+    commands.choices["build"].add_argument("--universe-size", type=int, default=20,
+                                           help="real 모드에서 회차 universe 에 넣을 종목 수")
     commands.choices["build"].add_argument(
         "--fill-gaps", action="store_true",
         help="거래 없는 시간을 직전 종가·거래량 0 봉으로 채운다. 엔진이 빈 시간을 처리하기 전까지 쓰는 임시 옵션",
     )
 
     args = parser.parse_args(argv)
+    if args.command == "build" and args.mode == "real":
+        return _build_real(args)
     return {"check": _check, "build": _build}[args.command](args)
 
 
