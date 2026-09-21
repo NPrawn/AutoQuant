@@ -11,6 +11,7 @@ pipeline {
         IMAGE_PREFIX = 'a107'
         PRODUCTION_COMPOSE = 'infra/docker-compose.prod.yml'
         PRODUCTION_ENV_FILE = '/etc/a107/.env.production'
+        BACKTEST_WORKER_REPLICAS = '2'
     }
 
     stages {
@@ -150,7 +151,8 @@ pipeline {
 
                     export IMAGE_TAG
                     docker compose --env-file "$PRODUCTION_ENV_FILE" \
-                      -f "$PRODUCTION_COMPOSE" up -d --pull missing --remove-orphans
+                      -f "$PRODUCTION_COMPOSE" up -d --pull missing --remove-orphans \
+                      --scale backtest-worker="$BACKTEST_WORKER_REPLICAS"
                 '''
             }
         }
