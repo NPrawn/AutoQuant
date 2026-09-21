@@ -2,14 +2,17 @@
 
 import math
 import random
+from decimal import Decimal
 from dataclasses import replace
 
 import pytest
 
 from contest.blocks import HOUR
+from contest.stitch import aggregate
 from contest.sampling import BULL, GenerationError, Params
 from contest.windows import (
-    Selection, alive, choose, evaluation_returns, identifiability, integrity, lift, reachable, window_starts,
+    Selection, alive, check_window_bars, choose, evaluation_returns, identifiability, integrity, krw_tick,
+    lift, reachable, window_starts,
 )
 from tests.contest_fixtures import MONDAY, WEEK, weekly_track
 
@@ -122,3 +125,27 @@ def test_identifiability_counts_what_a_public_universe_would_give_away():
     assert report["disclosed_windows"] == report["windows"] > 0
     # three assets choose two: three universes per window, so the hidden space is larger
     assert report["hidden_candidates_log10"] > math.log10(report["windows"])
+
+
+def test_check_window_bars_uses_the_exchange_tick_rule():
+    # 94.3 sits on the 0.1 tick of the 10~100 band and 1485 on the 1 tick above 1000: both are real Upbit prices
+    series = {"a": weekly_track("KRW-A", MONDAY, [94.3, 94.4, 94.5]),
+              "b": weekly_track("KRW-B", MONDAY, [1485.0, 1490.0, 1495.0])}
+    selection = Selection("GENERAL", MONDAY, MONDAY + 2 * WEEK, ["a", "b"], 0.0, 0.0)
+    hourly = lift(series, ["a", "b"], selection, MONDAY + 100 * WEEK)
+
+    assert check_window_bars(hourly + aggregate(hourly, 240) + aggregate(hourly, 1440)) == []
+
+
+def test_check_window_bars_accepts_an_older_tick_grid():
+    # BCH really traded at 1,172,500: a 500 KRW step, which today's 1,000 KRW rule would reject
+    series = {"a": weekly_track("KRW-A", MONDAY, [1_172_500.0, 1_212_500.0, 1_205_500.0])}
+    selection = Selection("GENERAL", MONDAY, MONDAY + 2 * WEEK, ["a"], 0.0, 0.0)
+    hourly = lift(series, ["a"], selection, MONDAY + 100 * WEEK)
+
+    assert check_window_bars(hourly + aggregate(hourly, 240) + aggregate(hourly, 1440)) == []
+
+
+def test_krw_tick_follows_the_engine_table():
+    assert (krw_tick(94.3), krw_tick(1485.0), krw_tick(12_000.0), krw_tick(0.5)) == (
+        Decimal("0.1"), Decimal("1"), Decimal("10"), Decimal("0.001"))

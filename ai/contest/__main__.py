@@ -13,7 +13,9 @@ from contest.blocks import (
 )
 from contest.checks import check_bars, feasibility, stage2
 from contest.sampling import KINDS, Params, evaluation_returns, max_factor_period, sample_sequence
-from contest.windows import GenerationError, choose, identifiability, integrity, lift, reachable
+from contest.windows import (
+    GenerationError, check_window_bars, choose, identifiability, integrity, lift, reachable,
+)
 from contest.stitch import (
     SEAM_ALPHA, SEAM_HOURS, Bar, aggregate, fill_gaps, stitch, tick_table, write_load_csv,
 )
@@ -139,7 +141,6 @@ def _build_real(args: argparse.Namespace) -> int:
     """ADR-0018: each dataset is one real window, copied onto virtual dates."""
     params = _params(args)
     series, candidates = _load(args)
-    ticks = tick_table(series)
     try:
         selections = choose(series, candidates, params, random.Random(args.seed),
                             universe_size=args.universe_size, tries=args.candidates)
@@ -162,7 +163,7 @@ def _build_real(args: argparse.Namespace) -> int:
         if args.fill_gaps:
             hourly, filled = fill_gaps(hourly)
         bars = hourly + aggregate(hourly, 240) + aggregate(hourly, 1440)
-        problems = check_bars(bars, ticks)
+        problems = check_window_bars(bars)
         if problems:
             raise SystemExit(f"{selection.kind}: {len(problems)} bar check failures, first: {problems[:5]}")
         write_load_csv(os.path.join(args.out, f"{selection.kind}.csv"), bars)

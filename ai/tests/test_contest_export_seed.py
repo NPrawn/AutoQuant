@@ -186,3 +186,59 @@ def test_warmup_weeks_ride_along_in_the_report(tmp_path):
     # 뽑은 주 3주 − 평가 2주 = 워밍업 1주
     assert report["warmup_weeks"] == 1
     assert report["replace"] is False
+
+
+def _write_real_datasets(directory: str, hours: int = 3) -> dict:
+    """A real-window generator output: windows.json plus one CSV per dataset, each with its own universe."""
+    universes = {"GENERAL": ["asset-a"], "BULL": ["asset-b"], "BEAR": ["asset-a"], "SIDEWAYS": ["asset-b"]}
+    summary = {
+        "seed": 20261001,
+        "mode": "real",
+        "period_start": "2030-01-14T00:00:00Z",
+        "period_end": "2030-01-28T00:00:00Z",
+        "max_factor_period": 5039,
+        "datasets": {},
+    }
+    for index, kind in enumerate(KINDS):
+        start = datetime(2021, 1, 4, tzinfo=timezone.utc) + timedelta(weeks=4 * index)
+        summary["datasets"][kind] = {
+            "source_start": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "source_end": (start + timedelta(weeks=3)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "evaluation_return": 0.2389,
+            "rebalanced_return": 0.2101,
+            "filled_hours": 4,
+            "universe": universes[kind],
+            "markets": {asset: MARKETS[asset] for asset in universes[kind]},
+        }
+        with open(os.path.join(directory, f"{kind}.csv"), "w", encoding="utf-8", newline="") as file:
+            writer = csv.DictWriter(file, LOAD_COLUMNS, lineterminator="\n")
+            writer.writeheader()
+            for asset in universes[kind]:
+                for hour in range(hours):
+                    writer.writerow(_hourly_row(asset, hour))
+                writer.writerow(_hourly_row(asset, 0) | {"interval_minutes": "240"})
+                writer.writerow(_hourly_row(asset, 0) | {"interval_minutes": "1440"})
+    with open(os.path.join(directory, "windows.json"), "w", encoding="utf-8", newline="\n") as file:
+        json.dump(summary, file, ensure_ascii=False)
+    return summary
+
+
+def test_real_windows_write_their_own_source_window_and_universe(tmp_path):
+    datasets = tmp_path / "datasets"
+    datasets.mkdir(parents=True)
+    _write_real_datasets(str(datasets))
+    out = tmp_path / "V99__seed.sql"
+
+    report = export(str(datasets), ROUND_ID, "2회차", "2026-10-01T00:00:00Z", "2026-11-01T00:00:00Z",
+                    5, "contest-2026-09-21", str(out))
+    sql = out.read_text(encoding="utf-8")
+
+    # each dataset keeps the window it was cut from, not one window shared by the round
+    assert "'2021-01-04T00:00:00Z', '2021-01-25T00:00:00Z'" in sql
+    assert "'2021-02-01T00:00:00Z', '2021-02-22T00:00:00Z'" in sql
+    # 3 weeks of source, 2 of which are evaluation, so one week of warmup
+    assert "5, 1, 2\n" in sql
+    # the universes differ, so the dataset_asset rows are written per dataset
+    assert sql.count("INSERT INTO contest.market_dataset_asset") == 4
+    assert ") <> 4 THEN" in sql
+    assert report["hourly_rows"] == 4 * 3

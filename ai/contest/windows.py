@@ -8,10 +8,11 @@ import bisect
 import math
 import random
 from dataclasses import dataclass
-from decimal import ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 
 from contest.blocks import DAY, Series, first_week_start
 from contest.sampling import GenerationError, KINDS, Params, in_target, rebalanced_return, stitched_return
+from contest.checks import check_bars
 from contest.stitch import AMOUNT_PLACES, VOLUME_PLACES, WIDE, Bar, to_decimal
 
 PRICE_FLOOR = 1.0
@@ -206,3 +207,24 @@ def identifiability(series: Series, candidates: list[str], params: Params, unive
         "disclosed_windows": disclosed,
         "hidden_candidates_log10": math.log10(combinations) if combinations else 0.0,
     }
+
+
+KRW_TICKS = (
+    (1_000_000, "1000"), (500_000, "500"), (100_000, "100"), (50_000, "50"), (10_000, "10"),
+    (5_000, "5"), (1_000, "1"), (100, "1"), (10, "0.1"), (1, "0.01"), (0.1, "0.001"), (0.01, "0.0001"),
+)
+
+
+def krw_tick(price: float) -> Decimal:
+    """Upbit's KRW tick table, the same one the engine settles on (KrwPriceTickSizeResolver)."""
+    for floor, tick in KRW_TICKS:
+        if price >= floor:
+            return Decimal(tick)
+    return Decimal("0.00001")
+
+
+def check_window_bars(bars: list[Bar]) -> list[str]:
+    """Bar invariants for a real window. The price-grid test is off: Upbit's tick table changed over the years,
+    so old candles sit on a grid today's rule rejects (BCH at 1,172,500 is a 500 KRW step, not 1,000). What the
+    grid test guards against - prices we mangled - `integrity` proves directly against the source."""
+    return check_bars(bars, {}, tick_of=krw_tick, grid=False)

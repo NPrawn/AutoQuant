@@ -4,6 +4,7 @@ import bisect
 import math
 import random
 import statistics
+from collections.abc import Callable
 from decimal import Decimal
 
 from contest.blocks import (
@@ -18,17 +19,21 @@ Point = tuple[int, float, float]   # (open time, close, volume)
 
 # --- bar invariants ---------------------------------------------------------------------------
 
-def _on_grid(price: Decimal, ticks: dict[int, Decimal]) -> bool:
+def _on_grid(price: Decimal, tick: Decimal) -> bool:
     exponent = math.floor(math.log10(float(price)))
     # snapping just below a decade edge (9.996 -> 10.00) lands exactly on a power of ten
-    return price % tick_for(float(price), ticks) == 0 or price == Decimal(10) ** exponent
+    return price % tick == 0 or price == Decimal(10) ** exponent
 
 
 def _key(bars: list[Bar]) -> list[tuple]:
     return sorted((bar.asset, bar.t, bar.o, bar.h, bar.l, bar.c, bar.v, bar.a) for bar in bars)
 
 
-def check_bars(bars: list[Bar], ticks: dict[int, Decimal]) -> list[str]:
+def check_bars(bars: list[Bar], ticks: dict[int, Decimal],
+               tick_of: Callable[[float], Decimal] | None = None, grid: bool = True) -> list[str]:
+    """`tick_of` replaces the tick inferred from the source. `grid` off skips the price-grid test, which only
+    means something for prices we built: a real window's prices are proven by comparing them to the source."""
+    resolve = tick_of if tick_of is not None else (lambda price: tick_for(price, ticks))
     problems: list[str] = []
     for bar in bars:
         where = f"{bar.asset} {bar.interval}m t={bar.t}"
@@ -43,11 +48,11 @@ def check_bars(bars: list[Bar], ticks: dict[int, Decimal]) -> list[str]:
             problems.append(f"{where}: open time not on interval boundary")
         if bar.interval != 60:
             continue
-        off_grid = [price for price in prices if not _on_grid(price, ticks)]
+        off_grid = [price for price in prices if grid and not _on_grid(price, resolve(float(price)))]
         if off_grid:
             problems.append(f"{where}: price {off_grid[0]} off tick grid")
         if bar.v > 0:
-            tick = tick_for(float(bar.h), ticks)
+            tick = resolve(float(bar.h))
             average = bar.a / bar.v
             if not bar.l - tick <= average <= bar.h + tick:
                 problems.append(f"{where}: amount/volume {average} outside low..high")
