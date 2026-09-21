@@ -101,6 +101,12 @@ spring:
     hikari:
       maximum-pool-size: ${BACKTEST_WORKER_DB_POOL_MAX:3}
       minimum-idle: 1
+      data-source-properties:
+        reWriteBatchedInserts: true
+  jpa:
+    properties:
+      hibernate.jdbc.batch_size: ${BACKTEST_WORKER_JDBC_BATCH_SIZE:50}
+      hibernate.order_inserts: true
   rabbitmq:
     listener:
       simple:
