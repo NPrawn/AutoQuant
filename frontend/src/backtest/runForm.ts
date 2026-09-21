@@ -31,12 +31,25 @@ export const marketDataVersion = 'v1.4'
 
 export const defaultInitialCapital = 3_000_000
 
-/* 종료일은 오늘까지다. 아직 오지 않은 구간은 캔들이 없어 계산할 수 없다. */
+/*
+ * 종료일은 어제까지다. 오늘 봉은 아직 닫히지 않아 평가에 쓰이지 않으므로, 오늘을 고를 수 있게 두면
+ * 고른 날짜와 실제로 평가된 마지막 날이 어긋난다.
+ */
+export function lastSelectableEndDate(today: Date): Date {
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  return yesterday
+}
+
+export function lastSelectableEnd(today: Date): string {
+  return toDateInput(lastSelectableEndDate(today))
+}
+
 export function createRunForm(strategyId: string, today: Date, bounds: PeriodBounds): BacktestRunForm {
   return {
     strategyId,
     periodStart: bounds.earliestStart,
-    periodEnd: toDateInput(today),
+    periodEnd: lastSelectableEnd(today),
     initialCapital: defaultInitialCapital,
   }
 }
@@ -47,13 +60,14 @@ function shiftMonths(value: Date, months: number): Date {
   return shifted
 }
 
-/* 프리셋은 시작일만 옮기고 하한 아래로는 내려가지 않는다. */
+/* 프리셋은 시작일만 옮기고 하한 아래로는 내려가지 않는다. 끝은 늘 고를 수 있는 마지막 날이다. */
 export function applyPreset(form: BacktestRunForm, preset: PresetRange, today: Date, bounds: PeriodBounds): BacktestRunForm {
-  const end = toDateInput(today)
+  const lastEnd = lastSelectableEndDate(today)
+  const end = toDateInput(lastEnd)
   if (preset === 'all') {
     return { ...form, periodStart: bounds.earliestStart, periodEnd: end }
   }
-  const start = toDateInput(shiftMonths(today, preset === '3m' ? -3 : -1))
+  const start = toDateInput(shiftMonths(lastEnd, preset === '3m' ? -3 : -1))
   return { ...form, periodStart: start < bounds.earliestStart ? bounds.earliestStart : start, periodEnd: end }
 }
 
@@ -84,6 +98,15 @@ export function setInitialCapital(form: BacktestRunForm, initialCapital: number)
   return { ...form, initialCapital }
 }
 
+/*
+ * 고를 수 있는 마지막 날을 넘는 종료일을 끌어내린다. 예전 실행의 "같은 조건 다시" 는 그때의 종료일을
+ * 그대로 들고 오는데, 그 값이 오늘이면 지금 규칙으로는 고를 수 없는 날이라 폼이 열리자마자 오류가 된다.
+ */
+export function clampPeriodEnd(form: BacktestRunForm, today: Date): BacktestRunForm {
+  const lastEnd = lastSelectableEnd(today)
+  return form.periodEnd > lastEnd ? { ...form, periodEnd: lastEnd } : form
+}
+
 /* 하한보다 이른 시작일을 하한으로 끌어올린다. 전략을 바꿔 워밍업이 늘어났을 때 쓴다. */
 export function clampPeriodStart(form: BacktestRunForm, bounds: PeriodBounds): BacktestRunForm {
   return form.periodStart < bounds.earliestStart ? { ...form, periodStart: bounds.earliestStart } : form
@@ -108,8 +131,8 @@ export function validateRunForm(form: BacktestRunForm, today: Date, bounds: Peri
   }
   if (form.periodEnd === '') {
     issues.push({ field: 'periodEnd', message: '종료일을 입력해 주세요.' })
-  } else if (form.periodEnd > toDateInput(today)) {
-    issues.push({ field: 'periodEnd', message: '종료일은 오늘까지만 선택할 수 있습니다.' })
+  } else if (form.periodEnd > lastSelectableEnd(today)) {
+    issues.push({ field: 'periodEnd', message: '오늘 봉은 아직 닫히지 않아 종료일은 어제까지만 선택할 수 있습니다.' })
   }
   if (form.periodStart !== '' && form.periodEnd !== '' && form.periodStart >= form.periodEnd) {
     issues.push({ field: 'periodEnd', message: '종료일이 시작일보다 뒤여야 합니다.' })

@@ -3,8 +3,8 @@ import { test } from 'node:test'
 import { formatPriceKrw, isRunInProgress, statusOf } from '../src/backtest/labels.ts'
 import { periodBounds } from '../src/backtest/periodBounds.ts'
 import {
-  applyPreset, clampPeriodStart, createRunForm, detectPreset, setInitialCapital,
-  setPeriodEnd, setPeriodStart, setStrategyId, toCreateRequest, toDateInput, validateRunForm,
+  applyPreset, clampPeriodEnd, clampPeriodStart, createRunForm, detectPreset, lastSelectableEnd,
+  setInitialCapital, setPeriodEnd, setPeriodStart, setStrategyId, toCreateRequest, toDateInput, validateRunForm,
 } from '../src/backtest/runForm.ts'
 
 const today = new Date('2026-09-14T05:00:00Z')
@@ -28,11 +28,25 @@ const dsl = (rankingPeriod = 20) => ({
 const bounds = periodBounds(coverage, dsl(), today)
 const form = (b = bounds) => createRunForm('42', today, b)
 
-test('기본 기간은 워밍업을 반영한 하한부터 오늘까지고 바로 실행할 수 있다', () => {
+test('기본 기간은 워밍업을 반영한 하한부터 어제까지고 바로 실행할 수 있다', () => {
   const created = form()
   assert.equal(created.periodStart, '2025-08-10')
-  assert.equal(created.periodEnd, toDateInput(today))
+  assert.equal(created.periodEnd, '2026-09-13')
+  assert.equal(lastSelectableEnd(today), '2026-09-13')
   assert.deepEqual(validateRunForm(created, today, bounds), [])
+})
+
+/* 오늘 봉은 아직 닫히지 않아 평가에 쓰이지 않는다. 고를 수 있게 두면 고른 날짜와 평가된 마지막 날이 어긋난다. */
+test('오늘은 종료일로 고를 수 없고 예전 실행의 오늘 종료일은 어제로 끌어내린다', () => {
+  const endsToday = setPeriodEnd(form(), toDateInput(today))
+
+  assert.deepEqual(
+    validateRunForm(endsToday, today, bounds).map((issue) => issue.field),
+    ['periodEnd'],
+  )
+  assert.match(validateRunForm(endsToday, today, bounds)[0].message, /어제까지만/)
+  assert.equal(clampPeriodEnd(endsToday, today).periodEnd, '2026-09-13')
+  assert.equal(clampPeriodEnd(form(), today).periodEnd, '2026-09-13')
 })
 
 test('보유 시작일을 그대로 쓰면 워밍업이 없어 검증에 걸린다', () => {
@@ -43,8 +57,9 @@ test('보유 시작일을 그대로 쓰면 워밍업이 없어 검증에 걸린�
 })
 
 test('프리셋은 시작일만 옮기고 하한 아래로 내려가지 않는다', () => {
-  assert.equal(applyPreset(form(), '1m', today, bounds).periodStart, '2026-08-14')
-  assert.equal(applyPreset(form(), '3m', today, bounds).periodStart, '2026-06-14')
+  assert.equal(applyPreset(form(), '1m', today, bounds).periodStart, '2026-08-13')
+  assert.equal(applyPreset(form(), '3m', today, bounds).periodStart, '2026-06-13')
+  assert.equal(applyPreset(form(), '1m', today, bounds).periodEnd, '2026-09-13')
   const late = periodBounds({ start: '2026-08-20', end: '2026-09-13' }, dsl(1), today)
   assert.equal(applyPreset(form(late), '3m', today, late).periodStart, late.earliestStart)
   assert.equal(applyPreset(form(late), 'all', today, late).periodStart, late.earliestStart)

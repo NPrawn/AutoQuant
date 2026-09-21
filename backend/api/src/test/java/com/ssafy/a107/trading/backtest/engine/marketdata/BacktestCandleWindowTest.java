@@ -136,6 +136,62 @@ class BacktestCandleWindowTest {
                 .containsExactly(Instant.parse("2026-01-02T23:00:00Z"));
     }
 
+    /*
+     * 화면은 종료일을 로컬 23:59:59.999(=14:59:59.999Z) 로 보내 봉 경계와 어긋난다. 종료일이 과거이면
+     * 그 뒤에 열리는 봉이 이미 있어 적재되는데, 예전에는 이 봉을 거부해 백테스트가 전부 실패했다.
+     * 구간을 넘겨 닫히는 봉은 평가에서 빼고 체결 봉으로만 보관한다.
+     */
+    @DisplayName("기간 끝이 봉 경계와 어긋나면 구간을 넘겨 닫히는 봉은 체결 봉으로만 보관한다")
+    @Test
+    void keepExecutionCandleWhenPeriodIsNotAlignedToCandleBoundary() {
+        Instant evaluationStart = Instant.parse("2026-09-16T15:00:00Z");
+        Instant misalignedEnd = Instant.parse("2026-09-18T14:59:59.999Z");
+        Instant evaluated = Instant.parse("2026-09-17T00:00:00Z");
+        Instant closesAfterEnd = Instant.parse("2026-09-18T00:00:00Z");
+        Instant openedAfterEnd = Instant.parse("2026-09-19T00:00:00Z");
+
+        BacktestCandleWindow window = new BacktestCandleWindow(
+                Timeframe.ONE_DAY,
+                evaluationStart,
+                misalignedEnd,
+                Map.of(ASSET_ID, List.of(
+                        dailyCandle(evaluated),
+                        dailyCandle(closesAfterEnd),
+                        dailyCandle(openedAfterEnd)
+                ))
+        );
+
+        assertThat(window.candlesByAssetId().get(ASSET_ID))
+                .extracting(candle -> candle.getId().getOpenTime())
+                .containsExactly(evaluated, closesAfterEnd, openedAfterEnd);
+        assertThat(window.evaluationCandlesByAssetId().get(ASSET_ID))
+                .extracting(candle -> candle.getId().getOpenTime())
+                .containsExactly(evaluated);
+    }
+
+    @DisplayName("체결 봉 하나를 넘어서는 봉은 거절한다")
+    @Test
+    void rejectCandleBeyondExecutionCandle() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new BacktestCandleWindow(
+                        Timeframe.ONE_HOUR,
+                        EVALUATION_START,
+                        EVALUATION_END,
+                        Map.of(ASSET_ID, List.of(candle(EVALUATION_END.plusSeconds(3600))))
+                ))
+                .withMessage("Candle open time must be before one candle after evaluation end");
+    }
+
+    private MinuteCandle dailyCandle(Instant openTime) {
+        return MinuteCandleFixture.minuteCandle(
+                ASSET_ID,
+                Timeframe.ONE_DAY.getIntervalMinutes(),
+                openTime,
+                BigDecimal.ONE,
+                BigDecimal.ONE
+        );
+    }
+
     private MinuteCandle candle(Instant openTime) {
         return MinuteCandleFixture.minuteCandle(
                 ASSET_ID,

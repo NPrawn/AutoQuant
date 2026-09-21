@@ -13,6 +13,7 @@ import { useBacktestRun, useBacktestRuns, useCandleCoverage, useCreateBacktestRu
 import { describeFailedRun, describeRunError } from '../backtest/runErrorMessage'
 import {
   applyPreset,
+  clampPeriodEnd,
   clampPeriodStart,
   createRunForm,
   setInitialCapital,
@@ -70,7 +71,8 @@ export function BacktestPage() {
   const [form, setForm] = useState(() => {
     let initial = createRunForm(entry?.strategyId ?? '', today, unknownBounds(today))
     if (hasPeriod(entry)) {
-      initial = setPeriodEnd(setPeriodStart(initial, entry.periodStart), entry.periodEnd)
+      /* 예전 실행의 종료일이 오늘이면 지금 규칙으로는 고를 수 없는 날이라 마지막 날로 끌어내린다. */
+      initial = clampPeriodEnd(setPeriodEnd(setPeriodStart(initial, entry.periodStart), entry.periodEnd), today)
     }
     if (entry?.initialCapital !== undefined) {
       initial = setInitialCapital(initial, entry.initialCapital)

@@ -1,7 +1,7 @@
 import { useId } from 'react'
 
 import { formatKrw } from '../backtest/labels'
-import { pickerLabel } from '../strategy/lineage'
+import { pickerLabel, versionLabel } from '../strategy/lineage'
 import { summarizeDsl } from '../strategy/summary'
 import type { Strategy } from '../strategy/types'
 import { setInitialCapital, setStrategyId, validateStartForm, type SimulationStartForm } from './startForm'
@@ -56,7 +56,9 @@ export function SimulationStartPanel({ strategies, form, pending, showIssues, on
       <button className="btn primary" type="button" disabled={pending} onClick={onSubmit}>
         {pending ? '시작 중…' : '새 모의투자 시작'}
       </button>
-      <span className="workflow-meta">{selected ? `v1 · ${summarizeDsl(selected.dsl)}` : '전략을 선택해 주세요'}</span>
+      <span className="workflow-meta">
+        {selected ? `${versionLabel(selected.version)} · ${summarizeDsl(selected.dsl)}` : '전략을 선택해 주세요'}
+      </span>
     </div>
   )
 }
