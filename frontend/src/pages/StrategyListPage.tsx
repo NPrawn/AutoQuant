@@ -9,7 +9,7 @@ import type { BacktestRun } from '../backtest/types'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import type { BacktestEntryState } from '../strategy/backtestEntry'
-import { forVersions, groupByLineage, lineageIds, versionLabel, type StrategyLineage } from '../strategy/lineage'
+import { forVersions, groupByLineage, versionLabel, type StrategyLineage } from '../strategy/lineage'
 import { useStrategies } from '../strategy/queries'
 import { summarizeDsl } from '../strategy/summary'
 import type { Strategy } from '../strategy/types'
@@ -18,9 +18,9 @@ import type { Strategy } from '../strategy/types'
 const dateFormat = new Intl.DateTimeFormat('sv-SE')
 
 /*
- * 내 전략 목록(목업 05·23). 전략 하나는 판이 여럿이어도 한 줄이고 최신 판이 대표다.
- * 상태·수익률·낙폭은 모든 판의 백테스트를 합쳐 최근 완료 실행에서 채운다. 이력이 없으면 초안과 빈 값이다.
- * 판이 둘 이상이면 화살표로 그 밑에 옛 판 줄을 펼친다. 옛 판 줄은 그 판만의 결과를 보인다.
+ * 내 전략 목록(목업 05·23). 전략 하나는 버전이 여럿이어도 한 줄이고 최신 버전이 대표다.
+ * 상태·수익률·낙폭은 그 버전 자신의 최근 완료 백테스트에서 채운다. 이력이 없으면 초안과 빈 값이다.
+ * 버전이 둘 이상이면 화살표로 그 밑에 이전 버전 줄을 펼친다. 이전 버전 줄은 그 버전만의 결과를 보인다.
  * 이력 전체는 한 번 받아 행마다 거른다.
  */
 export function StrategyListPage() {
@@ -35,7 +35,7 @@ export function StrategyListPage() {
         <div>
           <h1>내 전략</h1>
           <p className="sub">
-            수정해 저장하면 다음 판이 만들어지고 이전 판의 결과는 그대로 남습니다. 전략마다 최신 판 한 줄로 보이고 상태와 수익률은 모든 판의
+            수정해 저장하면 새 버전이 만들어지고 이전 버전의 결과는 그대로 남습니다. 전략마다 최신 버전 한 줄로 보이고 상태와 수익률은 그 버전의
             기록으로 판정합니다.
           </p>
         </div>
@@ -137,30 +137,32 @@ function rowClick(open: () => void) {
   }
 }
 
-/* 대표 줄 하나와 펼쳤을 때의 옛 판 줄들. 펼침은 이 화면 안에서만 기억하고 새로고침하면 접힌다. */
+/* 대표 줄 하나와 펼쳤을 때의 이전 버전 줄들. 펼침은 이 화면 안에서만 기억하고 새로고침하면 접힌다. */
 function StrategyRows({ lineage, history, onOpen, onBacktest }: StrategyRowsProps) {
   const { head, versions } = lineage
   const [expanded, setExpanded] = useState(false)
   const older = versions.slice(1)
-  const allRuns = history === null ? null : forVersions(history, lineageIds(lineage, head.id))
+  /* 대표 줄도 최신 버전 자신의 기록만 본다. 이전 버전이 검증됐다고 새 버전을 검증됨이라 적으면 사용자를 속인다. */
+  const headRuns = history === null ? null : forVersions(history, [head.id])
 
   return (
     <>
       <StrategyRow
         strategy={head}
-        runs={allRuns}
+        runs={headRuns}
         summary={
           <>
-            {head.description || summarizeDsl(head.dsl)} · {versionLabel(head.version)}
+            {head.description || summarizeDsl(head.dsl)}
+            <span className="ver-no">{versionLabel(head.version)}</span>
             {older.length > 0 && (
               <button
                 type="button"
                 className="ver-toggle"
                 aria-expanded={expanded}
-                aria-label={`이전 판 ${older.length}개 ${expanded ? '접기' : '펼치기'}`}
+                aria-label={`이전 버전 ${older.length}개 ${expanded ? '접기' : '펼치기'}`}
                 onClick={() => setExpanded((current) => !current)}
               >
-                이전 판 {older.length}개
+                이전 버전 {older.length}개
                 <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M9 6l6 6-6 6" />
                 </svg>
@@ -191,13 +193,13 @@ type StrategyRowProps = {
   strategy: Strategy
   runs: BacktestRun[] | null
   summary: ReactNode
-  /* 옛 판 줄. 들여쓰고 판 번호를 이름 앞에 둔다. */
+  /* 이전 버전 줄. 들여쓰고 버전 번호를 이름 앞에 둔다. */
   older?: boolean
   onOpen: () => void
   onBacktest: () => void
 }
 
-/* 줄 하나. 대표 줄은 모든 판의 이력을, 옛 판 줄은 그 판의 이력만 받는다. */
+/* 줄 하나. 대표 줄도 이전 버전 줄도 그 버전 자신의 이력만 받는다. */
 function StrategyRow({ strategy, runs, summary, older = false, onOpen, onBacktest }: StrategyRowProps) {
   const latest = runs === null ? null : latestCompletedRun(runs)
   const result = useBacktestResult(latest?.id ?? null, latest !== null)
