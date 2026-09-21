@@ -1,6 +1,7 @@
 import { useId } from 'react'
 
 import { formatKrw } from '../backtest/labels'
+import { pickerLabel } from '../strategy/lineage'
 import { summarizeDsl } from '../strategy/summary'
 import type { Strategy } from '../strategy/types'
 import { setInitialCapital, setStrategyId, validateStartForm, type SimulationStartForm } from './startForm'
@@ -33,7 +34,7 @@ export function SimulationStartPanel({ strategies, form, pending, showIssues, on
         <select id={`${id}-strategy`} value={form.strategyId} disabled={pending} onChange={(event) => onChange(setStrategyId(form, event.target.value))}>
           {strategies.map((strategy) => (
             <option key={strategy.id} value={strategy.id}>
-              {strategy.name}
+              {pickerLabel(strategy)}
             </option>
           ))}
         </select>

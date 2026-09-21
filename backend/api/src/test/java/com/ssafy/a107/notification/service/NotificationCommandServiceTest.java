@@ -6,6 +6,7 @@ import com.ssafy.a107.member.domain.Member;
 import com.ssafy.a107.member.repository.MemberRepository;
 import com.ssafy.a107.notification.domain.Notification;
 import com.ssafy.a107.notification.domain.NotificationType;
+import com.ssafy.a107.notification.repository.NotificationPreferenceRepository;
 import com.ssafy.a107.notification.repository.NotificationRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,9 +33,10 @@ class NotificationCommandServiceTest {
     private static final Instant NOW = Instant.parse("2026-09-16T00:00:00Z");
 
     private final NotificationRepository notificationRepository = mock(NotificationRepository.class);
+    private final NotificationPreferenceRepository notificationPreferenceRepository = mock(NotificationPreferenceRepository.class);
     private final MemberRepository memberRepository = mock(MemberRepository.class);
     private final NotificationCommandService service = new NotificationCommandService(
-            notificationRepository, memberRepository, Clock.fixed(NOW, ZoneOffset.UTC));
+            notificationRepository, notificationPreferenceRepository, memberRepository, Clock.fixed(NOW, ZoneOffset.UTC));
 
     @DisplayName("알림을 회원 앞으로 남긴다")
     @Test
@@ -45,12 +47,27 @@ class NotificationCommandServiceTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
 
         Notification notification = service.publish(
-                MEMBER_ID, NotificationType.BACKTEST_COMPLETED, "백테스트가 끝났습니다", "결과를 확인하세요", "run-1");
+                MEMBER_ID, NotificationType.BACKTEST_COMPLETED, "백테스트가 끝났습니다", "결과를 확인하세요", "run-1")
+                .orElseThrow();
 
         assertThat(notification.getNotificationType()).isEqualTo(NotificationType.BACKTEST_COMPLETED);
         assertThat(notification.getTitle()).isEqualTo("백테스트가 끝났습니다");
         assertThat(notification.getTargetId()).isEqualTo("run-1");
         assertThat(notification.isUnread()).isTrue();
+    }
+
+    @DisplayName("회원이 꺼 둔 종류의 알림은 만들지 않는다")
+    @Test
+    void skipPublishWhenTypeDisabled() {
+        given(memberRepository.findById(MEMBER_ID)).willReturn(Optional.of(mock(Member.class)));
+        given(notificationPreferenceRepository.existsByMemberMemberIdAndNotificationTypeAndEnabledFalse(
+                MEMBER_ID, NotificationType.BACKTEST_COMPLETED)).willReturn(true);
+
+        Optional<Notification> notification = service.publish(
+                MEMBER_ID, NotificationType.BACKTEST_COMPLETED, "백테스트가 끝났습니다", null, "run-1");
+
+        assertThat(notification).isEmpty();
+        then(notificationRepository).should(never()).save(any());
     }
 
     @DisplayName("없는 회원 앞으로는 알림을 남기지 않는다")

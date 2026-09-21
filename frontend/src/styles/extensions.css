@@ -677,13 +677,106 @@ tbody tr.ver-row .strategy-name-cell {
   font: 700 11px "IBM Plex Mono", monospace;
   vertical-align: middle;
 }
-.strategy-name-cell small .ver-no {
-  margin-left: 6px;
-}
 tbody tr.ver-row .strategy-name-cell b .ver-no {
   margin-right: 8px;
 }
-.strategy-name-cell small:has(.ver-no) {
-  line-height: 18px;
+
+/* 알림 설정 · 종류마다 한 줄, 오른쪽에 스위치. 목업에는 설정 화면이 없어 .chk 의 톤을 따른다. */
+.pref-list {
+  padding: 4px 0;
+}
+.pref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.pref-row:last-child {
+  border-bottom: none;
+}
+.pref-row b {
+  display: block;
+  font-size: 13px;
+  color: var(--ink);
+}
+.pref-row span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+.switch {
+  appearance: none;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  margin: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--panel-3);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  transition: transform 0.15s, background 0.15s;
+}
+.switch:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.switch:checked::after {
+  transform: translateX(16px);
+  background: #fff;
+}
+.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.switch:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* 계정 메뉴 정보 블록 · 이름·이메일 아래 로그인 방식과 마지막 로그인 */
+.acct-id small {
+  display: block;
+  margin-top: 6px;
+  color: var(--ink-4);
+  font-size: 11px;
+}
+a.acct-item {
+  text-decoration: none;
+}
+
+/* 전략 목록 요약 줄 · 글자만 말줄임하고 배지·펼침 버튼은 고정 */
+#view-strategies .strategy-name-cell small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   overflow: visible;
+  line-height: 18px;
+}
+#view-strategies .strategy-name-cell small .sum-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#view-strategies .strategy-name-cell small .ver-no,
+#view-strategies .strategy-name-cell small .ver-toggle {
+  flex: none;
+  margin-left: 0;
 }

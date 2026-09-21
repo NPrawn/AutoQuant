@@ -152,7 +152,7 @@ function StrategyRows({ lineage, history, onOpen, onBacktest }: StrategyRowsProp
         runs={headRuns}
         summary={
           <>
-            {head.description || summarizeDsl(head.dsl)}
+            <span className="sum-text">{head.description || summarizeDsl(head.dsl)}</span>
             <span className="ver-no">{versionLabel(head.version)}</span>
             {older.length > 0 && (
               <button
@@ -179,7 +179,7 @@ function StrategyRows({ lineage, history, onOpen, onBacktest }: StrategyRowsProp
             key={version.id}
             strategy={version}
             runs={history === null ? null : forVersions(history, [version.id])}
-            summary={version.description || summarizeDsl(version.dsl)}
+            summary={<span className="sum-text">{version.description || summarizeDsl(version.dsl)}</span>}
             older
             onOpen={() => onOpen(version.id)}
             onBacktest={() => onBacktest(version.id)}

@@ -87,6 +87,7 @@ com.ssafy.a107
 - 내 결과의 장세별 자산 곡선도 종료 후에만 싣는다. 일별 곡선으로 뽑은 주를 역산할 수 있다. 대회 백테스트 ID 는 내보내지 않는다. 체결 조회로 종목별 가격 경로가 드러난다.
 - 대회 응답의 참가자 이름은 `ContestNickname.visibleTo` 를 거친다. 회원 이름이 SSAFY 실명이라 다른 참가자는 가리고 내 제출만 그대로 둔다. 순위표 검색에 참가자 이름을 다시 넣지 않는다. 가린 실명이 검색으로 드러난다.
 - 알림은 백테스트 완료, 백테스트 실패, 모의투자 자동 중단, 대회 채점 완료 네 가지에서만 생긴다. 사용자가 직접 멈춘 모의투자는 이미 아는 일이라 알리지 않는다.
+- 알림 설정은 `notification.notification_preference` 에 회원·종류별 켬·끔으로 두고 행이 없으면 켜진 것이다. `GET/PUT /notifications/settings` 는 네 종류를 모두 채워 답한다. 꺼진 종류는 `NotificationCommandService.publish` 가 저장 전에 확인해 만들지 않고 빈 값을 돌려준다. 알림을 요청하는 쪽은 설정을 몰라도 된다.
 - 대회 백테스트는 완료·실패 알림을 내지 않는다. 제출 하나에 4벌이라 알림이 4개가 된다. 대신 제출이 처음 채점될 때 `CONTEST_SCORED` 알림 하나를 보내고 `targetId` 는 회차다.
 - 대회 백테스트는 연습 백테스트 조회 API 로 열지 않는다. 체결과 자산 추이로 채점용 데이터의 가격 경로가 드러난다 (ADR-0010).
 - 알림 발행은 `NotificationRequestedEvent` 를 띄우고 `@TransactionalEventListener` 의 `AFTER_COMMIT` 이 받는다. 커밋 전에 남기면 되돌아간 일을 알리게 된다.

@@ -1,10 +1,12 @@
 import { Link } from 'react-router'
 
 import { to } from '../app/routes'
+import { pickerLabel, versionLabel } from '../strategy/lineage'
 import { summarizeDsl } from '../strategy/summary'
 import type { Strategy } from '../strategy/types'
 
 type StrategyPickerProps = {
+  /* 셀렉트에 올릴 전략. 최신 버전만 오는지는 호출한 화면이 pickerOptions 로 정한다. */
   strategies: Strategy[]
   selectedId: string
   disabled: boolean
@@ -27,7 +29,7 @@ export function StrategyPicker({ strategies, selectedId, disabled, onChange }: S
         >
           {strategies.map((strategy) => (
             <option key={strategy.id} value={strategy.id}>
-              {strategy.name}
+              {pickerLabel(strategy)}
             </option>
           ))}
         </select>
@@ -40,7 +42,7 @@ export function StrategyPicker({ strategies, selectedId, disabled, onChange }: S
         <span />
       )}
       <span className="workflow-meta">
-        {selected ? `v1 · 저장됨 · ${summarizeDsl(selected.dsl)}` : '전략을 선택해 주세요'}
+        {selected ? `${versionLabel(selected.version)} · 저장됨 · ${summarizeDsl(selected.dsl)}` : '전략을 선택해 주세요'}
       </span>
     </div>
   )

@@ -8,6 +8,7 @@ import { ContestResultPage } from '../pages/ContestResultPage'
 import { HomePage } from '../pages/HomePage'
 import { LoginPage } from '../pages/LoginPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
+import { NotificationSettingsPage } from '../pages/NotificationSettingsPage'
 import { NotificationsPage } from '../pages/NotificationsPage'
 import { RouteErrorPage } from '../pages/RouteErrorPage'
 import { RankingPage } from '../pages/RankingPage'
@@ -55,6 +56,7 @@ export const router = createBrowserRouter([
       { path: routes.simulations, element: <SimulationListPage />, handle: { title: '모의투자' } },
       { path: routes.simulationLive, element: <SimulationLivePage />, handle: { title: '모의투자 실시간' } },
       { path: routes.notifications, element: <NotificationsPage />, handle: { title: '알림' } },
+      { path: routes.notificationSettings, element: <NotificationSettingsPage />, handle: { title: '알림 설정' } },
       /* 없는 주소도 셸 안에서 받아 사이드바와 상단바가 남는다. 로그인 전이면 RequireAuth 가 먼저 로그인으로 보낸다. */
       { path: '*', element: <NotFoundPage />, handle: { title: '찾을 수 없음' } },
             ],

@@ -25,7 +25,8 @@ export const blank = '—'
 
 const krwFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 0 })
 const quantityFormat = new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 8 })
-const dateTimeFormat = new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short', timeStyle: 'short' })
+/* sv-SE 로케일은 로컬 시간 기준 YYYY-MM-DD 와 24시간 HH:mm 을 준다. 날짜 표기와 같은 모양이라 표 안에서 어긋나지 않는다. */
+const dateTimeFormat = new Intl.DateTimeFormat('sv-SE', { dateStyle: 'short', timeStyle: 'short' })
 const dateFormat = new Intl.DateTimeFormat('sv-SE')
 
 export function formatKrw(value: number | null): string {

@@ -12,6 +12,7 @@ import com.ssafy.a107.common.exception.ApiExceptionHandler;
 import com.ssafy.a107.notification.domain.Notification;
 import com.ssafy.a107.notification.domain.NotificationType;
 import com.ssafy.a107.notification.service.NotificationCommandService;
+import com.ssafy.a107.notification.service.NotificationPreferenceService;
 import com.ssafy.a107.notification.service.NotificationReadService;
 import io.restassured.module.mockmvc.RestAssuredMockMvc;
 import org.junit.jupiter.api.AfterEach;
@@ -31,7 +32,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 
 import java.time.Instant;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static com.epages.restdocs.apispec.MockMvcRestDocumentationWrapper.document;
@@ -61,6 +64,9 @@ class NotificationControllerTest {
     @Mock
     private NotificationCommandService notificationCommandService;
 
+    @Mock
+    private NotificationPreferenceService notificationPreferenceService;
+
     @BeforeEach
     void setUp(RestDocumentationContextProvider documentation) {
         ObjectMapper objectMapper = new ObjectMapper()
@@ -68,7 +74,7 @@ class NotificationControllerTest {
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
         RestAssuredMockMvc.mockMvc(MockMvcBuilders
-                .standaloneSetup(new NotificationController(notificationReadService, notificationCommandService))
+                .standaloneSetup(new NotificationController(notificationReadService, notificationCommandService, notificationPreferenceService))
                 .setControllerAdvice(new ApiExceptionHandler())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
@@ -110,6 +116,58 @@ class NotificationControllerTest {
                 .body("[0].notificationType", equalTo("BACKTEST_COMPLETED"))
                 .body("[0].targetId", equalTo(BACKTEST_ID))
                 .body("[0].readAt", nullValue());
+    }
+
+    @DisplayName("알림 설정은 네 종류를 모두 돌려준다")
+    @Test
+    void getSettings() {
+        Map<NotificationType, Boolean> preferences = new EnumMap<>(NotificationType.class);
+        for (NotificationType type : NotificationType.values()) {
+            preferences.put(type, true);
+        }
+        preferences.put(NotificationType.BACKTEST_FAILED, false);
+        given(notificationPreferenceService.getPreferences(MEMBER_ID)).willReturn(preferences);
+
+        given().when().get("/notifications/settings")
+                .then()
+                .statusCode(200)
+                .body("settings", hasSize(NotificationType.values().length))
+                .body("settings.find { it.notificationType == 'BACKTEST_FAILED' }.enabled", equalTo(false))
+                .body("settings.find { it.notificationType == 'BACKTEST_COMPLETED' }.enabled", equalTo(true));
+    }
+
+    @DisplayName("알림 설정을 바꾸면 바뀐 종류만 서비스에 넘기고 전체를 돌려준다")
+    @Test
+    void updateSettings() {
+        Map<NotificationType, Boolean> preferences = new EnumMap<>(NotificationType.class);
+        for (NotificationType type : NotificationType.values()) {
+            preferences.put(type, true);
+        }
+        preferences.put(NotificationType.CONTEST_SCORED, false);
+        given(notificationPreferenceService.updatePreferences(MEMBER_ID, Map.of(NotificationType.CONTEST_SCORED, false)))
+                .willReturn(preferences);
+
+        given()
+                .contentType("application/json")
+                .body("{\"settings\":[{\"notificationType\":\"CONTEST_SCORED\",\"enabled\":false}]}")
+                .when().put("/notifications/settings")
+                .then()
+                .statusCode(200)
+                .body("settings", hasSize(NotificationType.values().length))
+                .body("settings.find { it.notificationType == 'CONTEST_SCORED' }.enabled", equalTo(false));
+    }
+
+    @DisplayName("빈 알림 설정 요청은 400 으로 거부한다")
+    @Test
+    void rejectEmptySettings() {
+        given()
+                .contentType("application/json")
+                .body("{\"settings\":[]}")
+                .when().put("/notifications/settings")
+                .then()
+                .statusCode(400);
+
+        then(notificationPreferenceService).shouldHaveNoInteractions();
     }
 
     @DisplayName("안 읽은 알림 수를 반환하고 문서화한다")

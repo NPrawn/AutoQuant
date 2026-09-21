@@ -1,10 +1,16 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { Link } from 'react-router'
 
+import { loginProviderLabel } from '../../auth/types'
+import { formatDateTime } from '../../backtest/labels'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { routes } from '../routes'
 
 type AccountMenuProps = {
   displayName: string
   emailAddress: string
+  loginProvider: string
+  lastLoginAt: Date | null
   /* 운용 중인 모의투자 수. 아직 못 읽었으면 null 이라 모달이 근거 없는 말을 하지 않는다. */
   runningSimulations: number | null
   logoutPending?: boolean
@@ -13,7 +19,16 @@ type AccountMenuProps = {
   onLogout?: () => void
 }
 
-export function AccountMenu({ displayName, emailAddress, runningSimulations, logoutPending = false, logoutFailed = false, onLogout }: AccountMenuProps) {
+export function AccountMenu({
+  displayName,
+  emailAddress,
+  loginProvider,
+  lastLoginAt,
+  runningSimulations,
+  logoutPending = false,
+  logoutFailed = false,
+  onLogout,
+}: AccountMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -82,20 +97,21 @@ export function AccountMenu({ displayName, emailAddress, runningSimulations, log
 
       {menuOpen && (
         <div className="acct-menu" id={menuId} role="menu" aria-label="계정 메뉴">
+          {/*
+           * 정보 블록. 이름은 SSAFY 에서 오는 값이라 여기서 바꿀 수 없고, 거래소 연결도 모의투자라 없다.
+           * 그래서 계정 설정·거래소 연결 항목은 두지 않고 정보만 보인다.
+           */}
           <div className="acct-id">
             <b>{displayName}</b>
             <span>{emailAddress}</span>
+            <small>
+              {loginProviderLabel(loginProvider)}으로 로그인
+              {lastLoginAt !== null && ` · 마지막 로그인 ${formatDateTime(lastLoginAt)}`}
+            </small>
           </div>
-          {/* 아래 세 항목은 해당 화면이 생기기 전까지 비활성이다. */}
-          <button className="acct-item" type="button" role="menuitem" disabled>
-            계정 설정
-          </button>
-          <button className="acct-item" type="button" role="menuitem" disabled>
-            거래소 연결<span>Upbit</span>
-          </button>
-          <button className="acct-item" type="button" role="menuitem" disabled>
+          <Link className="acct-item" role="menuitem" to={routes.notificationSettings} onClick={() => setMenuOpen(false)}>
             알림 설정
-          </button>
+          </Link>
           <div className="acct-sep" role="separator" />
           <button className="acct-item leave" type="button" role="menuitem" onClick={openConfirm}>
             로그아웃

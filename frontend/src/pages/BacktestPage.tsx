@@ -25,7 +25,14 @@ import {
 import { RunHistoryTable } from '../backtest/RunHistoryTable'
 import { StrategyPicker } from '../backtest/StrategyPicker'
 import { hasPeriod, readBacktestEntry } from '../strategy/backtestEntry'
+import { pickerLabel, pickerOptions } from '../strategy/lineage'
 import { useStrategies } from '../strategy/queries'
+
+/* 결과 줄의 전략 표기. 지워진 전략으로 돌린 결과는 그 사실을 적는다. */
+function strategyLabel(strategies: readonly Strategy[], strategyId: string): string {
+  const found = strategies.find((strategy) => strategy.id === strategyId)
+  return found === undefined ? '삭제된 전략' : pickerLabel(found)
+}
 import type { Strategy } from '../strategy/types'
 
 /* 대기가 이 시간을 넘기면 워커가 집어가지 못하고 있다는 뜻이라 사용자에게 알린다. */
@@ -78,9 +85,12 @@ export function BacktestPage() {
   const create = useCreateBacktestRun()
   const run = useBacktestRun(runId)
 
+  /* 셀렉트에는 최신 버전만 올리고, 상세에서 옛 버전으로 들어왔으면 그 버전도 올린다. */
+  const options = pickerOptions(strategies.data ?? [], entry?.strategyId)
+
   /* 전략 목록이 도착하면 선택이 비어 있을 때만 첫 전략을 채운다. */
-  if (form.strategyId === '' && strategies.data !== undefined && strategies.data.length > 0) {
-    setForm(setStrategyId(form, strategies.data[0].id))
+  if (form.strategyId === '' && options.length > 0) {
+    setForm(setStrategyId(form, options[0].id))
   }
 
   const selectedStrategy = strategies.data?.find((strategy) => strategy.id === form.strategyId) ?? null
@@ -92,7 +102,7 @@ export function BacktestPage() {
     create.isPending || (runId !== null && (run.isPending || (run.isSuccess && isRunInProgress(run.data.status))))
   /* 결과 줄의 전략 이름은 폼의 선택이 아니라 실행이 가리키는 전략이다. 폼을 바꿔도 결과 줄은 그대로다. */
   const runStrategyName =
-    run.data === undefined ? '' : (strategies.data?.find((strategy) => strategy.id === run.data.strategyId)?.name ?? '삭제된 전략')
+    run.data === undefined ? '' : strategyLabel(strategies.data ?? [], run.data.strategyId)
   /* 하한은 보유 구간과 전략이 함께 정한다. 전략마다 필요한 워밍업 봉 수가 다르다. */
   const bounds = periodBounds(coverage.data ?? null, selectedStrategy?.dsl ?? null, today)
 
@@ -174,7 +184,7 @@ export function BacktestPage() {
       {strategies.isSuccess && strategies.data.length > 0 && (
         <>
           <StrategyPicker
-            strategies={strategies.data}
+            strategies={options}
             selectedId={form.strategyId}
             disabled={runLocked}
             onChange={(strategyId) => setForm(setStrategyId(form, strategyId))}
@@ -234,7 +244,8 @@ type RecentRunsProps = {
 function RecentRuns({ strategies, onOpen }: RecentRunsProps) {
   const [page, setPage] = useState(0)
   const runs = useBacktestRuns(page)
-  const strategyNames = new Map(strategies.map((strategy) => [strategy.id, strategy.name]))
+  /* 이력에는 옛 버전으로 돌린 실행도 있어 모든 버전으로 찾고 버전을 붙여 적는다. */
+  const strategyNames = new Map(strategies.map((strategy) => [strategy.id, pickerLabel(strategy)]))
 
   if (runs.isPending) {
     return <LoadingState label="실행 이력을 불러오는 중…" />
