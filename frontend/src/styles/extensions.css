@@ -626,3 +626,51 @@ html:has(#view-chart.active) {
 .callout.version-note .btn {
   flex: none;
 }
+
+/* 전략 목록 · 판이 둘 이상인 줄의 펼침 버튼과 그 밑에 들어오는 옛 판 줄 */
+.ver-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  padding: 0 7px;
+  height: 18px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.ver-toggle:hover {
+  color: var(--ink);
+  border-color: var(--line-2);
+}
+.ver-toggle svg {
+  width: 10px;
+  height: 10px;
+  stroke: currentColor;
+  transition: transform 0.12s;
+}
+.ver-toggle[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
+tbody tr.ver-row {
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+}
+tbody tr.ver-row .strategy-name-cell {
+  padding-left: 40px;
+  box-shadow: inset 3px 0 0 var(--line-2);
+}
+tbody tr.ver-row .strategy-name-cell b {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+tbody tr.ver-row .ver-no {
+  margin-right: 8px;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 700;
+}
