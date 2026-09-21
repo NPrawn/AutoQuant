@@ -56,3 +56,21 @@ export function forVersions<T extends { strategyId: string }>(items: readonly T[
 export function versionLabel(version: number): string {
   return `v${version}`
 }
+
+/*
+ * 전략을 고르는 셀렉트에 올릴 것. 최신 버전만 올려 같은 이름이 여러 번 보이지 않게 한다.
+ * 상세에서 옛 버전으로 들어왔으면 그 버전도 함께 올려 고른 것이 사라지지 않게 한다.
+ */
+export function pickerOptions(strategies: readonly Strategy[], includeId?: string | null): Strategy[] {
+  const heads = groupByLineage(strategies).map((lineage) => lineage.head)
+  if (includeId === undefined || includeId === null || heads.some((head) => head.id === includeId)) {
+    return heads
+  }
+  const included = strategies.find((strategy) => strategy.id === includeId)
+  return included === undefined ? heads : [...heads, included]
+}
+
+/* 셀렉트와 결과 줄의 전략 표기. 이름 뒤에 버전을 붙여 같은 이름의 다른 버전과 구분한다. */
+export function pickerLabel(strategy: Pick<Strategy, 'name' | 'version'>): string {
+  return `${strategy.name} ${versionLabel(strategy.version)}`
+}

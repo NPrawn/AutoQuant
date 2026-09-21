@@ -1,15 +1,56 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  fetchNotificationSettings,
   fetchNotifications,
   fetchUnreadNotificationCount,
   markAllNotificationsRead,
   markNotificationRead,
+  updateNotificationSettings,
 } from './api'
-import { toAppNotification } from './types'
+import { toAppNotification, toNotificationSettings, type NotificationSettingsResponse } from './types'
 
 export const notificationsQueryKey = ['notifications'] as const
 export const unreadNotificationCountQueryKey = [...notificationsQueryKey, 'unread-count'] as const
+export const notificationSettingsQueryKey = ['notification-settings'] as const
+
+export function useNotificationSettings() {
+  return useQuery({
+    queryKey: notificationSettingsQueryKey,
+    queryFn: fetchNotificationSettings,
+    select: toNotificationSettings,
+  })
+}
+
+/*
+ * 토글은 누르는 즉시 바뀐 것처럼 보이고 서버에 저장한다. 실패하면 이전 값으로 되돌리고
+ * 화면이 사유를 보인다. 끝나면 서버 값으로 한 번 맞춘다.
+ */
+export function useUpdateNotificationSetting() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ type, enabled }: { type: string; enabled: boolean }) =>
+      updateNotificationSettings({ settings: [{ notificationType: type, enabled }] }),
+    onMutate: async ({ type, enabled }) => {
+      await queryClient.cancelQueries({ queryKey: notificationSettingsQueryKey })
+      const previous = queryClient.getQueryData<NotificationSettingsResponse>(notificationSettingsQueryKey)
+      if (previous !== undefined) {
+        queryClient.setQueryData<NotificationSettingsResponse>(notificationSettingsQueryKey, {
+          settings: previous.settings.map((setting) => (setting.notificationType === type ? { ...setting, enabled } : setting)),
+        })
+      }
+      return { previous }
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous !== undefined) {
+        queryClient.setQueryData(notificationSettingsQueryKey, context.previous)
+      }
+    },
+    onSuccess: (response) => queryClient.setQueryData(notificationSettingsQueryKey, response),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: notificationSettingsQueryKey }),
+  })
+}
 
 /*
  * 알림은 사용자가 보지 않는 동안 쌓인다. 화면에 있는 동안 주기적으로 다시 물어

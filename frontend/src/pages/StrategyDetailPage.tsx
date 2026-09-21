@@ -112,6 +112,10 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
   const ownRuns = forVersions(runs, [strategy.id])
   const ownSims = simulationsForVersions(sims, [strategy.id])
   const ownSubmission = submissionFor(contests.data?.contests ?? [], [strategy.id])
+  /* 이 버전엔 결과가 없고 다른 버전엔 있으면 그 결과로 가는 길을 카드에 얹는다. 판정에는 쓰지 않는다. */
+  const latestOfAll = latestCompletedRun(runs)
+  const previousResult =
+    latestCompletedRun(ownRuns) === null && latestOfAll !== null ? { run: latestOfAll, version: versionFor(latestOfAll.strategyId) } : null
   const stageInput = { runs: ownRuns, simulations: ownSims, submitted: ownSubmission !== null }
   const stage = strategyStage(stageInput)
   const primary = primaryAction(stageInput)
@@ -227,6 +231,7 @@ function StrategyDetail({ strategy, historyTab, onTabChange }: StrategyDetailPro
         runs={ownRuns}
         sims={ownSims}
         submission={ownSubmission}
+        previousResult={previousResult}
         loading={{ backtests: backtests.isPending, simulations: simulations.isPending, contests: contests.isPending }}
         onBacktest={() => openBacktest()}
       />
@@ -348,14 +353,16 @@ function deleteDescription(name: string, versionCount: number, runningCount: num
 /* 버전 이력. 최신이 위다. 보고 있는 버전은 표시만 하고 다른 버전은 그 상세로 간다. */
 function VersionHistory({ lineage, current }: { lineage: StrategyLineage | null; current: Strategy }) {
   const versions = lineage === null ? [current] : lineage.versions
+  const headName = lineage === null ? current.name : lineage.head.name
   return (
     <div className="version-list">
       {versions.map((version) => (
         <div className="vrow" key={version.id}>
           <span className="vl">{versionLabel(version.version)}</span>
+          {/* 이름은 최신 버전과 다를 때만 적는다. 같은 이름을 줄마다 반복하면 조건 요약이 묻힌다. */}
           <span>
-            <b>{version.name}</b>
-            <span className="vd"> · {version.description || summarizeDsl(version.dsl)}</span>
+            {version.name !== headName && <b>{version.name} · </b>}
+            <span className="vd">{version.description || summarizeDsl(version.dsl)}</span>
           </span>
           <span className="vd">
             {dateFormat.format(version.createdAt)}
@@ -378,12 +385,14 @@ type NowCardsProps = {
   runs: BacktestRun[]
   sims: SimulationRun[]
   submission: ContestRoundItemResponse | null
+  /* 이 버전에는 완료 백테스트가 없지만 다른 버전에는 있을 때 그 결과. 링크 한 줄만 얹는다. */
+  previousResult: { run: BacktestRun; version: number | null } | null
   loading: { backtests: boolean; simulations: boolean; contests: boolean }
   onBacktest: () => void
 }
 
 /* 돌아와서 3초 안에 볼 것. 지금 돌아가는 것, 지난 결과, 대회. 각 카드에서 한 번에 그 화면으로 간다. */
-function NowCards({ runs, sims, submission, loading, onBacktest }: NowCardsProps) {
+function NowCards({ runs, sims, submission, previousResult, loading, onBacktest }: NowCardsProps) {
   const running = runningSimulations(sims)
   const latest = latestCompletedRun(runs)
   const result = useBacktestResult(latest?.id ?? null, latest !== null)
@@ -416,10 +425,15 @@ function NowCards({ runs, sims, submission, loading, onBacktest }: NowCardsProps
           <strong className="muted">…</strong>
         ) : latest === null ? (
           <>
-            <strong className="muted">아직 없음</strong>
+            <strong className="muted">{previousResult === null ? '아직 없음' : '이 버전은 아직 없음'}</strong>
             <button className="link" type="button" onClick={onBacktest}>
               백테스트 실행 →
             </button>
+            {previousResult !== null && (
+              <Link to={to.backtestRun(previousResult.run.id)}>
+                {previousResult.version === null ? '이전 버전' : `이전 버전 ${versionLabel(previousResult.version)}`} 결과 보기 →
+              </Link>
+            )}
           </>
         ) : result.isError ? (
           <>

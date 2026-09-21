@@ -1,5 +1,19 @@
 import { request } from '../api/client'
-import type { NotificationResponse, UnreadNotificationCountResponse } from './types'
+import type {
+  NotificationResponse,
+  NotificationSettingsResponse,
+  UnreadNotificationCountResponse,
+  UpdateNotificationSettingsRequest,
+} from './types'
+
+export function fetchNotificationSettings(): Promise<NotificationSettingsResponse> {
+  return request<NotificationSettingsResponse>('/notifications/settings')
+}
+
+/* 바꿀 종류만 보내고 서버는 전체를 돌려준다. */
+export function updateNotificationSettings(body: UpdateNotificationSettingsRequest): Promise<NotificationSettingsResponse> {
+  return request<NotificationSettingsResponse>('/notifications/settings', { method: 'PUT', body })
+}
 
 export function fetchNotifications(): Promise<NotificationResponse[]> {
   return request<NotificationResponse[]>('/notifications')

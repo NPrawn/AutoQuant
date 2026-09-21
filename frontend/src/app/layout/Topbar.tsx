@@ -22,7 +22,7 @@ function useCurrentTitle(): string | undefined {
 }
 
 type TopbarProps = {
-  member: { displayName: string; emailAddress: string }
+  member: { displayName: string; emailAddress: string; loginProvider: string; lastLoginAt: Date | null }
   runningSimulations: number | null
   logoutPending?: boolean
   logoutFailed?: boolean
@@ -63,6 +63,8 @@ export function Topbar({ member, runningSimulations, logoutPending, logoutFailed
         <AccountMenu
           displayName={member.displayName}
           emailAddress={member.emailAddress}
+          loginProvider={member.loginProvider}
+          lastLoginAt={member.lastLoginAt}
           runningSimulations={runningSimulations}
           logoutPending={logoutPending}
           logoutFailed={logoutFailed}

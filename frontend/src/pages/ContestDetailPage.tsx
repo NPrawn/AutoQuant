@@ -12,6 +12,7 @@ import { useNow } from '../contest/clock'
 import { contestStatusLabels, formatDateTime, formatRemaining } from '../contest/labels'
 import { useContest, useMyContestResult, useSubmitContestEntry } from '../contest/queries'
 import { describeSubmitError } from '../contest/submitErrorMessage'
+import { pickerOptions } from '../strategy/lineage'
 import { useStrategies } from '../strategy/queries'
 
 /*
@@ -30,11 +31,12 @@ export function ContestDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false)
 
   const round = contest.data ?? null
-  const available = strategies.data ?? []
+  /* 셀렉트에는 최신 버전만 올린다. 이미 낸 전략이 옛 버전이면 그것도 올려 교체 전에 무엇을 냈는지 보이게 한다. */
+  const submitted = round?.mySubmission ? String(round.mySubmission.strategyId) : ''
+  const available = pickerOptions(strategies.data ?? [], submitted === '' ? null : submitted)
 
   /* 전략 목록과 회차가 모두 온 뒤에 고른다. 목록이 먼저 오면 제출한 전략을 모른 채 첫 전략을 골라 버린다. */
   if (strategyId === '' && available.length > 0 && contest.isSuccess) {
-    const submitted = round?.mySubmission ? String(round.mySubmission.strategyId) : ''
     setStrategyId(available.some((strategy) => strategy.id === submitted) ? submitted : available[0].id)
   }
 

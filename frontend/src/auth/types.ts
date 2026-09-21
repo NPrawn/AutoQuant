@@ -3,6 +3,7 @@ export type MemberResponse = {
   memberId: string
   displayName: string
   emailAddress: string
+  loginProvider: string
   memberStatus: string
   lastLoginAt: string | null
 }
@@ -25,6 +26,9 @@ export type Member = {
   id: string
   displayName: string
   emailAddress: string
+  /* 어느 계정으로 로그인했는지. 계정 메뉴의 정보 블록이 문구로 바꿔 보인다. */
+  loginProvider: string
+  lastLoginAt: Date | null
 }
 
 export type CurrentMember = {
@@ -37,6 +41,8 @@ export function toMember(response: MemberResponse): Member {
     id: response.memberId,
     displayName: response.displayName,
     emailAddress: response.emailAddress,
+    loginProvider: response.loginProvider,
+    lastLoginAt: response.lastLoginAt === null ? null : new Date(response.lastLoginAt),
   }
 }
 
@@ -45,4 +51,9 @@ export function toCurrentMember(response: CurrentMemberResponse): CurrentMember 
     member: response.member ? toMember(response.member) : null,
     unauthorizedCode: response.unauthorizedCode,
   }
+}
+
+/* 로그인 방식 문구. 모르는 값은 그대로 보인다. */
+export function loginProviderLabel(loginProvider: string): string {
+  return loginProvider === 'SSAFY' ? 'SSAFY 계정' : loginProvider
 }

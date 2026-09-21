@@ -268,7 +268,8 @@ export function StrategyEditor({ initialDraft, entry, mode, base }: StrategyEdit
           <button className="btn ghost sm" type="button" onClick={() => navigate(routes.strategies)}>
             취소
           </button>
-          <button className="btn primary sm" type="button" onClick={handleSave} disabled={saving} aria-busy={saving}>
+          {/* 수정 모드는 바뀐 것이 있어야 저장한다. 똑같은 내용의 새 버전이 생기면 이력만 어지럽다. */}
+          <button className="btn primary sm" type="button" onClick={handleSave} disabled={saving || (mode === 'edit' && !dirty)} aria-busy={saving}>
             {saveSpinner}
             {saveLabel}
           </button>

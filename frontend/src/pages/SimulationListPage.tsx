@@ -13,6 +13,7 @@ import { readSimulationEntry } from '../simulation/simulationEntry'
 import { SimulationStartDialog } from '../simulation/SimulationStartDialog'
 import { SimulationStartPanel } from '../simulation/SimulationStartPanel'
 import { createStartForm, setStrategyId, toCreateRequest, validateStartForm } from '../simulation/startForm'
+import { pickerLabel, pickerOptions } from '../strategy/lineage'
 import { useStrategies } from '../strategy/queries'
 
 /*
@@ -34,13 +35,17 @@ export function SimulationListPage() {
   const [showIssues, setShowIssues] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
 
+  /* 셀렉트에는 최신 버전만 올리고, 상세에서 옛 버전으로 들어왔으면 그 버전도 올린다. */
+  const options = pickerOptions(strategies.data ?? [], entry?.strategyId)
+
   /* 전략 목록이 도착하면 선택이 비어 있거나 목록에 없을 때 첫 전략을 채운다. 진입 상태가 지워진 전략을 가리킬 수 있다. */
-  if (strategies.data !== undefined && strategies.data.length > 0 && !strategies.data.some((strategy) => strategy.id === form.strategyId)) {
-    setForm(setStrategyId(form, strategies.data[0].id))
+  if (options.length > 0 && !options.some((strategy) => strategy.id === form.strategyId)) {
+    setForm(setStrategyId(form, options[0].id))
   }
 
-  const selectedStrategy = strategies.data?.find((strategy) => strategy.id === form.strategyId) ?? null
-  const strategyNames = new Map((strategies.data ?? []).map((strategy) => [strategy.id, strategy.name]))
+  const selectedStrategy = options.find((strategy) => strategy.id === form.strategyId) ?? null
+  /* 카드의 전략 이름은 옛 버전으로 돌린 실행도 있어 모든 버전으로 찾는다. */
+  const strategyNames = new Map((strategies.data ?? []).map((strategy) => [strategy.id, pickerLabel(strategy)]))
 
   const requestStart = () => {
     setShowIssues(true)
@@ -87,7 +92,7 @@ export function SimulationListPage() {
       )}
       {strategies.isSuccess && strategies.data.length > 0 && (
         <SimulationStartPanel
-          strategies={strategies.data}
+          strategies={options}
           form={form}
           pending={launch.isPending}
           showIssues={showIssues}

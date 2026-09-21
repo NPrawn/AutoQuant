@@ -1,5 +1,6 @@
 import { useId } from 'react'
 
+import { pickerLabel } from '../strategy/lineage'
 import type { Strategy } from '../strategy/types'
 import { formatDateTime } from './labels'
 import type { ContestSubmissionResponse } from './types'
@@ -45,7 +46,7 @@ export function ContestSubmitPanel({
         >
           {strategies.map((strategy) => (
             <option key={strategy.id} value={strategy.id}>
-              {strategy.name}
+              {pickerLabel(strategy)}
             </option>
           ))}
         </select>

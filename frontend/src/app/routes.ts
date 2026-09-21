@@ -18,6 +18,7 @@ export const routes = {
   simulations: '/simulations',
   simulationLive: '/simulations/:simulationId',
   notifications: '/notifications',
+  notificationSettings: '/settings/notifications',
 } as const
 
 /* 전략 상세의 기록 탭. 기본인 백테스트는 세그먼트를 붙이지 않는다. */

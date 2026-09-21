@@ -25,6 +25,24 @@ export function notificationLook(type: string): NotificationLook {
   return (notificationLooks as Record<string, NotificationLook>)[type] ?? unknownLook
 }
 
+/* 알림 설정 화면의 종류별 제목과 설명. 어떤 일이 생겼을 때 오는지 사용자 말로 적는다. */
+type NotificationSettingLabel = {
+  title: string
+  description: string
+}
+
+export const notificationSettingLabels: Record<NotificationType, NotificationSettingLabel> = {
+  BACKTEST_COMPLETED: { title: '백테스트 완료', description: '돌려 둔 백테스트가 끝나 결과를 볼 수 있을 때' },
+  BACKTEST_FAILED: { title: '백테스트 실패', description: '백테스트가 데이터 부족 등으로 끝나지 못했을 때' },
+  SIMULATION_FAILED: { title: '모의투자 중단', description: '운용 중인 모의투자가 오류로 멈췄을 때. 직접 정지한 것은 알리지 않습니다' },
+  CONTEST_SCORED: { title: '대회 채점', description: '대회에 낸 전략의 점수와 순위가 나왔을 때' },
+}
+
+/* 서버에 종류가 하나 늘어도 토글은 보이게 모르는 종류는 코드 그대로 적는다. */
+export function notificationSettingLabel(type: string): NotificationSettingLabel {
+  return (notificationSettingLabels as Record<string, NotificationSettingLabel>)[type] ?? { title: type, description: '' }
+}
+
 const dayInMs = 24 * 60 * 60 * 1000
 
 /*

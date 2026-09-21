@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { forVersions, groupByLineage, lineageIds, lineageOf, versionLabel, versionOf } from '../src/strategy/lineage.ts'
+import { forVersions, groupByLineage, lineageIds, lineageOf, pickerLabel, pickerOptions, versionLabel, versionOf } from '../src/strategy/lineage.ts'
 
 const strategy = (id, rootId, version, createdAt = '2026-09-01T00:00:00Z') => ({
   id,
@@ -62,4 +62,26 @@ test('버전 번호를 찾고 여러 버전의 기록을 원래 순서대로 거
     ['a', 'c'],
   )
   assert.equal(versionLabel(2), 'v2')
+})
+
+test('셀렉트에는 최신 버전만 올리고 옛 버전은 들어온 경우에만 함께 올린다', () => {
+  const all = [strategy('1', '1', 1), strategy('3', '1', 2), strategy('2', '2', 1)]
+
+  assert.deepEqual(
+    pickerOptions(all).map((option) => option.id),
+    ['3', '2'],
+  )
+  assert.deepEqual(
+    pickerOptions(all, '1').map((option) => option.id),
+    ['3', '2', '1'],
+  )
+  assert.deepEqual(
+    pickerOptions(all, '3').map((option) => option.id),
+    ['3', '2'],
+  )
+  assert.deepEqual(
+    pickerOptions(all, '404').map((option) => option.id),
+    ['3', '2'],
+  )
+  assert.equal(pickerLabel(strategy('3', '1', 2)), '전략 1 v2')
 })
