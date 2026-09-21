@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 
 import { to } from '../app/routes'
 import { formatPercentile, formatRank, formatScore } from './labels'
-import type { ContestMyResultResponse, ContestRankingRowResponse } from './types'
+import { awaitingScore, type ContestMyResultResponse, type ContestRankingRowResponse } from './types'
 
 type RankingTableProps = {
   roundId: string
@@ -94,9 +94,16 @@ function RowAction({ roundId, row, copyPending, onCopy }: {
 }
 
 /*
- * 표 아래에 붙는 내 성적. 순위 페이지를 넘겨도 계속 보인다. 실격이면 순위와 점수가 비어 있어
- * 그 자리에 실격을 적는다.
+ * 표 아래에 붙는 내 성적. 순위 페이지를 넘겨도 계속 보인다. 순위가 비는 경우는 실격과 채점 전 둘이라
+ * 순위만 보고 실격이라 적으면 채점을 기다리는 제출을 실격으로 오해하게 한다. 실격 사유로 가른다.
  */
+function myRowNote(result: ContestMyResultResponse): string {
+  if (result.disqualificationReason !== null) {
+    return '내 전략 · 실격'
+  }
+  return awaitingScore(result) ? '내 전략 · 채점 중' : '내 전략'
+}
+
 function MyRow({ roundId, result }: { roundId: string; result: ContestMyResultResponse }) {
   return (
     <tr className="rank-me">
@@ -105,7 +112,7 @@ function MyRow({ roundId, result }: { roundId: string; result: ContestMyResultRe
       </td>
       <td className="strategy-name-cell">
         <b>{result.strategyName}</b>
-        <small>{result.ranking === null ? '내 전략 · 실격' : '내 전략'}</small>
+        <small>{myRowNote(result)}</small>
       </td>
       <td className="r">
         <b className="mono">{formatScore(result.totalScore)}</b>

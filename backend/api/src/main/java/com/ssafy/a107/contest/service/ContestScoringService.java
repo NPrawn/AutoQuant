@@ -237,7 +237,12 @@ public class ContestScoringService {
         }
 
         int results = scoreSettledEntries(roundId);
-        round.finish(now);
+        /*
+         * 위 채점이 결과를 통째로 지우면서 clearAutomatically 로 영속성 컨텍스트를 비운다. 처음 읽은 round 는
+         * 준영속이라 여기서 고쳐도 커밋되지 않는다. 다시 읽어 종료시켜야 회차가 SCORING 에 머무르지 않는다.
+         */
+        ContestRound settledRound = contestRoundRepository.findById(roundId).orElseThrow();
+        settledRound.finish(now);
         log.info("대회 회차 {} 채점 완료: 결과 {}건", roundId, results);
         return true;
     }
