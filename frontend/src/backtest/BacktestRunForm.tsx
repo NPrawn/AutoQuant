@@ -9,6 +9,7 @@ import {
   applyPreset,
   detectPreset,
   feeRate,
+  lastSelectableEnd,
   setInitialCapital,
   setPeriodEnd,
   setPeriodStart,
@@ -71,10 +72,12 @@ export function BacktestRunForm({ form, strategy, today, bounds, loadingCoverage
           ))}
         </div>
         <div className="dr">
+          {/* 달력에서도 오늘 이후를 고르지 못하게 막는다. 검증 문구만으로는 왜 안 되는지 눌러 봐야 안다. */}
           <input
             id={`${id}-start`}
             type="date"
             value={form.periodStart}
+            max={lastSelectableEnd(today)}
             disabled={pending}
             aria-label="시작일"
             aria-invalid={issueFor('periodStart') !== undefined}
@@ -86,6 +89,7 @@ export function BacktestRunForm({ form, strategy, today, bounds, loadingCoverage
           <input
             type="date"
             value={form.periodEnd}
+            max={lastSelectableEnd(today)}
             disabled={pending}
             aria-label="종료일"
             aria-invalid={issueFor('periodEnd') !== undefined}
