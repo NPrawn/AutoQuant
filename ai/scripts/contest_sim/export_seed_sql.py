@@ -276,9 +276,10 @@ def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at
                    for kind in KINDS}
     dataset_ids = _dataset_ids(round_id)
 
+    decision = "ADR-0018" if summary.get("mode") == "real" else "ADR-0011"
     parts = [
         f"-- 대회 {title} 데이터. 생성기 시드 {summary['seed']}, 구간 {summary['window']['start']}"
-        f" ~ {summary['window']['end']} (ADR-0011, ADR-0014, ADR-0016).\n"
+        f" ~ {summary['window']['end']} ({decision}, ADR-0014, ADR-0016).\n"
         "-- ai/scripts/contest_sim/export_seed_sql.py 가 만든 파일이다. 손으로 고치지 않는다.\n\n",
     ]
     if replace:
