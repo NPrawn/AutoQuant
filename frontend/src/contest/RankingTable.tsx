@@ -26,6 +26,7 @@ export function RankingTable({ roundId, rows, myResult, copyPending, onCopy }: R
               <th scope="col" style={{ width: 58 }}>순위</th>
               <th scope="col">전략</th>
               <th scope="col" className="r">종합 점수</th>
+              <th scope="col" className="r">수익률</th>
               <th scope="col" className="r">안정성</th>
               <th scope="col" className="r">상승</th>
               <th scope="col" className="r">하락</th>
@@ -46,6 +47,7 @@ export function RankingTable({ roundId, rows, myResult, copyPending, onCopy }: R
                 <td className="r">
                   <b className="mono">{formatScore(row.totalScore)}</b>
                 </td>
+                <td className="r mono">{formatPercentile(row.returnScore)}</td>
                 <td className="r mono">{formatPercentile(row.stabilityScore)}</td>
                 <td className="r">
                   <span className="mono updown up">{formatPercentile(row.bullRegimeScore)}</span>
@@ -108,6 +110,7 @@ function MyRow({ roundId, result }: { roundId: string; result: ContestMyResultRe
       <td className="r">
         <b className="mono">{formatScore(result.totalScore)}</b>
       </td>
+      <td className="r mono">{formatPercentile(result.returnScore)}</td>
       <td className="r mono">{formatPercentile(result.stabilityScore)}</td>
       <td className="r">
         <span className="mono updown up">{formatPercentile(result.bullRegimeScore)}</span>
