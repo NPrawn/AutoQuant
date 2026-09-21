@@ -105,3 +105,4 @@ spring:
     listener:
       simple:
         default-requeue-rejected: false
+        prefetch: 1
