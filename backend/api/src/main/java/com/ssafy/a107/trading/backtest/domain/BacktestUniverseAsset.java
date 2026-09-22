@@ -2,15 +2,19 @@ package com.ssafy.a107.trading.backtest.domain;
 
 import com.ssafy.a107.asset.domain.Asset;
 import jakarta.persistence.*;
+import org.springframework.data.domain.Persistable;
 
 import java.util.Objects;
 
 @Entity
 @Table(name = "backtest_universe_asset", schema = "trading")
-public class BacktestUniverseAsset {
+public class BacktestUniverseAsset implements Persistable<BacktestUniverseAssetId> {
 
     @EmbeddedId
     private BacktestUniverseAssetId id;
+
+    @Transient
+    private boolean newEntity = true;
 
     @MapsId("backtestId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -58,8 +62,20 @@ public class BacktestUniverseAsset {
         this.selected = selected;
     }
 
+    @Override
     public BacktestUniverseAssetId getId() {
         return id;
+    }
+
+    @Override
+    public boolean isNew() {
+        return newEntity;
+    }
+
+    @PostLoad
+    @PostPersist
+    private void markPersisted() {
+        newEntity = false;
     }
 
     public BacktestRun getBacktestRun() {

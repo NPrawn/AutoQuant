@@ -31,6 +31,7 @@ class BacktestEquityTest {
                 .isEqualByComparingTo("1100000");
         assertThat(equity.getCashBalance())
                 .isEqualByComparingTo("500000");
+        assertThat(equity.isNew()).isTrue();
     }
 
     @DisplayName("현금 잔액은 총자산을 초과할 수 없다")
