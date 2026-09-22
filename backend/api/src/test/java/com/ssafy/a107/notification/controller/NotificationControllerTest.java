@@ -22,6 +22,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.restdocs.RestDocumentationContextProvider;
 import org.springframework.restdocs.RestDocumentationExtension;
@@ -90,32 +93,64 @@ class NotificationControllerTest {
         SecurityContextHolder.clearContext();
     }
 
-    @DisplayName("내 알림을 최신순으로 반환하고 문서화한다")
+    @DisplayName("내 알림을 최신순 한 장으로 반환하고 문서화한다")
     @Test
     void getNotifications() {
         /* 목을 준비하는 일이 다른 스터빙 안에서 일어나면 Mockito 가 스터빙이 끝나지 않았다고 본다. */
-        List<Notification> notifications = List.of(notification());
-        given(notificationReadService.getNotifications(MEMBER_ID)).willReturn(notifications);
+        Page<Notification> notifications = new PageImpl<>(List.of(notification()), PageRequest.of(0, 20), 1);
+        given(notificationReadService.getNotifications(MEMBER_ID, 0, 20)).willReturn(notifications);
 
         given().when().get("/notifications")
                 .then()
                 .apply(document("notifications-list",
                         resource(baseResource()
-                                .responseSchema(schema("NotificationResponse"))
+                                .responseSchema(schema("NotificationPageResponse"))
                                 .responseFields(
-                                        fieldWithPath("[].notificationId").type(JsonFieldType.NUMBER).description("알림 식별자"),
-                                        fieldWithPath("[].notificationType").type(JsonFieldType.STRING).description("알림 종류. BACKTEST_COMPLETED, BACKTEST_FAILED, SIMULATION_FAILED"),
-                                        fieldWithPath("[].title").type(JsonFieldType.STRING).description("한 줄 제목"),
-                                        fieldWithPath("[].body").type(JsonFieldType.STRING).optional().description("본문. 없으면 null"),
-                                        fieldWithPath("[].targetId").type(JsonFieldType.STRING).optional().description("알림이 가리키는 대상 식별자. 종류마다 대상이 다르다"),
-                                        fieldWithPath("[].readAt").type(JsonFieldType.STRING).optional().description("읽은 시각. 안 읽었으면 null"),
-                                        fieldWithPath("[].createdAt").type(JsonFieldType.STRING).description("알림이 생긴 시각")
+                                        fieldWithPath("content[].notificationId").type(JsonFieldType.NUMBER).description("알림 식별자"),
+                                        fieldWithPath("content[].notificationType").type(JsonFieldType.STRING).description("알림 종류. BACKTEST_COMPLETED, BACKTEST_FAILED, SIMULATION_FAILED, CONTEST_SCORED"),
+                                        fieldWithPath("content[].title").type(JsonFieldType.STRING).description("한 줄 제목"),
+                                        fieldWithPath("content[].body").type(JsonFieldType.STRING).optional().description("본문. 없으면 null"),
+                                        fieldWithPath("content[].targetId").type(JsonFieldType.STRING).optional().description("알림이 가리키는 대상 식별자. 종류마다 대상이 다르다"),
+                                        fieldWithPath("content[].readAt").type(JsonFieldType.STRING).optional().description("읽은 시각. 안 읽었으면 null"),
+                                        fieldWithPath("content[].createdAt").type(JsonFieldType.STRING).description("알림이 생긴 시각"),
+                                        fieldWithPath("page").type(JsonFieldType.NUMBER).description("0부터 세는 현재 장 번호"),
+                                        fieldWithPath("size").type(JsonFieldType.NUMBER).description("한 장 크기. 최대 100"),
+                                        fieldWithPath("totalElements").type(JsonFieldType.NUMBER).description("내 알림 전체 수"),
+                                        fieldWithPath("totalPages").type(JsonFieldType.NUMBER).description("전체 장 수")
                                 ).build())))
                 .statusCode(200)
-                .body("", hasSize(1))
-                .body("[0].notificationType", equalTo("BACKTEST_COMPLETED"))
-                .body("[0].targetId", equalTo(BACKTEST_ID))
-                .body("[0].readAt", nullValue());
+                .body("content", hasSize(1))
+                .body("content[0].notificationType", equalTo("BACKTEST_COMPLETED"))
+                .body("content[0].targetId", equalTo(BACKTEST_ID))
+                .body("content[0].readAt", nullValue())
+                .body("totalElements", equalTo(1))
+                .body("totalPages", equalTo(1));
+    }
+
+    @DisplayName("고른 알림만 지우고 문서화한다")
+    @Test
+    void deleteNotifications() {
+        given().contentType("application/json").body("{\"notificationIds\":[7,9]}")
+                .when().delete("/notifications")
+                .then()
+                .apply(document("notifications-delete", resource(baseResource()
+                        .requestSchema(schema("DeleteNotificationsRequest"))
+                        .requestFields(fieldWithPath("notificationIds").type(JsonFieldType.ARRAY).description("지울 알림 식별자. 비어 있으면 거절한다"))
+                        .build())))
+                .statusCode(204);
+
+        then(notificationCommandService).should().delete(MEMBER_ID, List.of(7L, 9L));
+    }
+
+    @DisplayName("본문 없이 부르면 내 알림을 전부 지우고 문서화한다")
+    @Test
+    void deleteAllNotifications() {
+        given().when().delete("/notifications")
+                .then()
+                .apply(document("notifications-delete-all", resource(baseResource().build())))
+                .statusCode(204);
+
+        then(notificationCommandService).should().deleteAll(MEMBER_ID);
     }
 
     @DisplayName("알림 설정은 네 종류를 모두 돌려준다")

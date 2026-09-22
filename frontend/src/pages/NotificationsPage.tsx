@@ -1,21 +1,89 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { LoadingState } from '../components/LoadingState'
+import { Pager } from '../components/Pager'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { notificationLook, notificationTime } from '../notification/labels'
-import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotifications } from '../notification/queries'
+import {
+  useDeleteAllNotifications,
+  useDeleteNotifications,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotifications,
+} from '../notification/queries'
 import { targetRoute } from '../notification/targetRoute'
 import type { AppNotification } from '../notification/types'
 
 /*
- * 알림(목업 37). 목업은 대회 일정과 채점 결과를 함께 그렸지만 대회 채점이 아직 없어
- * 지금은 백테스트와 모의투자에서 생긴 알림만 모인다. 대회 알림은 채점 API 가 생기면 붙는다.
+ * 알림(목업 37). 알림은 지우기 전까지 계속 쌓여 한 장씩 넘겨 본다.
+ * 삭제는 고르는 모드로 들어가서 한다. 행마다 버튼을 늘 띄우면 누를 일 없는 버튼이 목록을 채운다.
  */
 export function NotificationsPage() {
-  const notifications = useNotifications()
-  const markAllRead = useMarkAllNotificationsRead()
+  const [page, setPage] = useState(0)
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<number[]>([])
+  /* 장을 넘어 전부 고른 상태. 식별자를 다 모으지 않고 서버의 전체 삭제로 보낸다. */
+  const [everything, setEverything] = useState(false)
+  const [confirming, setConfirming] = useState(false)
 
-  const unreadCount = notifications.data?.filter((notification) => notification.unread).length ?? 0
+  const notifications = useNotifications(page)
+  const markAllRead = useMarkAllNotificationsRead()
+  const deleteSelected = useDeleteNotifications()
+  const deleteAll = useDeleteAllNotifications()
+
+  const totalPages = notifications.data?.totalPages ?? 0
+  const totalElements = notifications.data?.totalElements ?? 0
+  const items = notifications.data?.items ?? []
+  const unreadCount = items.filter((notification) => notification.unread).length
+  const pageIds = items.map((notification) => notification.id)
+  const pageAllSelected = items.length > 0 && (everything || pageIds.every((id) => selected.includes(id)))
+  const selectedCount = everything ? totalElements : selected.length
+  const pending = deleteSelected.isPending || deleteAll.isPending
+
+  const leaveSelecting = () => {
+    setSelecting(false)
+    setSelected([])
+    setEverything(false)
+  }
+
+  /* 전부 고른 상태에서 하나를 끄면 더는 전부가 아니다. 이 장을 기준으로 다시 센다. */
+  const toggle = (notificationId: number) => {
+    if (everything) {
+      setEverything(false)
+      setSelected(pageIds.filter((id) => id !== notificationId))
+      return
+    }
+    setSelected((current) =>
+      current.includes(notificationId)
+        ? current.filter((id) => id !== notificationId)
+        : [...current, notificationId],
+    )
+  }
+
+  /* 고른 것은 장을 넘어 유지된다. 이 장을 껐다 켤 때 다른 장에서 고른 것을 건드리지 않는다. */
+  const togglePage = () => {
+    if (pageAllSelected) {
+      setEverything(false)
+      setSelected((current) => current.filter((id) => !pageIds.includes(id)))
+      return
+    }
+    setSelected((current) => [...current, ...pageIds.filter((id) => !current.includes(id))])
+  }
+
+  const remove = () => {
+    const finish = () => {
+      setConfirming(false)
+      leaveSelecting()
+      setPage(everything ? 0 : Math.max(page - (selected.length >= items.length ? 1 : 0), 0))
+    }
+    if (everything) {
+      deleteAll.mutate(undefined, { onSuccess: finish })
+      return
+    }
+    deleteSelected.mutate(selected, { onSuccess: finish })
+  }
 
   return (
     <section className="view active" id="view-notifications">
@@ -26,16 +94,45 @@ export function NotificationsPage() {
           <p className="sub">백테스트가 끝나거나 모의투자가 멈추면 여기에 쌓입니다.</p>
         </div>
         <div className="detail-actions">
-          <button
-            className="btn ghost"
-            type="button"
-            disabled={unreadCount === 0 || markAllRead.isPending}
-            aria-busy={markAllRead.isPending}
-            onClick={() => markAllRead.mutate()}
-          >
-            {markAllRead.isPending && <span className="spin" aria-hidden="true" />}
-            모두 읽음
-          </button>
+          {selecting ? (
+            <>
+              <button className="btn ghost" type="button" disabled={items.length === 0 || pending} onClick={togglePage}>
+                {pageAllSelected ? '선택 해제' : '전체 선택'}
+              </button>
+              <button
+                className="btn ghost"
+                type="button"
+                disabled={selectedCount === 0 || pending}
+                onClick={() => setConfirming(true)}
+              >
+                {selectedCount === 0 ? '삭제' : `삭제 ${selectedCount}건`}
+              </button>
+              <button className="btn ghost" type="button" disabled={pending} onClick={leaveSelecting}>
+                취소
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                className="btn ghost"
+                type="button"
+                disabled={unreadCount === 0 || markAllRead.isPending}
+                aria-busy={markAllRead.isPending}
+                onClick={() => markAllRead.mutate()}
+              >
+                {markAllRead.isPending && <span className="spin" aria-hidden="true" />}
+                모두 읽음
+              </button>
+              <button
+                className="btn ghost"
+                type="button"
+                disabled={totalElements === 0}
+                onClick={() => setSelecting(true)}
+              >
+                삭제
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -53,28 +150,84 @@ export function NotificationsPage() {
           onRetry={() => notifications.refetch()}
         />
       )}
-      {notifications.isSuccess && notifications.data.length === 0 && (
+      {notifications.isSuccess && items.length === 0 && (
         <EmptyState
           title="아직 알림이 없습니다"
           description="백테스트를 실행하거나 모의투자를 시작하면 끝났을 때 여기로 알려 드립니다."
         />
       )}
-      {notifications.isSuccess && notifications.data.length > 0 && (
+      {notifications.isSuccess && items.length > 0 && (
         <div className="card pad">
-          {notifications.data.map((notification) => (
-            <NotificationRow key={notification.id} notification={notification} />
+          {items.map((notification) => (
+            <NotificationRow
+              key={notification.id}
+              notification={notification}
+              selecting={selecting}
+              checked={everything || selected.includes(notification.id)}
+              disabled={pending}
+              onToggle={toggle}
+            />
           ))}
         </div>
       )}
+
+      {/* 이 장을 다 고른 순간에만 전체로 넓힐 수 있게 한다. 늘 띄우면 버튼이 하나 더 있는 것과 같다. */}
+      {selecting && pageAllSelected && totalPages > 1 && (
+        <p className="field-note" style={{ marginTop: 12 }}>
+          {everything ? (
+            <>
+              전체 {totalElements}건을 골랐습니다.{' '}
+              <button className="rank-action" type="button" disabled={pending} onClick={() => setEverything(false)}>
+                이 장만 고르기
+              </button>
+            </>
+          ) : (
+            <>
+              이 장 {items.length}건을 골랐습니다.{' '}
+              <button className="rank-action" type="button" disabled={pending} onClick={() => setEverything(true)}>
+                전체 {totalElements}건 고르기
+              </button>
+            </>
+          )}
+        </p>
+      )}
+
+      <Pager
+        page={page}
+        totalPages={totalPages}
+        disabled={notifications.isFetching || pending}
+        label="알림 페이지 이동"
+        onPageChange={setPage}
+      />
+
+      <ConfirmDialog
+        open={confirming}
+        title={everything ? '알림을 전부 지울까요?' : '고른 알림을 지울까요?'}
+        description={`알림 ${selectedCount}건이 사라집니다. 되돌릴 수 없습니다.`}
+        detail={
+          deleteSelected.isError || deleteAll.isError
+            ? '알림을 지우지 못했습니다. 잠시 후 다시 시도해 주세요.'
+            : undefined
+        }
+        confirmLabel="삭제"
+        danger
+        pending={pending}
+        onConfirm={remove}
+        onCancel={() => setConfirming(false)}
+      />
     </section>
   )
 }
 
 type NotificationRowProps = {
   notification: AppNotification
+  selecting: boolean
+  checked: boolean
+  disabled: boolean
+  onToggle: (notificationId: number) => void
 }
 
-function NotificationRow({ notification }: NotificationRowProps) {
+function NotificationRow({ notification, selecting, checked, disabled, onToggle }: NotificationRowProps) {
   const navigate = useNavigate()
   const markRead = useMarkNotificationRead()
   const look = notificationLook(notification.type)
@@ -90,15 +243,35 @@ function NotificationRow({ notification }: NotificationRowProps) {
     }
   }
 
+  /* 고르는 중에는 본문을 눌러도 이동하지 않고 선택만 바뀐다. */
+  const press = () => {
+    if (selecting) {
+      onToggle(notification.id)
+      return
+    }
+    open()
+  }
+
   /* 이동 대상이 없는 알림은 읽음 처리만 할 수 있다. 읽은 뒤에는 누를 일이 없어 잠근다. */
-  const canOpen = target !== null || notification.unread
+  const canPress = selecting || target !== null || notification.unread
 
   return (
     <div className={notification.unread ? `notif unread ${look.tone}` : `notif ${look.tone}`}>
-      <span className="notif-ic" aria-hidden="true">
-        {look.icon}
-      </span>
-      <button className="notif-main" type="button" onClick={open} disabled={!canOpen || markRead.isPending}>
+      {selecting ? (
+        <input
+          type="checkbox"
+          className="notif-ic"
+          checked={checked}
+          disabled={disabled}
+          aria-label={`${notification.title} 선택`}
+          onChange={() => onToggle(notification.id)}
+        />
+      ) : (
+        <span className="notif-ic" aria-hidden="true">
+          {look.icon}
+        </span>
+      )}
+      <button className="notif-main" type="button" onClick={press} disabled={!canPress || markRead.isPending || disabled}>
         <b>{notification.title}</b>
         {notification.body !== null && <span className="notif-body">{notification.body}</span>}
       </button>
@@ -106,16 +279,15 @@ function NotificationRow({ notification }: NotificationRowProps) {
         <time dateTime={notification.createdAt.toISOString()}>
           {notificationTime(notification.createdAt, new Date())}
         </time>
-        {target !== null ? (
+        {!selecting && target !== null && (
           <button className="rank-action" type="button" onClick={open} disabled={markRead.isPending}>
             {look.action}
           </button>
-        ) : (
-          notification.unread && (
-            <button className="rank-action" type="button" onClick={open} disabled={markRead.isPending}>
-              읽음
-            </button>
-          )
+        )}
+        {!selecting && target === null && notification.unread && (
+          <button className="rank-action" type="button" onClick={open} disabled={markRead.isPending}>
+            읽음
+          </button>
         )}
       </div>
     </div>

@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  deleteAllNotifications,
+  deleteNotifications,
   fetchNotificationSettings,
   fetchNotifications,
   fetchUnreadNotificationCount,
@@ -11,6 +13,9 @@ import {
 import { toAppNotification, toNotificationSettings, type NotificationSettingsResponse } from './types'
 
 export const notificationsQueryKey = ['notifications'] as const
+
+/* 한 장 크기. 서버 기본값과 같게 둔다. */
+export const notificationPageSize = 20
 export const unreadNotificationCountQueryKey = [...notificationsQueryKey, 'unread-count'] as const
 export const notificationSettingsQueryKey = ['notification-settings'] as const
 
@@ -58,11 +63,16 @@ export function useUpdateNotificationSetting() {
  */
 const pollIntervalMs = 30 * 1000
 
-export function useNotifications() {
+export function useNotifications(page: number) {
   return useQuery({
-    queryKey: notificationsQueryKey,
-    queryFn: fetchNotifications,
-    select: (responses) => responses.map(toAppNotification),
+    queryKey: [...notificationsQueryKey, page],
+    queryFn: () => fetchNotifications(page, notificationPageSize),
+    select: (response) => ({
+      items: response.content.map(toAppNotification),
+      page: response.page,
+      totalPages: response.totalPages,
+      totalElements: response.totalElements,
+    }),
     refetchInterval: pollIntervalMs,
   })
 }
@@ -93,5 +103,29 @@ export function useMarkAllNotificationsRead() {
   return useMutation({
     mutationFn: markAllNotificationsRead,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: notificationsQueryKey }),
+  })
+}
+
+/* 지우면 목록과 상단 배지가 함께 달라진다. 둘 다 무효화한다. */
+function invalidateNotifications(queryClient: ReturnType<typeof useQueryClient>) {
+  queryClient.invalidateQueries({ queryKey: notificationsQueryKey })
+  queryClient.invalidateQueries({ queryKey: unreadNotificationCountQueryKey })
+}
+
+export function useDeleteNotifications() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deleteNotifications,
+    onSuccess: () => invalidateNotifications(queryClient),
+  })
+}
+
+export function useDeleteAllNotifications() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: deleteAllNotifications,
+    onSuccess: () => invalidateNotifications(queryClient),
   })
 }

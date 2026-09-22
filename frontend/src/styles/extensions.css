@@ -458,6 +458,18 @@ html:has(#view-chart.active) {
   margin: 0 0 20px;
 }
 
+/*
+ * 안 읽음 표시. 목업은 --crit 점을 찍었지만 그 색은 오류·차단이고 실패 알림 아이콘과 같은 색이라
+ * 주황이 보일 때 실패인지 안 읽음인지 갈리지 않는다. 상승·하락에 묶이지 않은 --accent 로 바꾼다.
+ * 5px 점 하나는 훑을 때 놓치기 쉬워 제목 굵기도 같이 쓴다.
+ */
+.notif.unread::before {
+  background: var(--accent);
+}
+.notif.unread b {
+  font-weight: 700;
+}
+
 /* 알림 본문. button 안에는 p 를 둘 수 없어 span 을 블록으로 쓴다. 모양은 목업의 .notif p 와 같다. */
 .notif .notif-body {
   display: block;
