@@ -33,6 +33,8 @@ import com.ssafy.a107.trading.backtest.engine.portfolio.BacktestRebalanceOrderPl
 import com.ssafy.a107.trading.backtest.engine.portfolio.PortfolioValuationCalculator;
 import com.ssafy.a107.trading.backtest.engine.portfolio.RealizedTradeResult;
 import com.ssafy.a107.trading.backtest.engine.universe.BacktestUniverseResolver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -52,6 +54,8 @@ import java.util.stream.Collectors;
 @Component
 @Profile("backtest-worker")
 public class DefaultBacktestEngine implements BacktestEngine {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultBacktestEngine.class);
 
     private final BacktestUniverseResolver backtestUniverseResolver;
     private final BacktestCandleWindowProvider backtestCandleWindowProvider;
@@ -104,8 +108,11 @@ public class DefaultBacktestEngine implements BacktestEngine {
     public BacktestExecutionResult execute(BacktestRun backtestRun) {
         Objects.requireNonNull(backtestRun);
 
+        long engineStartedAt = System.nanoTime();
+        long candidateResolveStartedAt = System.nanoTime();
         List<Asset> candidateUniverse = backtestUniverseResolver
                 .resolveCandidates(backtestRun);
+        long candidateResolveElapsedNanos = System.nanoTime() - candidateResolveStartedAt;
         Map<UUID, Asset> assets = assetsById(candidateUniverse);
         if (assets.isEmpty()) {
             throw new BacktestExecutionException(
@@ -114,10 +121,12 @@ public class DefaultBacktestEngine implements BacktestEngine {
             );
         }
 
+        long candleLoadStartedAt = System.nanoTime();
         BacktestCandleWindow candleWindow = backtestCandleWindowProvider.load(
                 backtestRun,
                 assets.keySet()
         );
+        long candleLoadElapsedNanos = System.nanoTime() - candleLoadStartedAt;
         BacktestCandleTimeline candleTimeline = BacktestCandleTimeline.from(
                 candleWindow
         );
@@ -151,6 +160,10 @@ public class DefaultBacktestEngine implements BacktestEngine {
         List<RealizedTradeResult> realizedTrades = new ArrayList<>();
         List<BacktestUniverseAsset> universeAssets = new ArrayList<>();
         Map<UUID, BigDecimal> finalPrices = Map.of();
+        long rebalanceUniverseElapsedNanos = 0L;
+        long strategyExecutionElapsedNanos = 0L;
+        long orderExecutionElapsedNanos = 0L;
+        int rebalanceCount = 0;
 
         List<Instant> candleOpenTimes = candleTimeline.evaluationCandleOpenTimes();
         for (int index = 0; index < candleOpenTimes.size(); index++) {
@@ -165,17 +178,23 @@ public class DefaultBacktestEngine implements BacktestEngine {
                     candleOpenTime,
                     index == 0
             )) {
+                rebalanceCount++;
+                long rebalanceUniverseStartedAt = System.nanoTime();
                 List<Asset> rebalanceUniverse = resolveRebalanceUniverse(
                         backtestRun,
                         candleOpenTime,
                         assets
                 );
+                rebalanceUniverseElapsedNanos += System.nanoTime() - rebalanceUniverseStartedAt;
+
+                long strategyExecutionStartedAt = System.nanoTime();
                 TargetPortfolio targetPortfolio = executeStrategy(
                         backtestRun,
                         candleWindow,
                         candleOpenTime,
                         rebalanceUniverse
                 );
+                strategyExecutionElapsedNanos += System.nanoTime() - strategyExecutionStartedAt;
                 Instant signalAt = candleOpenTime.plus(candleDuration(backtestRun));
 
                 universeAssets.addAll(snapshotUniverse(
@@ -185,6 +204,7 @@ public class DefaultBacktestEngine implements BacktestEngine {
                         targetPortfolio
                 ));
 
+                long orderExecutionStartedAt = System.nanoTime();
                 List<VirtualOrder> orders = backtestRebalanceOrderPlanner.plan(
                                 portfolio,
                                 targetPortfolio,
@@ -210,6 +230,7 @@ public class DefaultBacktestEngine implements BacktestEngine {
                         fill.order().assetId(),
                         fill.executedPrice()
                 ));
+                orderExecutionElapsedNanos += System.nanoTime() - orderExecutionStartedAt;
             }
 
             BigDecimal totalAssetValue = portfolioValuationCalculator
@@ -223,6 +244,7 @@ public class DefaultBacktestEngine implements BacktestEngine {
             finalPrices = Map.copyOf(valuationPrices);
         }
 
+        long performanceReportStartedAt = System.nanoTime();
         PerformanceReport performanceReport = performanceReportCalculator.calculate(
                 new PerformanceCalculationInput(
                         backtestRun.getInitialCapital(),
@@ -237,6 +259,22 @@ public class DefaultBacktestEngine implements BacktestEngine {
                         null,
                         null
                 )
+        );
+        long performanceReportElapsedNanos = System.nanoTime() - performanceReportStartedAt;
+
+        log.info(
+                "Backtest engine timing backtestId={} candidates={} evaluationCandles={} rebalances={} candidateResolveMs={} candleLoadMs={} rebalanceUniverseMs={} strategyExecutionMs={} orderExecutionMs={} performanceReportMs={} totalMs={}",
+                backtestRun.getBacktestId(),
+                assets.size(),
+                candleOpenTimes.size(),
+                rebalanceCount,
+                toMillis(candidateResolveElapsedNanos),
+                toMillis(candleLoadElapsedNanos),
+                toMillis(rebalanceUniverseElapsedNanos),
+                toMillis(strategyExecutionElapsedNanos),
+                toMillis(orderExecutionElapsedNanos),
+                toMillis(performanceReportElapsedNanos),
+                elapsedMillis(engineStartedAt)
         );
 
         return new BacktestExecutionResult(
@@ -352,5 +390,13 @@ public class DefaultBacktestEngine implements BacktestEngine {
             case FOUR_HOURS -> 6 * 365;
             case ONE_DAY -> 365;
         };
+    }
+
+    private long elapsedMillis(long startedAt) {
+        return toMillis(System.nanoTime() - startedAt);
+    }
+
+    private long toMillis(long elapsedNanos) {
+        return Duration.ofNanos(elapsedNanos).toMillis();
     }
 }
