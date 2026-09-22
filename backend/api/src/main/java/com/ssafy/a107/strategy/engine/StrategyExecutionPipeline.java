@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -78,6 +79,46 @@ public class StrategyExecutionPipeline {
         );
     }
 
+    /**
+     * 백테스트가 같은 캔들 구간을 여러 재선정 시점에서 평가할 때 사용할 준비 결과를 만든다.
+     */
+    public PreparedStrategyExecution prepareForBacktest(
+            StrategyDsl strategyDsl,
+            Map<UUID, List<MinuteCandle>> assetCandles
+    ) {
+        Objects.requireNonNull(strategyDsl);
+        Objects.requireNonNull(assetCandles);
+
+        validateSupportedStrategyDsl(strategyDsl);
+        validateCandleTimeframes(strategyDsl, assetCandles);
+
+        Set<FactorOperand> requiredFactors = collectRequiredFactors(strategyDsl);
+        Map<UUID, Ta4jFactorCalculator.PreparedFactorSeries> factorsByAssetId = new LinkedHashMap<>();
+        for (Map.Entry<UUID, List<MinuteCandle>> entry : assetCandles.entrySet()) {
+            factorsByAssetId.put(
+                    entry.getKey(),
+                    factorCalculator.prepare(requiredFactors, entry.getValue())
+            );
+        }
+        return new PreparedStrategyExecution(strategyDsl, factorsByAssetId);
+    }
+
+    public TargetPortfolio executePreparedForBacktest(
+            PreparedStrategyExecution preparedStrategyExecution,
+            Instant evaluationAt,
+            List<UUID> assetIds
+    ) {
+        Objects.requireNonNull(preparedStrategyExecution);
+
+        Map<UUID, Map<FactorOperand, BigDecimal>> assetFactorValues =
+                preparedStrategyExecution.calculateFactorValuesAt(evaluationAt, assetIds);
+        return executeWithFactorValues(
+                preparedStrategyExecution.strategyDsl(),
+                assetFactorValues,
+                true
+        );
+    }
+
     private TargetPortfolio executeInternal(
             StrategyDsl strategyDsl,
             Map<UUID, List<MinuteCandle>> assetCandles,
@@ -91,6 +132,19 @@ public class StrategyExecutionPipeline {
 
         Set<FactorOperand> requiredFactors = collectRequiredFactors(strategyDsl);
         Map<UUID, Map<FactorOperand, BigDecimal>> assetFactorValues = calculateFactorValues(assetCandles, requiredFactors);
+        return executeWithFactorValues(
+                strategyDsl,
+                assetFactorValues,
+                excludeInsufficientCandleAssets
+        );
+    }
+
+    private TargetPortfolio executeWithFactorValues(
+            StrategyDsl strategyDsl,
+            Map<UUID, Map<FactorOperand, BigDecimal>> assetFactorValues,
+            boolean excludeInsufficientCandleAssets
+    ) {
+        Set<FactorOperand> requiredFactors = collectRequiredFactors(strategyDsl);
         Map<UUID, Map<FactorOperand, BigDecimal>> completeAssetFactorValues = excludeInsufficientCandleAssets
                 ? excludeAssetsWithInsufficientCandles(assetFactorValues, requiredFactors)
                 : validateRequiredFactorValues(assetFactorValues, requiredFactors);

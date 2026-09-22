@@ -122,6 +122,56 @@ class Ta4jFactorCalculatorTest {
     }
 
     @Test
+    @DisplayName("준비된 시계열은 평가 시점 뒤의 캔들을 보지 않는다")
+    void calculatePreparedFactorsWithoutFutureCandles() {
+        // given
+        FactorOperand returnFactor = new FactorOperand(FactorType.RETURN, 1);
+        List<MinuteCandle> candles = candles(
+                new String[]{"100", "110", "1000"},
+                new String[]{"1", "1", "1"}
+        );
+        Ta4jFactorCalculator.PreparedFactorSeries prepared = calculator.prepare(
+                Set.of(returnFactor),
+                candles
+        );
+
+        // when
+        Map<FactorOperand, BigDecimal> beforeFutureCandle = prepared.calculateAt(
+                Instant.parse("2026-01-01T00:02:00Z")
+        );
+
+        // then
+        assertThat(beforeFutureCandle.get(returnFactor)).isEqualByComparingTo("10");
+    }
+
+    @Test
+    @DisplayName("준비된 시계열의 마지막 지표값은 기존 계산 결과와 같다")
+    void calculatePreparedFactorsWithSameResultAsExistingCalculation() {
+        // given
+        Set<FactorOperand> factors = Set.of(
+                new FactorOperand(FactorType.RETURN, 2),
+                new FactorOperand(FactorType.RSI, 2),
+                new FactorOperand(FactorType.SMA_DISPARITY, 3),
+                new FactorOperand(FactorType.VOLATILITY, 2),
+                new FactorOperand(FactorType.VOLUME_RATIO, 3),
+                new FactorOperand(FactorType.DRAWDOWN, 3)
+        );
+        List<MinuteCandle> candles = candles(
+                new String[]{"100", "110", "105", "120"},
+                new String[]{"10", "20", "30", "40"}
+        );
+
+        // when
+        Map<FactorOperand, BigDecimal> existing = calculator.calculateAll(factors, candles);
+        Map<FactorOperand, BigDecimal> prepared = calculator.prepare(factors, candles).calculateAt(
+                Instant.parse("2026-01-01T00:04:00Z")
+        );
+
+        // then
+        assertThat(prepared).isEqualTo(existing);
+    }
+
+    @Test
     @DisplayName("warm-up 데이터가 부족하면 Factor 값을 제공하지 않는다")
     void returnEmptyWhenWarmUpDataIsInsufficient() {
         // given

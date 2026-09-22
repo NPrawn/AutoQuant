@@ -151,6 +151,32 @@ class StrategyExecutionPipelineTest {
     }
 
     @Test
+    @DisplayName("준비된 지표 시계열은 같은 시점의 기존 백테스트 판단과 같다")
+    void executePreparedStrategyWithSameResultAsCurrentCandleWindow() {
+        // given
+        UUID assetId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        List<MinuteCandle> fullCandles = candles(assetId, "100", "110", "121", "133.1");
+        StrategyDsl strategyDsl = strategyDsl(1);
+        PreparedStrategyExecution prepared = pipeline.prepareForBacktest(
+                strategyDsl,
+                Map.of(assetId, fullCandles)
+        );
+
+        // when
+        TargetPortfolio expected = pipeline.executeExcludingInsufficientCandleAssets(
+                strategyExecutionContext(strategyDsl, Map.of(assetId, fullCandles.subList(0, 3)))
+        );
+        TargetPortfolio actual = pipeline.executePreparedForBacktest(
+                prepared,
+                Instant.parse("2026-01-01T03:00:00Z"),
+                List.of(assetId)
+        );
+
+        // then
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
     @DisplayName("백테스트 후보 전체의 캔들이 부족하면 실행 오류를 알린다")
     void rejectBacktestWhenAllCandidateAssetsHaveInsufficientCandles() {
         UUID firstAssetId = UUID.fromString("00000000-0000-0000-0000-000000000001");

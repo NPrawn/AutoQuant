@@ -3,9 +3,11 @@ package com.ssafy.a107.trading.backtest.engine;
 import com.ssafy.a107.asset.domain.Asset;
 import com.ssafy.a107.candle.domain.MinuteCandle;
 import com.ssafy.a107.candle.domain.MinuteCandleFixture;
+import com.ssafy.a107.strategy.domain.Strategy;
 import com.ssafy.a107.strategy.domain.dsl.RebalancePeriod;
+import com.ssafy.a107.strategy.domain.dsl.StrategyDsl;
 import com.ssafy.a107.strategy.domain.dsl.Timeframe;
-import com.ssafy.a107.strategy.engine.StrategyExecutionContext;
+import com.ssafy.a107.strategy.engine.PreparedStrategyExecution;
 import com.ssafy.a107.strategy.engine.StrategyExecutionPipeline;
 import com.ssafy.a107.strategy.engine.portfolio.TargetAssetWeight;
 import com.ssafy.a107.strategy.engine.portfolio.TargetPortfolio;
@@ -75,11 +77,11 @@ class DefaultBacktestEngineTest {
         BacktestCandleWindowProvider candleWindowProvider = mock(
                 BacktestCandleWindowProvider.class
         );
-        BacktestStrategyExecutionContextFactory contextFactory = mock(
-                BacktestStrategyExecutionContextFactory.class
-        );
         StrategyExecutionPipeline strategyExecutionPipeline = mock(
                 StrategyExecutionPipeline.class
+        );
+        PreparedStrategyExecution preparedStrategyExecution = mock(
+                PreparedStrategyExecution.class
         );
         BacktestRebalanceSchedule rebalanceSchedule = mock(
                 BacktestRebalanceSchedule.class
@@ -119,13 +121,9 @@ class DefaultBacktestEngineTest {
                 .thenReturn(List.of(asset, insufficientCandleAsset));
         when(candleWindowProvider.load(any(BacktestRun.class), any()))
                 .thenReturn(candleWindow);
-        when(contextFactory.create(
-                any(BacktestRun.class),
-                any(BacktestCandleWindow.class),
-                any(Instant.class),
-                any()
-        )).thenReturn(mock(StrategyExecutionContext.class));
-        when(strategyExecutionPipeline.executeExcludingInsufficientCandleAssets(any(StrategyExecutionContext.class)))
+        when(strategyExecutionPipeline.prepareForBacktest(any(), anyMap()))
+                .thenReturn(preparedStrategyExecution);
+        when(strategyExecutionPipeline.executePreparedForBacktest(any(), any(), any()))
                 .thenReturn(new TargetPortfolio(
                         List.of(new TargetAssetWeight(ASSET_ID, BigDecimal.ONE)),
                         BigDecimal.ZERO
@@ -149,7 +147,6 @@ class DefaultBacktestEngineTest {
         BacktestExecutionResult result = engine(
                 universeResolver,
                 candleWindowProvider,
-                contextFactory,
                 strategyExecutionPipeline,
                 rebalanceSchedule,
                 orderPlanner,
@@ -188,7 +185,6 @@ class DefaultBacktestEngineTest {
     private DefaultBacktestEngine engine(
             BacktestUniverseResolver universeResolver,
             BacktestCandleWindowProvider candleWindowProvider,
-            BacktestStrategyExecutionContextFactory contextFactory,
             StrategyExecutionPipeline strategyExecutionPipeline,
             BacktestRebalanceSchedule rebalanceSchedule,
             BacktestRebalanceOrderPlanner orderPlanner,
@@ -202,7 +198,6 @@ class DefaultBacktestEngineTest {
         return new DefaultBacktestEngine(
                 universeResolver,
                 candleWindowProvider,
-                contextFactory,
                 strategyExecutionPipeline,
                 rebalanceSchedule,
                 orderPlanner,
@@ -219,12 +214,15 @@ class DefaultBacktestEngineTest {
 
     private BacktestRun backtestRun() {
         BacktestRun backtestRun = mock(BacktestRun.class);
+        Strategy strategy = mock(Strategy.class);
         when(backtestRun.getBacktestId()).thenReturn(BACKTEST_ID);
         when(backtestRun.getPeriodStart()).thenReturn(PERIOD_START);
         when(backtestRun.getPeriodEnd()).thenReturn(PERIOD_END);
         when(backtestRun.getTimeframe()).thenReturn(Timeframe.ONE_HOUR);
         when(backtestRun.getInitialCapital()).thenReturn(BigDecimal.valueOf(1_000));
         when(backtestRun.getRebalanceInterval()).thenReturn(RebalancePeriod.DAILY);
+        when(backtestRun.getStrategy()).thenReturn(strategy);
+        when(strategy.getStrategyDsl()).thenReturn(mock(StrategyDsl.class));
         return backtestRun;
     }
 
