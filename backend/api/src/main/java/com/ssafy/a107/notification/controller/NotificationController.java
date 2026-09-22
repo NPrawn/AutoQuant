@@ -1,6 +1,7 @@
 package com.ssafy.a107.notification.controller;
 
 import com.ssafy.a107.auth.jwt.MemberPrincipal;
+import com.ssafy.a107.notification.controller.request.DeleteNotificationsRequest;
 import com.ssafy.a107.notification.controller.request.UpdateNotificationSettingsRequest;
 import com.ssafy.a107.notification.controller.response.NotificationPageResponse;
 import com.ssafy.a107.notification.controller.response.NotificationSettingsResponse;
@@ -85,18 +86,17 @@ public class NotificationController {
         notificationCommandService.markAllRead(principal.memberId());
     }
 
-    @DeleteMapping("/{notificationId}")
+    /* 고른 알림만 지운다. 본문이 없으면 내 알림을 전부 지운다. */
+    @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(
             @AuthenticationPrincipal MemberPrincipal principal,
-            @PathVariable Long notificationId
+            @Valid @RequestBody(required = false) DeleteNotificationsRequest request
     ) {
-        notificationCommandService.delete(principal.memberId(), notificationId);
-    }
-
-    @DeleteMapping
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteAll(@AuthenticationPrincipal MemberPrincipal principal) {
-        notificationCommandService.deleteAll(principal.memberId());
+        if (request == null) {
+            notificationCommandService.deleteAll(principal.memberId());
+            return;
+        }
+        notificationCommandService.delete(principal.memberId(), request.notificationIds());
     }
 }

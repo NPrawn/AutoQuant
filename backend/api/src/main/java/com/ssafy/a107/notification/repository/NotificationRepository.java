@@ -26,10 +26,10 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
      */
     List<Notification> findAllByMemberMemberIdAndReadAtIsNull(UUID memberId);
 
-    /* 지운 건수로 남의 알림이나 없는 알림을 걸러낸다. */
+    /* 조건에 회원이 들어가 남의 알림은 애초에 지워지지 않는다. 지운 건수로 몇 개가 실제로 사라졌는지 안다. */
     @Modifying
-    @Query("delete from Notification n where n.notificationId = :notificationId and n.member.memberId = :memberId")
-    int deleteOwned(@Param("notificationId") Long notificationId, @Param("memberId") UUID memberId);
+    @Query("delete from Notification n where n.notificationId in :notificationIds and n.member.memberId = :memberId")
+    int deleteOwned(@Param("notificationIds") List<Long> notificationIds, @Param("memberId") UUID memberId);
 
     /* 쌓인 알림을 한 번에 지운다. 읽음 처리와 달리 엔티티로 바꿀 상태가 없어 벌크로 지운다. */
     @Modifying

@@ -127,18 +127,22 @@ class NotificationControllerTest {
                 .body("totalPages", equalTo(1));
     }
 
-    @DisplayName("알림 하나를 지우고 문서화한다")
+    @DisplayName("고른 알림만 지우고 문서화한다")
     @Test
-    void deleteNotification() {
-        given().when().delete("/notifications/{notificationId}", 7)
+    void deleteNotifications() {
+        given().contentType("application/json").body("{\"notificationIds\":[7,9]}")
+                .when().delete("/notifications")
                 .then()
-                .apply(document("notifications-delete", resource(baseResource().build())))
+                .apply(document("notifications-delete", resource(baseResource()
+                        .requestSchema(schema("DeleteNotificationsRequest"))
+                        .requestFields(fieldWithPath("notificationIds").type(JsonFieldType.ARRAY).description("지울 알림 식별자. 비어 있으면 거절한다"))
+                        .build())))
                 .statusCode(204);
 
-        then(notificationCommandService).should().delete(MEMBER_ID, 7L);
+        then(notificationCommandService).should().delete(MEMBER_ID, List.of(7L, 9L));
     }
 
-    @DisplayName("내 알림을 전부 지우고 문서화한다")
+    @DisplayName("본문 없이 부르면 내 알림을 전부 지우고 문서화한다")
     @Test
     void deleteAllNotifications() {
         given().when().delete("/notifications")

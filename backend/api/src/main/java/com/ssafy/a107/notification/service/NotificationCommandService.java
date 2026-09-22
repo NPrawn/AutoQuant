@@ -76,10 +76,13 @@ public class NotificationCommandService {
         unread.forEach(notification -> notification.read(readAt));
     }
 
-    /* 알림을 가리키는 외래키가 없고 이벤트로 한 번만 만들어지는 행이라 그대로 지운다. */
+    /*
+     * 알림을 가리키는 외래키가 없고 이벤트로 한 번만 만들어지는 행이라 그대로 지운다.
+     * 화면에서 고른 것 중 이미 사라진 것이 섞여 있어도 나머지는 지운다. 하나도 못 지웠을 때만 없는 알림으로 본다.
+     */
     @Transactional
-    public void delete(UUID memberId, Long notificationId) {
-        if (notificationRepository.deleteOwned(notificationId, memberId) == 0) {
+    public void delete(UUID memberId, List<Long> notificationIds) {
+        if (notificationRepository.deleteOwned(notificationIds, memberId) == 0) {
             throw new ApiException(ApiErrorCode.NOTIFICATION_NOT_FOUND);
         }
     }

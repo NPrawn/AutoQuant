@@ -31,11 +31,12 @@ export function markAllNotificationsRead(): Promise<void> {
   return request<void>('/notifications/read-all', { method: 'POST' })
 }
 
-export function deleteNotification(notificationId: number): Promise<void> {
-  return request<void>(`/notifications/${notificationId}`, { method: 'DELETE' })
+/* 화면에서 고른 것만 지운다. 빈 배열은 서버가 거절한다. */
+export function deleteNotifications(notificationIds: number[]): Promise<void> {
+  return request<void>('/notifications', { method: 'DELETE', body: { notificationIds } })
 }
 
-/* 내 알림을 전부 지운다. 되돌릴 수 없어 화면이 한 번 묻는다. */
+/* 본문 없이 부르면 전체 삭제다. 되돌릴 수 없어 화면이 한 번 묻는다. */
 export function deleteAllNotifications(): Promise<void> {
   return request<void>('/notifications', { method: 'DELETE' })
 }
