@@ -75,4 +75,17 @@ public class NotificationCommandService {
         Instant readAt = Instant.now(clock);
         unread.forEach(notification -> notification.read(readAt));
     }
+
+    /* 알림을 가리키는 외래키가 없고 이벤트로 한 번만 만들어지는 행이라 그대로 지운다. */
+    @Transactional
+    public void delete(UUID memberId, Long notificationId) {
+        if (notificationRepository.deleteOwned(notificationId, memberId) == 0) {
+            throw new ApiException(ApiErrorCode.NOTIFICATION_NOT_FOUND);
+        }
+    }
+
+    @Transactional
+    public void deleteAll(UUID memberId) {
+        notificationRepository.deleteAllOwned(memberId);
+    }
 }

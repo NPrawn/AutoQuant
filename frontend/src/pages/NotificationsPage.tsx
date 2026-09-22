@@ -1,21 +1,60 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router'
 
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { LoadingState } from '../components/LoadingState'
+import { Pager } from '../components/Pager'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { notificationLook, notificationTime } from '../notification/labels'
-import { useMarkAllNotificationsRead, useMarkNotificationRead, useNotifications } from '../notification/queries'
+import {
+  useDeleteAllNotifications,
+  useDeleteNotification,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotifications,
+} from '../notification/queries'
 import { targetRoute } from '../notification/targetRoute'
 import type { AppNotification } from '../notification/types'
 
 /*
- * 알림(목업 37). 목업은 대회 일정과 채점 결과를 함께 그렸지만 대회 채점이 아직 없어
- * 지금은 백테스트와 모의투자에서 생긴 알림만 모인다. 대회 알림은 채점 API 가 생기면 붙는다.
+ * 알림(목업 37). 알림은 지우기 전까지 계속 쌓여 한 장씩 넘겨 본다.
+ * 지우는 것은 되돌릴 수 없지만 알림을 가리키는 기록이 없어 그대로 지운다.
  */
 export function NotificationsPage() {
-  const notifications = useNotifications()
+  const [page, setPage] = useState(0)
+  const [confirmingClear, setConfirmingClear] = useState(false)
+  const notifications = useNotifications(page)
   const markAllRead = useMarkAllNotificationsRead()
+  const deleteAll = useDeleteAllNotifications()
 
-  const unreadCount = notifications.data?.filter((notification) => notification.unread).length ?? 0
+  const removeOne = useDeleteNotification()
+  const [removingId, setRemovingId] = useState<number | null>(null)
+
+  const totalPages = notifications.data?.totalPages ?? 0
+  const items = notifications.data?.items ?? []
+  const unreadCount = items.filter((notification) => notification.unread).length
+
+  /* 이 장의 마지막 알림을 지우면 그 장이 사라진다. 빈 장에 남지 않게 지운 자리에서 내린다. */
+  const removeNotification = (notificationId: number) => {
+    setRemovingId(notificationId)
+    removeOne.mutate(notificationId, {
+      onSettled: () => setRemovingId(null),
+      onSuccess: () => {
+        if (items.length === 1 && page > 0) {
+          setPage(page - 1)
+        }
+      },
+    })
+  }
+
+  const clearAll = () => {
+    deleteAll.mutate(undefined, {
+      onSuccess: () => {
+        setConfirmingClear(false)
+        setPage(0)
+      },
+    })
+  }
 
   return (
     <section className="view active" id="view-notifications">
@@ -36,6 +75,14 @@ export function NotificationsPage() {
             {markAllRead.isPending && <span className="spin" aria-hidden="true" />}
             모두 읽음
           </button>
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={items.length === 0 || deleteAll.isPending}
+            onClick={() => setConfirmingClear(true)}
+          >
+            전체 삭제
+          </button>
         </div>
       </div>
 
@@ -53,28 +100,55 @@ export function NotificationsPage() {
           onRetry={() => notifications.refetch()}
         />
       )}
-      {notifications.isSuccess && notifications.data.length === 0 && (
+      {notifications.isSuccess && items.length === 0 && (
         <EmptyState
           title="아직 알림이 없습니다"
           description="백테스트를 실행하거나 모의투자를 시작하면 끝났을 때 여기로 알려 드립니다."
         />
       )}
-      {notifications.isSuccess && notifications.data.length > 0 && (
+      {notifications.isSuccess && items.length > 0 && (
         <div className="card pad">
-          {notifications.data.map((notification) => (
-            <NotificationRow key={notification.id} notification={notification} />
+          {items.map((notification) => (
+            <NotificationRow
+              key={notification.id}
+              notification={notification}
+              deleting={removingId === notification.id}
+              onDelete={removeNotification}
+            />
           ))}
         </div>
       )}
+
+      <Pager
+        page={page}
+        totalPages={totalPages}
+        disabled={notifications.isFetching}
+        label="알림 페이지 이동"
+        onPageChange={setPage}
+      />
+
+      <ConfirmDialog
+        open={confirmingClear}
+        title="알림을 전부 지울까요?"
+        description={`알림 ${notifications.data?.totalElements ?? 0}건이 모두 사라집니다. 되돌릴 수 없습니다.`}
+        detail={deleteAll.isError ? '알림을 지우지 못했습니다. 잠시 후 다시 시도해 주세요.' : undefined}
+        confirmLabel="전부 삭제"
+        danger
+        pending={deleteAll.isPending}
+        onConfirm={clearAll}
+        onCancel={() => setConfirmingClear(false)}
+      />
     </section>
   )
 }
 
 type NotificationRowProps = {
   notification: AppNotification
+  deleting: boolean
+  onDelete: (notificationId: number) => void
 }
 
-function NotificationRow({ notification }: NotificationRowProps) {
+function NotificationRow({ notification, deleting, onDelete }: NotificationRowProps) {
   const navigate = useNavigate()
   const markRead = useMarkNotificationRead()
   const look = notificationLook(notification.type)
@@ -92,13 +166,14 @@ function NotificationRow({ notification }: NotificationRowProps) {
 
   /* 이동 대상이 없는 알림은 읽음 처리만 할 수 있다. 읽은 뒤에는 누를 일이 없어 잠근다. */
   const canOpen = target !== null || notification.unread
+  const busy = markRead.isPending || deleting
 
   return (
     <div className={notification.unread ? `notif unread ${look.tone}` : `notif ${look.tone}`}>
       <span className="notif-ic" aria-hidden="true">
         {look.icon}
       </span>
-      <button className="notif-main" type="button" onClick={open} disabled={!canOpen || markRead.isPending}>
+      <button className="notif-main" type="button" onClick={open} disabled={!canOpen || busy}>
         <b>{notification.title}</b>
         {notification.body !== null && <span className="notif-body">{notification.body}</span>}
       </button>
@@ -107,16 +182,25 @@ function NotificationRow({ notification }: NotificationRowProps) {
           {notificationTime(notification.createdAt, new Date())}
         </time>
         {target !== null ? (
-          <button className="rank-action" type="button" onClick={open} disabled={markRead.isPending}>
+          <button className="rank-action" type="button" onClick={open} disabled={busy}>
             {look.action}
           </button>
         ) : (
           notification.unread && (
-            <button className="rank-action" type="button" onClick={open} disabled={markRead.isPending}>
+            <button className="rank-action" type="button" onClick={open} disabled={busy}>
               읽음
             </button>
           )
         )}
+        <button
+          className="rank-action"
+          type="button"
+          aria-label={`${notification.title} 알림 삭제`}
+          disabled={busy}
+          onClick={() => onDelete(notification.id)}
+        >
+          삭제
+        </button>
       </div>
     </div>
   )
