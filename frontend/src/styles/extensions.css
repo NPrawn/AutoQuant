@@ -792,3 +792,31 @@ a.acct-item {
   flex: none;
   margin-left: 0;
 }
+
+/*
+ * 차트 화면의 높이 사슬. main.wrap 은 .col 의 flex 자식이라 flex-basis:0% 가 height 를 덮어
+ * base 의 calc(100vh - 54px) 가 무시되고, 안쪽 height:100% 가 전부 auto 로 풀린다.
+ * 그 결과 코인 목록이 29줄 전체 높이로 자라 문서를 밀어 낸다. flex-basis 를 되돌려 사슬을 잇는다.
+ * 오른쪽 칼럼은 최근 체결까지 보려면 문서가 조금 내려가야 해서 그대로 두고, 왼쪽 카드만 붙여 둔다.
+ */
+@media (min-width: 1181px) {
+  main.wrap:has(#view-chart.active) {
+    flex: 1 1 auto;
+  }
+  #view-chart .chart-shell > .card:first-child {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: calc(100vh - 76px);
+  }
+  #view-chart .chart-shell > .card:nth-child(2) {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    max-height: calc(100vh - 76px);
+  }
+  /* 아래쪽 여유. 최근 체결 마지막 줄이 화면 끝에 붙지 않게 한다. */
+  main.wrap:has(#view-chart.active) {
+    padding-bottom: 24px;
+  }
+}
