@@ -1,16 +1,20 @@
 package com.ssafy.a107.trading.backtest.domain;
 
 import jakarta.persistence.*;
+import org.springframework.data.domain.Persistable;
 
 import java.math.BigDecimal;
 import java.util.Objects;
 
 @Entity
 @Table(name = "backtest_equity", schema = "trading")
-public class BacktestEquity {
+public class BacktestEquity implements Persistable<BacktestEquityId> {
 
     @EmbeddedId
     private BacktestEquityId id;
+
+    @Transient
+    private boolean newEntity = true;
 
     @MapsId("backtestId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -118,8 +122,20 @@ public class BacktestEquity {
         return value;
     }
 
+    @Override
     public BacktestEquityId getId() {
         return id;
+    }
+
+    @Override
+    public boolean isNew() {
+        return newEntity;
+    }
+
+    @PostLoad
+    @PostPersist
+    private void markPersisted() {
+        newEntity = false;
     }
 
     public BacktestRun getBacktestRun() {
