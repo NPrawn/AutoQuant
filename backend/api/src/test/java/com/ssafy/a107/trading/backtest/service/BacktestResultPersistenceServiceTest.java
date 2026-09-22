@@ -19,7 +19,7 @@ import com.ssafy.a107.trading.backtest.engine.performance.TradeStatistics;
 import com.ssafy.a107.trading.backtest.repository.BacktestEquityRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestResultRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestTradeRepository;
-import com.ssafy.a107.trading.backtest.repository.BacktestUniverseAssetRepository;
+import com.ssafy.a107.trading.backtest.repository.BacktestUniverseAssetBatchRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,7 +61,7 @@ class BacktestResultPersistenceServiceTest {
     private BacktestEquityRepository backtestEquityRepository;
 
     @Mock
-    private BacktestUniverseAssetRepository backtestUniverseAssetRepository;
+    private BacktestUniverseAssetBatchRepository backtestUniverseAssetBatchRepository;
 
     @Mock
     private BacktestRun backtestRun;
@@ -100,7 +100,7 @@ class BacktestResultPersistenceServiceTest {
         then(backtestResultRepository).should().save(resultCaptor.capture());
         then(backtestTradeRepository).should().saveAll(tradesCaptor.capture());
         then(backtestEquityRepository).should().saveAll(equitiesCaptor.capture());
-        then(backtestUniverseAssetRepository).should().saveAll(
+        then(backtestUniverseAssetBatchRepository).should().insertAll(
                 universeAssetsCaptor.capture()
         );
 
@@ -153,7 +153,7 @@ class BacktestResultPersistenceServiceTest {
                 backtestResultRepository,
                 backtestTradeRepository,
                 backtestEquityRepository,
-                backtestUniverseAssetRepository
+                backtestUniverseAssetBatchRepository
         );
     }
 
