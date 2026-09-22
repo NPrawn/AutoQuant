@@ -219,7 +219,7 @@ function MarketChartCard({ asset, interval, ticker, rank, livePrice, indicators,
         <FactorCard assetId={asset.id} timeframe={factorTimeframe(interval)} rank={rank} />
         <section className="card pad">
           <div className="sec-title" style={{ marginBottom: 2 }}>최근 체결</div>
-          <div className="sec-sub" style={{ marginBottom: 12 }}>현재 연결에서 수신한 최근 30건</div>
+          <div className="sec-sub" style={{ marginBottom: 12 }}>현재 연결에서 수신한 최근 20건</div>
           <TradeList trades={trades} />
         </section>
         <p className="goal-note" style={{ margin: '12px 4px 0' }}>

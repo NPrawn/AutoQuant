@@ -1,7 +1,7 @@
 import type { CandleResponse, ChartAsset, LiveCandle, Trade } from './types.ts'
 
 export const CANDLE_LIMIT = 1000
-export const TRADE_LIMIT = 30
+export const TRADE_LIMIT = 20
 export const CANDLE_INTERVALS = [1, 2, 5, 15, 60, 240, 1440] as const
 export type CandleInterval = typeof CANDLE_INTERVALS[number]
 export const intervalLabel = (interval: CandleInterval) => interval < 60 ? `${interval}분` : `${interval / 60}시간`

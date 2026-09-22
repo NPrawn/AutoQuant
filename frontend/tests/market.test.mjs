@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { appendTrade, mergeCandles, parseLiveCandle, parseTrade, upsertLive, CANDLE_INTERVALS } from '../src/market/model.ts'
+import { appendTrade, mergeCandles, parseLiveCandle, parseTrade, upsertLive, CANDLE_INTERVALS, TRADE_LIMIT } from '../src/market/model.ts'
 
 const asset = { id: '11111111-1111-1111-1111-111111111111', marketCode: 'KRW-BTC', name: '비트코인' }
 const start = 1800000000000
@@ -35,10 +35,10 @@ test('손상된 JSON과 다른 종목 및 잘못된 side·interval을 폐기한�
   assert.equal(parseLiveCandle(JSON.stringify({ ...candle(0), intervalMinutes: 5 }), asset), null)
   assert.equal(parseLiveCandle(JSON.stringify(candle(0)), asset).openTimeUnixMilli, start)
 })
-test('최근 체결은 중복 없이 최신순 최대 30건을 유지한다', () => {
+test('최근 체결은 중복 없이 최신순으로 상한만큼만 유지한다', () => {
   let trades = []
   for (let index = 1; index <= 40; index++) trades = appendTrade(trades, trade(String(index)))
-  assert.equal(trades.length, 30)
+  assert.equal(trades.length, TRADE_LIMIT)
   assert.equal(trades[0].sequenceId, '40')
   assert.equal(appendTrade(trades, trade('40')), trades)
 })
