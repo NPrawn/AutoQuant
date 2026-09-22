@@ -51,8 +51,14 @@ export function NotificationsPage() {
     )
   }
 
+  /* 고른 것은 장을 넘어 유지된다. 이 장을 껐다 켤 때 다른 장에서 고른 것을 건드리지 않는다. */
   const toggleAll = () => {
-    setSelected(allSelected ? [] : items.map((notification) => notification.id))
+    const pageIds = items.map((notification) => notification.id)
+    setSelected((current) =>
+      allSelected
+        ? current.filter((id) => !pageIds.includes(id))
+        : [...current, ...pageIds.filter((id) => !current.includes(id))],
+    )
   }
 
   /* 이 장을 통째로 지우면 그 장이 사라진다. 빈 장에 남지 않게 지운 자리에서 내린다. */
@@ -95,10 +101,18 @@ export function NotificationsPage() {
               <button
                 className="btn ghost"
                 type="button"
+                disabled={totalElements === 0 || pending}
+                onClick={() => setConfirming('all')}
+              >
+                전체 {totalElements}건 삭제
+              </button>
+              <button
+                className="btn ghost"
+                type="button"
                 disabled={selected.length === 0 || pending}
                 onClick={() => setConfirming('selected')}
               >
-                {selected.length === 0 ? '삭제' : `삭제 ${selected.length}건`}
+                {selected.length === 0 ? '고른 것 삭제' : `고른 ${selected.length}건 삭제`}
               </button>
               <button className="btn ghost" type="button" disabled={pending} onClick={leaveSelecting}>
                 취소
@@ -166,11 +180,9 @@ export function NotificationsPage() {
 
       {selecting && items.length > 0 && (
         <p className="field-note" style={{ marginTop: 12 }}>
-          고른 알림만 지웁니다. 전체 {totalElements}건을 한 번에 지우려면{' '}
-          <button className="rank-action" type="button" disabled={pending} onClick={() => setConfirming('all')}>
-            전체 삭제
-          </button>
-          를 누르세요.
+          {selected.length === 0
+            ? '지울 알림을 고르세요. 장을 넘겨도 고른 것은 유지됩니다.'
+            : `${selected.length}건을 골랐습니다. 장을 넘겨 더 고를 수 있습니다.`}
         </p>
       )}
 
