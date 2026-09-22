@@ -24,7 +24,9 @@ export function NotificationsPage() {
   const [page, setPage] = useState(0)
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<number[]>([])
-  const [confirming, setConfirming] = useState<'selected' | 'all' | null>(null)
+  /* 장을 넘어 전부 고른 상태. 식별자를 다 모으지 않고 서버의 전체 삭제로 보낸다. */
+  const [everything, setEverything] = useState(false)
+  const [confirming, setConfirming] = useState(false)
 
   const notifications = useNotifications(page)
   const markAllRead = useMarkAllNotificationsRead()
@@ -35,15 +37,24 @@ export function NotificationsPage() {
   const totalElements = notifications.data?.totalElements ?? 0
   const items = notifications.data?.items ?? []
   const unreadCount = items.filter((notification) => notification.unread).length
-  const allSelected = items.length > 0 && items.every((notification) => selected.includes(notification.id))
+  const pageIds = items.map((notification) => notification.id)
+  const pageAllSelected = items.length > 0 && (everything || pageIds.every((id) => selected.includes(id)))
+  const selectedCount = everything ? totalElements : selected.length
   const pending = deleteSelected.isPending || deleteAll.isPending
 
   const leaveSelecting = () => {
     setSelecting(false)
     setSelected([])
+    setEverything(false)
   }
 
+  /* 전부 고른 상태에서 하나를 끄면 더는 전부가 아니다. 이 장을 기준으로 다시 센다. */
   const toggle = (notificationId: number) => {
+    if (everything) {
+      setEverything(false)
+      setSelected(pageIds.filter((id) => id !== notificationId))
+      return
+    }
     setSelected((current) =>
       current.includes(notificationId)
         ? current.filter((id) => id !== notificationId)
@@ -52,36 +63,26 @@ export function NotificationsPage() {
   }
 
   /* 고른 것은 장을 넘어 유지된다. 이 장을 껐다 켤 때 다른 장에서 고른 것을 건드리지 않는다. */
-  const toggleAll = () => {
-    const pageIds = items.map((notification) => notification.id)
-    setSelected((current) =>
-      allSelected
-        ? current.filter((id) => !pageIds.includes(id))
-        : [...current, ...pageIds.filter((id) => !current.includes(id))],
-    )
-  }
-
-  /* 이 장을 통째로 지우면 그 장이 사라진다. 빈 장에 남지 않게 지운 자리에서 내린다. */
-  const afterDelete = (removed: number) => {
-    setConfirming(null)
-    leaveSelecting()
-    if (removed >= items.length && page > 0) {
-      setPage(page - 1)
+  const togglePage = () => {
+    if (pageAllSelected) {
+      setEverything(false)
+      setSelected((current) => current.filter((id) => !pageIds.includes(id)))
+      return
     }
+    setSelected((current) => [...current, ...pageIds.filter((id) => !current.includes(id))])
   }
 
-  const removeSelected = () => {
-    deleteSelected.mutate(selected, { onSuccess: () => afterDelete(selected.length) })
-  }
-
-  const removeAll = () => {
-    deleteAll.mutate(undefined, {
-      onSuccess: () => {
-        setConfirming(null)
-        leaveSelecting()
-        setPage(0)
-      },
-    })
+  const remove = () => {
+    const finish = () => {
+      setConfirming(false)
+      leaveSelecting()
+      setPage(everything ? 0 : Math.max(page - (selected.length >= items.length ? 1 : 0), 0))
+    }
+    if (everything) {
+      deleteAll.mutate(undefined, { onSuccess: finish })
+      return
+    }
+    deleteSelected.mutate(selected, { onSuccess: finish })
   }
 
   return (
@@ -95,24 +96,16 @@ export function NotificationsPage() {
         <div className="detail-actions">
           {selecting ? (
             <>
-              <button className="btn ghost" type="button" disabled={items.length === 0 || pending} onClick={toggleAll}>
-                {allSelected ? '선택 해제' : '이 장 전체'}
+              <button className="btn ghost" type="button" disabled={items.length === 0 || pending} onClick={togglePage}>
+                {pageAllSelected ? '선택 해제' : '전체 선택'}
               </button>
               <button
                 className="btn ghost"
                 type="button"
-                disabled={totalElements === 0 || pending}
-                onClick={() => setConfirming('all')}
+                disabled={selectedCount === 0 || pending}
+                onClick={() => setConfirming(true)}
               >
-                전체 {totalElements}건 삭제
-              </button>
-              <button
-                className="btn ghost"
-                type="button"
-                disabled={selected.length === 0 || pending}
-                onClick={() => setConfirming('selected')}
-              >
-                {selected.length === 0 ? '고른 것 삭제' : `고른 ${selected.length}건 삭제`}
+                {selectedCount === 0 ? '삭제' : `삭제 ${selectedCount}건`}
               </button>
               <button className="btn ghost" type="button" disabled={pending} onClick={leaveSelecting}>
                 취소
@@ -170,7 +163,7 @@ export function NotificationsPage() {
               key={notification.id}
               notification={notification}
               selecting={selecting}
-              checked={selected.includes(notification.id)}
+              checked={everything || selected.includes(notification.id)}
               disabled={pending}
               onToggle={toggle}
             />
@@ -178,11 +171,24 @@ export function NotificationsPage() {
         </div>
       )}
 
-      {selecting && items.length > 0 && (
+      {/* 이 장을 다 고른 순간에만 전체로 넓힐 수 있게 한다. 늘 띄우면 버튼이 하나 더 있는 것과 같다. */}
+      {selecting && pageAllSelected && totalPages > 1 && (
         <p className="field-note" style={{ marginTop: 12 }}>
-          {selected.length === 0
-            ? '지울 알림을 고르세요. 장을 넘겨도 고른 것은 유지됩니다.'
-            : `${selected.length}건을 골랐습니다. 장을 넘겨 더 고를 수 있습니다.`}
+          {everything ? (
+            <>
+              전체 {totalElements}건을 골랐습니다.{' '}
+              <button className="rank-action" type="button" disabled={pending} onClick={() => setEverything(false)}>
+                이 장만 고르기
+              </button>
+            </>
+          ) : (
+            <>
+              이 장 {items.length}건을 골랐습니다.{' '}
+              <button className="rank-action" type="button" disabled={pending} onClick={() => setEverything(true)}>
+                전체 {totalElements}건 고르기
+              </button>
+            </>
+          )}
         </p>
       )}
 
@@ -195,27 +201,19 @@ export function NotificationsPage() {
       />
 
       <ConfirmDialog
-        open={confirming === 'selected'}
-        title="고른 알림을 지울까요?"
-        description={`알림 ${selected.length}건이 사라집니다. 되돌릴 수 없습니다.`}
-        detail={deleteSelected.isError ? '알림을 지우지 못했습니다. 잠시 후 다시 시도해 주세요.' : undefined}
+        open={confirming}
+        title={everything ? '알림을 전부 지울까요?' : '고른 알림을 지울까요?'}
+        description={`알림 ${selectedCount}건이 사라집니다. 되돌릴 수 없습니다.`}
+        detail={
+          deleteSelected.isError || deleteAll.isError
+            ? '알림을 지우지 못했습니다. 잠시 후 다시 시도해 주세요.'
+            : undefined
+        }
         confirmLabel="삭제"
         danger
-        pending={deleteSelected.isPending}
-        onConfirm={removeSelected}
-        onCancel={() => setConfirming(null)}
-      />
-
-      <ConfirmDialog
-        open={confirming === 'all'}
-        title="알림을 전부 지울까요?"
-        description={`알림 ${totalElements}건이 모두 사라집니다. 되돌릴 수 없습니다.`}
-        detail={deleteAll.isError ? '알림을 지우지 못했습니다. 잠시 후 다시 시도해 주세요.' : undefined}
-        confirmLabel="전부 삭제"
-        danger
-        pending={deleteAll.isPending}
-        onConfirm={removeAll}
-        onCancel={() => setConfirming(null)}
+        pending={pending}
+        onConfirm={remove}
+        onCancel={() => setConfirming(false)}
       />
     </section>
   )
