@@ -2,7 +2,7 @@ package com.ssafy.a107.trading.backtest.engine;
 
 import com.ssafy.a107.asset.domain.Asset;
 import com.ssafy.a107.candle.domain.MinuteCandle;
-import com.ssafy.a107.strategy.engine.StrategyExecutionContext;
+import com.ssafy.a107.strategy.engine.PreparedStrategyExecution;
 import com.ssafy.a107.strategy.engine.StrategyExecutionPipeline;
 import com.ssafy.a107.strategy.engine.portfolio.TargetAssetWeight;
 import com.ssafy.a107.strategy.engine.portfolio.TargetPortfolio;
@@ -59,7 +59,6 @@ public class DefaultBacktestEngine implements BacktestEngine {
 
     private final BacktestUniverseResolver backtestUniverseResolver;
     private final BacktestCandleWindowProvider backtestCandleWindowProvider;
-    private final BacktestStrategyExecutionContextFactory contextFactory;
     private final StrategyExecutionPipeline strategyExecutionPipeline;
     private final BacktestRebalanceSchedule backtestRebalanceSchedule;
     private final BacktestRebalanceOrderPlanner backtestRebalanceOrderPlanner;
@@ -75,7 +74,6 @@ public class DefaultBacktestEngine implements BacktestEngine {
     public DefaultBacktestEngine(
             BacktestUniverseResolver backtestUniverseResolver,
             BacktestCandleWindowProvider backtestCandleWindowProvider,
-            BacktestStrategyExecutionContextFactory contextFactory,
             StrategyExecutionPipeline strategyExecutionPipeline,
             BacktestRebalanceSchedule backtestRebalanceSchedule,
             BacktestRebalanceOrderPlanner backtestRebalanceOrderPlanner,
@@ -90,7 +88,6 @@ public class DefaultBacktestEngine implements BacktestEngine {
     ) {
         this.backtestUniverseResolver = Objects.requireNonNull(backtestUniverseResolver);
         this.backtestCandleWindowProvider = Objects.requireNonNull(backtestCandleWindowProvider);
-        this.contextFactory = Objects.requireNonNull(contextFactory);
         this.strategyExecutionPipeline = Objects.requireNonNull(strategyExecutionPipeline);
         this.backtestRebalanceSchedule = Objects.requireNonNull(backtestRebalanceSchedule);
         this.backtestRebalanceOrderPlanner = Objects.requireNonNull(backtestRebalanceOrderPlanner);
@@ -136,6 +133,13 @@ public class DefaultBacktestEngine implements BacktestEngine {
                     "Backtest evaluation candles must not be empty"
             );
         }
+
+        long strategyPreparationStartedAt = System.nanoTime();
+        PreparedStrategyExecution preparedStrategyExecution = strategyExecutionPipeline.prepareForBacktest(
+                backtestRun.getStrategy().getStrategyDsl(),
+                candleWindow.candlesByAssetId()
+        );
+        long strategyPreparationElapsedNanos = System.nanoTime() - strategyPreparationStartedAt;
 
         BacktestPortfolio portfolio = new BacktestPortfolio(
                 backtestRun.getInitialCapital()
@@ -190,9 +194,9 @@ public class DefaultBacktestEngine implements BacktestEngine {
                 long strategyExecutionStartedAt = System.nanoTime();
                 TargetPortfolio targetPortfolio = executeStrategy(
                         backtestRun,
-                        candleWindow,
                         candleOpenTime,
-                        rebalanceUniverse
+                        rebalanceUniverse,
+                        preparedStrategyExecution
                 );
                 strategyExecutionElapsedNanos += System.nanoTime() - strategyExecutionStartedAt;
                 Instant signalAt = candleOpenTime.plus(candleDuration(backtestRun));
@@ -263,13 +267,14 @@ public class DefaultBacktestEngine implements BacktestEngine {
         long performanceReportElapsedNanos = System.nanoTime() - performanceReportStartedAt;
 
         log.info(
-                "Backtest engine timing backtestId={} candidates={} evaluationCandles={} rebalances={} candidateResolveMs={} candleLoadMs={} rebalanceUniverseMs={} strategyExecutionMs={} orderExecutionMs={} performanceReportMs={} totalMs={}",
+                "Backtest engine timing backtestId={} candidates={} evaluationCandles={} rebalances={} candidateResolveMs={} candleLoadMs={} strategyPreparationMs={} rebalanceUniverseMs={} strategyExecutionMs={} orderExecutionMs={} performanceReportMs={} totalMs={}",
                 backtestRun.getBacktestId(),
                 assets.size(),
                 candleOpenTimes.size(),
                 rebalanceCount,
                 toMillis(candidateResolveElapsedNanos),
                 toMillis(candleLoadElapsedNanos),
+                toMillis(strategyPreparationElapsedNanos),
                 toMillis(rebalanceUniverseElapsedNanos),
                 toMillis(strategyExecutionElapsedNanos),
                 toMillis(orderExecutionElapsedNanos),
@@ -312,20 +317,15 @@ public class DefaultBacktestEngine implements BacktestEngine {
 
     private TargetPortfolio executeStrategy(
             BacktestRun backtestRun,
-            BacktestCandleWindow candleWindow,
             Instant candleOpenTime,
-            List<Asset> rebalanceUniverse
+            List<Asset> rebalanceUniverse,
+            PreparedStrategyExecution preparedStrategyExecution
     ) {
-        StrategyExecutionContext context = contextFactory.create(
-                backtestRun,
-                candleWindow,
-                candleOpenTime,
-                rebalanceUniverse.stream()
-                        .map(Asset::getAssetId)
-                        .toList()
+        return strategyExecutionPipeline.executePreparedForBacktest(
+                preparedStrategyExecution,
+                candleOpenTime.plus(candleDuration(backtestRun)),
+                rebalanceUniverse.stream().map(Asset::getAssetId).toList()
         );
-
-        return strategyExecutionPipeline.executeExcludingInsufficientCandleAssets(context);
     }
 
     private List<BacktestUniverseAsset> snapshotUniverse(
