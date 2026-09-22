@@ -2,6 +2,7 @@ package com.ssafy.a107.strategy.engine.factor;
 
 import com.ssafy.a107.candle.domain.MinuteCandle;
 import com.ssafy.a107.candle.domain.MinuteCandleFixture;
+import com.ssafy.a107.strategy.domain.dsl.FactorOperand;
 import com.ssafy.a107.strategy.domain.dsl.FactorType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -94,6 +97,28 @@ class Ta4jFactorCalculatorTest {
 
         // then
         assertThat(result).isEqualByComparingTo("-25");
+    }
+
+    @Test
+    @DisplayName("여러 Factor는 하나의 캔들 시계열에서 함께 계산한다")
+    void calculateAllFactorsFromOneCandleSeries() {
+        // given
+        FactorOperand returnFactor = new FactorOperand(FactorType.RETURN, 2);
+        FactorOperand volatilityFactor = new FactorOperand(FactorType.VOLATILITY, 2);
+        List<MinuteCandle> candles = candles(
+                new String[]{"100", "110", "110"},
+                new String[]{"1", "1", "1"}
+        );
+
+        // when
+        Map<FactorOperand, BigDecimal> factorValues = calculator.calculateAll(
+                Set.of(returnFactor, volatilityFactor),
+                candles
+        );
+
+        // then
+        assertThat(factorValues.get(returnFactor)).isEqualByComparingTo("10");
+        assertThat(factorValues.get(volatilityFactor)).isEqualByComparingTo("5");
     }
 
     @Test

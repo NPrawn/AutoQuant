@@ -2,6 +2,7 @@ package com.ssafy.a107.strategy.engine.factor;
 
 import com.ssafy.a107.candle.domain.MinuteCandle;
 import com.ssafy.a107.candle.domain.MinuteCandleId;
+import com.ssafy.a107.strategy.domain.dsl.FactorOperand;
 import com.ssafy.a107.strategy.domain.dsl.FactorType;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -25,8 +26,12 @@ import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Component
@@ -38,6 +43,34 @@ public class Ta4jFactorCalculator {
         validatePeriod(period);
 
         BarSeries series = toBarSeries(candles);
+        return calculate(factor, period, series);
+    }
+
+    public Map<FactorOperand, BigDecimal> calculateAll(
+            Set<FactorOperand> factorOperands,
+            List<MinuteCandle> candles
+    ) {
+        Objects.requireNonNull(factorOperands);
+
+        for (FactorOperand factorOperand : factorOperands) {
+            Objects.requireNonNull(factorOperand);
+            validatePeriod(factorOperand.period());
+        }
+
+        BarSeries series = toBarSeries(candles);
+        if (series.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<FactorOperand, BigDecimal> factorValues = new LinkedHashMap<>();
+        for (FactorOperand factorOperand : factorOperands) {
+            calculate(factorOperand.factor(), factorOperand.period(), series)
+                    .ifPresent(value -> factorValues.put(factorOperand, value));
+        }
+        return Map.copyOf(factorValues);
+    }
+
+    private Optional<BigDecimal> calculate(FactorType factor, int period, BarSeries series) {
         if (series.isEmpty()) {
             return Optional.empty();
         }

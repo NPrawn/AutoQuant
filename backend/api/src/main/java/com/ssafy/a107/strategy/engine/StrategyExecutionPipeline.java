@@ -26,7 +26,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -218,18 +217,13 @@ public class StrategyExecutionPipeline {
     ) {
         Map<UUID, Map<FactorOperand, BigDecimal>> assetFactorValues = new LinkedHashMap<>();
         for (Map.Entry<UUID, List<MinuteCandle>> assetCandleEntry : assetCandles.entrySet()) {
-            Map<FactorOperand, BigDecimal> factorValues = new LinkedHashMap<>();
-            for (FactorOperand requiredFactor : requiredFactors) {
-                Optional<BigDecimal> factorValue = factorCalculator.calculate(
-                        requiredFactor.factor(),
-                        requiredFactor.period(),
-                        assetCandleEntry.getValue()
-                );
-                if (factorValue.isPresent()) {
-                    factorValues.put(requiredFactor, factorValue.get());
-                }
-            }
-            assetFactorValues.put(assetCandleEntry.getKey(), Map.copyOf(factorValues));
+            assetFactorValues.put(
+                    assetCandleEntry.getKey(),
+                    factorCalculator.calculateAll(
+                            requiredFactors,
+                            assetCandleEntry.getValue()
+                    )
+            );
         }
         return assetFactorValues;
     }
