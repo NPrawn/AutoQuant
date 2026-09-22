@@ -13,7 +13,7 @@ import com.ssafy.a107.trading.backtest.engine.performance.PerformanceReport;
 import com.ssafy.a107.trading.backtest.repository.BacktestEquityRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestResultRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestTradeRepository;
-import com.ssafy.a107.trading.backtest.repository.BacktestUniverseAssetRepository;
+import com.ssafy.a107.trading.backtest.repository.BacktestUniverseAssetBatchRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,18 +29,18 @@ public class BacktestResultPersistenceService {
     private final BacktestResultRepository backtestResultRepository;
     private final BacktestTradeRepository backtestTradeRepository;
     private final BacktestEquityRepository backtestEquityRepository;
-    private final BacktestUniverseAssetRepository backtestUniverseAssetRepository;
+    private final BacktestUniverseAssetBatchRepository backtestUniverseAssetBatchRepository;
 
     public BacktestResultPersistenceService(
             BacktestResultRepository backtestResultRepository,
             BacktestTradeRepository backtestTradeRepository,
             BacktestEquityRepository backtestEquityRepository,
-            BacktestUniverseAssetRepository backtestUniverseAssetRepository
+            BacktestUniverseAssetBatchRepository backtestUniverseAssetBatchRepository
     ) {
         this.backtestResultRepository = backtestResultRepository;
         this.backtestTradeRepository = backtestTradeRepository;
         this.backtestEquityRepository = backtestEquityRepository;
-        this.backtestUniverseAssetRepository = backtestUniverseAssetRepository;
+        this.backtestUniverseAssetBatchRepository = backtestUniverseAssetBatchRepository;
     }
 
     public BacktestResult persist(
@@ -84,7 +84,7 @@ public class BacktestResultPersistenceService {
         );
         backtestTradeRepository.saveAll(trades);
         backtestEquityRepository.saveAll(equities);
-        backtestUniverseAssetRepository.saveAll(universeAssets);
+        backtestUniverseAssetBatchRepository.insertAll(universeAssets);
 
         return backtestResult;
     }
