@@ -53,7 +53,9 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 계정 메뉴는 정보 블록(이름, 이메일, 로그인 방식, 마지막 로그인)과 "알림 설정", 로그아웃만 둔다. 이름은 SSAFY 값이고 거래소 연결은 모의투자라 없다. 비활성 항목을 두지 않는다. 알림 설정(`/settings/notifications`)은 종류별 스위치이고 누르면 바로 `PUT /notifications/settings` 로 저장하며 실패하면 이전 값으로 되돌린다. 종류 문구는 `notification/labels.ts` 의 `notificationSettingLabel` 이다.
 - 코인 가격은 `backtest/labels.ts`의 `formatPriceKrw`로 적어 금액이 작을수록 소수를 더 남긴다. 정수 반올림인 `formatKrw`는 평가액·거래대금·수수료처럼 원화 합계에만 쓴다.
 - 대회 응답 타입은 `src/contest/types.ts`, 상태·장세·실격 문구와 표기는 `src/contest/labels.ts`, 제출 실패 문구는 `src/contest/submitErrorMessage.ts` 에만 둔다. 채점 규칙 숫자는 회차 응답이 준 값만 쓰고 화면이 가중치나 투자 비중 하한을 다시 적어 두지 않는다. 결과와 내 결과는 마감 전에도 열리지만 데이터셋 조회는 종료 전에 부르면 409 라 `useContestProgress` 가 종료를 알린 뒤에만 켠다.
-- 내 제출 성적은 `src/contest/ContestMyScorePanel.tsx` 하나로 대회 상세와 결과 화면이 같이 쓴다. 점수가 비어 있으면 채점 중이라 진행률을 보여 주고, 마감 전 순위에는 잠정이라고 적는다.
+- 대회 화면은 셋이 하는 일이 다르다. 목록은 열린 회차와 **내 제출 목록**(`useMyContestEntries`), 상세는 **제출 전용**(회차 정보·채점 산식·제출 패널), 결과는 성적이다. 상세에 성적 패널을 다시 넣지 않는다.
+- 대회 화면의 전략 이름은 뿌리 기준 최신 판이고 옆의 `versionLabel(versionNo)` 이 제출한 판을 가리킨다.
+- 내 제출 성적은 `src/contest/ContestMyScorePanel.tsx` 하나로 결과 화면이 쓴다. 점수가 비어 있으면 채점 중이라 진행률을 보여 주고, 마감 전 순위에는 잠정이라고 적는다.
 - 채점 중 판정은 `awaitingScore` 하나다. 백테스트가 다 끝나도 스케줄러가 점수를 쓰기 전까지는 채점 중이라, 끝난 백테스트 수로 다시 묻기를 멈추지 않는다. 기다리던 결과가 채점되면 대회 쿼리를 한 번 무효화해 순위표도 갱신한다.
 - 결과 화면의 곡선·막대 좌표는 `src/contest/charts.ts` 의 순수 함수가 계산한다. 곡선은 목업의 `regime-spark`, 막대는 `pct-track` 을 그대로 쓰고 차트 라이브러리를 들이지 않는다. 자산 곡선은 종료 후에만 서버가 채워 준다.
 - 랭킹 표의 조회 조건은 `src/contest/rankingQuery.ts` 의 순수 함수에만 둔다. 정렬·국면·검색을 바꾸면 결과 수가 달라지므로 첫 페이지로 되돌리고, 조건은 서버에 넘겨 화면이 거르지 않는다. 내 성적 행은 `GET /contests/{roundId}/results/me` 로 따로 받아 표 아래에 고정한다. 페이지를 넘겨도 보여야 한다.
