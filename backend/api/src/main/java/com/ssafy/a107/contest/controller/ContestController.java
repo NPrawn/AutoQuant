@@ -10,6 +10,7 @@ import com.ssafy.a107.contest.controller.response.ContestMyResultResponse;
 import com.ssafy.a107.contest.controller.response.ContestProgressResponse;
 import com.ssafy.a107.contest.controller.response.ContestRankingPageResponse;
 import com.ssafy.a107.contest.controller.response.ContestResultsResponse;
+import com.ssafy.a107.contest.controller.response.ContestMyEntryListResponse;
 import com.ssafy.a107.contest.controller.response.ContestRoundDetailResponse;
 import com.ssafy.a107.contest.controller.response.ContestRoundListResponse;
 import com.ssafy.a107.contest.domain.ContestRankingSort;
@@ -63,6 +64,14 @@ public class ContestController {
                 contestReadService.getRounds(principal.memberId()),
                 principal.memberId()
         );
+    }
+
+    /* 내 제출 전체. 제출마다 한 줄이라 같은 회차가 여러 번 나온다. `/{roundId}` 보다 위에 둔다. */
+    @GetMapping("/entries/me")
+    public ContestMyEntryListResponse getMyEntries(
+            @AuthenticationPrincipal MemberPrincipal principal
+    ) {
+        return ContestMyEntryListResponse.from(contestReadService.getMyEntries(principal.memberId()));
     }
 
     @GetMapping("/{roundId}")
