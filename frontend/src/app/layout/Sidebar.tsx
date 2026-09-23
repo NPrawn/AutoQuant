@@ -1,9 +1,13 @@
 import { Link, NavLink } from 'react-router'
 
+import { useUniverseSize } from '../../market/universe'
 import { navSections } from '../navigation'
 import { routes } from '../routes'
 
 export function Sidebar() {
+  /* 후보군 크기는 /assets 길이가 답이다. 여기에 숫자를 적어 두면 종목이 바뀔 때 화면이 거짓말을 한다. */
+  const universeSize = useUniverseSize()
+
   return (
     <aside className="rail">
       {/* 로고는 base.css 가 ::before/::after 로 그린다. 상승·하락 두 색 막대다. */}
@@ -46,7 +50,7 @@ export function Sidebar() {
           <i className="dot" aria-hidden="true" />
           Upbit · KRW 연결됨
         </span>
-        <small>거래대금 상위 30 · 1일봉</small>
+        <small>거래대금 상위 {universeSize} · 1일봉</small>
       </div>
     </aside>
   )
