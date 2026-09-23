@@ -820,3 +820,17 @@ a.acct-item {
     padding-bottom: 24px;
   }
 }
+
+/*
+ * 차트 화면의 봉 영역. base.css 는 #candle 에 aspect-ratio 를 두어 높이를 폭에서 계산한다.
+ * 카드 높이를 뷰포트에 묶은 뒤로는 그 높이가 카드보다 커져 .chart-area 의 overflow:hidden 이
+ * 아래쪽 RSI 패널을 잘라 냈다. 남은 공간을 채우게 바꾼다. 차트는 autoSize 라 컨테이너를 따라간다.
+ * 거래량과 RSI 패널은 88px 고정이라 세로가 짧아지면 봉 패널만 줄어든다.
+ */
+@media (min-width: 1181px) {
+  #view-chart #candle {
+    height: 100%;
+    aspect-ratio: auto;
+    min-height: 0;
+  }
+}
