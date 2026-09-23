@@ -175,6 +175,8 @@ public final class ContestScoreCalculator {
         Map<UUID, Integer> rankings = rankings(totals);
         List<ContestResult> results = new ArrayList<>();
         for (UUID entryId : qualified) {
+            /* 점수를 내는 데는 안 쓰고 순위표가 읽히게 같이 적어 둔다. */
+            ContestEvaluationOutcome general = outcomes.get(entryId).get(MarketDatasetKind.GENERAL);
             results.add(ContestResult.scored(
                     entryId,
                     scale(returnScores.get(entryId)),
@@ -183,6 +185,8 @@ public final class ContestScoreCalculator {
                     scale(regimeScores.get(MarketDatasetKind.SIDEWAYS).get(entryId)),
                     scale(stabilities.get(entryId)),
                     scale(totals.get(entryId)),
+                    general.cumulativeReturn(),
+                    general.maximumDrawdown(),
                     rankings.get(entryId)
             ));
         }

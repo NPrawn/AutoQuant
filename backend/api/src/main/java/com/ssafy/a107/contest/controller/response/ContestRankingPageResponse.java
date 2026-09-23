@@ -47,6 +47,9 @@ public record ContestRankingPageResponse(
             BigDecimal bullRegimeScore,
             BigDecimal bearRegimeScore,
             BigDecimal sidewaysRegimeScore,
+            BigDecimal generalReturn,
+            BigDecimal generalMdd,
+            int versionNo,
             boolean mine
     ) {
 
@@ -63,6 +66,9 @@ public record ContestRankingPageResponse(
                     row.bullRegimeScore(),
                     row.bearRegimeScore(),
                     row.sidewaysRegimeScore(),
+                    row.generalReturn(),
+                    row.generalMdd(),
+                    row.versionNo(),
                     row.memberId().equals(memberId)
             );
         }

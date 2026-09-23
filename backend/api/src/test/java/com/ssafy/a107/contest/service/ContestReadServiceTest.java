@@ -133,6 +133,8 @@ class ContestReadServiceTest {
                 new BigDecimal("18.200"),
                 new BigDecimal("17.600"),
                 new BigDecimal("48.133"),
+                new BigDecimal("0.53000000"),
+                new BigDecimal("0.21000000"),
                 ranking
         );
     }

@@ -10,6 +10,10 @@ import com.ssafy.a107.contest.repository.ContestRankingRow;
 import com.ssafy.a107.contest.repository.ContestResultRepository;
 import com.ssafy.a107.contest.repository.ContestRoundRepository;
 import com.ssafy.a107.contest.repository.MarketDatasetRepository;
+import com.ssafy.a107.member.domain.LoginProvider;
+import com.ssafy.a107.member.domain.Member;
+import com.ssafy.a107.strategy.domain.Strategy;
+import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestEquityRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestResultRepository;
 import com.ssafy.a107.trading.backtest.repository.BacktestRunRepository;
@@ -20,7 +24,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -43,6 +49,7 @@ class ContestRankingReadServiceTest {
 
     private final ContestRoundRepository contestRoundRepository = mock(ContestRoundRepository.class);
     private final ContestResultRepository contestResultRepository = mock(ContestResultRepository.class);
+    private final StrategyRepository strategyRepository = mock(StrategyRepository.class);
     private final ContestResultReadService service = new ContestResultReadService(
             contestRoundRepository,
             mock(ContestEntryRepository.class),
@@ -51,8 +58,46 @@ class ContestRankingReadServiceTest {
             mock(MarketDatasetRepository.class),
             mock(BacktestRunRepository.class),
             mock(BacktestResultRepository.class),
-            mock(BacktestEquityRepository.class)
+            mock(BacktestEquityRepository.class),
+            strategyRepository
     );
+
+    @DisplayName("전략 이름은 뿌리 기준 최신 판을 따라가고 판 번호는 제출한 판 그대로다")
+    @Test
+    void showTheLatestNameWithTheSubmittedVersion() {
+        givenFinishedRound();
+        UUID memberId = UUID.randomUUID();
+        /* 뿌리 7번의 1판과 2판. 2판에서 이름을 바꿨고 대회에는 1판이 제출돼 있다. */
+        Strategy submitted = mock(Strategy.class);
+        given(submitted.getRootStrategyId()).willReturn(7L);
+        given(submitted.getVersionNo()).willReturn(1);
+        given(submitted.getName()).willReturn("옛 이름");
+        Strategy latest = mock(Strategy.class);
+        given(latest.getRootStrategyId()).willReturn(7L);
+        given(latest.getVersionNo()).willReturn(2);
+        given(latest.getName()).willReturn("새 이름");
+
+        given(contestResultRepository.findRankings(any(), any(), anyBoolean(), anyBoolean(), anyBoolean(),
+                anyBoolean(), any()))
+                .willReturn(new PageImpl<>(List.of(row(7L, "옛 이름", 1, memberId))));
+        given(strategyRepository.findAllByRootIn(any())).willReturn(List.of(submitted, latest));
+
+        ContestResultReadService.ContestRankings rankings = service.getRankings(
+                ROUND_ID, ContestRankingSort.TOTAL, null, null, PageRequest.of(0, 20));
+
+        assertThat(rankings.page().getContent()).singleElement().satisfies(row -> {
+            assertThat(row.strategyName()).isEqualTo("새 이름");
+            assertThat(row.versionNo()).isEqualTo(1);
+        });
+    }
+
+    private static ContestRankingRow row(long rootStrategyId, String name, int versionNo, UUID memberId) {
+        BigDecimal score = new BigDecimal("50.000");
+        return new ContestRankingRow(1, rootStrategyId, name, "참가자", true,
+                score, score, score, score, score, score,
+                new BigDecimal("0.53000000"), new BigDecimal("0.21000000"),
+                rootStrategyId, versionNo, memberId);
+    }
 
     @DisplayName("검색어는 소문자 부분 일치로 바꾸고 국면 필터는 해당 국면만 켠다")
     @Test

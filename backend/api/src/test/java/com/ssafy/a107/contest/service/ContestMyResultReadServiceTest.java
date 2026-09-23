@@ -11,6 +11,7 @@ import com.ssafy.a107.contest.repository.ContestEvaluationRepository;
 import com.ssafy.a107.contest.repository.ContestResultRepository;
 import com.ssafy.a107.contest.repository.ContestRoundRepository;
 import com.ssafy.a107.contest.repository.MarketDatasetRepository;
+import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.strategy.domain.Strategy;
 import com.ssafy.a107.strategy.domain.dsl.Timeframe;
 import com.ssafy.a107.trading.backtest.domain.BacktestEquity;
@@ -64,7 +65,8 @@ class ContestMyResultReadServiceTest {
             marketDatasetRepository,
             backtestRunRepository,
             backtestResultRepository,
-            backtestEquityRepository
+            backtestEquityRepository,
+            mock(StrategyRepository.class)
     );
 
     private ContestRound round;

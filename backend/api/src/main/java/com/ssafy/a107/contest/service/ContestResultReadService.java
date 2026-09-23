@@ -18,6 +18,8 @@ import com.ssafy.a107.contest.repository.ContestRankingRow;
 import com.ssafy.a107.contest.repository.ContestResultRepository;
 import com.ssafy.a107.contest.repository.ContestRoundRepository;
 import com.ssafy.a107.contest.repository.MarketDatasetRepository;
+import com.ssafy.a107.strategy.domain.Strategy;
+import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.trading.backtest.domain.BacktestResult;
 import com.ssafy.a107.trading.backtest.domain.BacktestRun;
 import com.ssafy.a107.trading.backtest.domain.BacktestRunStatus;
@@ -37,6 +39,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.Set;
 
 /*
  * 채점 진행과 결과를 읽는다.
@@ -58,6 +62,7 @@ public class ContestResultReadService {
     private final BacktestRunRepository backtestRunRepository;
     private final BacktestResultRepository backtestResultRepository;
     private final BacktestEquityRepository backtestEquityRepository;
+    private final StrategyRepository strategyRepository;
 
     public ContestResultReadService(
             ContestRoundRepository contestRoundRepository,
@@ -67,7 +72,8 @@ public class ContestResultReadService {
             MarketDatasetRepository marketDatasetRepository,
             BacktestRunRepository backtestRunRepository,
             BacktestResultRepository backtestResultRepository,
-            BacktestEquityRepository backtestEquityRepository
+            BacktestEquityRepository backtestEquityRepository,
+            StrategyRepository strategyRepository
     ) {
         this.contestRoundRepository = contestRoundRepository;
         this.contestEntryRepository = contestEntryRepository;
@@ -77,6 +83,7 @@ public class ContestResultReadService {
         this.backtestRunRepository = backtestRunRepository;
         this.backtestResultRepository = backtestResultRepository;
         this.backtestEquityRepository = backtestEquityRepository;
+        this.strategyRepository = strategyRepository;
     }
 
     public ContestProgress getProgress(UUID roundId) {
@@ -203,7 +210,33 @@ public class ContestResultReadService {
                 sort == ContestRankingSort.STABILITY,
                 pageable
         );
-        return new ContestRankings(rows, contestResultRepository.countDisqualifiedByRoundId(roundId));
+        Map<Long, String> latestNames = latestNames(rows.getContent());
+        return new ContestRankings(
+                rows.map(row -> row.withName(latestNames.getOrDefault(row.rootStrategyId(), row.strategyName()))),
+                contestResultRepository.countDisqualifiedByRoundId(roundId));
+    }
+
+    /*
+     * 전략 이름을 뿌리 기준 최신 판의 이름으로 바꾼다.
+     *
+     * 이름을 고치면 새 판이 생기고 제출은 낸 판을 그대로 가리키므로, 손대지 않으면 순위표에 옛 이름이
+     * 남는다. 채점된 것이 어느 판인지는 versionNo 가 가리키므로 이름만 따라가게 해도 어긋나지 않는다.
+     */
+    private Map<Long, String> latestNames(List<ContestRankingRow> rows) {
+        Set<Long> rootIds = rows.stream().map(ContestRankingRow::rootStrategyId).collect(Collectors.toSet());
+        if (rootIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Strategy> latest = new LinkedHashMap<>();
+        for (Strategy strategy : strategyRepository.findAllByRootIn(rootIds)) {
+            latest.merge(strategy.getRootStrategyId(), strategy,
+                    (kept, other) -> kept.getVersionNo() >= other.getVersionNo() ? kept : other);
+        }
+
+        Map<Long, String> names = new LinkedHashMap<>();
+        latest.forEach((rootId, strategy) -> names.put(rootId, strategy.getName()));
+        return names;
     }
 
     private List<ContestEquityPoint> equityCurve(UUID backtestId) {
