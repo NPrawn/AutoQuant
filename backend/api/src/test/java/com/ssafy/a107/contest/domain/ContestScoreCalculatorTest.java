@@ -28,7 +28,7 @@ class ContestScoreCalculatorTest {
             MarketDatasetKind.SIDEWAYS, new BigDecimal("0.390")
     );
 
-    @DisplayName("점수는 원금 기준 수익률과 투자 비중으로 정규화한 낙폭으로 정해진다. 실격은 투자 비중 미달뿐이다")
+    @DisplayName("점수는 원금 기준 수익률과 투자 비중으로 정규화한 낙폭으로 정해진다. 비중 미달은 국면 중립이다")
     @Test
     void scoreLikeTheLocalContestRun() {
         Map<String, UUID> ids = new LinkedHashMap<>();
@@ -53,28 +53,26 @@ class ContestScoreCalculatorTest {
         List<ContestResult> ranked = results.stream().filter(result -> !result.isDisqualified()).toList();
         assertThat(ranked).extracting(result -> names.get(result.getEntryId())).containsExactly(
                 "momentum-7d", "equal-weight-hold", "low-volatility", "drawdown-dip",
-                "volume-surge", "trend-filter", "momentum-24h", "all-in-one");
-        assertThat(ranked).extracting(ContestResult::getRanking).containsExactly(1, 2, 3, 4, 5, 6, 7, 8);
+                "volume-surge", "trend-filter", "momentum-24h", "all-in-one",
+                "rsi-reversion", "cash-only");
+        assertThat(ranked).extracting(ContestResult::getRanking).containsExactly(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
         assertThat(ranked).extracting(result -> result.getTotalScore().toPlainString()).containsExactly(
-                "69.382", "68.844", "64.356", "58.467", "54.525", "53.132", "50.754", "44.875");
+                "69.382", "68.844", "64.356", "58.467", "54.525", "53.132", "50.754", "44.875",
+                "26.697", "25.000");
         /* 자산 3배가 100점이다. +183.7% 로 2.84 배가 된 1위는 94.9점이다. */
         assertThat(ranked).extracting(result -> result.getReturnScore().toPlainString()).containsExactly(
-                "94.915", "91.115", "87.880", "88.364", "70.519", "79.461", "76.446", "57.799");
-        /* 같은 비중으로 시장을 든 경우만큼 빠지면 50점이다. */
+                "94.915", "91.115", "87.880", "88.364", "70.519", "79.461", "76.446", "57.799",
+                "3.395", "0.000");
+        /* 같은 비중으로 시장을 든 경우만큼 빠지면 50점이다. 비중 미달 둘은 국면이 중립이라 50점이다. */
         assertThat(ranked).extracting(result -> result.getStabilityScore().toPlainString()).containsExactly(
-                "43.849", "46.573", "40.833", "28.569", "38.532", "26.803", "25.062", "31.952");
+                "43.849", "46.573", "40.833", "28.569", "38.532", "26.803", "25.062", "31.952",
+                "50.000", "50.000");
         assertThat(ranked.getFirst().getBullRegimeScore().toPlainString()).isEqualTo("39.531");
         assertThat(ranked.getFirst().getBearRegimeScore().toPlainString()).isEqualTo("59.375");
         assertThat(ranked.getFirst().getSidewaysRegimeScore().toPlainString()).isEqualTo("41.277");
 
-        Map<String, ContestResult> disqualified = results.stream()
-                .filter(ContestResult::isDisqualified)
-                .collect(Collectors.toMap(result -> names.get(result.getEntryId()), result -> result));
-        assertThat(disqualified).containsOnlyKeys("rsi-reversion", "cash-only");
-        assertThat(disqualified.get("rsi-reversion").getDisqualificationReason())
-                .isEqualTo(ContestDisqualificationReason.LOW_EXPOSURE);
-        assertThat(disqualified.get("cash-only").getDisqualificationReason())
-                .isEqualTo(ContestDisqualificationReason.LOW_EXPOSURE);
+        /* 비중 미달은 실격이 아니다. 국면이 중립 50점이라 안정성만으로도 실제 투자한 제출을 못 이긴다. */
+        assertThat(results).noneMatch(ContestResult::isDisqualified);
     }
 
     @DisplayName("크게 잃고 깊이 빠져도 실격이 아니라 그 점수가 내려간다")
@@ -149,6 +147,28 @@ class ContestScoreCalculatorTest {
         /* 자산이 9분의 1 아래면 하한에 걸린다. 전액 손실도 같은 값이다. */
         assertThat(ContestScoreCalculator.returnScore(new BigDecimal("-0.9"))).isEqualTo(-200.0);
         assertThat(ContestScoreCalculator.returnScore(new BigDecimal("-1"))).isEqualTo(-200.0);
+    }
+
+    @DisplayName("일반장 투자 비중이 하한 미만이면 실격 대신 세 국면이 중립 50점이다")
+    @Test
+    void neutraliseRegimeScoresWhenTheEntryBarelyBuys() {
+        UUID entryId = UUID.randomUUID();
+        Map<MarketDatasetKind, ContestEvaluationOutcome> outcomes = new LinkedHashMap<>();
+        for (MarketDatasetKind kind : MarketDatasetKind.values()) {
+            /* 비중 2% 에 낙폭 0.1%. 정규화만 하면 국면 점수가 93.75 점이라 실제로 투자한 제출을 이긴다. */
+            outcomes.put(kind, completed(0.0, 0.001, new BigDecimal("0.02")));
+        }
+
+        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes));
+
+        assertThat(results).singleElement().satisfies(result -> {
+            assertThat(result.isDisqualified()).isFalse();
+            assertThat(result.getBullRegimeScore().toPlainString()).isEqualTo("50.000");
+            assertThat(result.getBearRegimeScore().toPlainString()).isEqualTo("50.000");
+            assertThat(result.getSidewaysRegimeScore().toPlainString()).isEqualTo("50.000");
+            assertThat(result.getStabilityScore().toPlainString()).isEqualTo("50.000");
+            assertThat(result.getTotalScore().toPlainString()).isEqualTo("25.000");
+        });
     }
 
     @DisplayName("국면 점수는 같은 비중으로 시장을 든 경우와 견준다. 덜 사면 낙폭도 같이 나눈다")

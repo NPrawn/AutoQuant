@@ -15,14 +15,16 @@ import java.util.UUID;
  * 점수는 나 혼자로 계산되는 절대값이라 제출이 끝나는 대로 확정된다. 남들과 견주는 값은 순위뿐이고,
  * 순위는 그때까지 채점된 제출 사이의 자리라 마감 전에는 잠정이다.
  *
- * - 실격: 데이터셋을 일반장·상승장·하락장·횡보장 순으로 보며 처음 실패한 백테스트 하나. 네 벌이 모두 끝났으면
- *   일반장 평균 투자 비중을 본다. 크게 잃거나 깊이 빠진 전략은 실격이 아니라 아래 점수가 0점으로 내려간다.
+ * - 실격: 데이터셋을 일반장·상승장·하락장·횡보장 순으로 보며 처음 실패한 백테스트 하나뿐이다. 크게 잃거나
+ *   깊이 빠지거나 거의 사지 않은 전략은 실격이 아니라 아래 점수가 내려간다.
  * - 수익률 점수: 일반장 누적 수익률을 원금 기준 로그로 잰다. 본전이 0점, 자산 3배가 100점, 3분의 1토막이
  *   −100점이고 −200점에서 자른다. 위아래로 갇히지 않은 양이라 로그로 눌러야 꼬리가 다른 축을 삼키지 않는다.
  * - 국면 점수: 구간 최대 낙폭을 그 장세에서 같은 비중으로 시장을 든 경우와 견준다. 시장과 같으면 50점,
  *   절반만 빠지면 75점, 두 배면 0점이다. 투자 비중으로 나누는 것이 핵심이다. 덜 사면 낙폭도 그만큼 작아지므로,
  *   나누지 않으면 덜 사는 것만으로 점수가 오른다.
- * - 안정성 점수: 상승·하락·횡보 국면 점수의 평균 × 0.6 + 최저 × 0.4.
+ * - 안정성 점수: 상승·하락·횡보 국면 점수의 평균 × 0.6 + 최저 × 0.4. 일반장 평균 투자 비중이 하한 미만이면
+ *   세 국면 점수를 모두 50점으로 둔다. 분모가 작아 점수가 뒤집히는 구간이라, 비중이 0일 때 쓰는 규칙을
+ *   "사실상 미참여"까지 넓힌 것이다.
  * - 총점: 수익률 점수 × 0.5 + 안정성 점수 × 0.5. 강세 회차에서는 100점을 넘고 하락 회차에서는 음수일 수 있다.
  *
  * 척도 상수는 모두 배수다. 퍼센트포인트는 시장 수익률이 회차마다 달라 뜻이 같이 달라진다.
@@ -67,7 +69,12 @@ public final class ContestScoreCalculator {
         return List.copyOf(results);
     }
 
-    /** 실격 사유와 걸린 데이터셋. 통과하면 null 이다. 마감 전 내 성적 화면도 이 판정을 쓴다. */
+    /*
+     * 실격 사유와 걸린 데이터셋. 통과하면 null 이다. 마감 전 내 성적 화면도 이 판정을 쓴다.
+     *
+     * 점수를 낼 수 없는 경우만 실격이다. 투자 비중이 낮은 제출은 실격 대신 국면 점수가 중립이 된다
+     * (ADR-0003). 결과를 통째로 감추는 것보다 점수로 드러내는 편이 읽힌다.
+     */
     public static Disqualification disqualification(Map<MarketDatasetKind, ContestEvaluationOutcome> outcomes) {
         for (MarketDatasetKind kind : MarketDatasetKind.values()) {
             ContestEvaluationOutcome outcome = outcomes.get(kind);
@@ -75,12 +82,19 @@ public final class ContestScoreCalculator {
                 return new Disqualification(ContestDisqualificationReason.BACKTEST_FAILED, kind);
             }
         }
-
-        BigDecimal exposure = outcomes.get(MarketDatasetKind.GENERAL).averageExposure();
-        if (exposure == null || exposure.compareTo(ContestScoringPolicy.MINIMUM_EXPOSURE) < 0) {
-            return new Disqualification(ContestDisqualificationReason.LOW_EXPOSURE, MarketDatasetKind.GENERAL);
-        }
         return null;
+    }
+
+    /*
+     * 일반장 평균 투자 비중이 하한 미만이면 국면 점수를 중립으로 둔다.
+     *
+     * 국면 점수의 분모가 투자 비중이라 비중이 작으면 점수가 뒤집힌다. 비중 2%에 낙폭 0.1% 면 93.75점이
+     * 되어, 거의 사지 않은 제출이 실제로 투자한 제출을 이긴다. 비중이 정확히 0일 때 50점을 주는 규칙을
+     * 그 구간까지 넓혀 막는다.
+     */
+    public static boolean tooSmallToMeasure(Map<MarketDatasetKind, ContestEvaluationOutcome> outcomes) {
+        BigDecimal exposure = outcomes.get(MarketDatasetKind.GENERAL).averageExposure();
+        return exposure == null || exposure.compareTo(ContestScoringPolicy.MINIMUM_EXPOSURE) < 0;
     }
 
     /** 일반장 수익률을 원금 기준 로그로 잰다. 본전 0점, 자산 3배 100점이고 위로는 갇히지 않는다. */
@@ -143,10 +157,11 @@ public final class ContestScoreCalculator {
             returnScores.put(entryId,
                     returnScore(entryOutcomes.get(MarketDatasetKind.GENERAL).cumulativeReturn()));
 
+            boolean neutral = tooSmallToMeasure(entryOutcomes);
             List<Double> perRegime = new ArrayList<>();
             for (MarketDatasetKind regime : REGIMES) {
                 ContestEvaluationOutcome outcome = entryOutcomes.get(regime);
-                double score = regimeScore(
+                double score = neutral ? NO_EXPOSURE_REGIME_SCORE : regimeScore(
                         outcome.maximumDrawdown(), outcome.averageExposure(), outcome.marketMaximumDrawdown());
                 regimeScores.get(regime).put(entryId, score);
                 perRegime.add(score);

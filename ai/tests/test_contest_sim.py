@@ -47,7 +47,7 @@ def _runs(general_return: float, mdds: tuple[float, float, float], exposure: flo
     return runs
 
 
-def test_score_ranks_qualified_strategies_and_lists_disqualified_ones():
+def test_score_ranks_every_strategy_and_neutralises_low_exposure():
     results = {
         "s1": _runs(0.3, (0.10, 0.20, 0.05)),
         "s2": _runs(0.1, (0.05, 0.10, 0.02)),
@@ -59,11 +59,11 @@ def test_score_ranks_qualified_strategies_and_lists_disqualified_ones():
     # 투자 비중 80%, 시장 낙폭 20% 기준이라 낙폭 16% 가 50점이다. 점수는 남들과 무관하다.
     rows = score(results)
 
-    ranked = [(row["strategy"], round(row["total"], 3)) for row in rows[:4]]
+    ranked = [(row["strategy"], round(row["total"], 3)) for row in rows]
     # s2 는 +10% 로 덜 벌었지만 낙폭이 얕아 1위다. crash 는 하락장 낙폭 60% 로 그 국면 점수가 0점이 된다.
-    assert ranked == [("s2", 42.775), ("s1", 38.503), ("s3", 20.798), ("crash", 18.088)]
-    reasons = {row["strategy"]: row["disqualified"] for row in rows[4:]}
-    assert reasons == {"cash": "평균 투자 비중 0.0% < 30%"}
+    # cash 는 비중 미달이라 실격 대신 국면이 중립 50점이고, 수익률 0점이라 총점 25점에 머문다.
+    assert ranked == [("s2", 42.775), ("s1", 38.503), ("cash", 25.0), ("s3", 20.798), ("crash", 18.088)]
+    assert all(row["disqualified"] == "" for row in rows)
 
 
 def test_regime_score_is_fifty_when_the_strategy_falls_as_far_as_the_market():
