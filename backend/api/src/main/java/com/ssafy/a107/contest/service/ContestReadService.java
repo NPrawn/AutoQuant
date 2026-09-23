@@ -89,7 +89,8 @@ public class ContestReadService {
                 round,
                 round.displayStatus(Instant.now()),
                 contestEntryRepository.countByRoundRoundId(roundId),
-                contestEntryRepository.findByRoundRoundIdAndMemberMemberId(roundId, memberId).orElse(null),
+                contestEntryRepository.findFirstByRoundRoundIdAndMemberMemberIdOrderBySubmittedAtDesc(roundId, memberId)
+                        .orElse(null),
                 ContestFactorPeriodPolicy.caps(round.getWarmupWeeks())
         );
     }

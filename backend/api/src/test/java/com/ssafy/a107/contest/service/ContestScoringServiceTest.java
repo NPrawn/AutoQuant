@@ -85,7 +85,7 @@ class ContestScoringServiceTest {
     }
 
     private ContestRound readyRound() {
-        return new ContestRound("1회차 모의 대회", SUBMISSION_STARTS_AT, SUBMISSION_ENDS_AT, 5, 5, 13);
+        return new ContestRound("1회차 모의 대회", SUBMISSION_STARTS_AT, SUBMISSION_ENDS_AT, 5, 13);
     }
 
     private ContestRound scoringRound() {

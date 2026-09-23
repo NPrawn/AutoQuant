@@ -121,7 +121,9 @@ public class ContestResultReadService {
 
     public ContestMyResult getMyResult(UUID memberId, UUID roundId) {
         ContestRound round = round(roundId);
-        ContestEntry entry = contestEntryRepository.findByRoundRoundIdAndMemberMemberId(roundId, memberId)
+        /* 제출이 여럿이면 가장 최근 것을 본다. 나머지 제출의 자리는 순위 목록에 그대로 있다. */
+        ContestEntry entry = contestEntryRepository
+                .findFirstByRoundRoundIdAndMemberMemberIdOrderBySubmittedAtDesc(roundId, memberId)
                 .orElseThrow(() -> new ApiException(ApiErrorCode.CONTEST_ENTRY_NOT_FOUND));
         /* 백테스트가 도는 동안에는 점수가 없다. 진행 수만 채워 보낸다. */
         ContestResult result = contestResultRepository.findByEntryId(entry.getEntryId()).orElse(null);

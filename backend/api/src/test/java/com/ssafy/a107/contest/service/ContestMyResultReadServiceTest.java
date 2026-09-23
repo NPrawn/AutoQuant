@@ -75,7 +75,6 @@ class ContestMyResultReadServiceTest {
                 "1회차 모의 대회",
                 Instant.parse("2026-09-16T00:00:00Z"),
                 Instant.parse("2026-09-20T15:00:00Z"),
-                5,
                 30,
                 13
         );
@@ -85,7 +84,8 @@ class ContestMyResultReadServiceTest {
         ContestEntry entry = mock(ContestEntry.class);
         given(entry.getEntryId()).willReturn(ENTRY_ID);
         given(entry.getStrategy()).willReturn(mock(Strategy.class));
-        given(contestEntryRepository.findByRoundRoundIdAndMemberMemberId(ROUND_ID, MEMBER_ID))
+        given(contestEntryRepository
+                .findFirstByRoundRoundIdAndMemberMemberIdOrderBySubmittedAtDesc(ROUND_ID, MEMBER_ID))
                 .willReturn(Optional.of(entry));
 
         MarketDataset dataset = new MarketDataset(

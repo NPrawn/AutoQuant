@@ -17,12 +17,15 @@ import java.util.UUID;
  *
  * - 실격: 데이터셋을 일반장·상승장·하락장·횡보장 순으로 보며 처음 실패한 백테스트 하나. 네 벌이 모두 끝났으면
  *   일반장 평균 투자 비중을 본다. 크게 잃거나 깊이 빠진 전략은 실격이 아니라 아래 점수가 0점으로 내려간다.
- * - 수익률 점수: 일반장에서 시장보다 얼마나 더 벌었는지. 시장과 같으면 50점, 시장 대비 +30%면 100점,
- *   시장 대비 −30%면 0점이다. 장세 난이도는 시장 수익률이 흡수한다.
- * - 국면 점수: 구간 최대 낙폭을 그 장세의 시장 낙폭과 견준다. 시장과 같으면 50점, 시장보다 30%p 덜 빠지면
- *   100점, 30%p 더 빠지면 0점이다. 장세가 거칠어 누구나 깊이 빠지는 구간도 시장 낙폭이 흡수한다.
+ * - 수익률 점수: 일반장 누적 수익률을 원금 기준 로그로 잰다. 본전이 0점, 자산 3배가 100점, 3분의 1토막이
+ *   −100점이고 −200점에서 자른다. 위아래로 갇히지 않은 양이라 로그로 눌러야 꼬리가 다른 축을 삼키지 않는다.
+ * - 국면 점수: 구간 최대 낙폭을 그 장세에서 같은 비중으로 시장을 든 경우와 견준다. 시장과 같으면 50점,
+ *   절반만 빠지면 75점, 두 배면 0점이다. 투자 비중으로 나누는 것이 핵심이다. 덜 사면 낙폭도 그만큼 작아지므로,
+ *   나누지 않으면 덜 사는 것만으로 점수가 오른다.
  * - 안정성 점수: 상승·하락·횡보 국면 점수의 평균 × 0.6 + 최저 × 0.4.
- * - 총점: 수익률 점수 × 0.5 + 안정성 점수 × 0.5.
+ * - 총점: 수익률 점수 × 0.5 + 안정성 점수 × 0.5. 강세 회차에서는 100점을 넘고 하락 회차에서는 음수일 수 있다.
+ *
+ * 척도 상수는 모두 배수다. 퍼센트포인트는 시장 수익률이 회차마다 달라 뜻이 같이 달라진다.
  *
  * 같은 규칙의 참고 구현이 ai/scripts/contest_sim/scoring.py 다.
  */
@@ -31,20 +34,20 @@ public final class ContestScoreCalculator {
     private static final List<MarketDatasetKind> REGIMES =
             List.of(MarketDatasetKind.BULL, MarketDatasetKind.BEAR, MarketDatasetKind.SIDEWAYS);
     private static final int SCORE_SCALE = 3;
-    /* 수익률 점수의 척도. 시장 대비 −30%가 0점, +30%가 100점이다. */
-    private static final double RETURN_SPAN = 0.30;
-    /* 국면 점수의 척도. 시장 낙폭보다 30%p 더 빠지면 0점, 30%p 덜 빠지면 100점이다. */
-    private static final double DRAWDOWN_SPAN = 0.30;
+    /* 수익률 점수의 척도. 자산이 이 배수가 되면 100점이다. */
+    private static final double RETURN_MULTIPLE = 3.0;
+    /* 수익률 점수의 하한. 자산이 9분의 1 아래로 내려간 구간이라 순위에 닿지 않는다. */
+    private static final double RETURN_FLOOR = -200.0;
+    /* 국면 점수의 척도. 같은 비중으로 시장을 든 경우의 이 배수만큼 빠지면 0점이다. */
+    private static final double DRAWDOWN_MULTIPLE = 2.0;
+    /* 그 장세에서 아무것도 사지 않았을 때의 국면 점수. 노출을 줄여도 비율이 1인 식의 극한이다. */
+    private static final double NO_EXPOSURE_REGIME_SCORE = 50.0;
 
     private ContestScoreCalculator() {
     }
 
-    /*
-     * generalMarketReturn 은 일반장 데이터셋의 균등 보유 수익률이다. 회차 난이도를 여기서 흡수한다.
-     */
     public static List<ContestResult> score(
-            Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> outcomes,
-            BigDecimal generalMarketReturn
+            Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> outcomes
     ) {
         Map<UUID, ContestResult> disqualifiedResults = new LinkedHashMap<>();
         List<UUID> qualified = new ArrayList<>();
@@ -59,7 +62,7 @@ public final class ContestScoreCalculator {
             }
         }
 
-        List<ContestResult> results = new ArrayList<>(score(qualified, outcomes, generalMarketReturn));
+        List<ContestResult> results = new ArrayList<>(score(qualified, outcomes));
         results.addAll(disqualifiedResults.values());
         return List.copyOf(results);
     }
@@ -80,16 +83,33 @@ public final class ContestScoreCalculator {
         return null;
     }
 
-    /** 일반장 수익률을 시장 대비로 재서 0~100 으로 옮긴다. */
-    public static double returnScore(BigDecimal cumulativeReturn, BigDecimal generalMarketReturn) {
-        double excess = cumulativeReturn.doubleValue() - generalMarketReturn.doubleValue();
-        return clamp((excess + RETURN_SPAN) / (2 * RETURN_SPAN) * 100);
+    /** 일반장 수익률을 원금 기준 로그로 잰다. 본전 0점, 자산 3배 100점이고 위로는 갇히지 않는다. */
+    public static double returnScore(BigDecimal cumulativeReturn) {
+        double growth = 1 + cumulativeReturn.doubleValue();
+        if (growth <= 0) {
+            return RETURN_FLOOR;
+        }
+        return Math.max(RETURN_FLOOR, 100 * Math.log(growth) / Math.log(RETURN_MULTIPLE));
     }
 
-    /** 구간 최대 낙폭을 그 장세의 시장 낙폭 대비로 재서 0~100 으로 옮긴다. 시장만큼 빠지면 50점이다. */
-    public static double regimeScore(BigDecimal maximumDrawdown, BigDecimal marketMaximumDrawdown) {
-        double avoided = marketMaximumDrawdown.doubleValue() - maximumDrawdown.doubleValue();
-        return clamp((avoided + DRAWDOWN_SPAN) / (2 * DRAWDOWN_SPAN) * 100);
+    /*
+     * 구간 최대 낙폭을 같은 비중으로 시장을 든 경우와 견줘 0~100 으로 옮긴다. 시장만큼 빠지면 50점이다.
+     *
+     * 투자 비중이 0이면 50점이다. 노출 x 로 시장을 그대로 들면 낙폭도 x 배라 비율이 x 와 무관하게 1 이므로,
+     * 0 은 이 식의 극한이지 예외가 아니다. 시장 낙폭이 0 인 데이터셋은 나오지 않지만 분모라서 같이 막는다.
+     */
+    public static double regimeScore(
+            BigDecimal maximumDrawdown,
+            BigDecimal averageExposure,
+            BigDecimal marketMaximumDrawdown
+    ) {
+        double exposure = averageExposure == null ? 0 : averageExposure.doubleValue();
+        double market = marketMaximumDrawdown.doubleValue();
+        if (exposure <= 0 || market <= 0) {
+            return NO_EXPOSURE_REGIME_SCORE;
+        }
+        double ratio = maximumDrawdown.doubleValue() / (exposure * market);
+        return clamp(100 * (1 - ratio / DRAWDOWN_MULTIPLE));
     }
 
     public static double stabilityScore(List<Double> regimeScores) {
@@ -104,8 +124,7 @@ public final class ContestScoreCalculator {
 
     private static List<ContestResult> score(
             List<UUID> qualified,
-            Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> outcomes,
-            BigDecimal generalMarketReturn
+            Map<UUID, Map<MarketDatasetKind, ContestEvaluationOutcome>> outcomes
     ) {
         if (qualified.isEmpty()) {
             return List.of();
@@ -121,13 +140,14 @@ public final class ContestScoreCalculator {
 
         for (UUID entryId : qualified) {
             Map<MarketDatasetKind, ContestEvaluationOutcome> entryOutcomes = outcomes.get(entryId);
-            returnScores.put(entryId, returnScore(
-                    entryOutcomes.get(MarketDatasetKind.GENERAL).cumulativeReturn(), generalMarketReturn));
+            returnScores.put(entryId,
+                    returnScore(entryOutcomes.get(MarketDatasetKind.GENERAL).cumulativeReturn()));
 
             List<Double> perRegime = new ArrayList<>();
             for (MarketDatasetKind regime : REGIMES) {
                 ContestEvaluationOutcome outcome = entryOutcomes.get(regime);
-                double score = regimeScore(outcome.maximumDrawdown(), outcome.marketMaximumDrawdown());
+                double score = regimeScore(
+                        outcome.maximumDrawdown(), outcome.averageExposure(), outcome.marketMaximumDrawdown());
                 regimeScores.get(regime).put(entryId, score);
                 perRegime.add(score);
             }

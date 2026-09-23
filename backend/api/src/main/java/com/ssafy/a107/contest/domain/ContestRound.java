@@ -38,9 +38,6 @@ public class ContestRound extends BaseEntity {
     @Column(name = "phase", nullable = false, length = 20)
     private ContestPhase phase;
 
-    @Column(name = "max_submissions", nullable = false, updatable = false)
-    private short maxSubmissions;
-
     @Column(name = "warmup_weeks", nullable = false, updatable = false)
     private short warmupWeeks;
 
@@ -60,14 +57,12 @@ public class ContestRound extends BaseEntity {
             String title,
             Instant submissionStartsAt,
             Instant submissionEndsAt,
-            int maxSubmissions,
             int warmupWeeks,
             int evaluationWeeks
     ) {
         this.title = requireTitle(title);
         this.submissionStartsAt = Objects.requireNonNull(submissionStartsAt);
         this.submissionEndsAt = requireSubmissionEndsAt(submissionStartsAt, submissionEndsAt);
-        this.maxSubmissions = requirePositiveCount(maxSubmissions, "Max submissions");
         this.warmupWeeks = requirePositiveCount(warmupWeeks, "Warmup weeks");
         this.evaluationWeeks = requirePositiveCount(evaluationWeeks, "Evaluation weeks");
         this.phase = ContestPhase.READY;
@@ -170,10 +165,6 @@ public class ContestRound extends BaseEntity {
 
     public ContestPhase getPhase() {
         return phase;
-    }
-
-    public short getMaxSubmissions() {
-        return maxSubmissions;
     }
 
     public short getWarmupWeeks() {

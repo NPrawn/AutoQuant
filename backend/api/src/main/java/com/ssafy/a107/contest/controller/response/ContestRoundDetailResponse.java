@@ -17,7 +17,6 @@ public record ContestRoundDetailResponse(
         ContestDisplayStatus status,
         Instant submissionStartsAt,
         Instant submissionEndsAt,
-        int maxSubmissions,
         int warmupWeeks,
         int evaluationWeeks,
         long entryCount,
@@ -38,13 +37,12 @@ public record ContestRoundDetailResponse(
                 detail.status(),
                 detail.round().getSubmissionStartsAt(),
                 detail.round().getSubmissionEndsAt(),
-                detail.round().getMaxSubmissions(),
                 detail.round().getWarmupWeeks(),
                 detail.round().getEvaluationWeeks(),
                 detail.entryCount(),
                 Map.copyOf(caps),
                 ContestScoringRulesResponse.defaults(),
-                ContestSubmissionResponse.from(detail.myEntry(), detail.round().getMaxSubmissions())
+                ContestSubmissionResponse.from(detail.myEntry())
         );
     }
 

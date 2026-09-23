@@ -159,8 +159,6 @@ class ContestControllerTest {
                 .body("contests[0].roundId", equalTo(ROUND_ID.toString()))
                 .body("contests[0].status", equalTo("OPEN"))
                 .body("contests[0].entryCount", equalTo(12))
-                .body("contests[0].mySubmission.submissionCount", equalTo(1))
-                .body("contests[0].mySubmission.remainingSubmissions", equalTo(4))
                 .body("contests[0].myRanking", equalTo(2))
                 .body("contests[0].myTotalScore", equalTo(48.133f))
                 .body("contests[0].topStrategyName", equalTo("변동성 눌림 스윙"))
@@ -207,7 +205,6 @@ class ContestControllerTest {
                                 .build())
                 ))
                 .statusCode(HttpStatus.OK.value())
-                .body("maxSubmissions", equalTo(5))
                 .body("factorPeriodCaps.1H", equalTo(839))
                 .body("factorPeriodCaps.4H", equalTo(209))
                 .body("factorPeriodCaps.1D", equalTo(34))
@@ -215,7 +212,7 @@ class ContestControllerTest {
                 .body("mySubmission.strategyName", equalTo("모멘텀 전략"));
     }
 
-    @DisplayName("전략을 제출하면 제출 횟수와 남은 횟수를 돌려준다")
+    @DisplayName("전략을 제출하면 그 제출의 전략과 제출 시각을 돌려준다")
     @Test
     void submitEntry() {
         ContestEntry entry = entry();
@@ -242,8 +239,7 @@ class ContestControllerTest {
                 ))
                 .statusCode(HttpStatus.OK.value())
                 .body("strategyId", equalTo(7))
-                .body("submissionCount", equalTo(1))
-                .body("remainingSubmissions", equalTo(4));
+                .body("strategyName", equalTo("모멘텀 전략"));
     }
 
     @DisplayName("제출 기간이 아니면 409를 돌려준다")
@@ -532,7 +528,7 @@ class ContestControllerTest {
     }
 
     private ContestRound round() {
-        ContestRound round = new ContestRound("1회차 모의 대회", SUBMISSION_STARTS_AT, SUBMISSION_ENDS_AT, 5, 5, 13);
+        ContestRound round = new ContestRound("1회차 모의 대회", SUBMISSION_STARTS_AT, SUBMISSION_ENDS_AT, 5, 13);
         ReflectionTestUtils.setField(round, "roundId", ROUND_ID);
         return round;
     }
@@ -544,7 +540,6 @@ class ContestControllerTest {
 
         Member member = new Member(LoginProvider.SSAFY, "contest-member-107", "contest@example.com", "대회 참가자");
         ContestEntry entry = new ContestEntry(round(), member, strategy, SUBMITTED_AT);
-        ReflectionTestUtils.setField(entry, "lastSubmittedAt", SUBMITTED_AT.plus(Duration.ofMinutes(30)));
         return entry;
     }
 
@@ -604,11 +599,8 @@ class ContestControllerTest {
                         .description("내 제출. 제출하지 않았으면 null"),
                 fieldWithPath("contests[].mySubmission.strategyId").type(JsonFieldType.NUMBER).description("제출 전략 ID"),
                 fieldWithPath("contests[].mySubmission.strategyName").type(JsonFieldType.STRING).description("제출 전략 이름"),
-                fieldWithPath("contests[].mySubmission.submissionCount").type(JsonFieldType.NUMBER).description("제출 횟수"),
-                fieldWithPath("contests[].mySubmission.remainingSubmissions").type(JsonFieldType.NUMBER)
-                        .description("남은 제출 횟수"),
-                fieldWithPath("contests[].mySubmission.firstSubmittedAt").type(JsonFieldType.STRING).description("첫 제출 시각"),
-                fieldWithPath("contests[].mySubmission.lastSubmittedAt").type(JsonFieldType.STRING).description("마지막 제출 시각"),
+                fieldWithPath("contests[].mySubmission.submittedAt").type(JsonFieldType.STRING)
+                        .description("마지막 제출 시각"),
                 fieldWithPath("contests[].myRanking").type(JsonFieldType.NUMBER).optional()
                         .description("내 순위. 제출하지 않았거나 채점 전이거나 실격이면 null"),
                 fieldWithPath("contests[].myTotalScore").type(JsonFieldType.NUMBER).optional()
@@ -629,7 +621,6 @@ class ContestControllerTest {
                 fieldWithPath("status").type(JsonFieldType.STRING).description("화면 상태"),
                 fieldWithPath("submissionStartsAt").type(JsonFieldType.STRING).description("제출 시작 시각"),
                 fieldWithPath("submissionEndsAt").type(JsonFieldType.STRING).description("제출 마감 시각"),
-                fieldWithPath("maxSubmissions").type(JsonFieldType.NUMBER).description("제출과 교체를 합친 한도"),
                 fieldWithPath("warmupWeeks").type(JsonFieldType.NUMBER).description("대회 데이터 워밍업 주 수"),
                 fieldWithPath("evaluationWeeks").type(JsonFieldType.NUMBER).description("평가 주 수"),
                 fieldWithPath("entryCount").type(JsonFieldType.NUMBER).description("참가 수"),
@@ -647,10 +638,7 @@ class ContestControllerTest {
                         .description("내 제출. 제출하지 않았으면 null"),
                 fieldWithPath("mySubmission.strategyId").type(JsonFieldType.NUMBER).description("제출 전략 ID"),
                 fieldWithPath("mySubmission.strategyName").type(JsonFieldType.STRING).description("제출 전략 이름"),
-                fieldWithPath("mySubmission.submissionCount").type(JsonFieldType.NUMBER).description("제출 횟수"),
-                fieldWithPath("mySubmission.remainingSubmissions").type(JsonFieldType.NUMBER).description("남은 제출 횟수"),
-                fieldWithPath("mySubmission.firstSubmittedAt").type(JsonFieldType.STRING).description("첫 제출 시각"),
-                fieldWithPath("mySubmission.lastSubmittedAt").type(JsonFieldType.STRING).description("마지막 제출 시각"),
+                fieldWithPath("mySubmission.submittedAt").type(JsonFieldType.STRING).description("마지막 제출 시각"),
         };
     }
 
@@ -659,10 +647,7 @@ class ContestControllerTest {
                 fieldWithPath("roundId").type(JsonFieldType.STRING).description("회차 ID"),
                 fieldWithPath("strategyId").type(JsonFieldType.NUMBER).description("제출 전략 ID"),
                 fieldWithPath("strategyName").type(JsonFieldType.STRING).description("제출 전략 이름"),
-                fieldWithPath("submissionCount").type(JsonFieldType.NUMBER).description("제출 횟수"),
-                fieldWithPath("remainingSubmissions").type(JsonFieldType.NUMBER).description("남은 제출 횟수"),
-                fieldWithPath("firstSubmittedAt").type(JsonFieldType.STRING).description("첫 제출 시각"),
-                fieldWithPath("lastSubmittedAt").type(JsonFieldType.STRING).description("마지막 제출 시각"),
+                fieldWithPath("submittedAt").type(JsonFieldType.STRING).description("제출 시각"),
         };
     }
 }
