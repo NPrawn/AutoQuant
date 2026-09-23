@@ -27,10 +27,10 @@ export function RankingTable({ roundId, rows, myResult, copyPending, onCopy }: R
   return (
     <div className="card">
       <div className="table-scroll" tabIndex={0} role="region" aria-label="순위표 표">
-        <table>
+        <table className="rank-table">
           <thead>
             <tr>
-              <th scope="col" style={{ width: 58 }}>순위</th>
+              <th scope="col">순위</th>
               <th scope="col">전략</th>
               <th scope="col" className="r">종합 점수</th>
               <th scope="col" className="r">수익률</th>
@@ -59,7 +59,7 @@ export function RankingTable({ roundId, rows, myResult, copyPending, onCopy }: R
                 </td>
                 <td className="r mono num-soft">{formatScore(row.stabilityScore)}</td>
                 <td className="r mono num-soft">{formatPercent(row.generalMdd)}</td>
-                <td style={{ textAlign: 'right' }}>
+                <td>
                   <RowAction roundId={roundId} row={row} copyPending={copyPending} onCopy={onCopy} />
                 </td>
               </tr>
@@ -136,7 +136,7 @@ function MyRow({ roundId, result }: { roundId: string; result: ContestMyResultRe
       </td>
       <td className="r mono num-soft">{formatScore(result.stabilityScore)}</td>
       <td className="r mono num-soft">{formatPercent(general?.maximumDrawdown ?? null)}</td>
-      <td style={{ textAlign: 'right' }}>
+      <td>
         <Link className="rank-action" to={to.contestResult(roundId)}>
           결과 보기
         </Link>

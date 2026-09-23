@@ -117,10 +117,10 @@ function RankingTable({ rankings }: { rankings: ContestRankingItemResponse[] }) 
   return (
     <div className="card">
       <div className="table-scroll" tabIndex={0} role="region" aria-label="회차 결과 표">
-        <table>
+        <table className="rank-table">
           <thead>
             <tr>
-              <th scope="col" style={{ width: 72 }}>순위</th>
+              <th scope="col">순위</th>
               <th scope="col">전략</th>
               <th scope="col" className="r">종합</th>
               <th scope="col" className="r">수익률</th>
