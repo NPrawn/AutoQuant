@@ -23,57 +23,45 @@ import java.time.Duration;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 class ContestEntryTest {
 
     private static final Instant SUBMITTED_AT = Instant.parse("2026-09-17T00:00:00Z");
 
-    @DisplayName("첫 제출은 횟수 1로 시작한다")
+    @DisplayName("제출은 낸 전략과 시각을 그대로 들고 있는다")
     @Test
-    void startWithOneSubmission() {
-        ContestEntry entry = entry();
+    void keepTheSubmittedStrategyAndTime() {
+        Strategy submitted = strategy("첫 전략");
+        ContestEntry entry = new ContestEntry(round(), member(), submitted, SUBMITTED_AT);
 
-        assertThat(entry.getSubmissionCount()).isEqualTo((short) 1);
-        assertThat(entry.getFirstSubmittedAt()).isEqualTo(SUBMITTED_AT);
-        assertThat(entry.getLastSubmittedAt()).isEqualTo(SUBMITTED_AT);
-        assertThat(entry.remainingSubmissions(5)).isEqualTo(4);
+        assertThat(entry.getStrategy()).isSameAs(submitted);
+        assertThat(entry.getSubmittedAt()).isEqualTo(SUBMITTED_AT);
     }
 
-    @DisplayName("교체는 전략과 마지막 제출 시각을 바꾸고 횟수를 늘린다")
+    @DisplayName("같은 회원이 다시 내면 별개의 제출이다")
     @Test
-    void countEveryResubmission() {
-        ContestEntry entry = entry();
-        Strategy replacement = strategy("교체 전략");
+    void makeEveryResubmissionItsOwnEntry() {
+        Member member = member();
+        ContestRound round = round();
+        Strategy first = strategy("첫 전략");
+        Strategy second = strategy("교체 전략");
         Instant later = SUBMITTED_AT.plus(Duration.ofHours(1));
 
-        entry.resubmit(replacement, later);
+        ContestEntry earlier = new ContestEntry(round, member, first, SUBMITTED_AT);
+        ContestEntry latest = new ContestEntry(round, member, second, later);
 
-        assertThat(entry.getStrategy()).isSameAs(replacement);
-        assertThat(entry.getSubmissionCount()).isEqualTo((short) 2);
-        assertThat(entry.getFirstSubmittedAt()).isEqualTo(SUBMITTED_AT);
-        assertThat(entry.getLastSubmittedAt()).isEqualTo(later);
-        assertThat(entry.remainingSubmissions(5)).isEqualTo(3);
+        assertThat(earlier.getStrategy()).isSameAs(first);
+        assertThat(earlier.getSubmittedAt()).isEqualTo(SUBMITTED_AT);
+        assertThat(latest.getStrategy()).isSameAs(second);
+        assertThat(latest.getSubmittedAt()).isEqualTo(later);
     }
 
-    @DisplayName("같은 전략을 다시 제출해도 횟수에 넣는다")
+    @DisplayName("제출 시각이 없으면 만들 수 없다")
     @Test
-    void countResubmissionOfTheSameStrategy() {
-        ContestEntry entry = entry();
-        Strategy same = entry.getStrategy();
-
-        entry.resubmit(same, SUBMITTED_AT.plusSeconds(1));
-
-        assertThat(entry.getSubmissionCount()).isEqualTo((short) 2);
-    }
-
-    @DisplayName("마지막 제출보다 앞선 시각으로는 교체할 수 없다")
-    @Test
-    void rejectSubmissionBeforeTheLastOne() {
-        ContestEntry entry = entry();
-
-        assertThatIllegalArgumentException()
-                .isThrownBy(() -> entry.resubmit(strategy("전략"), SUBMITTED_AT.minusSeconds(1)));
+    void rejectAnEntryWithoutASubmissionTime() {
+        assertThatNullPointerException()
+                .isThrownBy(() -> new ContestEntry(round(), member(), strategy("전략"), null));
     }
 
     private ContestEntry entry() {
@@ -85,7 +73,6 @@ class ContestEntryTest {
                 "1회차",
                 Instant.parse("2026-09-16T00:00:00Z"),
                 Instant.parse("2026-10-16T00:00:00Z"),
-                5,
                 5,
                 13
         );

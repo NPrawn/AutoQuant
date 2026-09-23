@@ -110,7 +110,6 @@ class ContestReadServiceTest {
                 title,
                 Instant.parse("2026-09-16T00:00:00Z"),
                 Instant.parse("2026-09-20T15:00:00Z"),
-                5,
                 30,
                 13
         );

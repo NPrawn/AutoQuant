@@ -20,7 +20,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /*
- * 회차당 회원 한 명의 제출이다. 교체해도 행은 하나고 제출 횟수만 늘어난다 (대회 기능 설계 5절).
+ * 제출 한 건이다. 같은 회원이 여러 번 내면 행이 그만큼 쌓이고, 순위도 제출 단위로 매긴다
+ * (대회 기능 설계 5절). 횟수 제한은 없다.
  * 전략은 수정 API 가 없어 전략 ID 만 참조해도 제출 시점 내용이 고정된다.
  */
 @Entity
@@ -58,18 +59,13 @@ public class ContestEntry extends BaseEntity {
     @JoinColumn(
             name = "strategy_id",
             nullable = false,
+            updatable = false,
             foreignKey = @ForeignKey(name = "fk_contest_entry_strategy")
     )
     private Strategy strategy;
 
-    @Column(name = "submission_count", nullable = false)
-    private short submissionCount;
-
-    @Column(name = "first_submitted_at", nullable = false, updatable = false)
-    private Instant firstSubmittedAt;
-
-    @Column(name = "last_submitted_at", nullable = false)
-    private Instant lastSubmittedAt;
+    @Column(name = "submitted_at", nullable = false, updatable = false)
+    private Instant submittedAt;
 
     protected ContestEntry() {
     }
@@ -83,27 +79,7 @@ public class ContestEntry extends BaseEntity {
         this.round = Objects.requireNonNull(round);
         this.member = Objects.requireNonNull(member);
         this.strategy = Objects.requireNonNull(strategy);
-        this.firstSubmittedAt = Objects.requireNonNull(submittedAt);
-        this.lastSubmittedAt = submittedAt;
-        this.submissionCount = 1;
-    }
-
-    /** 같은 전략을 다시 제출해도 횟수에 넣는다 (대회 기능 설계 5절). */
-    public void resubmit(Strategy strategy, Instant submittedAt) {
-        Objects.requireNonNull(strategy);
-        if (submittedAt == null || submittedAt.isBefore(lastSubmittedAt)) {
-            throw new IllegalArgumentException("Submitted at must not be before the last submission");
-        }
-        if (submissionCount == Short.MAX_VALUE) {
-            throw new IllegalStateException("Submission count overflow");
-        }
-        this.strategy = strategy;
-        this.lastSubmittedAt = submittedAt;
-        this.submissionCount++;
-    }
-
-    public int remainingSubmissions(int maxSubmissions) {
-        return Math.max(maxSubmissions - submissionCount, 0);
+        this.submittedAt = Objects.requireNonNull(submittedAt);
     }
 
     public UUID getEntryId() {
@@ -122,15 +98,7 @@ public class ContestEntry extends BaseEntity {
         return strategy;
     }
 
-    public short getSubmissionCount() {
-        return submissionCount;
-    }
-
-    public Instant getFirstSubmittedAt() {
-        return firstSubmittedAt;
-    }
-
-    public Instant getLastSubmittedAt() {
-        return lastSubmittedAt;
+    public Instant getSubmittedAt() {
+        return submittedAt;
     }
 }

@@ -60,42 +60,38 @@ class ContestEntryCommandServiceTest {
     @Mock
     private ContestEvaluationService contestEvaluationService;
 
-    @DisplayName("첫 제출은 제출 횟수 1로 저장한다")
+    @DisplayName("제출하면 행을 새로 만들고 그 자리에서 백테스트를 돌린다")
     @Test
-    void createEntryOnFirstSubmission() {
+    void createEntryOnEverySubmission() {
         ContestRound round = openRound();
         Strategy strategy = strategy(Timeframe.ONE_HOUR, 20);
         given(contestRoundRepository.findById(ROUND_ID)).willReturn(Optional.of(round));
         given(strategyRepository.findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(STRATEGY_ID, MEMBER_ID))
                 .willReturn(Optional.of(strategy));
-        given(contestEntryRepository.findByRoundRoundIdAndMemberMemberId(ROUND_ID, MEMBER_ID))
-                .willReturn(Optional.empty());
         given(contestEntryRepository.save(any(ContestEntry.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         ContestEntry entry = service().submit(MEMBER_ID, ROUND_ID, STRATEGY_ID);
 
-        assertThat(entry.getSubmissionCount()).isEqualTo((short) 1);
         assertThat(entry.getStrategy()).isSameAs(strategy);
         then(contestEntryRepository).should().save(any(ContestEntry.class));
+        then(contestEvaluationService).should().evaluate(entry);
     }
 
-    @DisplayName("이미 제출했으면 전략을 바꾸고 횟수를 늘린다")
+    @DisplayName("이미 제출했어도 막지 않고 별개의 제출로 쌓는다")
     @Test
-    void replaceStrategyOnResubmission() {
+    void stackEveryResubmissionAsItsOwnEntry() {
         ContestRound round = openRound();
         Strategy replacement = strategy(Timeframe.ONE_HOUR, 20);
-        ContestEntry entry = new ContestEntry(round, member(), strategy(Timeframe.ONE_HOUR, 10), Instant.now());
         given(contestRoundRepository.findById(ROUND_ID)).willReturn(Optional.of(round));
         given(strategyRepository.findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(STRATEGY_ID, MEMBER_ID))
                 .willReturn(Optional.of(replacement));
-        given(contestEntryRepository.findByRoundRoundIdAndMemberMemberId(ROUND_ID, MEMBER_ID))
-                .willReturn(Optional.of(entry));
+        given(contestEntryRepository.save(any(ContestEntry.class))).willAnswer(invocation -> invocation.getArgument(0));
 
-        ContestEntry submitted = service().submit(MEMBER_ID, ROUND_ID, STRATEGY_ID);
+        ContestEntry first = service().submit(MEMBER_ID, ROUND_ID, STRATEGY_ID);
+        ContestEntry second = service().submit(MEMBER_ID, ROUND_ID, STRATEGY_ID);
 
-        assertThat(submitted.getSubmissionCount()).isEqualTo((short) 2);
-        assertThat(submitted.getStrategy()).isSameAs(replacement);
-        then(contestEntryRepository).should(org.mockito.Mockito.never()).save(any(ContestEntry.class));
+        assertThat(second).isNotSameAs(first);
+        then(contestEntryRepository).should(org.mockito.Mockito.times(2)).save(any(ContestEntry.class));
     }
 
     @DisplayName("없는 회차에는 제출할 수 없다")
@@ -134,24 +130,6 @@ class ContestEntryCommandServiceTest {
         assertError(ApiErrorCode.CONTEST_FACTOR_PERIOD_TOO_LONG);
     }
 
-    @DisplayName("제출 횟수를 모두 쓰면 더 제출할 수 없다")
-    @Test
-    void rejectSubmissionOverTheLimit() {
-        ContestRound round = openRound();
-        ContestEntry entry = new ContestEntry(round, member(), strategy(Timeframe.ONE_HOUR, 10), Instant.now());
-        for (int count = 1; count < round.getMaxSubmissions(); count++) {
-            entry.resubmit(strategy(Timeframe.ONE_HOUR, 10), Instant.now().plus(Duration.ofMinutes(count)));
-        }
-        given(contestRoundRepository.findById(ROUND_ID)).willReturn(Optional.of(round));
-        given(strategyRepository.findByStrategyIdAndMemberMemberIdAndDeletedAtIsNull(STRATEGY_ID, MEMBER_ID))
-                .willReturn(Optional.of(strategy(Timeframe.ONE_HOUR, 20)));
-        given(contestEntryRepository.findByRoundRoundIdAndMemberMemberId(ROUND_ID, MEMBER_ID))
-                .willReturn(Optional.of(entry));
-
-        assertThat(entry.getSubmissionCount()).isEqualTo(round.getMaxSubmissions());
-        assertError(ApiErrorCode.CONTEST_SUBMISSION_LIMIT_EXCEEDED);
-    }
-
     private void assertError(ApiErrorCode expected) {
         assertThatThrownBy(() -> service().submit(MEMBER_ID, ROUND_ID, STRATEGY_ID))
                 .isInstanceOfSatisfying(ApiException.class, exception ->
@@ -175,7 +153,6 @@ class ContestEntryCommandServiceTest {
                 Instant.now().minus(Duration.ofDays(1)),
                 Instant.now().plus(Duration.ofDays(1)),
                 5,
-                5,
                 13
         );
     }
@@ -185,7 +162,6 @@ class ContestEntryCommandServiceTest {
                 "지난 회차",
                 Instant.now().minus(Duration.ofDays(10)),
                 Instant.now().minus(Duration.ofDays(3)),
-                5,
                 5,
                 13
         );

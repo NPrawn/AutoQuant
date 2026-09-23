@@ -50,7 +50,7 @@ public record ContestRoundListResponse(
                     summary.round().getSubmissionStartsAt(),
                     summary.round().getSubmissionEndsAt(),
                     summary.entryCount(),
-                    ContestSubmissionResponse.from(summary.myEntry(), summary.round().getMaxSubmissions()),
+                    ContestSubmissionResponse.from(summary.myEntry()),
                     myResult == null ? null : myResult.getRanking(),
                     myResult == null ? null : myResult.getTotalScore(),
                     top == null ? null : top.strategyName(),

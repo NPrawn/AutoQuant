@@ -155,7 +155,6 @@ class ContestRankingReadServiceTest {
                 "1회차 모의 대회",
                 Instant.parse("2026-09-16T00:00:00Z"),
                 Instant.parse("2026-10-16T00:00:00Z"),
-                5,
                 30,
                 13
         );

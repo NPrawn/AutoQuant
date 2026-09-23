@@ -15,7 +15,7 @@ class ContestRoundTest {
     private static final Instant ENDS_AT = STARTS_AT.plus(Duration.ofDays(7));
 
     private static ContestRound round() {
-        return new ContestRound("1회차", STARTS_AT, ENDS_AT, 5, 5, 13);
+        return new ContestRound("1회차", STARTS_AT, ENDS_AT, 5, 13);
     }
 
     @DisplayName("새 회차는 제출 전 단계로 시작한다")
@@ -24,7 +24,6 @@ class ContestRoundTest {
         ContestRound round = round();
 
         assertThat(round.getPhase()).isEqualTo(ContestPhase.READY);
-        assertThat(round.getMaxSubmissions()).isEqualTo((short) 5);
         assertThat(round.getScoringStartedAt()).isNull();
     }
 
@@ -59,7 +58,7 @@ class ContestRoundTest {
     @DisplayName("제출 기간이 뒤집힌 회차는 만들 수 없다")
     @Test
     void rejectInvertedSubmissionPeriod() {
-        assertThatThrownBy(() -> new ContestRound("1회차", ENDS_AT, STARTS_AT, 5, 5, 13))
+        assertThatThrownBy(() -> new ContestRound("1회차", ENDS_AT, STARTS_AT, 5, 13))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }
