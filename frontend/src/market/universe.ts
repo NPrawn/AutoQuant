@@ -7,7 +7,7 @@ import { useChartAssets } from './queries'
  */
 
 /* 목록을 아직 못 받았을 때 쓰는 값. 운영 등록 수와 같게 둔다. */
-export const defaultUniverseSize = 30
+export const defaultUniverseSize = 29
 
 export function useUniverseSize(): number {
   const assets = useChartAssets()
