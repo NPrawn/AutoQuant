@@ -64,6 +64,8 @@ public interface ContestResultRepository extends JpaRepository<ContestResult, UU
                         result.ranking, strategy.strategyId, strategy.name, member.displayName, strategy.published,
                         result.totalScore, result.returnScore, result.stabilityScore,
                         result.bullRegimeScore, result.bearRegimeScore, result.sidewaysRegimeScore,
+                        result.generalReturn, result.generalMdd,
+                        coalesce(strategy.rootStrategyId, strategy.strategyId), strategy.versionNo,
                         member.memberId
                     )
                     from ContestEntry entry

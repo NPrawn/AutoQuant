@@ -128,6 +128,8 @@ class ContestControllerTest {
                 new BigDecimal("18.200"),
                 new BigDecimal("17.600"),
                 new BigDecimal("48.133"),
+                new BigDecimal("0.53000000"),
+                new BigDecimal("0.21000000"),
                 2
         );
         ContestRoundTopResult top = new ContestRoundTopResult(
@@ -368,6 +370,8 @@ class ContestControllerTest {
                 new BigDecimal("100.000"),
                 new BigDecimal("80.000"),
                 new BigDecimal("73.333"),
+                new BigDecimal("0.53000000"),
+                new BigDecimal("0.21000000"),
                 1
         );
         ContestResultReadService.ContestDatasetOutcome outcome = new ContestResultReadService.ContestDatasetOutcome(
@@ -557,6 +561,10 @@ class ContestControllerTest {
                 new BigDecimal("100.000"),
                 new BigDecimal("66.667"),
                 new BigDecimal("100.000"),
+                new BigDecimal("0.53000000"),
+                new BigDecimal("0.21000000"),
+                strategyId,
+                1,
                 memberId
         );
     }
@@ -577,6 +585,12 @@ class ContestControllerTest {
                 fieldWithPath("content[].bearRegimeScore").type(JsonFieldType.NUMBER).description("하락장 국면 점수"),
                 fieldWithPath("content[].sidewaysRegimeScore").type(JsonFieldType.NUMBER)
                         .description("횡보장 국면 점수"),
+                fieldWithPath("content[].generalReturn").type(JsonFieldType.NUMBER)
+                        .description("일반장 누적 수익률. 비율이라 0.53 이 +53%"),
+                fieldWithPath("content[].generalMdd").type(JsonFieldType.NUMBER)
+                        .description("일반장 최대 낙폭"),
+                fieldWithPath("content[].versionNo").type(JsonFieldType.NUMBER)
+                        .description("제출한 전략 판 번호. 이름은 최신 판을 따라가고 이 번호는 제출한 판 그대로다"),
                 fieldWithPath("content[].mine").type(JsonFieldType.BOOLEAN).description("내 제출 여부"),
                 fieldWithPath("page").type(JsonFieldType.NUMBER).description("페이지 번호"),
                 fieldWithPath("size").type(JsonFieldType.NUMBER).description("페이지 크기"),

@@ -41,6 +41,13 @@ public class ContestResult extends BaseEntity {
     @Column(name = "total_score", precision = 6, scale = 3)
     private BigDecimal totalScore;
 
+    /* 순위표가 읽히게 두는 원본 값이다. 점수를 내는 데는 쓰지 않는다. */
+    @Column(name = "general_return", precision = 14, scale = 8)
+    private BigDecimal generalReturn;
+
+    @Column(name = "general_mdd", precision = 14, scale = 8)
+    private BigDecimal generalMdd;
+
     @Column(name = "ranking")
     private Integer ranking;
 
@@ -63,6 +70,8 @@ public class ContestResult extends BaseEntity {
             BigDecimal sidewaysRegimeScore,
             BigDecimal stabilityScore,
             BigDecimal totalScore,
+            BigDecimal generalReturn,
+            BigDecimal generalMdd,
             int ranking
     ) {
         if (ranking <= 0) {
@@ -77,6 +86,8 @@ public class ContestResult extends BaseEntity {
         result.sidewaysRegimeScore = Objects.requireNonNull(sidewaysRegimeScore);
         result.stabilityScore = Objects.requireNonNull(stabilityScore);
         result.totalScore = Objects.requireNonNull(totalScore);
+        result.generalReturn = Objects.requireNonNull(generalReturn);
+        result.generalMdd = Objects.requireNonNull(generalMdd);
         result.ranking = ranking;
         return result;
     }
@@ -123,6 +134,14 @@ public class ContestResult extends BaseEntity {
 
     public BigDecimal getTotalScore() {
         return totalScore;
+    }
+
+    public BigDecimal getGeneralReturn() {
+        return generalReturn;
+    }
+
+    public BigDecimal getGeneralMdd() {
+        return generalMdd;
     }
 
     public Integer getRanking() {
