@@ -7,7 +7,8 @@ import pytest
 
 from scripts.contest_sim.jwt_token import issue
 from scripts.contest_sim.run_contest import load_strategies
-from scripts.contest_sim.scoring import market_drawdowns, percentiles, regime_score, score
+from scripts.contest_sim.scoring import (market_drawdowns, percentiles, regime_score, return_score,
+                                          score)
 
 SECRET = "local-contest-secret-at-least-32-bytes"
 CAPS = {"1H": 5039, "4H": 1259, "1D": 209}
@@ -55,20 +56,35 @@ def test_score_ranks_qualified_strategies_and_lists_disqualified_ones():
         "crash": _runs(0.1, (0.1, 0.6, 0.1)),
     }
 
-    # 시장 +10%, 시장 낙폭 20% 기준. 점수는 남들과 무관하게 시장 대비 수익률과 낙폭으로만 정해진다.
-    rows = score(results, market_return=0.1)
+    # 투자 비중 80%, 시장 낙폭 20% 기준이라 낙폭 16% 가 50점이다. 점수는 남들과 무관하다.
+    rows = score(results)
 
     ranked = [(row["strategy"], round(row["total"], 3)) for row in rows[:4]]
-    # crash 는 하락장 낙폭 60% 로 실격이 아니라 그 국면 점수가 0점이 된다.
-    assert ranked == [("s1", 70.833), ("s2", 60.5), ("s3", 55.0), ("crash", 38.333)]
+    # s2 는 +10% 로 덜 벌었지만 낙폭이 얕아 1위다. crash 는 하락장 낙폭 60% 로 그 국면 점수가 0점이 된다.
+    assert ranked == [("s2", 42.775), ("s1", 38.503), ("s3", 20.798), ("crash", 18.088)]
     reasons = {row["strategy"]: row["disqualified"] for row in rows[4:]}
     assert reasons == {"cash": "평균 투자 비중 0.0% < 30%"}
 
 
 def test_regime_score_is_fifty_when_the_strategy_falls_as_far_as_the_market():
-    assert regime_score(0.36, 0.36) == 50.0
-    assert round(regime_score(0.06, 0.36), 6) == 100.0
-    assert regime_score(0.70, 0.36) == 0.0
+    assert regime_score(0.36, 1.0, 0.36) == 50.0
+    assert regime_score(0.18, 1.0, 0.36) == 75.0
+    assert regime_score(0.0, 1.0, 0.36) == 100.0
+    assert regime_score(0.72, 1.0, 0.36) == 0.0
+
+
+def test_regime_score_divides_the_drawdown_by_the_exposure():
+    """절반만 산 제출이 절반만 빠졌으면 시장을 그대로 든 것과 같다. 나누지 않으면 75점이 된다."""
+    assert regime_score(0.18, 0.5, 0.36) == 50.0
+    assert regime_score(0.0, 0.0, 0.36) == 50.0
+
+
+def test_return_score_is_measured_against_the_starting_capital():
+    assert return_score(0.0) == 0.0
+    assert round(return_score(2.0), 6) == 100.0
+    assert round(return_score(-2 / 3), 6) == -100.0
+    assert return_score(-0.9) == -200.0
+    assert return_score(-1.0) == -200.0
 
 
 def _candle(asset: str, minutes: int, open_time: str, close: float) -> str:
