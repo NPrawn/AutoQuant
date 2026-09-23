@@ -77,9 +77,6 @@ export function ContestFactorCapsCard({ round }: { round: ContestRoundDetailResp
             <span className="mono">{round.factorPeriodCaps[timeframe]}봉 이하</span>
           </div>
         ))}
-      <p className="sec-sub" style={{ marginTop: 12 }}>
-        상한을 넘는 팩터가 하나라도 있으면 제출이 거절됩니다. 전략을 고친 뒤 다시 제출해 주세요.
-      </p>
     </div>
   )
 }

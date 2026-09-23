@@ -198,6 +198,11 @@ export type ContestRankingRowResponse = {
   bullRegimeScore: number
   bearRegimeScore: number
   sidewaysRegimeScore: number
+  /* 점수가 아니라 실제 값이다. 0.53 이 +53%. */
+  generalReturn: number | null
+  generalMdd: number | null
+  /* 제출한 전략 판. 이름은 최신 판을 따라가므로 채점된 판은 이 번호가 가리킨다. */
+  versionNo: number
   mine: boolean
 }
 

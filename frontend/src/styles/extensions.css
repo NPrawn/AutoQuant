@@ -932,3 +932,20 @@ a.acct-item {
   color: var(--ink-3);
   font: 400 12px "IBM Plex Mono", monospace;
 }
+
+/*
+ * 순위표가 점수 대신 읽히는 숫자를 보여 주면서 필요해진 두 가지다.
+ * 종합 점수는 표에서 한 번만 강조하고, 전략 판 번호는 이름 옆에 작게 붙인다.
+ */
+.score-lead {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.strategy-name-cell .version-tag {
+  margin-left: 6px;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
