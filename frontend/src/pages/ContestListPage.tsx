@@ -5,7 +5,15 @@ import { StrategyName } from '../strategy/StrategyName'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
 import { useNow } from '../contest/clock'
-import { contestStatusLabels, formatDate, formatDateTime, formatRemaining, formatScore } from '../contest/labels'
+import {
+  contestStatusLabels,
+  formatDate,
+  formatDateTime,
+  formatRemaining,
+  formatSignedScore,
+  rankTone,
+  scoreTone,
+} from '../contest/labels'
 import { useContests, useMyContestEntries } from '../contest/queries'
 import type { ContestMyEntryResponse, ContestRoundItemResponse } from '../contest/types'
 
@@ -158,14 +166,15 @@ function MyEntries() {
       ) : (
         <div className="card">
           <div className="table-scroll" tabIndex={0} role="region" aria-label="내 제출 표">
-            <table>
+            {/* 컬럼 폭을 고정하고 이름만 왼쪽, 나머지는 가운데다. 폭을 흘려 두면 전략과 제출 사이가 비어 보인다. */}
+            <table className="my-entries">
               <thead>
                 <tr>
                   <th scope="col">회차</th>
                   <th scope="col">전략</th>
-                  <th scope="col" className="r">제출</th>
-                  <th scope="col" className="r">종합 점수</th>
-                  <th scope="col" className="r">순위</th>
+                  <th scope="col">제출</th>
+                  <th scope="col">종합 점수</th>
+                  <th scope="col">순위</th>
                   <th scope="col"><span className="sr-only">작업</span></th>
                 </tr>
               </thead>
@@ -174,8 +183,8 @@ function MyEntries() {
                   <tr key={`${entry.roundId}-${entry.submittedAt}`}>
                     <td>
                       {entry.roundTitle}
-                      <small className="muted-cell" style={{ display: 'block' }}>
-                        {contestStatusLabels[entry.roundStatus]}
+                      <small className={entry.roundStatus === 'OPEN' ? 'entry-status live' : 'entry-status'}>
+                        {entryStatusLabel(entry)}
                       </small>
                     </td>
                     <td className="strategy-name-cell">
@@ -183,12 +192,14 @@ function MyEntries() {
                         <StrategyName label={{ name: entry.strategyName, version: entry.versionNo }} />
                       </b>
                     </td>
-                    <td className="r mono">{formatDateTime(entry.submittedAt)}</td>
-                    <td className="r">
-                      <b className="mono score-lead">{formatScore(entry.totalScore)}</b>
+                    <td className="mono num-soft">{formatDateTime(entry.submittedAt)}</td>
+                    <td>
+                      <b className={scoreTone(entry.totalScore)}>{formatSignedScore(entry.totalScore)}</b>
                     </td>
-                    <td className="r mono">{entryRankLabel(entry)}</td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td>
+                      <span className={rankTone(entry.ranking)}>{entryRankLabel(entry)}</span>
+                    </td>
+                    <td>
                       <Link className="rank-action" to={to.contestResult(entry.roundId)}>
                         결과 보기
                       </Link>
@@ -210,4 +221,10 @@ function entryRankLabel(entry: ContestMyEntryResponse): string {
     return '실격'
   }
   return entry.ranking === null ? '채점 중' : `${entry.ranking}위`
+}
+
+/* 마감 전 순위는 그때까지 채점된 제출 사이의 자리라 잠정이다. 순위가 붙은 뒤에만 그렇게 적는다. */
+function entryStatusLabel(entry: ContestMyEntryResponse): string {
+  const status = contestStatusLabels[entry.roundStatus]
+  return entry.roundStatus === 'OPEN' && entry.ranking !== null ? `${status} · 잠정` : status
 }

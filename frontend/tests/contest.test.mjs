@@ -7,7 +7,10 @@ import {
   formatPercent,
   formatRemaining,
   formatScore,
+  formatSignedScore,
   progressRatio,
+  rankTone,
+  scoreTone,
 } from '../src/contest/labels.ts'
 import { describeSubmitError, isEntryNotFound } from '../src/contest/submitErrorMessage.ts'
 import { awaitingScore, parseSourceWeeks } from '../src/contest/types.ts'
@@ -27,6 +30,25 @@ test('값이 없는 지표는 비워 두고 추정하지 않는다', () => {
   assert.equal(formatPercent(null), '—')
   assert.equal(formatScore(73.333), '73.3')
   assert.equal(formatScore(null), '—')
+})
+
+test('종합 점수는 부호를 늘 붙이고 수익률 없는 표에서만 등락색을 입힌다', () => {
+  assert.equal(formatSignedScore(23.44), '+23.4')
+  assert.equal(formatSignedScore(-8.8), '-8.8')
+  assert.equal(formatSignedScore(0), '0.0')
+  assert.equal(formatSignedScore(null), '—')
+  assert.equal(scoreTone(23.4), 'mono score-lead updown up')
+  assert.equal(scoreTone(-8.8), 'mono score-lead updown down')
+  assert.equal(scoreTone(0), 'mono score-lead')
+  assert.equal(scoreTone(null), 'mono score-lead')
+})
+
+test('1 2 3위만 금 은 동이고 그 아래와 순위 없음은 회색 순번이다', () => {
+  assert.equal(rankTone(1), 'rnum gold')
+  assert.equal(rankTone(2), 'rnum silver')
+  assert.equal(rankTone(3), 'rnum bronze')
+  assert.equal(rankTone(4), 'rnum')
+  assert.equal(rankTone(null), 'rnum')
 })
 
 test('남은 시간은 분 아래를 버리고 마감이 지나면 없다', () => {

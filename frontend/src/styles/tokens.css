@@ -28,6 +28,9 @@
     --accent-2:#FFFFFF;
     --accent-tint:rgba(255,255,255,0.075);
     --accent-ink:#0B0D10;
+    /* 순위표 전용. --accent 가 다크에서 본문과 같은 흰색이라 순위 강조가 사라져 따로 둔다. */
+    --rank-gold:#E8B84A; --rank-silver:#C4CBD4; --rank-bronze:#C48A5A;
+    --name-soft:#B9C6DB;
     /* ---- semantic colour contract ----
        red   = 상승 / 매수 체결 (KR market convention) — NEVER used for errors
        blue  = 하락 / 매도 체결 / 낙폭
@@ -98,6 +101,8 @@
     --accent-2:#173D49;
     --accent-tint:rgba(32,80,95,0.08);
     --accent-ink:#F4FAFB;
+    --rank-gold:#B8860B; --rank-silver:#6F7A88; --rank-bronze:#9A6A3C;
+    --name-soft:#3A4A63;
     --up:#CE2C3C;   --up-soft:rgba(206,44,60,0.10);
     --down:#1B5FD0; --down-soft:rgba(27,95,208,0.10);
     --good:#0E7A54; --good-soft:rgba(14,122,84,0.11);

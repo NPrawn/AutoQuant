@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 
 import { to } from '../app/routes'
 import { StrategyName } from '../strategy/StrategyName'
-import { formatPercent, formatRank, formatScore } from './labels'
+import { formatPercent, formatRank, formatScore, formatSignedScore, rankTone } from './labels'
 import { awaitingScore, type ContestMyResultResponse, type ContestRankingRowResponse } from './types'
 
 type RankingTableProps = {
@@ -15,10 +15,11 @@ type RankingTableProps = {
 }
 
 /*
- * 목업 06 의 순위표. 상위 3위는 .rnum.top 으로 구분하고 내 행은 .rank-me 로 아래에 붙는다.
+ * 목업 06 의 순위표. 1, 2, 3위는 금, 은, 동 순번으로 구분하고 내 행은 .rank-me 로 아래에 붙는다.
  *
  * 점수 대신 읽히는 숫자를 보여 준다. 수익률은 원금 대비 %, 낙폭은 일반장 최대 낙폭이다. 국면 점수
- * 3개는 안정성 점수가 이미 요약하므로 열에서 뺐다. 종합 점수와 수익률만 강조색을 쓴다.
+ * 3개는 안정성 점수가 이미 요약하므로 열에서 뺐다. 종합 점수는 크기와 부호로, 수익률은 등락색으로
+ * 구분한다. 종합에도 등락색을 쓰면 옆의 수익률과 색이 두 겹이라 흰색으로 둔다. 안정성과 MDD 는 한 톤 흐리다.
  */
 export function RankingTable({ roundId, rows, myResult, copyPending, onCopy }: RankingTableProps) {
   const mineOnPage = rows.some((row) => row.mine)
@@ -42,7 +43,7 @@ export function RankingTable({ roundId, rows, myResult, copyPending, onCopy }: R
             {rows.map((row) => (
               <tr key={`${row.strategyId}-${row.ranking}`} className={row.mine ? 'rank-me' : undefined}>
                 <td>
-                  <span className={row.ranking <= 3 ? 'rnum top' : 'rnum'}>{formatRank(row.ranking)}</span>
+                  <span className={rankTone(row.ranking)}>{formatRank(row.ranking)}</span>
                 </td>
                 <td className="strategy-name-cell">
                   <b>
@@ -51,13 +52,13 @@ export function RankingTable({ roundId, rows, myResult, copyPending, onCopy }: R
                   <small>{row.mine ? `${row.nickname} · 내 전략` : row.nickname}</small>
                 </td>
                 <td className="r">
-                  <b className="mono score-lead">{formatScore(row.totalScore)}</b>
+                  <b className="mono score-lead">{formatSignedScore(row.totalScore)}</b>
                 </td>
                 <td className="r">
                   <ReturnCell value={row.generalReturn} />
                 </td>
-                <td className="r mono">{formatScore(row.stabilityScore)}</td>
-                <td className="r mono">{formatPercent(row.generalMdd)}</td>
+                <td className="r mono num-soft">{formatScore(row.stabilityScore)}</td>
+                <td className="r mono num-soft">{formatPercent(row.generalMdd)}</td>
                 <td style={{ textAlign: 'right' }}>
                   <RowAction roundId={roundId} row={row} copyPending={copyPending} onCopy={onCopy} />
                 </td>
@@ -121,20 +122,20 @@ function MyRow({ roundId, result }: { roundId: string; result: ContestMyResultRe
   return (
     <tr className="rank-me">
       <td>
-        <span className="rnum">{result.ranking === null ? '—' : formatRank(result.ranking)}</span>
+        <span className={rankTone(result.ranking)}>{result.ranking === null ? '—' : formatRank(result.ranking)}</span>
       </td>
       <td className="strategy-name-cell">
         <b>{result.strategyName}</b>
         <small>{myRowNote(result)}</small>
       </td>
       <td className="r">
-        <b className="mono score-lead">{formatScore(result.totalScore)}</b>
+        <b className="mono score-lead">{formatSignedScore(result.totalScore)}</b>
       </td>
       <td className="r">
         <ReturnCell value={general?.cumulativeReturn ?? null} />
       </td>
-      <td className="r mono">{formatScore(result.stabilityScore)}</td>
-      <td className="r mono">{formatPercent(general?.maximumDrawdown ?? null)}</td>
+      <td className="r mono num-soft">{formatScore(result.stabilityScore)}</td>
+      <td className="r mono num-soft">{formatPercent(general?.maximumDrawdown ?? null)}</td>
       <td style={{ textAlign: 'right' }}>
         <Link className="rank-action" to={to.contestResult(roundId)}>
           결과 보기
