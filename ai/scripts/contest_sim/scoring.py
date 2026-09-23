@@ -107,17 +107,26 @@ def percentiles(values: dict[str, float], higher_is_better: bool) -> dict[str, f
 
 
 def disqualification(runs: dict[str, dict]) -> str:
-    """점수를 낼 수 없거나(백테스트 미완료) 현금만 들고 시장과 같은 점수를 받는 경우(투자 비중 미달)만 실격이다.
+    """점수를 낼 수 없는 경우(백테스트 미완료)만 실격이다.
 
-    크게 잃거나 깊이 빠진 전략은 실격 대신 점수가 내려간다. 수익률 점수는 음수까지 간다 (ADR-0003).
+    크게 잃거나 깊이 빠진 전략은 실격 대신 점수가 내려간다. 수익률 점수는 음수까지 간다. 투자 비중이
+    하한 미만인 전략은 실격 대신 국면 점수가 중립이 된다 (ADR-0003, `too_small_to_measure`).
     """
     for kind in (GENERAL, *REGIMES):
         run = runs.get(kind)
         if run is None or run["status"] != "COMPLETED":
             return f"{kind} 백테스트 미완료"
-    if runs[GENERAL]["exposure"] < MIN_EXPOSURE:
-        return f"평균 투자 비중 {runs[GENERAL]['exposure']:.1%} < 30%"
     return ""
+
+
+def too_small_to_measure(runs: dict[str, dict]) -> bool:
+    """일반장 평균 투자 비중이 하한 미만이면 국면 점수를 중립으로 둔다.
+
+    국면 점수의 분모가 투자 비중이라 비중이 작으면 점수가 뒤집힌다. 비중 2%에 낙폭 0.1%면 93.75점이
+    되어, 거의 사지 않은 제출이 실제로 투자한 제출을 이긴다. 비중이 정확히 0일 때 50점을 주는 규칙을
+    그 구간까지 넓혀 막는다.
+    """
+    return runs[GENERAL]["exposure"] < MIN_EXPOSURE
 
 
 def score(results: dict[str, dict[str, dict]]) -> list[dict]:
@@ -131,9 +140,12 @@ def score(results: dict[str, dict[str, dict]]) -> list[dict]:
     if qualified:
         for name in qualified:
             returns = return_score(results[name][GENERAL]["return"])
-            per_regime = [regime_score(results[name][kind]["mdd"], results[name][kind]["exposure"],
-                                       results[name][kind]["market_mdd"])
-                          for kind in REGIMES]
+            if too_small_to_measure(results[name]):
+                per_regime = [NO_EXPOSURE_REGIME_SCORE] * len(REGIMES)
+            else:
+                per_regime = [regime_score(results[name][kind]["mdd"], results[name][kind]["exposure"],
+                                           results[name][kind]["market_mdd"])
+                              for kind in REGIMES]
             stability = 0.6 * sum(per_regime) / len(per_regime) + 0.4 * min(per_regime)
             rows.append({"strategy": name, "return_score": returns, "stability_score": stability,
                          "total": RETURN_WEIGHT * returns + (1 - RETURN_WEIGHT) * stability,
