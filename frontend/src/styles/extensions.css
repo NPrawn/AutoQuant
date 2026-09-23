@@ -794,29 +794,43 @@ a.acct-item {
 }
 
 /*
- * 차트 화면의 높이 사슬. main.wrap 은 .col 의 flex 자식이라 flex-basis:0% 가 height 를 덮어
- * base 의 calc(100vh - 54px) 가 무시되고, 안쪽 height:100% 가 전부 auto 로 풀린다.
- * 그 결과 코인 목록이 29줄 전체 높이로 자라 문서를 밀어 낸다. flex-basis 를 되돌려 사슬을 잇는다.
- * 오른쪽 칼럼은 최근 체결까지 보려면 문서가 조금 내려가야 해서 그대로 두고, 왼쪽 카드만 붙여 둔다.
+ * 차트 화면의 세로. 코인 목록은 29줄이라 그대로 두면 목록이 문서를 밀어 낸다. 목록 카드만
+ * 뷰포트에 묶어 붙여 두고 자기 안에서 스크롤하게 한다. 차트와 오른쪽 열은 제 높이를 그대로
+ * 가진다. 봉 영역을 뷰포트에 맞춰 줄이면 봉이 납작해져서, 대신 문서가 그만큼 내려간다.
+ * base 는 이 화면에서 문서를 고정하려 했지만 main.wrap 이 flex 자식이라 그 높이가 먹지 않았고,
+ * 여기서는 아예 문서가 내려가는 쪽을 택한다.
  */
 @media (min-width: 1181px) {
   main.wrap:has(#view-chart.active) {
-    flex: 1 1 auto;
+    height: auto;
+    overflow: visible;
+    padding-bottom: 24px;
+  }
+  #view-chart.active,
+  #view-chart .chart-shell {
+    height: auto;
+  }
+  #view-chart .chart-shell {
+    align-items: start;
   }
   #view-chart .chart-shell > .card:first-child {
     position: sticky;
     top: 0;
     align-self: start;
-    max-height: calc(100vh - 76px);
+    max-height: calc(100vh - 78px);
   }
-  #view-chart .chart-shell > .card:nth-child(2) {
-    position: sticky;
-    top: 0;
-    align-self: start;
-    max-height: calc(100vh - 76px);
+  #view-chart .coin-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
   }
-  /* 아래쪽 여유. 최근 체결 마지막 줄이 화면 끝에 붙지 않게 한다. */
-  main.wrap:has(#view-chart.active) {
-    padding-bottom: 24px;
+  #view-chart .chart-shell > .card:nth-child(2),
+  #view-chart .chart-shell > div:last-child {
+    height: auto;
+    overflow: visible;
+  }
+  #view-chart .chart-area {
+    overflow: visible;
   }
 }
