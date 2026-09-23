@@ -95,9 +95,6 @@ export function ContestDetailPage() {
       <div className="sec-head" style={{ margin: '24px 0 12px' }}>
         <div>
           <div className="sec-title">제출</div>
-          <div className="sec-sub">
-            제출 시점의 전략으로 동결됩니다. 이후 전략을 수정해도 이번 회차 성적은 바뀌지 않습니다.
-          </div>
         </div>
         <span className="chip mute">제출 {round.entryCount}</span>
       </div>

@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 
 import { to } from '../app/routes'
-import { versionLabel } from '../strategy/lineage'
+import { StrategyName } from '../strategy/StrategyName'
 import { formatPercent, formatRank, formatScore } from './labels'
 import { awaitingScore, type ContestMyResultResponse, type ContestRankingRowResponse } from './types'
 
@@ -46,7 +46,7 @@ export function RankingTable({ roundId, rows, myResult, copyPending, onCopy }: R
                 </td>
                 <td className="strategy-name-cell">
                   <b>
-                    {row.strategyName} <span className="version-tag">{versionLabel(row.versionNo)}</span>
+                    <StrategyName label={{ name: row.strategyName, version: row.versionNo }} />
                   </b>
                   <small>{row.mine ? `${row.nickname} · 내 전략` : row.nickname}</small>
                 </td>
