@@ -1,9 +1,9 @@
 import { Link } from 'react-router'
 
 import { to } from '../app/routes'
+import { StrategyName } from '../strategy/StrategyName'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
-import { versionLabel } from '../strategy/lineage'
 import { useNow } from '../contest/clock'
 import { contestStatusLabels, formatDate, formatDateTime, formatRemaining, formatScore } from '../contest/labels'
 import { useContests, useMyContestEntries } from '../contest/queries'
@@ -180,7 +180,7 @@ function MyEntries() {
                     </td>
                     <td className="strategy-name-cell">
                       <b>
-                        {entry.strategyName} <span className="version-tag">{versionLabel(entry.versionNo)}</span>
+                        <StrategyName label={{ name: entry.strategyName, version: entry.versionNo }} />
                       </b>
                     </td>
                     <td className="r mono">{formatDateTime(entry.submittedAt)}</td>

@@ -16,8 +16,11 @@ type ContestSubmitPanelProps = {
 }
 
 /*
- * 목업 31·36 의 제출 패널. 제출 횟수에 제한이 없고 낼 때마다 별개의 제출로 순위에 오른다.
- * 제출 기간이 아니면 눌러도 서버가 막으므로 버튼을 미리 잠근다.
+ * 목업 31·36 의 제출 패널. 전략을 고르고 누르는 것이 전부다.
+ *
+ * 횟수 제한이 없어 잘못 내도 다시 내면 되므로 곁들인 문구를 마지막 제출 시각 하나로 줄였다.
+ * 동결과 채점 데이터 공개 시점은 제출 확인 모달이 한 번 말한다. 제출 기간이 아니면 눌러도 서버가
+ * 막으므로 버튼을 미리 잠근다.
  */
 export function ContestSubmitPanel({
   strategies,
@@ -39,10 +42,9 @@ export function ContestSubmitPanel({
       <button className="btn primary" type="button" disabled={pending || disabled} onClick={onSubmit}>
         {pending ? '제출 중…' : '이 전략으로 제출'}
       </button>
-      <span className="workflow-meta">
-        제출 횟수 제한 없음 · 채점용 데이터는 마감 후 공개
-        {submission && ` · 마지막 제출 ${formatDateTime(submission.submittedAt)}`}
-      </span>
+      {submission && (
+        <span className="workflow-meta">마지막 제출 {formatDateTime(submission.submittedAt)}</span>
+      )}
     </div>
   )
 }
