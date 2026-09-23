@@ -16,8 +16,9 @@ public interface ContestEntryRepository extends JpaRepository<ContestEntry, UUID
     Optional<ContestEntry> findFirstByRoundRoundIdAndMemberMemberIdOrderBySubmittedAtDesc(
             UUID roundId, UUID memberId);
 
+    /* 최신순이다. 제출마다 행이 쌓이므로 회차별 마지막 제출을 고르려면 순서가 정해져 있어야 한다. */
     @EntityGraph(attributePaths = {"strategy", "round"})
-    List<ContestEntry> findAllByMemberMemberId(UUID memberId);
+    List<ContestEntry> findAllByMemberMemberIdOrderBySubmittedAtDesc(UUID memberId);
 
     List<ContestEntry> findAllByRoundRoundId(UUID roundId);
 

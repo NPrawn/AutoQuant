@@ -8,6 +8,7 @@ import com.ssafy.a107.contest.repository.ContestResultRepository;
 import com.ssafy.a107.contest.repository.ContestRoundEntryCount;
 import com.ssafy.a107.contest.repository.ContestRoundRepository;
 import com.ssafy.a107.contest.repository.ContestRoundTopResult;
+import com.ssafy.a107.strategy.repository.StrategyRepository;
 import com.ssafy.a107.member.domain.LoginProvider;
 import com.ssafy.a107.member.domain.Member;
 import com.ssafy.a107.strategy.domain.Strategy;
@@ -41,8 +42,9 @@ class ContestReadServiceTest {
     private final ContestRoundRepository contestRoundRepository = mock(ContestRoundRepository.class);
     private final ContestEntryRepository contestEntryRepository = mock(ContestEntryRepository.class);
     private final ContestResultRepository contestResultRepository = mock(ContestResultRepository.class);
-    private final ContestReadService service =
-            new ContestReadService(contestRoundRepository, contestEntryRepository, contestResultRepository);
+    private final StrategyRepository strategyRepository = mock(StrategyRepository.class);
+    private final ContestReadService service = new ContestReadService(
+            contestRoundRepository, contestEntryRepository, contestResultRepository, strategyRepository);
 
     @DisplayName("회차별로 참가 수와 내 순위, 1위를 맞춰 담는다")
     @Test
@@ -50,7 +52,7 @@ class ContestReadServiceTest {
         ContestRound first = round(FIRST_ROUND, "1회차");
         ContestRound second = round(SECOND_ROUND, "2회차");
         given(contestRoundRepository.findAllByOrderBySubmissionStartsAtDesc()).willReturn(List.of(second, first));
-        given(contestEntryRepository.findAllByMemberMemberId(MEMBER_ID)).willReturn(List.of(entry(first)));
+        given(contestEntryRepository.findAllByMemberMemberIdOrderBySubmittedAtDesc(MEMBER_ID)).willReturn(List.of(entry(first)));
         given(contestEntryRepository.countByRound()).willReturn(List.of(new ContestRoundEntryCount(FIRST_ROUND, 12)));
         given(contestResultRepository.findAllByEntryIdIn(any())).willReturn(List.of(scored(MY_ENTRY, 2)));
         given(contestResultRepository.findTopResults()).willReturn(List.of(
@@ -77,7 +79,7 @@ class ContestReadServiceTest {
         ContestRound first = round(FIRST_ROUND, "1회차");
         ContestRound second = round(SECOND_ROUND, "2회차");
         given(contestRoundRepository.findAllByOrderBySubmissionStartsAtDesc()).willReturn(List.of(second, first));
-        given(contestEntryRepository.findAllByMemberMemberId(MEMBER_ID)).willReturn(List.of(entry(first)));
+        given(contestEntryRepository.findAllByMemberMemberIdOrderBySubmittedAtDesc(MEMBER_ID)).willReturn(List.of(entry(first)));
         given(contestEntryRepository.countByRound()).willReturn(List.of());
         given(contestResultRepository.findAllByEntryIdIn(any())).willReturn(List.of());
         given(contestResultRepository.findTopResults()).willReturn(List.of());
@@ -95,7 +97,7 @@ class ContestReadServiceTest {
     void skipMyResultsWithoutEntries() {
         given(contestRoundRepository.findAllByOrderBySubmissionStartsAtDesc())
                 .willReturn(List.of(round(FIRST_ROUND, "1회차")));
-        given(contestEntryRepository.findAllByMemberMemberId(MEMBER_ID)).willReturn(List.of());
+        given(contestEntryRepository.findAllByMemberMemberIdOrderBySubmittedAtDesc(MEMBER_ID)).willReturn(List.of());
         given(contestEntryRepository.countByRound()).willReturn(List.of());
         given(contestResultRepository.findTopResults()).willReturn(List.of());
 
@@ -115,6 +117,59 @@ class ContestReadServiceTest {
         );
         ReflectionTestUtils.setField(round, "roundId", roundId);
         return round;
+    }
+
+    @DisplayName("내 제출 목록은 제출마다 한 줄이고 같은 회차가 여러 번 나온다")
+    @Test
+    void listEveryEntryOfMine() {
+        ContestRound round = round(FIRST_ROUND, "1회차");
+        ContestEntry later = entry(round, 9L, "옛 이름", 1, "2026-09-18T00:00:00Z");
+        ContestEntry earlier = entry(round, 9L, "옛 이름", 1, "2026-09-17T00:00:00Z");
+        given(contestEntryRepository.findAllByMemberMemberIdOrderBySubmittedAtDesc(MEMBER_ID))
+                .willReturn(List.of(later, earlier));
+        given(contestResultRepository.findAllByEntryIdIn(any())).willReturn(List.of());
+        given(strategyRepository.findAllByRootIn(any())).willReturn(List.of());
+
+        List<ContestMyEntry> entries = service.getMyEntries(MEMBER_ID);
+
+        assertThat(entries).hasSize(2);
+        assertThat(entries).extracting(ContestMyEntry::roundTitle).containsOnly("1회차");
+        /* 채점 전이라 점수와 순위가 비어 있다. 화면이 채점 중으로 읽는다. */
+        assertThat(entries).extracting(ContestMyEntry::totalScore).containsOnlyNulls();
+        assertThat(entries).extracting(ContestMyEntry::ranking).containsOnlyNulls();
+    }
+
+    @DisplayName("내 제출 목록의 전략 이름은 최신 판을 따라가고 판 번호는 제출한 판 그대로다")
+    @Test
+    void followTheLatestNameInMyEntries() {
+        ContestEntry submitted = entry(round(FIRST_ROUND, "1회차"), 9L, "옛 이름", 1, "2026-09-17T00:00:00Z");
+        Strategy latest = mock(Strategy.class);
+        given(latest.getRootStrategyId()).willReturn(9L);
+        given(latest.getVersionNo()).willReturn(2);
+        given(latest.getName()).willReturn("새 이름");
+        given(contestEntryRepository.findAllByMemberMemberIdOrderBySubmittedAtDesc(MEMBER_ID))
+                .willReturn(List.of(submitted));
+        given(contestResultRepository.findAllByEntryIdIn(any())).willReturn(List.of());
+        given(strategyRepository.findAllByRootIn(any())).willReturn(List.of(latest));
+
+        List<ContestMyEntry> entries = service.getMyEntries(MEMBER_ID);
+
+        assertThat(entries).singleElement().satisfies(row -> {
+            assertThat(row.strategyName()).isEqualTo("새 이름");
+            assertThat(row.versionNo()).isEqualTo(1);
+        });
+    }
+
+    private static ContestEntry entry(ContestRound round, long rootId, String name, int versionNo, String at) {
+        Member member = new Member(LoginProvider.SSAFY, "contest-member-107", "contest@example.com", "대회 참가자");
+        Strategy strategy = mock(Strategy.class);
+        given(strategy.getStrategyId()).willReturn(rootId);
+        given(strategy.getRootStrategyId()).willReturn(rootId);
+        given(strategy.getName()).willReturn(name);
+        given(strategy.getVersionNo()).willReturn(versionNo);
+        ContestEntry entry = new ContestEntry(round, member, strategy, Instant.parse(at));
+        ReflectionTestUtils.setField(entry, "entryId", UUID.randomUUID());
+        return entry;
     }
 
     private static ContestEntry entry(ContestRound round) {

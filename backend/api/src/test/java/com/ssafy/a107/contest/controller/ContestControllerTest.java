@@ -9,6 +9,7 @@ import com.ssafy.a107.common.exception.ApiErrorCode;
 import com.ssafy.a107.common.exception.ApiException;
 import com.ssafy.a107.common.exception.ApiExceptionHandler;
 import com.ssafy.a107.contest.domain.ContestDisplayStatus;
+import com.ssafy.a107.contest.service.ContestMyEntry;
 import com.ssafy.a107.contest.domain.ContestDisqualificationReason;
 import com.ssafy.a107.contest.domain.ContestResult;
 import com.ssafy.a107.contest.domain.MarketDataset;
@@ -64,6 +65,7 @@ import static com.epages.restdocs.apispec.ResourceDocumentation.resource;
 import static com.epages.restdocs.apispec.Schema.schema;
 import static io.restassured.module.mockmvc.RestAssuredMockMvc.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -166,6 +168,46 @@ class ContestControllerTest {
                 .body("contests[0].topStrategyName", equalTo("변동성 눌림 스윙"))
                 .body("contests[0].topNickname", equalTo("가**리"))
                 .body("contests[0].topTotalScore", equalTo(55.18f));
+    }
+
+    @DisplayName("내 제출 목록은 제출마다 한 줄이고 최신 이름에 제출한 판 번호가 붙는다")
+    @Test
+    void getMyEntries() {
+        ContestMyEntry scored = new ContestMyEntry(
+                ROUND_ID, "1회차 모의 대회", ContestDisplayStatus.FINISHED,
+                7L, "변동성 눌림 스윙", 2, SUBMITTED_AT,
+                new BigDecimal("48.133"), 2, null);
+        ContestMyEntry pending = new ContestMyEntry(
+                ROUND_ID, "1회차 모의 대회", ContestDisplayStatus.FINISHED,
+                7L, "변동성 눌림 스윙", 1, SUBMITTED_AT,
+                null, null, null);
+        given(contestReadService.getMyEntries(MEMBER_ID)).willReturn(List.of(scored, pending));
+
+        given()
+                .when()
+                .get("/contests/entries/me")
+                .then()
+                .apply(document(
+                        "contests-my-entries",
+                        resource(ResourceSnippetParameters.builder()
+                                .tag("대회")
+                                .summary("내 대회 제출 목록 조회")
+                                .description("""
+                                        제출마다 한 줄이라 같은 회차가 여러 번 나옵니다. 최신순입니다.
+                                        전략 이름은 뿌리 기준 최신 판의 이름이고 versionNo 는 제출한 판입니다.
+                                        채점 전 제출은 총점과 순위가 비어 있습니다.
+                                        """)
+                                .responseSchema(schema("ContestMyEntryListResponse"))
+                                .responseFields(myEntryResponseFields())
+                                .build())
+                ))
+                .statusCode(HttpStatus.OK.value())
+                .body("entries.size()", equalTo(2))
+                .body("entries[0].strategyName", equalTo("변동성 눌림 스윙"))
+                .body("entries[0].versionNo", equalTo(2))
+                .body("entries[0].totalScore", equalTo(48.133f))
+                .body("entries[1].versionNo", equalTo(1))
+                .body("entries[1].totalScore", nullValue());
     }
 
     @DisplayName("제출하지 않았거나 채점 전인 회차는 내 순위와 1위가 비어 있다")
@@ -567,6 +609,26 @@ class ContestControllerTest {
                 1,
                 memberId
         );
+    }
+
+    private FieldDescriptor[] myEntryResponseFields() {
+        return new FieldDescriptor[]{
+                fieldWithPath("entries[].roundId").type(JsonFieldType.STRING).description("회차 ID"),
+                fieldWithPath("entries[].roundTitle").type(JsonFieldType.STRING).description("회차 이름"),
+                fieldWithPath("entries[].roundStatus").type(JsonFieldType.STRING).description("회차 화면 상태"),
+                fieldWithPath("entries[].strategyId").type(JsonFieldType.NUMBER).description("제출한 전략 ID"),
+                fieldWithPath("entries[].strategyName").type(JsonFieldType.STRING)
+                        .description("전략 이름. 뿌리 기준 최신 판을 따라간다"),
+                fieldWithPath("entries[].versionNo").type(JsonFieldType.NUMBER)
+                        .description("제출한 전략 판 번호. 채점된 것이 어느 판인지 가리킨다"),
+                fieldWithPath("entries[].submittedAt").type(JsonFieldType.STRING).description("제출 시각"),
+                fieldWithPath("entries[].totalScore").type(JsonFieldType.NUMBER).optional()
+                        .description("종합 점수. 채점 전이면 비어 있다"),
+                fieldWithPath("entries[].ranking").type(JsonFieldType.NUMBER).optional()
+                        .description("순위. 채점 전이거나 실격이면 비어 있다"),
+                fieldWithPath("entries[].disqualificationReason").type(JsonFieldType.STRING).optional()
+                        .description("실격 사유. 없으면 비어 있다"),
+        };
     }
 
     private FieldDescriptor[] rankingResponseFields() {
