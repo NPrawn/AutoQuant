@@ -964,14 +964,46 @@ a.acct-item {
   color: var(--rg, var(--ink));
 }
 
-/* 내 제출 표. 컬럼 폭을 고정하고 이름만 왼쪽, 나머지는 가운데다. */
+/*
+ * 순위표와 내 제출 표는 컬럼 폭을 고정하고 가운데 정렬이다. 폭을 흘려 두면 전략 열이 남는 자리를 다
+ * 먹어 숫자 열이 오른쪽 끝에 몰린다. 내 제출 표의 회차 열만 왼쪽이다.
+ */
+.rank-table,
 #view-contest .my-entries {
   table-layout: fixed;
   min-width: 880px;
 }
+.rank-table th,
+.rank-table td,
 #view-contest .my-entries th,
 #view-contest .my-entries td {
   text-align: center;
+}
+.rank-table .strategy-name-cell small {
+  white-space: normal;
+}
+#view-ranking .rank-table th:nth-child(1) {
+  width: 8%;
+}
+#view-ranking .rank-table th:nth-child(2) {
+  width: 32%;
+}
+#view-ranking .rank-table th:nth-child(3),
+#view-ranking .rank-table th:nth-child(4),
+#view-ranking .rank-table th:nth-child(5),
+#view-ranking .rank-table th:nth-child(6) {
+  width: 12%;
+}
+#view-contest-result .rank-table th:nth-child(1) {
+  width: 10%;
+}
+#view-contest-result .rank-table th:nth-child(2) {
+  width: 34%;
+}
+#view-contest-result .rank-table th:nth-child(3),
+#view-contest-result .rank-table th:nth-child(4),
+#view-contest-result .rank-table th:nth-child(5) {
+  width: 13%;
 }
 #view-contest .my-entries th:nth-child(1) {
   width: 18%;
@@ -980,10 +1012,8 @@ a.acct-item {
 #view-contest .my-entries td:nth-child(1) {
   text-align: left;
 }
-#view-contest .my-entries th:nth-child(2),
-#view-contest .my-entries td:nth-child(2) {
+#view-contest .my-entries th:nth-child(2) {
   width: 24%;
-  text-align: left;
 }
 #view-contest .my-entries th:nth-child(3) {
   width: 20%;

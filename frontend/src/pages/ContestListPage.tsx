@@ -223,8 +223,7 @@ function entryRankLabel(entry: ContestMyEntryResponse): string {
   return entry.ranking === null ? '채점 중' : `${entry.ranking}위`
 }
 
-/* 마감 전 순위는 그때까지 채점된 제출 사이의 자리라 잠정이다. 순위가 붙은 뒤에만 그렇게 적는다. */
+/* 마감 전 회차는 "진행 중" 이다. "제출 중 · 잠정" 은 무슨 뜻인지 바로 읽히지 않았다. 다른 화면의 상태 문구는 그대로다. */
 function entryStatusLabel(entry: ContestMyEntryResponse): string {
-  const status = contestStatusLabels[entry.roundStatus]
-  return entry.roundStatus === 'OPEN' && entry.ranking !== null ? `${status} · 잠정` : status
+  return entry.roundStatus === 'OPEN' ? '진행 중' : contestStatusLabels[entry.roundStatus]
 }
