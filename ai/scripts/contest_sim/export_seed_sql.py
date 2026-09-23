@@ -74,15 +74,15 @@ def _warmup_weeks(summary: dict) -> int:
     return len(summary["datasets"]["GENERAL"]["weeks"]) - summary_evaluation_weeks(summary)
 
 
-def _round_sql(round_id: str, title: str, starts_at: str, ends_at: str, summary: dict, max_submissions: int) -> str:
+def _round_sql(round_id: str, title: str, starts_at: str, ends_at: str, summary: dict) -> str:
     warmup_weeks = _warmup_weeks(summary)
     return (
         "INSERT INTO contest.contest_round (\n"
         "    round_id, title, submission_starts_at, submission_ends_at, phase,\n"
-        "    max_submissions, warmup_weeks, evaluation_weeks\n"
+        "    warmup_weeks, evaluation_weeks\n"
         ") VALUES (\n"
         f"    {_quote(round_id)}, {_quote(title)}, {_quote(starts_at)}, {_quote(ends_at)}, 'READY',\n"
-        f"    {max_submissions}, {warmup_weeks}, {summary_evaluation_weeks(summary)}\n"
+        f"    {warmup_weeks}, {summary_evaluation_weeks(summary)}\n"
         ");\n"
     )
 
@@ -268,7 +268,7 @@ def _replace_sql(round_id: str) -> str:
     )
 
 
-def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at: str, max_submissions: int,
+def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at: str,
            generator_version: str, out_path: str, replace: bool = False) -> dict:
     summary = load_summary(datasets_dir)
     markets = summary["markets"]
@@ -286,7 +286,7 @@ def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at
         parts.append(_replace_sql(round_id))
         parts.append("\n")
     parts += [
-        _round_sql(round_id, title, starts_at, ends_at, summary, max_submissions),
+        _round_sql(round_id, title, starts_at, ends_at, summary),
         "\n",
         _dataset_sql(round_id, dataset_ids, summary, generator_version, {
             kind: market_drawdowns(os.path.join(datasets_dir, f"{kind}.csv"), summary["period_start"],
@@ -328,7 +328,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--title", required=True)
     parser.add_argument("--submission-starts", required=True, help="예: 2026-09-16T00:00:00Z")
     parser.add_argument("--submission-ends", required=True)
-    parser.add_argument("--max-submissions", type=int, default=5)
     parser.add_argument("--generator-version", required=True, help="예: contest-2026-09-15")
     parser.add_argument("--out", required=True, help="Flyway 마이그레이션 경로")
     parser.add_argument("--replace", action="store_true",
@@ -336,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     report = export(args.datasets, args.round_id, args.title, args.submission_starts, args.submission_ends,
-                    args.max_submissions, args.generator_version, args.out, args.replace)
+                    args.generator_version, args.out, args.replace)
     print(json.dumps(report, ensure_ascii=False))
     return 0
 
