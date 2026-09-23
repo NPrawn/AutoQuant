@@ -3,10 +3,11 @@ import { Link } from 'react-router'
 import { to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
+import { versionLabel } from '../strategy/lineage'
 import { useNow } from '../contest/clock'
 import { contestStatusLabels, formatDate, formatDateTime, formatRemaining, formatScore } from '../contest/labels'
-import { useContests } from '../contest/queries'
-import type { ContestRoundItemResponse } from '../contest/types'
+import { useContests, useMyContestEntries } from '../contest/queries'
+import type { ContestMyEntryResponse, ContestRoundItemResponse } from '../contest/types'
 
 /*
  * 목업 30. 진행 중(또는 채점 중) 회차 하나를 위에 크게 놓고 예정·지난 회차는 표로 본다.
@@ -17,7 +18,6 @@ export function ContestListPage() {
   const rounds = contests.data?.contests ?? []
   const live = rounds.find((round) => round.status === 'OPEN') ?? rounds.find((round) => round.status === 'SCORING') ?? null
   const upcoming = rounds.filter((round) => round.status === 'SCHEDULED')
-  const past = rounds.filter((round) => round.status === 'FINISHED')
 
   return (
     <section className="view active" id="view-contest">
@@ -34,14 +34,7 @@ export function ContestListPage() {
       )}
       {/* 회차는 끝나도 다음 회차가 이어 열리지 않는다. 준비되면 새로 연다. 그동안은 그 상태를 그대로 말한다. */}
       {contests.isSuccess && live === null && upcoming.length === 0 && (
-        <EmptyState
-          title={past.length === 0 ? '아직 열린 대회가 없습니다' : '현재 열린 대회가 없습니다'}
-          description={
-            past.length === 0
-              ? '회차가 열리면 이 화면에서 제출할 수 있습니다.'
-              : '다음 회차가 열리면 이 화면에서 제출할 수 있습니다. 지난 회차 결과는 아래에서 볼 수 있습니다.'
-          }
-        />
+        <EmptyState title="현재 열린 대회가 없습니다" />
       )}
 
       {live && <LiveRoundCard round={live} />}
@@ -78,74 +71,11 @@ export function ContestListPage() {
         </>
       )}
 
-      {past.length > 0 && (
-        <>
-          <div className="sec-head" style={{ margin: '32px 0 12px' }}>
-            <div>
-              <div className="sec-title">지난 회차</div>
-              <div className="sec-sub">회차마다 장세가 다르므로 회차 간 점수를 그대로 비교하지 않습니다.</div>
-            </div>
-          </div>
-          <div className="card">
-            <div className="table-scroll" tabIndex={0} role="region" aria-label="대회 회차 표">
-              <table>
-                <thead>
-                  <tr>
-                    <th scope="col">이름</th>
-                    <th scope="col" className="r">참가</th>
-                    <th scope="col">1위 전략</th>
-                    <th scope="col" className="r">내 순위</th>
-                    <th scope="col" className="r">종합 점수</th>
-                    <th scope="col"><span className="sr-only">작업</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {past.map((round) => (
-                    <tr key={round.roundId}>
-                      <td>
-                        {round.title}
-                        <small className="muted-cell" style={{ display: 'block' }}>
-                          {formatDate(round.submissionEndsAt)} 마감
-                        </small>
-                      </td>
-                      <td className="r mono">{round.entryCount}</td>
-                      {round.topStrategyName === null ? (
-                        <td className="muted-cell">—</td>
-                      ) : (
-                        <td className="strategy-name-cell">
-                          <b>{round.topStrategyName}</b>
-                          <small>{round.topNickname}</small>
-                        </td>
-                      )}
-                      <td className="r mono">{myRankLabel(round)}</td>
-                      <td className="r mono">{formatScore(round.myTotalScore)}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <Link className="rank-action" to={to.contestResult(round.roundId)}>
-                          결과 보기
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      )}
+      <MyEntries />
     </section>
   )
 }
 
-/* 내 순위 칸. 제출하지 않았으면 미참가, 제출했는데 순위가 없으면 실격이거나 아직 채점 중이다. */
-function myRankLabel(round: ContestRoundItemResponse): string {
-  if (round.mySubmission === null) {
-    return '미참가'
-  }
-  if (round.myRanking === null) {
-    return '—'
-  }
-  return String(round.myRanking)
-}
 
 /* 목업 30 의 .ct-live. 제출 중이면 마감까지 남은 시간을, 채점 중이면 결과로 가는 길을 보여 준다. */
 function LiveRoundCard({ round }: { round: ContestRoundItemResponse }) {
@@ -198,4 +128,86 @@ function LiveRoundCard({ round }: { round: ContestRoundItemResponse }) {
       </div>
     </section>
   )
+}
+
+/*
+ * 내 제출 목록. 제출마다 한 줄이라 같은 회차가 여러 번 나온다. 지난 회차 표를 대신한다 —
+ * 회차 자체보다 내가 무엇을 언제 내서 몇 점을 받았는지가 이 화면에서 볼 값이다.
+ */
+function MyEntries() {
+  const entries = useMyContestEntries()
+
+  if (entries.isPending) {
+    return <LoadingState label="내 제출을 불러오는 중" />
+  }
+  if (entries.isError) {
+    return <ErrorState title="내 제출을 불러오지 못했습니다" onRetry={() => entries.refetch()} />
+  }
+
+  const rows = entries.data?.entries ?? []
+
+  return (
+    <>
+      <div className="sec-head" style={{ margin: '32px 0 12px' }}>
+        <div>
+          <div className="sec-title">내 제출</div>
+        </div>
+      </div>
+      {rows.length === 0 ? (
+        <EmptyState title="아직 제출한 전략이 없습니다" />
+      ) : (
+        <div className="card">
+          <div className="table-scroll" tabIndex={0} role="region" aria-label="내 제출 표">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">회차</th>
+                  <th scope="col">전략</th>
+                  <th scope="col" className="r">제출</th>
+                  <th scope="col" className="r">종합 점수</th>
+                  <th scope="col" className="r">순위</th>
+                  <th scope="col"><span className="sr-only">작업</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((entry) => (
+                  <tr key={`${entry.roundId}-${entry.submittedAt}`}>
+                    <td>
+                      {entry.roundTitle}
+                      <small className="muted-cell" style={{ display: 'block' }}>
+                        {contestStatusLabels[entry.roundStatus]}
+                      </small>
+                    </td>
+                    <td className="strategy-name-cell">
+                      <b>
+                        {entry.strategyName} <span className="version-tag">{versionLabel(entry.versionNo)}</span>
+                      </b>
+                    </td>
+                    <td className="r mono">{formatDateTime(entry.submittedAt)}</td>
+                    <td className="r">
+                      <b className="mono score-lead">{formatScore(entry.totalScore)}</b>
+                    </td>
+                    <td className="r mono">{entryRankLabel(entry)}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <Link className="rank-action" to={to.contestResult(entry.roundId)}>
+                        결과 보기
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+/* 순위가 비는 경우는 채점 전과 실격 둘이다. 사유로 갈라야 채점을 기다리는 제출을 실격으로 오해하지 않는다. */
+function entryRankLabel(entry: ContestMyEntryResponse): string {
+  if (entry.disqualificationReason !== null) {
+    return '실격'
+  }
+  return entry.ranking === null ? '채점 중' : `${entry.ranking}위`
 }

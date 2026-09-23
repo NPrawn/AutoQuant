@@ -2,6 +2,7 @@ import { request } from '../api/client'
 import type {
   ContestDatasetsResponse,
   ContestEntryResponse,
+  ContestMyEntryListResponse,
   ContestMyResultResponse,
   ContestProgressResponse,
   ContestRankingPageResponse,
@@ -13,6 +14,10 @@ import type {
 
 export function fetchContests(): Promise<ContestRoundListResponse> {
   return request<ContestRoundListResponse>('/contests')
+}
+
+export function fetchMyContestEntries(): Promise<ContestMyEntryListResponse> {
+  return request<ContestMyEntryListResponse>('/contests/entries/me')
 }
 
 export function fetchContest(roundId: string): Promise<ContestRoundDetailResponse> {

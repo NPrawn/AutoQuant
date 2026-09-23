@@ -186,6 +186,29 @@ export type ContestRankingSort = 'TOTAL' | 'STABILITY'
 /* 국면 강점 필터. 일반장은 세 국면과 견주는 값이 아니라 필터 대상이 아니다. */
 export type ContestRegimeKind = Exclude<MarketDatasetKind, 'GENERAL'>
 
+/*
+ * 내 제출 한 건. 제출마다 행이 쌓이므로 같은 회차가 여러 줄 나온다.
+ *
+ * strategyName 은 뿌리 기준 최신 판의 이름이고 versionNo 는 제출한 판이다. 채점 전에는 총점과
+ * 순위가 비어 있다.
+ */
+export type ContestMyEntryResponse = {
+  roundId: string
+  roundTitle: string
+  roundStatus: ContestDisplayStatus
+  strategyId: number
+  strategyName: string
+  versionNo: number
+  submittedAt: string
+  totalScore: number | null
+  ranking: number | null
+  disqualificationReason: ContestDisqualificationReason | null
+}
+
+export type ContestMyEntryListResponse = {
+  entries: ContestMyEntryResponse[]
+}
+
 export type ContestRankingRowResponse = {
   ranking: number
   strategyId: number

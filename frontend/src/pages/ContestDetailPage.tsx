@@ -4,13 +4,12 @@ import { Link, useParams } from 'react-router'
 import { routes, to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
 import { EmptyState, ErrorState } from '../components/StateBlock'
-import { ContestMyScorePanel } from '../contest/ContestMyScorePanel'
 import { ContestFactorCapsCard, ContestRulesCard } from '../contest/ContestRulesCard'
 import { ContestSubmitDialog } from '../contest/ContestSubmitDialog'
 import { ContestSubmitPanel } from '../contest/ContestSubmitPanel'
 import { useNow } from '../contest/clock'
 import { contestStatusLabels, formatDateTime, formatRemaining } from '../contest/labels'
-import { useContest, useMyContestResult, useSubmitContestEntry } from '../contest/queries'
+import { useContest, useSubmitContestEntry } from '../contest/queries'
 import { describeSubmitError } from '../contest/submitErrorMessage'
 import { pickerOptions } from '../strategy/lineage'
 import { useStrategies } from '../strategy/queries'
@@ -25,7 +24,6 @@ export function ContestDetailPage() {
   const now = useNow()
   const strategies = useStrategies()
   const submit = useSubmitContestEntry(contestId ?? '')
-  const myResult = useMyContestResult(contestId, contestId !== undefined)
 
   const [strategyId, setStrategyId] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -88,18 +86,6 @@ export function ContestDetailPage() {
           )}
         </div>
       </div>
-
-      {myResult.isSuccess && (
-        <>
-          <div className="sec-head" style={{ margin: '0 0 12px' }}>
-            <div>
-              <div className="sec-title">내 제출 성적</div>
-            </div>
-          </div>
-          <ContestMyScorePanel result={myResult.data} provisional={round.status !== 'FINISHED'} />
-          <div style={{ marginBottom: 24 }} />
-        </>
-      )}
 
       <div className="two" style={{ marginBottom: 16 }}>
         <ContestRulesCard round={round} />

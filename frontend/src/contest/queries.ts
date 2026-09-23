@@ -8,6 +8,7 @@ import {
   fetchContestRankings,
   fetchContestResults,
   fetchContests,
+  fetchMyContestEntries,
   fetchMyContestResult,
   submitContestEntry,
 } from './api'
@@ -16,6 +17,7 @@ import type { SubmitContestEntryRequest } from './types'
 
 /* 대회 쿼리 키의 뿌리. 제출이 성공하면 이 키 아래를 무효화해 남은 횟수를 다시 읽는다. */
 export const contestsQueryKey = ['contests'] as const
+export const myContestEntriesQueryKey = [...contestsQueryKey, 'entries', 'me'] as const
 export const contestQueryKey = (roundId: string) => [...contestsQueryKey, roundId] as const
 export const contestProgressQueryKey = (roundId: string) => [...contestQueryKey(roundId), 'progress'] as const
 export const contestResultsQueryKey = (roundId: string) => [...contestQueryKey(roundId), 'results'] as const
@@ -27,6 +29,11 @@ const progressPollIntervalMs = 5000
 
 export function useContests() {
   return useQuery({ queryKey: contestsQueryKey, queryFn: fetchContests })
+}
+
+/* 내 제출 전체. 제출마다 한 줄이라 같은 회차가 여러 번 나온다. */
+export function useMyContestEntries() {
+  return useQuery({ queryKey: myContestEntriesQueryKey, queryFn: fetchMyContestEntries })
 }
 
 export function useContest(roundId: string | undefined) {
