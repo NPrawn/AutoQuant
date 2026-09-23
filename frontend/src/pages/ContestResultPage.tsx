@@ -6,7 +6,7 @@ import { EmptyState, ErrorState } from '../components/StateBlock'
 import { ContestDatasetTable } from '../contest/ContestDatasetCards'
 import { ContestMyScorePanel } from '../contest/ContestMyScorePanel'
 import { ContestProgressPanel } from '../contest/ContestProgressPanel'
-import { contestStatusLabels, describeDisqualification, formatScore } from '../contest/labels'
+import { contestStatusLabels, describeDisqualification, formatScore, formatSignedScore, rankTone } from '../contest/labels'
 import {
   useContest,
   useContestDatasets,
@@ -133,14 +133,18 @@ function RankingTable({ rankings }: { rankings: ContestRankingItemResponse[] }) 
               const disqualification = describeDisqualification(row.disqualificationReason, row.disqualifiedKind)
               return (
                 <tr key={`${row.nickname}-${row.strategyName}-${index}`}>
-                  <td className="mono">{row.ranking ?? '—'}</td>
+                  <td>
+                    <span className={rankTone(row.ranking)}>{row.ranking ?? '—'}</span>
+                  </td>
                   <td className="strategy-name-cell">
                     <b>{row.strategyName}</b>
                     <small>{row.nickname}</small>
                   </td>
-                  <td className="r mono">{formatScore(row.totalScore)}</td>
-                  <td className="r mono">{formatScore(row.returnScore)}</td>
-                  <td className="r mono">{formatScore(row.stabilityScore)}</td>
+                  <td className="r">
+                    <b className="mono score-lead">{formatSignedScore(row.totalScore)}</b>
+                  </td>
+                  <td className="r mono num-soft">{formatScore(row.returnScore)}</td>
+                  <td className="r mono num-soft">{formatScore(row.stabilityScore)}</td>
                   <td>{disqualification === null ? <span className="chip mute">통과</span> : <span className="chip crit">{disqualification}</span>}</td>
                 </tr>
               )

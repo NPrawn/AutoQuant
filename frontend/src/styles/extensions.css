@@ -933,8 +933,76 @@ a.acct-item {
   font: 400 12px "IBM Plex Mono", monospace;
 }
 
-/* 순위표에서 종합 점수만 강조색으로 이끈다. 나머지 숫자는 본문 색 그대로다. */
+/*
+ * 순위표와 대회 표의 숫자 위계. 종합 점수는 크기로, 1~3위는 금은동으로, 전략 이름은 연한 파랑 회색으로
+ * 갈라 놓는다. 보조 숫자(안정성, MDD, 제출 시각)는 한 톤 흐리다. 색은 전용 토큰이라 다른 화면에 번지지 않는다.
+ */
 .score-lead {
-  color: var(--accent);
+  color: var(--ink);
+  font-size: 15px;
   font-weight: 700;
+}
+.num-soft {
+  color: var(--ink-2);
+}
+.rnum.gold {
+  color: var(--rank-gold);
+}
+.rnum.silver {
+  color: var(--rank-silver);
+}
+.rnum.bronze {
+  color: var(--rank-bronze);
+}
+#view-ranking .strategy-name-cell b,
+#view-contest .strategy-name-cell b,
+#view-contest-result .strategy-name-cell b {
+  color: var(--name-soft);
+  font-weight: 500;
+}
+#view-contest-result .pct .pct-val {
+  color: var(--rg, var(--ink));
+}
+
+/* 내 제출 표. 컬럼 폭을 고정하고 이름만 왼쪽, 나머지는 가운데다. */
+#view-contest .my-entries {
+  table-layout: fixed;
+  min-width: 880px;
+}
+#view-contest .my-entries th,
+#view-contest .my-entries td {
+  text-align: center;
+}
+#view-contest .my-entries th:nth-child(1) {
+  width: 18%;
+  text-align: left;
+}
+#view-contest .my-entries td:nth-child(1) {
+  text-align: left;
+}
+#view-contest .my-entries th:nth-child(2),
+#view-contest .my-entries td:nth-child(2) {
+  width: 24%;
+  text-align: left;
+}
+#view-contest .my-entries th:nth-child(3) {
+  width: 20%;
+}
+#view-contest .my-entries td:nth-child(3) {
+  white-space: nowrap;
+}
+#view-contest .my-entries th:nth-child(4) {
+  width: 12%;
+}
+#view-contest .my-entries th:nth-child(5) {
+  width: 10%;
+}
+#view-contest .my-entries .entry-status {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+#view-contest .my-entries .entry-status.live {
+  color: var(--good-ink);
 }

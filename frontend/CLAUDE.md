@@ -59,6 +59,7 @@ React 19, TypeScript 6, Vite 8 기반 사용자 UI다. 이 디렉터리의 작�
 - 채점 중 판정은 `awaitingScore` 하나다. 백테스트가 다 끝나도 스케줄러가 점수를 쓰기 전까지는 채점 중이라, 끝난 백테스트 수로 다시 묻기를 멈추지 않는다. 기다리던 결과가 채점되면 대회 쿼리를 한 번 무효화해 순위표도 갱신한다.
 - 결과 화면의 곡선·막대 좌표는 `src/contest/charts.ts` 의 순수 함수가 계산한다. 곡선은 목업의 `regime-spark`, 막대는 `pct-track` 을 그대로 쓰고 차트 라이브러리를 들이지 않는다. 자산 곡선은 종료 후에만 서버가 채워 준다.
 - 랭킹 표의 조회 조건은 `src/contest/rankingQuery.ts` 의 순수 함수에만 둔다. 정렬·국면·검색을 바꾸면 결과 수가 달라지므로 첫 페이지로 되돌리고, 조건은 서버에 넘겨 화면이 거르지 않는다. 내 성적 행은 `GET /contests/{roundId}/results/me` 로 따로 받아 표 아래에 고정한다. 페이지를 넘겨도 보여야 한다.
+- 랭킹·대회 표의 숫자 위계는 `contest/labels.ts` 의 `rankTone`(1~3위 금·은·동), `formatSignedScore`(종합 점수에 부호), `scoreTone`(등락색) 이 정한다. 종합 점수는 `.score-lead` 로 크게, 보조 숫자는 `.num-soft` 로 흐리게, 전략 이름은 `--name-soft` 다. 종합 점수의 등락색은 옆에 수익률 컬럼이 없는 표(대회 목록 내 제출)에서만 쓴다. 이 색들은 `--rank-*`·`--name-soft` 전용 토큰이고 `--accent` 는 다크에서 본문과 같은 흰색이라 강조에 쓰지 않는다.
 - 후보군 종목 수는 `market/universe.ts` 의 `useUniverseSize()` 하나로 읽는다. 서버가 준 `/assets` 길이가 곧 후보군 크기라 화면이 숫자를 따로 적어 두지 않는다.
 - 알림이 어디로 가는지는 화면이 정한다. 서버는 종류와 `targetId` 만 주므로 경로 대응은 `notification/targetRoute.ts` 의 `targetRoute` 하나에 둔다. 모르는 종류는 null 이다. 대회 채점 알림(`CONTEST_SCORED`)의 `targetId` 는 백테스트가 아니라 회차라 결과 화면으로 보낸다. 시각 표기와 아이콘·색은 `notification/labels.ts` 가 맡는다.
 - 알림 색도 색 계약을 따른다. 실패는 `--crit` 을 쓰는 `alert`, 완료는 `--good` 을 쓰는 `done` 이다.

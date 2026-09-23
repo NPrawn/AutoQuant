@@ -51,6 +51,37 @@ export function formatScore(value: number | null): string {
   return value.toFixed(1)
 }
 
+/* 종합 점수는 음수가 흔해 부호를 늘 붙인다. 색이 없는 표에서도 플러스와 마이너스가 갈린다. */
+export function formatSignedScore(value: number | null): string {
+  if (value === null || Number.isNaN(value)) {
+    return '—'
+  }
+  const fixed = value.toFixed(1)
+  return value > 0 ? `+${fixed}` : fixed
+}
+
+/* 종합 점수의 등락색 클래스. 수익률 컬럼이 없는 표에서만 쓴다. 옆에 수익률이 있으면 색이 두 겹이라 흰색으로 둔다. */
+export function scoreTone(value: number | null): string {
+  if (value === null || Number.isNaN(value) || value === 0) {
+    return 'mono score-lead'
+  }
+  return value < 0 ? 'mono score-lead updown down' : 'mono score-lead updown up'
+}
+
+/* 1, 2, 3위는 금, 은, 동. 그 아래는 회색 순번 그대로다. */
+export function rankTone(ranking: number | null): string {
+  switch (ranking) {
+    case 1:
+      return 'rnum gold'
+    case 2:
+      return 'rnum silver'
+    case 3:
+      return 'rnum bronze'
+    default:
+      return 'rnum'
+  }
+}
+
 export function formatDateTime(value: string): string {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) {

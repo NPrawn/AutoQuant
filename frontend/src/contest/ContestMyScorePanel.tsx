@@ -1,6 +1,6 @@
 import { ContestOutcomeGrid } from './ContestDatasetCards'
 import { ContestMarketComparison } from './ContestMarketComparison'
-import { describeDisqualification, formatScore, progressRatio } from './labels'
+import { describeDisqualification, formatScore, formatSignedScore, progressRatio } from './labels'
 import { awaitingScore } from './types'
 import type { ContestMyResultResponse } from './types'
 
@@ -27,7 +27,7 @@ export function ContestMyScorePanel({ result, provisional }: ContestMyScorePanel
         <div className="score-num">
           <span>종합 점수</span>
           {disqualification === null ? (
-            <strong>{formatScore(result.totalScore)}</strong>
+            <strong>{formatSignedScore(result.totalScore)}</strong>
           ) : (
             <strong className="txt" style={{ color: 'var(--crit)' }}>
               제외
