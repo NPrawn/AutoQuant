@@ -120,7 +120,7 @@ export function ContestDetailPage() {
             제출 시점의 전략으로 동결됩니다. 이후 전략을 수정해도 이번 회차 성적은 바뀌지 않습니다.
           </div>
         </div>
-        <span className="chip mute">참가 {round.entryCount}</span>
+        <span className="chip mute">제출 {round.entryCount}</span>
       </div>
 
       {errorView && (
@@ -168,7 +168,6 @@ export function ContestDetailPage() {
         <ContestSubmitPanel
           strategies={available}
           strategyId={strategyId}
-          maxSubmissions={round.maxSubmissions}
           submission={round.mySubmission}
           pending={submit.isPending}
           disabled={errorView !== null && !errorView.retryable}

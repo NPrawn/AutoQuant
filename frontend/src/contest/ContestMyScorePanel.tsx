@@ -35,7 +35,7 @@ export function ContestMyScorePanel({ result, provisional }: ContestMyScorePanel
           )}
           <small>
             {disqualification === null
-              ? `${result.entryCount}팀 중 ${result.ranking ?? '—'}위${provisional ? ' (잠정)' : ''}`
+              ? `${result.entryCount}건 중 ${result.ranking ?? '—'}위${provisional ? ' (잠정)' : ''}`
               : '순위 산정에서 빠짐'}
           </small>
         </div>

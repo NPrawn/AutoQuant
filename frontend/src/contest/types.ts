@@ -7,16 +7,14 @@ export type ContestDisplayStatus = 'SCHEDULED' | 'OPEN' | 'SCORING' | 'FINISHED'
 
 export type MarketDatasetKind = 'GENERAL' | 'BULL' | 'BEAR' | 'SIDEWAYS'
 
-/* 크게 잃거나 깊이 빠진 전략은 실격이 아니라 점수가 0점으로 내려간다 (S15P21A107-249). */
+/* 크게 잃거나 깊이 빠진 전략은 실격이 아니라 점수가 내려간다. 수익률 점수는 음수까지 간다 (ADR-0003). */
 export type ContestDisqualificationReason = 'BACKTEST_FAILED' | 'LOW_EXPOSURE'
 
+/* 내 마지막 제출이다. 제출마다 행이 쌓이므로 그 앞의 제출은 순위 목록에 있다. */
 export type ContestSubmissionResponse = {
   strategyId: number
   strategyName: string
-  submissionCount: number
-  remainingSubmissions: number
-  firstSubmittedAt: string
-  lastSubmittedAt: string
+  submittedAt: string
 }
 
 export type ContestRoundItemResponse = {
@@ -55,7 +53,6 @@ export type ContestRoundDetailResponse = {
   status: ContestDisplayStatus
   submissionStartsAt: string
   submissionEndsAt: string
-  maxSubmissions: number
   warmupWeeks: number
   evaluationWeeks: number
   entryCount: number
@@ -72,10 +69,7 @@ export type ContestEntryResponse = {
   roundId: string
   strategyId: number
   strategyName: string
-  submissionCount: number
-  remainingSubmissions: number
-  firstSubmittedAt: string
-  lastSubmittedAt: string
+  submittedAt: string
 }
 
 export type ContestProgressResponse = {
