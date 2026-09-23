@@ -1,18 +1,20 @@
 import type { MouseEvent } from 'react'
 
+import type { StrategyLabel } from '../strategy/lineage'
+import { StrategyName } from '../strategy/StrategyName'
 import { formatDate, formatDateTime, formatKrw, statusOf } from './labels'
 import type { BacktestRun } from './types'
 
 type RunHistoryTableProps = {
   runs: BacktestRun[]
   /* 목록 응답에는 전략 이름이 없어 전략 목록으로 맞춘다. 지워진 전략은 식별자로 보인다. */
-  strategyNames: ReadonlyMap<string, string>
+  strategyNames: ReadonlyMap<string, StrategyLabel>
   showStrategy?: boolean
   onOpen: (backtestId: string) => void
 }
 
-function strategyNameOf(strategyNames: ReadonlyMap<string, string>, strategyId: string): string {
-  return strategyNames.get(strategyId) ?? `전략 #${strategyId}`
+function strategyNameOf(strategyNames: ReadonlyMap<string, StrategyLabel>, strategyId: string): StrategyLabel {
+  return strategyNames.get(strategyId) ?? { name: `전략 #${strategyId}`, version: null }
 }
 
 /* 실행 이력 표. 백테스트 화면과 전략 성과 탭이 같은 표를 쓰고 전략 열만 켜고 끈다. */
@@ -44,7 +46,7 @@ export function RunHistoryTable({ runs, strategyNames, showStrategy = true, onOp
 
 type RunRowProps = {
   run: BacktestRun
-  strategyName: string | null
+  strategyName: StrategyLabel | null
   onOpen: () => void
 }
 
@@ -65,7 +67,9 @@ function RunRow({ run, strategyName, onOpen }: RunRowProps) {
       </td>
       {strategyName !== null && (
         <td>
-          <b>{strategyName}</b>
+          <b>
+            <StrategyName label={strategyName} />
+          </b>
         </td>
       )}
       <td className="mono muted-cell">

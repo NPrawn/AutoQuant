@@ -70,7 +70,18 @@ export function pickerOptions(strategies: readonly Strategy[], includeId?: strin
   return included === undefined ? heads : [...heads, included]
 }
 
-/* 셀렉트와 결과 줄의 전략 표기. 이름 뒤에 버전을 붙여 같은 이름의 다른 버전과 구분한다. */
-export function pickerLabel(strategy: Pick<Strategy, 'name' | 'version'>): string {
-  return `${strategy.name} ${versionLabel(strategy.version)}`
+/*
+ * 화면에 적는 전략 표기. 이름과 버전을 따로 들고 가서 StrategyName 이 버전만 흐리게 그린다.
+ * 지워진 전략처럼 버전을 모르는 자리는 null 이고 이름만 적힌다.
+ */
+export type StrategyLabel = { name: string; version: number | null }
+
+export function labelOf(strategy: Pick<Strategy, 'name' | 'version'>): StrategyLabel {
+  return { name: strategy.name, version: strategy.version }
+}
+
+/* 목록 응답에는 전략 이름이 없어 전략 목록에서 찾는다. 없으면 대신 적을 이름만 돌려준다. */
+export function strategyLabelOf(strategies: readonly Strategy[], strategyId: string, fallback: string): StrategyLabel {
+  const found = strategies.find((strategy) => strategy.id === strategyId)
+  return found === undefined ? { name: fallback, version: null } : labelOf(found)
 }

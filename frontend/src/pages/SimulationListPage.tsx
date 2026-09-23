@@ -13,7 +13,7 @@ import { readSimulationEntry } from '../simulation/simulationEntry'
 import { SimulationStartDialog } from '../simulation/SimulationStartDialog'
 import { SimulationStartPanel } from '../simulation/SimulationStartPanel'
 import { createStartForm, setStrategyId, toCreateRequest, validateStartForm } from '../simulation/startForm'
-import { pickerLabel, pickerOptions } from '../strategy/lineage'
+import { labelOf, pickerOptions } from '../strategy/lineage'
 import { useStrategies } from '../strategy/queries'
 
 /*
@@ -45,7 +45,7 @@ export function SimulationListPage() {
 
   const selectedStrategy = options.find((strategy) => strategy.id === form.strategyId) ?? null
   /* 카드의 전략 이름은 옛 버전으로 돌린 실행도 있어 모든 버전으로 찾는다. */
-  const strategyNames = new Map((strategies.data ?? []).map((strategy) => [strategy.id, pickerLabel(strategy)]))
+  const strategyNames = new Map((strategies.data ?? []).map((strategy) => [strategy.id, labelOf(strategy)]))
 
   const requestStart = () => {
     setShowIssues(true)
@@ -125,7 +125,7 @@ export function SimulationListPage() {
               <SimulationCard
                 key={run.id}
                 run={run}
-                strategyName={strategyNames.get(run.strategyId) ?? `전략 #${run.strategyId}`}
+                strategyName={strategyNames.get(run.strategyId) ?? { name: `전략 #${run.strategyId}`, version: null }}
                 lookup={lookup}
                 onOpen={() => navigate(to.simulationLive(run.id))}
               />

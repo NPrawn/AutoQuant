@@ -4,6 +4,8 @@ import { Link } from 'react-router'
 import { to } from '../app/routes'
 import { blank, formatDate, formatKrw, formatRate, trendClass } from '../backtest/labels'
 import { rebalanceOf, timeframeLabel } from '../strategy/labels'
+import type { StrategyLabel } from '../strategy/lineage'
+import { StrategyName } from '../strategy/StrategyName'
 import { assetCode, type AssetLookup } from './assetLookup'
 import { statusOf } from './labels'
 import { useSimulationEquityCurve, useSimulationPositions, useSimulationResult } from './queries'
@@ -12,7 +14,7 @@ import type { SimulationRun } from './types'
 
 type SimulationCardProps = {
   run: SimulationRun
-  strategyName: string
+  strategyName: StrategyLabel
   lookup: AssetLookup
   onOpen: () => void
 }
@@ -42,7 +44,9 @@ export function SimulationCard({ run, strategyName, lookup, onOpen }: Simulation
       <div className="simh">
         <div>
           <h4>
-            <Link to={to.simulationLive(run.id)}>{strategyName}</Link>
+            <Link to={to.simulationLive(run.id)}>
+              <StrategyName label={strategyName} />
+            </Link>
           </h4>
           <div className="m">
             {timeframeLabel(run.timeframe)} 종가 · {rebalanceOf(run.rebalanceInterval).label} 재선정
