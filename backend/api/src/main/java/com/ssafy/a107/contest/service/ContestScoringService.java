@@ -180,7 +180,7 @@ public class ContestScoringService {
             return 0;
         }
 
-        List<ContestResult> results = ContestScoreCalculator.score(settled, generalMarketReturn(roundId));
+        List<ContestResult> results = ContestScoreCalculator.score(settled);
         contestResultRepository.saveAll(results);
         notifyScored(roundId, results.stream()
                 .map(ContestResult::getEntryId)
@@ -209,15 +209,6 @@ public class ContestScoringService {
                     roundId.toString()
             ));
         }
-    }
-
-    /** 일반장 데이터셋의 균등 보유 수익률. 수익률 점수를 재는 기준이다 (ADR-0003). */
-    private BigDecimal generalMarketReturn(UUID roundId) {
-        return marketDatasetRepository.findAllByRoundRoundIdOrderByKindAsc(roundId).stream()
-                .filter(dataset -> dataset.getKind() == MarketDatasetKind.GENERAL)
-                .map(MarketDataset::getEvaluationReturn)
-                .findFirst()
-                .orElseThrow();
     }
 
     /** 모든 제출이 채점됐으면 회차를 종료한다. 아직 도는 제출이 있으면 기다린다. */

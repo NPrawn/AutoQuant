@@ -20,8 +20,6 @@ import static org.assertj.core.api.Assertions.within;
 class ContestScoreCalculatorTest {
 
     private static final BigDecimal FULL_EXPOSURE = new BigDecimal("0.989");
-    /* 그 회차 일반장의 균등 보유 수익률. 수익률 점수를 재는 기준이다. */
-    private static final BigDecimal MARKET_RETURN = new BigDecimal("1.549");
     /* 데이터셋별 시장 낙폭. 국면 점수를 재는 기준이다. 값은 1회차 4시간봉 기준을 반올림했다. */
     private static final Map<MarketDatasetKind, BigDecimal> MARKET_DRAWDOWNS = Map.of(
             MarketDatasetKind.GENERAL, new BigDecimal("0.384"),
@@ -30,7 +28,7 @@ class ContestScoreCalculatorTest {
             MarketDatasetKind.SIDEWAYS, new BigDecimal("0.390")
     );
 
-    @DisplayName("점수는 시장 대비 수익률과 낙폭으로만 정해지고 순위는 총점 순이다. 실격은 투자 비중 미달뿐이다")
+    @DisplayName("점수는 원금 기준 수익률과 투자 비중으로 정규화한 낙폭으로 정해진다. 실격은 투자 비중 미달뿐이다")
     @Test
     void scoreLikeTheLocalContestRun() {
         Map<String, UUID> ids = new LinkedHashMap<>();
@@ -48,26 +46,26 @@ class ContestScoreCalculatorTest {
                 new BigDecimal("0.022"));
         put(ids, outcomes, "cash-only", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, BigDecimal.ZERO);
 
-        List<ContestResult> results = ContestScoreCalculator.score(outcomes, MARKET_RETURN);
+        List<ContestResult> results = ContestScoreCalculator.score(outcomes);
 
         Map<UUID, String> names = ids.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
         List<ContestResult> ranked = results.stream().filter(result -> !result.isDisqualified()).toList();
         assertThat(ranked).extracting(result -> names.get(result.getEntryId())).containsExactly(
                 "momentum-7d", "equal-weight-hold", "low-volatility", "drawdown-dip",
-                "trend-filter", "volume-surge", "momentum-24h", "all-in-one");
+                "volume-surge", "trend-filter", "momentum-24h", "all-in-one");
         assertThat(ranked).extracting(ContestResult::getRanking).containsExactly(1, 2, 3, 4, 5, 6, 7, 8);
         assertThat(ranked).extracting(result -> result.getTotalScore().toPlainString()).containsExactly(
-                "71.100", "63.050", "51.517", "45.217", "23.550", "18.833", "16.183", "14.800");
-        /* 시장 +154.9% 대비 +28.8% 면 98점, 시장보다 37.9% 못 벌면 0점이다. */
+                "69.382", "68.844", "64.356", "58.467", "54.525", "53.132", "50.754", "44.875");
+        /* 자산 3배가 100점이다. +183.7% 로 2.84 배가 된 1위는 94.9점이다. */
         assertThat(ranked).extracting(result -> result.getReturnScore().toPlainString()).containsExactly(
-                "98.000", "78.667", "62.833", "65.167", "24.167", "0.000", "11.167", "0.000");
-        /* 시장만큼 빠지면 50점이다. 상승장에서 시장(35.7%)보다 7%p 더 빠진 1위는 38.3점이다. */
+                "94.915", "91.115", "87.880", "88.364", "70.519", "79.461", "76.446", "57.799");
+        /* 같은 비중으로 시장을 든 경우만큼 빠지면 50점이다. */
         assertThat(ranked).extracting(result -> result.getStabilityScore().toPlainString()).containsExactly(
-                "44.200", "47.433", "40.200", "25.267", "22.933", "37.667", "21.200", "29.600");
-        assertThat(ranked.getFirst().getBullRegimeScore().toPlainString()).isEqualTo("38.333");
-        assertThat(ranked.getFirst().getBearRegimeScore().toPlainString()).isEqualTo("66.500");
-        assertThat(ranked.getFirst().getSidewaysRegimeScore().toPlainString()).isEqualTo("39.500");
+                "43.849", "46.573", "40.833", "28.569", "38.532", "26.803", "25.062", "31.952");
+        assertThat(ranked.getFirst().getBullRegimeScore().toPlainString()).isEqualTo("39.531");
+        assertThat(ranked.getFirst().getBearRegimeScore().toPlainString()).isEqualTo("59.375");
+        assertThat(ranked.getFirst().getSidewaysRegimeScore().toPlainString()).isEqualTo("41.277");
 
         Map<String, ContestResult> disqualified = results.stream()
                 .filter(ContestResult::isDisqualified)
@@ -79,7 +77,7 @@ class ContestScoreCalculatorTest {
                 .isEqualTo(ContestDisqualificationReason.LOW_EXPOSURE);
     }
 
-    @DisplayName("크게 잃고 깊이 빠져도 실격이 아니라 그 점수가 0점이다")
+    @DisplayName("크게 잃고 깊이 빠져도 실격이 아니라 그 점수가 내려간다")
     @Test
     void scoreBlowupsInsteadOfDisqualifying() {
         UUID entryId = UUID.randomUUID();
@@ -89,16 +87,15 @@ class ContestScoreCalculatorTest {
         outcomes.put(MarketDatasetKind.BEAR, completed(0.0, 0.2));
         outcomes.put(MarketDatasetKind.SIDEWAYS, completed(0.0, 0.2));
 
-        /* 시장 +10%·낙폭 20% 에서 −40%·낙폭 60% 면 수익률 점수와 상승장 국면 점수가 바닥이다. */
-        List<ContestResult> results = ContestScoreCalculator.score(
-                Map.of(entryId, outcomes), new BigDecimal("0.1"));
+        /* −40% 면 수익률 점수가 음수고, 시장 낙폭 20% 의 세 배로 빠진 상승장은 국면 점수가 바닥이다. */
+        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes));
 
         assertThat(results).singleElement().satisfies(result -> {
             assertThat(result.isDisqualified()).isFalse();
             assertThat(result.getRanking()).isEqualTo(1);
-            assertThat(result.getReturnScore().toPlainString()).isEqualTo("0.000");
+            assertThat(result.getReturnScore().toPlainString()).isEqualTo("-46.497");
             assertThat(result.getBullRegimeScore().toPlainString()).isEqualTo("0.000");
-            assertThat(result.getBearRegimeScore().toPlainString()).isEqualTo("50.000");
+            assertThat(result.getBearRegimeScore().toPlainString()).isEqualTo("49.444");
         });
     }
 
@@ -112,7 +109,7 @@ class ContestScoreCalculatorTest {
         outcomes.put(MarketDatasetKind.BEAR, ContestEvaluationOutcome.failed());
         outcomes.put(MarketDatasetKind.SIDEWAYS, completed(0.0, 0.1));
 
-        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes), MARKET_RETURN);
+        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes));
 
         assertThat(results).singleElement().satisfies(result -> {
             assertThat(result.getDisqualificationReason()).isEqualTo(ContestDisqualificationReason.BACKTEST_FAILED);
@@ -120,46 +117,69 @@ class ContestScoreCalculatorTest {
         });
     }
 
-    @DisplayName("점수는 남들과 무관하다. 시장과 똑같이 벌고 똑같이 빠지면 모두 50점이다")
+    @DisplayName("점수는 남들과 무관하다. 시장을 그대로 들면 국면 점수가 50점이다")
     @Test
     void scoreTheOnlyEntryOnItsOwnNumbers() {
         UUID entryId = UUID.randomUUID();
         Map<MarketDatasetKind, ContestEvaluationOutcome> outcomes = new LinkedHashMap<>();
         for (MarketDatasetKind kind : MarketDatasetKind.values()) {
-            outcomes.put(kind, completed(0.1, 0.2));
+            outcomes.put(kind, completed(0.1, 0.2, BigDecimal.ONE));
         }
 
-        /* 시장 +10%·낙폭 20% 인 회차에서 +10%·낙폭 20% 를 내면 수익률도 국면도 시장과 같다. */
-        List<ContestResult> results = ContestScoreCalculator.score(
-                Map.of(entryId, outcomes), new BigDecimal("0.1"));
+        /* 시장 낙폭 20% 를 비중 100% 로 그대로 맞은 제출이다. 수익률은 원금 기준이라 +10% 가 8.676점이다. */
+        List<ContestResult> results = ContestScoreCalculator.score(Map.of(entryId, outcomes));
 
         assertThat(results).singleElement().satisfies(result -> {
-            assertThat(result.getReturnScore().toPlainString()).isEqualTo("50.000");
+            assertThat(result.getReturnScore().toPlainString()).isEqualTo("8.676");
             assertThat(result.getBullRegimeScore().toPlainString()).isEqualTo("50.000");
             assertThat(result.getStabilityScore().toPlainString()).isEqualTo("50.000");
-            assertThat(result.getTotalScore().toPlainString()).isEqualTo("50.000");
+            assertThat(result.getTotalScore().toPlainString()).isEqualTo("29.338");
             assertThat(result.getRanking()).isEqualTo(1);
         });
     }
 
-    @DisplayName("국면 점수는 시장보다 30%p 덜 빠지면 100점, 30%p 더 빠지면 0점이다")
+    @DisplayName("수익률 점수는 본전이 0점, 자산 3배가 100점이고 −200점에서 자른다")
     @Test
-    void measureRegimeScoreAgainstTheMarketDrawdown() {
-        BigDecimal market = new BigDecimal("0.40");
+    void measureReturnScoreAgainstTheStartingCapital() {
+        assertThat(ContestScoreCalculator.returnScore(BigDecimal.ZERO)).isEqualTo(0.0);
+        assertThat(ContestScoreCalculator.returnScore(new BigDecimal("2"))).isCloseTo(100.0, within(1e-9));
+        assertThat(ContestScoreCalculator.returnScore(new BigDecimal("8"))).isCloseTo(200.0, within(1e-9));
+        assertThat(ContestScoreCalculator.returnScore(new BigDecimal("-0.666666666666667")))
+                .isCloseTo(-100.0, within(1e-9));
+        /* 자산이 9분의 1 아래면 하한에 걸린다. 전액 손실도 같은 값이다. */
+        assertThat(ContestScoreCalculator.returnScore(new BigDecimal("-0.9"))).isEqualTo(-200.0);
+        assertThat(ContestScoreCalculator.returnScore(new BigDecimal("-1"))).isEqualTo(-200.0);
+    }
 
-        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.40"), market)).isEqualTo(50.0);
-        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.10"), market)).isCloseTo(100.0, within(1e-9));
-        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.05"), market)).isEqualTo(100.0);
-        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.49"), market)).isCloseTo(35.0, within(1e-9));
-        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.50"), new BigDecimal("0.10"))).isEqualTo(0.0);
+    @DisplayName("국면 점수는 같은 비중으로 시장을 든 경우와 견준다. 덜 사면 낙폭도 같이 나눈다")
+    @Test
+    void measureRegimeScoreAgainstTheExposureAdjustedMarketDrawdown() {
+        BigDecimal market = new BigDecimal("0.40");
+        BigDecimal full = BigDecimal.ONE;
+
+        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.40"), full, market)).isEqualTo(50.0);
+        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.20"), full, market)).isEqualTo(75.0);
+        assertThat(ContestScoreCalculator.regimeScore(BigDecimal.ZERO, full, market)).isEqualTo(100.0);
+        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.80"), full, market)).isEqualTo(0.0);
+
+        /* 절반만 산 제출이 절반만 빠졌으면 시장을 그대로 든 것과 같다. 정규화가 없으면 75점이 된다. */
+        assertThat(ContestScoreCalculator.regimeScore(new BigDecimal("0.20"), new BigDecimal("0.5"), market))
+                .isEqualTo(50.0);
+        /* 아무것도 사지 않은 장세는 식의 극한인 50점이다. */
+        assertThat(ContestScoreCalculator.regimeScore(BigDecimal.ZERO, BigDecimal.ZERO, market)).isEqualTo(50.0);
     }
 
     /* 시장 낙폭은 20% 로 둔다. */
     private static ContestEvaluationOutcome completed(double cumulativeReturn, double maximumDrawdown) {
+        return completed(cumulativeReturn, maximumDrawdown, FULL_EXPOSURE);
+    }
+
+    private static ContestEvaluationOutcome completed(
+            double cumulativeReturn, double maximumDrawdown, BigDecimal exposure) {
         return ContestEvaluationOutcome.completed(
                 BigDecimal.valueOf(cumulativeReturn),
                 BigDecimal.valueOf(maximumDrawdown),
-                FULL_EXPOSURE,
+                exposure,
                 new BigDecimal("0.2")
         );
     }
