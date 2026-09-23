@@ -27,9 +27,6 @@ export function ContestProgressPanel({ progress }: { progress: ContestProgressRe
           {progress.finishedBacktests} / {progress.totalBacktests}
         </span>
       </div>
-      <p className="sec-sub" style={{ marginTop: 12 }}>
-        모두 끝나면 점수를 계산하고 순위를 공개합니다. 이 화면은 자동으로 갱신됩니다.
-      </p>
     </div>
   )
 }

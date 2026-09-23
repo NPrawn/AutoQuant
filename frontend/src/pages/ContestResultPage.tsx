@@ -46,9 +46,6 @@ export function ContestResultPage() {
         <div>
           <span className="eyebrow">{status === null ? '대회' : contestStatusLabels[status]}</span>
           <h1>{title}</h1>
-          <p className="sub">
-            제출한 전략을 일반장·상승장·하락장·횡보장에서 모두 같은 조건으로 돌린 결과입니다. 순위는 종합 점수 순입니다.
-          </p>
         </div>
         {contestId && status !== null && status !== 'FINISHED' && (
           <div className="detail-actions">

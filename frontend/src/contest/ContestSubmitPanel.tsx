@@ -40,8 +40,8 @@ export function ContestSubmitPanel({
         {pending ? '제출 중…' : '이 전략으로 제출'}
       </button>
       <span className="workflow-meta">
-        <b>제출 횟수에 제한이 없습니다.</b> 낼 때마다 순위에 따로 오릅니다.
-        {submission && ` · 마지막 제출 ${formatDateTime(submission.submittedAt)}`} · 채점용 데이터는 마감 후 공개
+        제출 횟수 제한 없음 · 채점용 데이터는 마감 후 공개
+        {submission && ` · 마지막 제출 ${formatDateTime(submission.submittedAt)}`}
       </span>
     </div>
   )

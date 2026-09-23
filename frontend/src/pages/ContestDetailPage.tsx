@@ -74,9 +74,6 @@ export function ContestDetailPage() {
         <div>
           <span className="eyebrow">{contestStatusLabels[round.status]}</span>
           <h1>{round.title}</h1>
-          <p className="sub">
-            제출한 전략 하나가 일반장·상승장·하락장·횡보장에서 각각 돌아갑니다. 네 장세 성적을 합쳐 종합 점수를 냅니다.
-          </p>
         </div>
         <div className="detail-actions">
           <span className={open ? 'stream-status live' : 'stream-status'} role="status">
@@ -97,10 +94,6 @@ export function ContestDetailPage() {
           <div className="sec-head" style={{ margin: '0 0 12px' }}>
             <div>
               <div className="sec-title">내 제출 성적</div>
-              <div className="sec-sub">
-                제출하면 바로 채점용 장세 4벌에서 돌립니다. 점수는 남들과 견주지 않아 제출이 끝나는 대로 확정되고,
-                순위만 참가자가 늘면 바뀝니다.
-              </div>
             </div>
           </div>
           <ContestMyScorePanel result={myResult.data} provisional={round.status !== 'FINISHED'} />

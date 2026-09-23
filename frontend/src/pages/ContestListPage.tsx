@@ -25,10 +25,6 @@ export function ContestListPage() {
         <div>
           <span className="eyebrow">대회</span>
           <h1>같은 장세 4개, 같은 전략</h1>
-          <p className="sub">
-            제출한 전략 하나를 일반장·상승장·하락장·횡보장에서 모두 같은 조건으로 돌립니다. 한 장세에만 맞춘 전략은 여기서
-            걸러집니다.
-          </p>
         </div>
       </div>
 
@@ -49,19 +45,6 @@ export function ContestListPage() {
       )}
 
       {live && <LiveRoundCard round={live} />}
-
-      <div className="callout" style={{ marginTop: 24 }}>
-        <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 8v5M12 16h.01" />
-        </svg>
-        <span>
-          <b>채점 기준</b> — 일반장에서 시장보다 얼마나 더 벌었는지가 <b>수익률 점수</b>, 장세 3벌의 낙폭을 시장 낙폭과
-          견준 값이 <b>안정성 점수</b>입니다. <b>종합 점수</b>는 두 점수를 회차마다 정한 비중으로 합치며 비중은 회차 상세의 채점 기준에서 봅니다. 제출하면 바로 채점합니다. 크게
-          잃거나 깊이 빠진 장세는 그 점수가 0점이 되고, 백테스트가 실패했거나 거의 투자하지 않은 전략만 순위에서
-          제외됩니다.
-        </span>
-      </div>
 
       {upcoming.length > 0 && (
         <>

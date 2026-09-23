@@ -56,11 +56,6 @@ export function ContestMyScorePanel({ result, provisional }: ContestMyScorePanel
             <strong>{formatScore(result.topTotalScore)}</strong>
             <em>{provisional ? '지금까지 채점된 제출 중' : '같은 회차'}</em>
           </div>
-          <div>
-            <span>실격 판정</span>
-            <strong className="txt">{disqualification ?? '없음'}</strong>
-            <em>{disqualification === null ? '모든 기준 통과' : '이번 회차 제외'}</em>
-          </div>
         </div>
       </section>
 
@@ -71,8 +66,7 @@ export function ContestMyScorePanel({ result, provisional }: ContestMyScorePanel
             <circle cx="12" cy="12" r="9" />
           </svg>
           <span>
-            <b>{disqualification}</b> 판정으로 이번 회차 순위에서 빠졌습니다. 아래 장세별 성적에서 어느 구간이 기준을
-            넘었는지 확인하고 전략을 고쳐 다시 제출할 수 있습니다.
+            <b>{disqualification}</b> 으로 채점되지 않았습니다. 전략을 고쳐 다시 제출할 수 있습니다.
           </span>
         </div>
       )}
@@ -93,10 +87,6 @@ export function ContestMyScorePanel({ result, provisional }: ContestMyScorePanel
         <div className="sec-head">
           <div>
             <div className="sec-title">국면 점수</div>
-            <div className="sec-sub">
-              구간 낙폭을 그 장세의 시장 낙폭과 견준 값이다. 시장만큼 빠지면 50점, 30%p 덜 빠지면 100점. 안정성
-              점수는 평균 × 0.6 + 최저 × 0.4
-            </div>
           </div>
         </div>
         <ScoreBar label="상승장" tone="bull" value={result.bullRegimeScore} />
@@ -130,9 +120,6 @@ function ScoringPanel({ result }: { result: ContestMyResultResponse }) {
           {result.finishedBacktests} / {result.totalBacktests}
         </span>
       </div>
-      <p className="sec-sub" style={{ marginTop: 12 }}>
-        끝나면 점수와 장세별 성적이 여기에 나옵니다. 이 화면은 자동으로 갱신됩니다.
-      </p>
     </div>
   )
 }

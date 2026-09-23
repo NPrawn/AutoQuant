@@ -122,19 +122,6 @@ export function RankingPage() {
 
       {round !== null && (
         <>
-          <div className="callout">
-            <svg viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 8v5M12 16h.01" />
-            </svg>
-            <span>
-              <b>채점 기준</b> — 일반장에서 시장보다 얼마나 더 벌었는지가 <b>수익률 점수</b>, 상승·하락·횡보 낙폭을
-              시장 낙폭과 견준 국면 점수의 <b>평균 × 0.6 + 최저 × 0.4</b>가 안정성 점수이고{' '}
-              <b>종합 = 수익률 × 0.5 + 안정성 × 0.5</b>입니다. 점수는 남들과 견주지 않는 절대값이라 제출이
-              채점되는 대로 확정되고, 순위만 참가자가 늘면 바뀝니다.
-            </span>
-          </div>
-
           <div className="rfilt">
             <label className="sr-only" htmlFor={`${id}-round`}>
               회차

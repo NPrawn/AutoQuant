@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { formatPercentile, formatRank } from '../src/contest/labels.ts'
+import { formatPercent, formatRank, formatScore } from '../src/contest/labels.ts'
 import {
   defaultRankingQuery,
   isFiltered,
@@ -51,6 +51,9 @@ test('서버 조건에는 기본값과 빈 검색어를 싣지 않는다', () =>
 test('순위는 두 자리로, 백분위는 정수로 읽는다', () => {
   assert.equal(formatRank(1), '01')
   assert.equal(formatRank(12), '12')
-  assert.equal(formatPercentile(66.667), '67')
-  assert.equal(formatPercentile(null), '—')
+  assert.equal(formatScore(66.667), '66.7')
+  assert.equal(formatScore(-101.4), '-101.4')
+  assert.equal(formatScore(null), '—')
+  assert.equal(formatPercent(-0.67), '-67.0%')
+  assert.equal(formatPercent(null), '—')
 })
