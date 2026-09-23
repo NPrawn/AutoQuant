@@ -1,0 +1,86 @@
+{
+  "mode": "real",
+  "candidates": 60,
+  "universe_size": 20,
+  "stage1": {
+    "windows": 360,
+    "samples": 300,
+    "hit_rates": {
+      "BULL": 0.03333333333333333,
+      "BEAR": 0.07666666666666666,
+      "SIDEWAYS": 0.06333333333333334
+    },
+    "held_return": {
+      "p10": -0.41735140848916163,
+      "median": -0.04075279154248079,
+      "p90": 0.8229348270479615
+    }
+  },
+  "datasets": {
+    "GENERAL": {
+      "source_start": "2021-05-03T00:00:00Z",
+      "source_end": "2022-02-28T00:00:00Z",
+      "evaluation_return": -0.5109844756803349,
+      "rebalanced_return": -0.5002418740590506,
+      "stage2": {
+        "compared": 144209,
+        "problems": [],
+        "passed": true
+      },
+      "stage3": {
+        "windows": 360,
+        "disclosed_windows": 252,
+        "hidden_candidates_log10": 17.458601307509973
+      }
+    },
+    "BULL": {
+      "source_start": "2024-01-15T00:00:00Z",
+      "source_end": "2024-11-11T00:00:00Z",
+      "evaluation_return": 0.21211448687816992,
+      "rebalanced_return": 0.2325941423976141,
+      "stage2": {
+        "compared": 144181,
+        "problems": [],
+        "passed": true
+      },
+      "stage3": {
+        "windows": 360,
+        "disclosed_windows": 4,
+        "hidden_candidates_log10": 17.458601307509973
+      }
+    },
+    "BEAR": {
+      "source_start": "2022-10-31T00:00:00Z",
+      "source_end": "2023-08-28T00:00:00Z",
+      "evaluation_return": -0.17383999090349656,
+      "rebalanced_return": -0.16484368862301968,
+      "stage2": {
+        "compared": 144061,
+        "problems": [],
+        "passed": true
+      },
+      "stage3": {
+        "windows": 360,
+        "disclosed_windows": 20,
+        "hidden_candidates_log10": 17.458601307509973
+      }
+    },
+    "SIDEWAYS": {
+      "source_start": "2020-02-17T00:00:00Z",
+      "source_end": "2020-12-14T00:00:00Z",
+      "evaluation_return": -0.006738232767328434,
+      "rebalanced_return": 0.002598856704711938,
+      "stage2": {
+        "compared": 143453,
+        "problems": [],
+        "passed": true
+      },
+      "stage3": {
+        "windows": 360,
+        "disclosed_windows": 16,
+        "hidden_candidates_log10": 17.458601307509973
+      }
+    }
+  },
+  "passed": true
+}

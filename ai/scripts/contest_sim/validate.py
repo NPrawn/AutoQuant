@@ -56,7 +56,7 @@ def grid_strategies(contest: list[tuple[str, str, Strategy]]) -> list[tuple[str,
 
 
 def prepare(source: str, universe_path: str, seed: int, out: str, params: Params = Params(),
-            window_weeks: int = 104, min_assets: int = 10) -> dict:
+            window_weeks: int = 104, min_assets: int = 12) -> dict:
     """Five real runs, five Monday-cut and five Thursday-cut general markets from the seed's source window."""
     candidates = read_universe(universe_path)
     series = load_source(source, set(candidates))
@@ -194,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare_parser.add_argument("--seed", type=int, required=True)
     prepare_parser.add_argument("--out", required=True)
     prepare_parser.add_argument("--window-weeks", type=int, default=104)
-    prepare_parser.add_argument("--min-assets", type=int, default=10)
+    prepare_parser.add_argument("--min-assets", type=int, default=12)
     run_parser = commands.add_parser("run", help="데이터셋마다 캔들을 바꿔 넣고 백테스트한다. 이미 있는 결과는 건너뛴다")
     run_parser.add_argument("--config", required=True)
     run_parser.add_argument("--data", required=True)

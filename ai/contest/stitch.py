@@ -12,6 +12,8 @@ PRICE_PLACES = Decimal("1e-12")
 VOLUME_PLACES = Decimal("1e-18")
 AMOUNT_PLACES = Decimal("1e-8")
 WIDE = Context(prec=60)  # volume has up to 18 decimals on top of 12+ integer digits
+SEAM_FLOOR, SEAM_CEILING = 0.5, 2.0  # a seam may halve or double the level, never more
+SEAM_ALPHA, SEAM_HOURS = 0.5, 24     # chosen from the stage 2 sweep (ADR-0017)
 LOAD_COLUMNS = [
     "asset_id", "interval_minutes", "open_time", "open_price", "high_price", "low_price",
     "close_price", "trade_volume", "trade_amount", "last_event_time",
@@ -31,7 +33,7 @@ class Bar:
     a: Decimal
 
 
-def _decimal(x: float) -> Decimal:
+def to_decimal(x: float) -> Decimal:
     return Decimal(repr(x))
 
 
@@ -42,7 +44,7 @@ def tick_table(series: Series) -> dict[int, Decimal]:
         for candle in track.candles:
             for price in (candle.o, candle.h, candle.l, candle.c):
                 if price > 0:
-                    prices.setdefault(math.floor(math.log10(price)), set()).add(_decimal(price))
+                    prices.setdefault(math.floor(math.log10(price)), set()).add(to_decimal(price))
     table = {}
     for exponent, values in prices.items():
         ordered = sorted(values)
@@ -64,8 +66,39 @@ def tick_for(price: float, table: dict[int, Decimal]) -> Decimal:
 
 def snap(price: float, table: dict[int, Decimal]) -> Decimal:
     tick = tick_for(price, table)
-    steps = (_decimal(price) / tick).to_integral_value(rounding=ROUND_HALF_UP)
+    steps = (to_decimal(price) / tick).to_integral_value(rounding=ROUND_HALF_UP)
     return (tick * max(steps, Decimal(1))).quantize(PRICE_PLACES, context=WIDE)
+
+
+def _returns(closes: list[float]) -> list[float]:
+    return [later / earlier - 1 for earlier, later in zip(closes, closes[1:]) if earlier > 0]
+
+
+def _spread_gain(before: list[float], after: list[float], alpha: float) -> float:
+    """How much to compress or stretch the appended week's first hours, from the two volatility levels."""
+    sd_before = statistics.pstdev(_returns(before)) if len(before) >= 3 else 0.0
+    sd_after = statistics.pstdev(_returns(after)) if len(after) >= 3 else 0.0
+    if sd_before <= 0 or sd_after <= 0:
+        return 1.0
+    return _clamp((sd_before / sd_after) ** alpha)
+
+
+def _level_gain(before: list[float], after: list[float], alpha: float) -> float:
+    """Same for volume, from the two median levels."""
+    if not before or not after:
+        return 1.0
+    median_before, median_after = statistics.median(before), statistics.median(after)
+    if median_before <= 0 or median_after <= 0:
+        return 1.0
+    return _clamp((median_before / median_after) ** alpha)
+
+
+def _clamp(gain: float) -> float:
+    return min(max(gain, SEAM_FLOOR), SEAM_CEILING)
+
+
+def _slice(points: list[tuple[int, float]], start: int, end: int) -> list[float]:
+    return [value for t, value in points if start <= t < end]
 
 
 def _volume_ratio(track: Track, start: int, span: int, ref_weeks: int, generated: list[list[float]]) -> float:
@@ -80,30 +113,65 @@ def _volume_ratio(track: Track, start: int, span: int, ref_weeks: int, generated
 
 
 def stitch(series: Series, universe: list[str], sequence: list[Week], span: int, volume_ref_weeks: int,
-           virtual_start: int, ticks: dict[int, Decimal]) -> list[Bar]:
+           virtual_start: int, ticks: dict[int, Decimal], seam_alpha: float = SEAM_ALPHA,
+           seam_hours: int = SEAM_HOURS) -> list[Bar]:
+    """Chain the sampled weeks. With `seam_alpha` above 0 the first `seam_hours` of each appended week are scaled
+    toward the volatility and volume level the generated market already had, fading out over the ramp."""
     bars: list[Bar] = []
+    ramp = seam_hours * HOUR
     for asset in universe:
         track = series[asset]
         generated_close: float | None = None
         generated_volumes: list[list[float]] = []
+        tail_closes: list[tuple[int, float]] = []
+        tail_volumes: list[tuple[int, float]] = []
         for index, week in enumerate(sequence):
             base = track.last_close_before(week.start)
             k = 1.0 if generated_close is None else generated_close / base
             ratio = _volume_ratio(track, week.start, span, volume_ref_weeks, generated_volumes)
             offset = virtual_start + index * span - week.start
+            candles = track.between(week.start, week.start + span)
+            head = [candle for candle in candles if candle.t < week.start + ramp]
+            spread, level = 1.0, 1.0
+            if seam_alpha > 0 and generated_close is not None and ramp > 0:
+                # the hours just before the seam. Matching the same hours one week back keeps the weekday rhythm
+                # but leaves the incoming week's own rhythm on top of it, and measured worse (ADR-0017)
+                seam = virtual_start + index * span
+                spread = _spread_gain(_slice(tail_closes, seam - ramp, seam),
+                                      [candle.c for candle in head], seam_alpha)
+                level = _level_gain(_slice(tail_volumes, seam - ramp, seam),
+                                    [candle.v * ratio for candle in head], seam_alpha)
+            matched = spread != 1.0 or level != 1.0
             volumes = []
-            for candle in track.between(week.start, week.start + span):
-                prices = [snap(price * k, ticks) for price in (candle.o, candle.h, candle.l, candle.c)]
-                volume = candle.v * ratio
+            current = None if base is None else base * k
+            source_previous = base
+            for candle in candles:
+                weight = max(0.0, 1.0 - (candle.t - week.start) / ramp) if matched else 0.0
+                shape = 1.0 + weight * (spread - 1.0)
+                if matched:
+                    close = current * (candle.c / source_previous) ** shape
+                    scale = close / candle.c
+                else:
+                    scale, close = k, candle.c * k
+                prices = [snap(close * (price / candle.c) ** shape, ticks)
+                          for price in (candle.o, candle.h, candle.l, candle.c)]
+                volume = candle.v * ratio * (1.0 + weight * (level - 1.0))
                 volumes.append(volume)
                 bars.append(Bar(
                     asset, 60, candle.t + offset,
                     prices[0], max(prices), min(prices), prices[3],
-                    _decimal(volume).quantize(VOLUME_PLACES, rounding=ROUND_HALF_UP, context=WIDE),
-                    _decimal(candle.a * k * ratio).quantize(AMOUNT_PLACES, rounding=ROUND_HALF_UP, context=WIDE),
+                    to_decimal(volume).quantize(VOLUME_PLACES, rounding=ROUND_HALF_UP, context=WIDE),
+                    to_decimal(candle.a * scale * ratio * (1.0 + weight * (level - 1.0)))
+                    .quantize(AMOUNT_PLACES, rounding=ROUND_HALF_UP, context=WIDE),
                 ))
+                tail_closes.append((candle.t + offset, close))
+                tail_volumes.append((candle.t + offset, volume))
+                current, source_previous = close, candle.c
             generated_volumes.append(volumes)
-            generated_close = k * track.last_close_before(week.start + span)
+            generated_close = current
+            edge = virtual_start + index * span - ramp
+            tail_closes = [point for point in tail_closes if point[0] >= edge]
+            tail_volumes = [point for point in tail_volumes if point[0] >= edge]
     return bars
 
 

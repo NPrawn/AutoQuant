@@ -181,9 +181,8 @@ def run(config: dict, datasets_dir: str, strategies_path: str, out_path: str, po
                              f"{kind}-seed{summary['seed']}", poll_seconds)
         for name, result in runs.items():
             results[name][kind] = result | {"market_mdd": drawdowns[timeframes[name]]}
-    market_return = summary["datasets"]["GENERAL"]["evaluation_return"]
     report = {"seed": summary["seed"], "window": summary.get("window"), "results": results,
-              "scores": score(results, market_return)}
+              "scores": score(results)}
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     with open(out_path, "w", encoding="utf-8", newline="\n") as file:
         json.dump(report, file, ensure_ascii=False, indent=2)

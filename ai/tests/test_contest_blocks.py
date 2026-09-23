@@ -86,6 +86,21 @@ def test_choose_window_picks_a_window_where_enough_assets_trade_throughout():
         choose_window(series, ["a", "b", "c"], 0, 7, 4, 3, random.Random(0))
 
 
+def test_choose_window_drops_a_candidate_trading_under_one_won():
+    series = {
+        "a": weekly_track("KRW-A", MONDAY, [1.0] * 12),
+        "b": weekly_track("KRW-B", MONDAY, [1.0] * 12),
+        "penny": weekly_track("KRW-P", MONDAY, [1.0] + [0.5] * 11),
+    }
+
+    for seed in range(10):
+        _, universe = choose_window(series, ["a", "b", "penny"], 0, 7, 4, 2, random.Random(seed))
+        assert "penny" not in universe
+
+    with pytest.raises(ValueError):
+        choose_window(series, ["a", "penny"], 0, 7, 4, 2, random.Random(0))
+
+
 def test_label_weeks_splits_equal_weight_returns_into_terciles():
     closes = [100.0, 110.0, 99.0, 100.0, 120.0, 60.0, 63.0, 64.0, 80.0, 80.0]
     series = {"a": weekly_track("KRW-A", MONDAY, closes)}

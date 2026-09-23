@@ -1,19 +1,25 @@
 """Score table for a local contest run (ADR-0002, ADR-0003).
 
-Scores are absolute: each submission is measured against the round's market (equal-weight hold return and
-drawdown) and the disqualification limits, never against the other submissions. Only the ranking is relative, so a score is final as soon as the
-four backtests finish. Same rules as backend ContestScoreCalculator.
+Scores are absolute: the return is measured against the starting capital and the drawdown against holding the
+market at the same exposure, never against the other submissions. Only the ranking is relative, so a score is
+final as soon as the four backtests finish. Same rules as backend ContestScoreCalculator.
+
+Every scale constant is a multiple. Percentage points would mean different things in different rounds because
+the market return moves.
 """
 
 import csv
+import math
 from datetime import datetime
 
 GENERAL = "GENERAL"
 REGIMES = ("BULL", "BEAR", "SIDEWAYS")
 MIN_EXPOSURE = 0.30
 RETURN_WEIGHT = 0.5
-RETURN_SPAN = 0.30  # 시장 대비 -30%가 0점, +30%가 100점
-REGIME_SPAN = 0.30  # 시장 낙폭보다 30%p 더 빠지면 0점, 30%p 덜 빠지면 100점
+RETURN_MULTIPLE = 3.0  # 자산이 3배가 되면 100점
+RETURN_FLOOR = -200.0  # 자산이 9분의 1 아래인 구간이라 순위에 닿지 않는다
+REGIME_MULTIPLE = 2.0  # 같은 비중으로 시장을 든 경우의 두 배로 빠지면 0점
+NO_EXPOSURE_REGIME_SCORE = 50.0  # 그 장세에서 아무것도 사지 않은 경우. 식의 극한이다
 TIMEFRAMES = {60: "1H", 240: "4H", 1440: "1D"}
 
 
@@ -21,14 +27,24 @@ def clamp(value: float) -> float:
     return min(max(value, 0.0), 100.0)
 
 
-def return_score(cumulative_return: float, market_return: float) -> float:
-    """시장과 같으면 50점. 시장 대비 +30%면 100점, -30%면 0점이다."""
-    return clamp(((cumulative_return - market_return) + RETURN_SPAN) / (2 * RETURN_SPAN) * 100)
+def return_score(cumulative_return: float) -> float:
+    """본전이 0점, 자산 3배가 100점이다. 위로는 갇히지 않고 아래로만 -200점에서 자른다."""
+    growth = 1 + cumulative_return
+    if growth <= 0:
+        return RETURN_FLOOR
+    return max(RETURN_FLOOR, 100 * math.log(growth) / math.log(RETURN_MULTIPLE))
 
 
-def regime_score(mdd: float, market_mdd: float) -> float:
-    """그 장세의 시장 낙폭과 같으면 50점. 시장보다 30%p 덜 빠지면 100점, 30%p 더 빠지면 0점이다."""
-    return clamp(((market_mdd - mdd) + REGIME_SPAN) / (2 * REGIME_SPAN) * 100)
+def regime_score(mdd: float, exposure: float, market_mdd: float) -> float:
+    """같은 비중으로 시장을 든 경우와 같으면 50점, 절반만 빠지면 75점, 두 배면 0점이다.
+
+    투자 비중으로 나누는 것이 핵심이다. 덜 사면 낙폭도 그만큼 작아지므로, 나누지 않으면 덜 사는 것만으로
+    점수가 오른다. 비중이 0이면 50점이다 — 노출 x 로 시장을 그대로 들면 낙폭도 x 배라 비율이 x 와 무관하게
+    1 이므로, 0 은 이 식의 극한이지 예외가 아니다.
+    """
+    if exposure <= 0 or market_mdd <= 0:
+        return NO_EXPOSURE_REGIME_SCORE
+    return clamp(100 * (1 - (mdd / (exposure * market_mdd)) / REGIME_MULTIPLE))
 
 
 def _epoch(text: str) -> int:
@@ -93,7 +109,7 @@ def percentiles(values: dict[str, float], higher_is_better: bool) -> dict[str, f
 def disqualification(runs: dict[str, dict]) -> str:
     """점수를 낼 수 없거나(백테스트 미완료) 현금만 들고 시장과 같은 점수를 받는 경우(투자 비중 미달)만 실격이다.
 
-    크게 잃거나 깊이 빠진 전략은 실격 대신 시장 대비 점수가 0점으로 내려간다 (ADR-0003, S15P21A107-249).
+    크게 잃거나 깊이 빠진 전략은 실격 대신 점수가 내려간다. 수익률 점수는 음수까지 간다 (ADR-0003).
     """
     for kind in (GENERAL, *REGIMES):
         run = runs.get(kind)
@@ -104,10 +120,9 @@ def disqualification(runs: dict[str, dict]) -> str:
     return ""
 
 
-def score(results: dict[str, dict[str, dict]], market_return: float) -> list[dict]:
+def score(results: dict[str, dict[str, dict]]) -> list[dict]:
     """results[strategy][kind] = {"status", "return", "mdd", "exposure", "market_mdd"}. Qualified rows first.
 
-    market_return is the general dataset's equal-weight hold return, which carries the round's difficulty.
     market_mdd is that dataset's market drawdown on the strategy's timeframe (market_drawdowns).
     """
     reasons = {name: disqualification(runs) for name, runs in results.items()}
@@ -115,8 +130,9 @@ def score(results: dict[str, dict[str, dict]], market_return: float) -> list[dic
     rows = []
     if qualified:
         for name in qualified:
-            returns = return_score(results[name][GENERAL]["return"], market_return)
-            per_regime = [regime_score(results[name][kind]["mdd"], results[name][kind]["market_mdd"])
+            returns = return_score(results[name][GENERAL]["return"])
+            per_regime = [regime_score(results[name][kind]["mdd"], results[name][kind]["exposure"],
+                                       results[name][kind]["market_mdd"])
                           for kind in REGIMES]
             stability = 0.6 * sum(per_regime) / len(per_regime) + 0.4 * min(per_regime)
             rows.append({"strategy": name, "return_score": returns, "stability_score": stability,

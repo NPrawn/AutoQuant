@@ -20,6 +20,7 @@ from scripts.contest_sim.scoring import market_drawdowns
 KINDS = ("GENERAL", "BULL", "BEAR", "SIDEWAYS")
 CHUNK_ROWS = 500
 HOUR_MINUTES = 60
+WEEK_SECONDS = 7 * 24 * 3600
 
 
 def _quote(value: str) -> str:
@@ -34,6 +35,35 @@ def _number(value: str) -> str:
     return trimmed or "0"
 
 
+def _iso(epoch: int) -> str:
+    from datetime import datetime, timezone
+
+    return datetime.fromtimestamp(epoch, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def load_summary(datasets_dir: str) -> dict:
+    """Read either generator output. Real windows (ADR-0018) are reshaped to look like the stitched summary."""
+    real = os.path.join(datasets_dir, "windows.json")
+    if not os.path.exists(real):
+        with open(os.path.join(datasets_dir, "weeks.json"), encoding="utf-8") as file:
+            return json.load(file)
+    with open(real, encoding="utf-8") as file:
+        summary = json.load(file)
+    markets: dict[str, str] = {}
+    for dataset in summary["datasets"].values():
+        start, end = _epoch(dataset["source_start"]), _epoch(dataset["source_end"])
+        dataset["window"] = {"start": dataset["source_start"], "end": dataset["source_end"]}
+        dataset["weeks"] = [{"source_start": _iso(start + index * WEEK_SECONDS), "label": "REAL"}
+                            for index in range((end - start) // WEEK_SECONDS)]
+        markets.update(dataset["markets"])
+    summary["markets"] = markets
+    summary["window"] = {
+        "start": min(dataset["source_start"] for dataset in summary["datasets"].values()),
+        "end": max(dataset["source_end"] for dataset in summary["datasets"].values()),
+    }
+    return summary
+
+
 def _dataset_ids(round_id: str) -> dict[str, str]:
     """Same round and generator output always name the same datasets, so a rerun writes the same file."""
     return {kind: str(uuid.uuid5(uuid.UUID(round_id), kind)) for kind in KINDS}
@@ -44,15 +74,15 @@ def _warmup_weeks(summary: dict) -> int:
     return len(summary["datasets"]["GENERAL"]["weeks"]) - summary_evaluation_weeks(summary)
 
 
-def _round_sql(round_id: str, title: str, starts_at: str, ends_at: str, summary: dict, max_submissions: int) -> str:
+def _round_sql(round_id: str, title: str, starts_at: str, ends_at: str, summary: dict) -> str:
     warmup_weeks = _warmup_weeks(summary)
     return (
         "INSERT INTO contest.contest_round (\n"
         "    round_id, title, submission_starts_at, submission_ends_at, phase,\n"
-        "    max_submissions, warmup_weeks, evaluation_weeks\n"
+        "    warmup_weeks, evaluation_weeks\n"
         ") VALUES (\n"
         f"    {_quote(round_id)}, {_quote(title)}, {_quote(starts_at)}, {_quote(ends_at)}, 'READY',\n"
-        f"    {max_submissions}, {warmup_weeks}, {summary_evaluation_weeks(summary)}\n"
+        f"    {warmup_weeks}, {summary_evaluation_weeks(summary)}\n"
         ");\n"
     )
 
@@ -80,8 +110,8 @@ def _dataset_sql(round_id: str, dataset_ids: dict[str, str], summary: dict, gene
             f"    ({_quote(dataset_ids[kind])}, {_quote(round_id)}, {_quote(kind)}, "
             f"{_quote(summary['period_start'])}, {_quote(summary['period_end'])}, "
             f"{dataset['evaluation_return']:.8f}, {market['1H']:.8f}, {market['4H']:.8f}, {market['1D']:.8f}, "
-            f"{_quote(summary['window']['start'])}, "
-            f"{_quote(summary['window']['end'])}, {summary['seed']}, {_quote(weeks)}, "
+            f"{_quote(dataset.get('window', summary['window'])['start'])}, "
+            f"{_quote(dataset.get('window', summary['window'])['end'])}, {summary['seed']}, {_quote(weeks)}, "
             f"{_quote(generator_version)}, {dataset['filled_hours']})"
         )
     return (
@@ -112,29 +142,34 @@ def _asset_seed_sql(markets: list[str]) -> str:
     )
 
 
-def _asset_sql(round_id: str, markets: list[str]) -> str:
-    codes = ", ".join(_quote(market) for market in sorted(markets))
-    return (
-        "INSERT INTO contest.market_dataset_asset (dataset_id, asset_id)\n"
-        "SELECT dataset.dataset_id, asset.asset_id\n"
-        "FROM contest.market_dataset AS dataset\n"
-        "JOIN reference.asset AS asset\n"
-        "    ON asset.exchange = 'UPBIT'\n"
-        f"    AND asset.exchange_market_code IN ({codes})\n"
-        f"WHERE dataset.round_id = {_quote(round_id)};\n\n"
-        "DO $$\n"
+def _asset_sql(round_id: str, dataset_ids: dict[str, str], markets: dict[str, list[str]]) -> str:
+    """Each dataset carries its own universe: real windows sit in different years and hold different coins."""
+    parts = []
+    for kind in KINDS:
+        codes = ", ".join(_quote(market) for market in sorted(markets[kind]))
+        parts.append(
+            "INSERT INTO contest.market_dataset_asset (dataset_id, asset_id)\n"
+            f"SELECT {_quote(dataset_ids[kind])}, asset.asset_id\n"
+            "FROM reference.asset AS asset\n"
+            "WHERE asset.exchange = 'UPBIT'\n"
+            f"    AND asset.exchange_market_code IN ({codes});\n"
+        )
+    expected = sum(len(markets[kind]) for kind in KINDS)
+    parts.append(
+        "\nDO $$\n"
         "BEGIN\n"
         "    IF (\n"
         "        SELECT count(*)\n"
         "        FROM contest.market_dataset_asset AS dataset_asset\n"
         "        JOIN contest.market_dataset AS dataset ON dataset.dataset_id = dataset_asset.dataset_id\n"
         f"        WHERE dataset.round_id = {_quote(round_id)}\n"
-        f"    ) <> {len(markets) * len(KINDS)} THEN\n"
+        f"    ) <> {expected} THEN\n"
         "        RAISE EXCEPTION '대회 종목이 reference.asset 에 모두 있어야 한다: % 개 필요',"
-        f" {len(markets) * len(KINDS)};\n"
+        f" {expected};\n"
         "    END IF;\n"
         "END $$;\n"
     )
+    return "".join(parts)
 
 
 def _hourly_sql(dataset_id: str, rows: list[tuple[str, str, str, str, str, str, str, str]]) -> list[str]:
@@ -233,23 +268,25 @@ def _replace_sql(round_id: str) -> str:
     )
 
 
-def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at: str, max_submissions: int,
+def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at: str,
            generator_version: str, out_path: str, replace: bool = False) -> dict:
-    with open(os.path.join(datasets_dir, "weeks.json"), encoding="utf-8") as file:
-        summary = json.load(file)
+    summary = load_summary(datasets_dir)
     markets = summary["markets"]
+    per_dataset = {kind: sorted({markets[asset] for asset in summary["datasets"][kind].get("universe", markets)})
+                   for kind in KINDS}
     dataset_ids = _dataset_ids(round_id)
 
+    decision = "ADR-0018" if summary.get("mode") == "real" else "ADR-0011"
     parts = [
         f"-- 대회 {title} 데이터. 생성기 시드 {summary['seed']}, 구간 {summary['window']['start']}"
-        f" ~ {summary['window']['end']} (ADR-0011, ADR-0014, ADR-0016).\n"
+        f" ~ {summary['window']['end']} ({decision}, ADR-0014, ADR-0016).\n"
         "-- ai/scripts/contest_sim/export_seed_sql.py 가 만든 파일이다. 손으로 고치지 않는다.\n\n",
     ]
     if replace:
         parts.append(_replace_sql(round_id))
         parts.append("\n")
     parts += [
-        _round_sql(round_id, title, starts_at, ends_at, summary, max_submissions),
+        _round_sql(round_id, title, starts_at, ends_at, summary),
         "\n",
         _dataset_sql(round_id, dataset_ids, summary, generator_version, {
             kind: market_drawdowns(os.path.join(datasets_dir, f"{kind}.csv"), summary["period_start"],
@@ -259,7 +296,7 @@ def export(datasets_dir: str, round_id: str, title: str, starts_at: str, ends_at
         "\n",
         _asset_seed_sql(sorted(set(markets.values()))),
         "\n",
-        _asset_sql(round_id, sorted(set(markets.values()))),
+        _asset_sql(round_id, dataset_ids, per_dataset),
         "\n",
     ]
 
@@ -291,7 +328,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--title", required=True)
     parser.add_argument("--submission-starts", required=True, help="예: 2026-09-16T00:00:00Z")
     parser.add_argument("--submission-ends", required=True)
-    parser.add_argument("--max-submissions", type=int, default=5)
     parser.add_argument("--generator-version", required=True, help="예: contest-2026-09-15")
     parser.add_argument("--out", required=True, help="Flyway 마이그레이션 경로")
     parser.add_argument("--replace", action="store_true",
@@ -299,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     report = export(args.datasets, args.round_id, args.title, args.submission_starts, args.submission_ends,
-                    args.max_submissions, args.generator_version, args.out, args.replace)
+                    args.generator_version, args.out, args.replace)
     print(json.dumps(report, ensure_ascii=False))
     return 0
 

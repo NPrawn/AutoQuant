@@ -61,7 +61,7 @@ def test_stitch_rescales_volume_to_the_recent_generated_level():
     series = {"a": weekly_track("KRW-A", MONDAY, [100.0] * 5, volumes=[10.0, 10.0, 1000.0, 1000.0, 1000.0])}
     sequence = [Week(MONDAY + WEEK, UP, 0.0), Week(MONDAY + 3 * WEEK, UP, 0.0)]
 
-    bars = stitch(series, ["a"], sequence, WEEK, 1, VIRTUAL, TICKS)
+    bars = stitch(series, ["a"], sequence, WEEK, 1, VIRTUAL, TICKS, seam_alpha=0.0)
 
     assert abs(bars[0].v - Decimal(10)) < Decimal("1e-9")
     assert abs(bars[168].v - Decimal(10)) < Decimal("1e-9")

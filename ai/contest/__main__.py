@@ -13,7 +13,12 @@ from contest.blocks import (
 )
 from contest.checks import check_bars, feasibility, stage2
 from contest.sampling import KINDS, Params, evaluation_returns, max_factor_period, sample_sequence
-from contest.stitch import Bar, aggregate, fill_gaps, stitch, tick_table, write_load_csv
+from contest.windows import (
+    GenerationError, check_window_bars, choose, identifiability, integrity, lift, reachable,
+)
+from contest.stitch import (
+    SEAM_ALPHA, SEAM_HOURS, Bar, aggregate, fill_gaps, stitch, tick_table, write_load_csv,
+)
 
 BLOCK_START = {"MON": 0, "THU": 3}
 
@@ -57,9 +62,11 @@ def _window_json(params: Params) -> dict | None:
 
 
 def build_bars(series: Series, universe: list[str], sequence: list[Week], params: Params,
-               ticks: dict[int, Decimal], fill: bool) -> tuple[list[Bar], int]:
+               ticks: dict[int, Decimal], fill: bool,
+               seam_alpha: float = SEAM_ALPHA, seam_hours: int = SEAM_HOURS) -> tuple[list[Bar], int]:
     """One dataset: chained hourly bars (gaps filled when `fill`), 4h and daily aggregates, all bar checks passed."""
-    hourly = stitch(series, universe, sequence, params.span, params.volume_ref_weeks, params.virtual_start, ticks)
+    hourly = stitch(series, universe, sequence, params.span, params.volume_ref_weeks, params.virtual_start, ticks,
+                    seam_alpha, seam_hours)
     filled = 0
     if fill:
         hourly, filled = fill_gaps(hourly)
@@ -76,7 +83,8 @@ def _check(args: argparse.Namespace) -> int:
         "window": _window_json(params),
         "universe": universe,
         "stage1": feasibility(series, universe, params, args.seed, args.min_weeks),
-        "stage2": stage2(series, universe, params, args.seed, args.generated, args.seam_datasets),
+        "stage2": stage2(series, universe, params, args.seed, args.generated, args.seam_datasets,
+                         args.seam_alpha, args.seam_hours),
     }
     report["passed"] = report["stage1"]["passed"] and report["stage2"]["passed"]
     text = json.dumps(report, ensure_ascii=False, indent=2)
@@ -86,6 +94,94 @@ def _check(args: argparse.Namespace) -> int:
             file.write(text + "\n")
     print(text)
     return 0 if report["passed"] else 1
+
+
+def _check_real(args: argparse.Namespace) -> int:
+    """ADR-0018 stages 1-3: are there enough windows, did moving them change anything, can one be pinned down."""
+    params = _params(args)
+    series, candidates = _load(args)
+    report = {
+        "mode": "real",
+        "candidates": len(candidates),
+        "universe_size": args.universe_size,
+        "stage1": reachable(series, candidates, params, random.Random(args.seed),
+                            universe_size=args.universe_size, samples=args.generated),
+        "datasets": {},
+    }
+    try:
+        selections = choose(series, candidates, params, random.Random(args.seed),
+                            universe_size=args.universe_size, tries=args.candidates)
+    except GenerationError as error:
+        report["passed"] = False
+        report["reason"] = str(error)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 1
+
+    for selection in selections:
+        hourly = lift(series, selection.universe, selection, params.virtual_start)
+        report["datasets"][selection.kind] = {
+            "source_start": format_time(selection.start),
+            "source_end": format_time(selection.end),
+            "evaluation_return": selection.held,
+            "rebalanced_return": selection.rebalanced,
+            "stage2": integrity(series, selection, hourly, params.virtual_start),
+            "stage3": identifiability(series, candidates, params, selection.universe, selection.kind),
+        }
+    report["passed"] = all(dataset["stage2"]["passed"] for dataset in report["datasets"].values())
+    text = json.dumps(report, ensure_ascii=False, indent=2)
+    if args.out:
+        os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
+        with open(args.out, "w", encoding="utf-8", newline="\n") as file:
+            file.write(text + "\n")
+    print(text)
+    return 0 if report["passed"] else 1
+
+
+def _build_real(args: argparse.Namespace) -> int:
+    """ADR-0018: each dataset is one real window, copied onto virtual dates."""
+    params = _params(args)
+    series, candidates = _load(args)
+    try:
+        selections = choose(series, candidates, params, random.Random(args.seed),
+                            universe_size=args.universe_size, tries=args.candidates)
+    except GenerationError as error:
+        raise SystemExit(str(error)) from error
+
+    period_start = params.virtual_start + params.warmup_weeks * params.span
+    summary = {
+        "seed": args.seed,
+        "mode": "real",
+        "period_start": format_time(period_start),
+        "period_end": format_time(period_start + params.eval_weeks * params.span),
+        "max_factor_period": max_factor_period(params),
+        "datasets": {},
+    }
+    os.makedirs(args.out, exist_ok=True)
+    for selection in selections:
+        hourly = lift(series, selection.universe, selection, params.virtual_start)
+        filled = 0
+        if args.fill_gaps:
+            hourly, filled = fill_gaps(hourly)
+        bars = hourly + aggregate(hourly, 240) + aggregate(hourly, 1440)
+        problems = check_window_bars(bars)
+        if problems:
+            raise SystemExit(f"{selection.kind}: {len(problems)} bar check failures, first: {problems[:5]}")
+        write_load_csv(os.path.join(args.out, f"{selection.kind}.csv"), bars)
+        summary["datasets"][selection.kind] = {
+            "source_start": format_time(selection.start),
+            "source_end": format_time(selection.end),
+            "evaluation_return": selection.held,
+            "rebalanced_return": selection.rebalanced,
+            "filled_hours": filled,
+            "universe": selection.universe,
+            "markets": {asset: series[asset].market for asset in selection.universe},
+        }
+    with open(os.path.join(args.out, "windows.json"), "w", encoding="utf-8", newline="\n") as file:
+        json.dump(summary, file, ensure_ascii=False, indent=2)
+        file.write("\n")
+    keys = ("seed", "period_start", "period_end", "max_factor_period")
+    print(json.dumps({key: summary[key] for key in keys}, ensure_ascii=False))
+    return 0
 
 
 def _build(args: argparse.Namespace) -> int:
@@ -104,13 +200,15 @@ def _build(args: argparse.Namespace) -> int:
         "period_start": format_time(period_start),
         "period_end": format_time(period_start + params.eval_weeks * params.span),
         "max_factor_period": max_factor_period(params),
+        "seam": {"alpha": args.seam_alpha, "hours": args.seam_hours},
         "datasets": {},
     }
     os.makedirs(args.out, exist_ok=True)
     for kind in KINDS:
         sequence = sample_sequence(kind, weeks, matrix, series, universe, params, rng)
         try:
-            bars, filled = build_bars(series, universe, sequence, params, ticks, args.fill_gaps)
+            bars, filled = build_bars(series, universe, sequence, params, ticks, args.fill_gaps,
+                                      args.seam_alpha, args.seam_hours)
         except ValueError as error:
             raise SystemExit(f"{kind}: {error}") from error
         write_load_csv(os.path.join(args.out, f"{kind}.csv"), bars)
@@ -146,19 +244,32 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--candidates", type=int, default=Params().candidates)
         command.add_argument("--window-weeks", type=int, default=104,
                              help="과거에서 랜덤하게 고를 구간 길이(주). 0이면 전체 기간을 쓴다")
-        command.add_argument("--min-assets", type=int, default=10,
+        command.add_argument("--min-assets", type=int, default=12,
                              help="구간 내내 거래된 종목이 이 수 이상인 구간만 고른다")
+        command.add_argument("--seam-alpha", type=float, default=SEAM_ALPHA,
+                             help="이음매 정합 강도. 0이면 정합하지 않고 1이면 직전 주 수준에 맞춘다")
+        command.add_argument("--seam-hours", type=int, default=SEAM_HOURS,
+                             help="이음매 정합이 옅어지는 시간(시간). 이 시간이 지나면 원래 주 그대로다")
+        command.add_argument(
+            "--mode", choices=("real", "stitch"), default="real",
+            help="real 은 공개하지 않은 실제 구간을 그대로 쓴다 (ADR-0018). stitch 는 주를 섞던 옛 방식이다 (ADR-0011)",
+        )
+        command.add_argument("--universe-size", type=int, default=20,
+                             help="real 모드에서 회차 universe 에 넣을 종목 수")
     commands.choices["check"].add_argument("--min-weeks", type=int, default=30)
     commands.choices["check"].add_argument("--generated", type=int, default=200)
     commands.choices["check"].add_argument("--seam-datasets", type=int, default=50)
     commands.choices["check"].add_argument("--out", help="결과 JSON을 저장할 경로")
-    commands.choices["build"].add_argument("--out", required=True, help="CSV 4개와 weeks.json을 쓸 디렉터리")
+    commands.choices["build"].add_argument("--out", required=True, help="CSV 4개와 요약 JSON을 쓸 디렉터리")
+
     commands.choices["build"].add_argument(
         "--fill-gaps", action="store_true",
         help="거래 없는 시간을 직전 종가·거래량 0 봉으로 채운다. 엔진이 빈 시간을 처리하기 전까지 쓰는 임시 옵션",
     )
 
     args = parser.parse_args(argv)
+    if args.mode == "real":
+        return _build_real(args) if args.command == "build" else _check_real(args)
     return {"check": _check, "build": _build}[args.command](args)
 
 
