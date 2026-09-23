@@ -834,3 +834,101 @@ a.acct-item {
     overflow: visible;
   }
 }
+
+/*
+ * 전략 드롭다운. 브라우저 select 는 옵션 안에 글자만 둘 수 있어 버튼과 리스트박스로 그린다.
+ * 닫힌 버튼은 .workflow-field select 와 같은 크기이고 리스트는 계정 메뉴와 같은 겹 위에 뜬다.
+ */
+.strategy-select {
+  position: relative;
+}
+.strategy-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 39px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+.strategy-select-btn:focus-visible,
+.strategy-select-btn[aria-expanded='true'] {
+  border-color: var(--line-2);
+}
+.strategy-select-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.strategy-select-btn > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  stroke: var(--ink-2);
+}
+.strategy-select-label {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.strategy-select-label .ver-dim {
+  margin-left: auto;
+}
+.strategy-select-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  max-height: 280px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--panel-3);
+  box-shadow: var(--shadow-3);
+}
+.strategy-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+.strategy-option.active {
+  background: rgba(255, 255, 255, 0.055);
+}
+:root[data-theme='light'] .strategy-option.active {
+  background: rgba(20, 27, 38, 0.06);
+}
+.strategy-option .ver-dim {
+  margin-left: auto;
+}
+.strategy-option > svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  stroke: var(--ink-2);
+}
+
+/* 버전은 이름과 겨루지 않게 흐린 고정폭 글자다. 표와 결과 줄은 이름 바로 옆, 드롭다운은 오른쪽 끝에 둔다. */
+.ver-dim {
+  margin-left: 8px;
+  color: var(--ink-3);
+  font: 400 12px "IBM Plex Mono", monospace;
+}

@@ -1,6 +1,6 @@
 import { useId } from 'react'
 
-import { pickerLabel } from '../strategy/lineage'
+import { StrategySelect } from '../components/StrategySelect'
 import type { Strategy } from '../strategy/types'
 import { formatDateTime } from './labels'
 import type { ContestSubmissionResponse } from './types'
@@ -34,18 +34,7 @@ export function ContestSubmitPanel({
     <div className="card submit-panel">
       <div className="workflow-field">
         <label htmlFor={`${id}-strategy`}>제출할 전략</label>
-        <select
-          id={`${id}-strategy`}
-          value={strategyId}
-          disabled={pending || disabled}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          {strategies.map((strategy) => (
-            <option key={strategy.id} value={strategy.id}>
-              {pickerLabel(strategy)}
-            </option>
-          ))}
-        </select>
+        <StrategySelect id={`${id}-strategy`} strategies={strategies} value={strategyId} disabled={pending || disabled} onChange={onChange} />
       </div>
       <button className="btn primary" type="button" disabled={pending || disabled} onClick={onSubmit}>
         {pending ? '제출 중…' : '이 전략으로 제출'}

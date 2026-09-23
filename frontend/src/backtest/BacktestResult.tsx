@@ -4,6 +4,8 @@ import { routes, to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
 import { ErrorState } from '../components/StateBlock'
 import type { SimulationEntryState } from '../simulation/simulationEntry'
+import type { StrategyLabel } from '../strategy/lineage'
+import { StrategyName } from '../strategy/StrategyName'
 import { blank, formatDate, formatKrw, formatRate } from './labels'
 import { formatIndex, indexBenchmark, indexEquity, rebalanceCycles } from './performance'
 import { PerformanceChart } from './PerformanceChart'
@@ -20,7 +22,7 @@ import type { BacktestRun, EquityPoint } from './types'
 
 type BacktestResultProps = {
   run: BacktestRun
-  strategyName: string
+  strategyName: StrategyLabel
   tradePage: number
   onTradePageChange: (page: number) => void
 }
@@ -68,7 +70,10 @@ export function BacktestResult({ run, strategyName, tradePage, onTradePageChange
       {/* 폼 값을 바꿔도 이 결과가 어떤 조건이었는지 여기서 읽는다. 전략 이름은 실행이 가리키는 전략이다. */}
       <div className="result-context">
         <span>
-          실행 전략 <b>{strategyName}</b>
+          실행 전략{' '}
+          <b>
+            <StrategyName label={strategyName} />
+          </b>
         </span>
         <span className="mono">
           {formatDate(run.periodStart)} ~ {formatDate(run.periodEnd)} · 초기자산 {formatKrw(run.initialCapital)} KRW

@@ -1,7 +1,8 @@
 import { useId } from 'react'
 
 import { formatKrw } from '../backtest/labels'
-import { pickerLabel, versionLabel } from '../strategy/lineage'
+import { StrategySelect } from '../components/StrategySelect'
+import { versionLabel } from '../strategy/lineage'
 import { summarizeDsl } from '../strategy/summary'
 import type { Strategy } from '../strategy/types'
 import { setInitialCapital, setStrategyId, validateStartForm, type SimulationStartForm } from './startForm'
@@ -31,13 +32,13 @@ export function SimulationStartPanel({ strategies, form, pending, showIssues, on
     <div className="workflow-panel">
       <div className="workflow-field">
         <label htmlFor={`${id}-strategy`}>사용할 전략</label>
-        <select id={`${id}-strategy`} value={form.strategyId} disabled={pending} onChange={(event) => onChange(setStrategyId(form, event.target.value))}>
-          {strategies.map((strategy) => (
-            <option key={strategy.id} value={strategy.id}>
-              {pickerLabel(strategy)}
-            </option>
-          ))}
-        </select>
+        <StrategySelect
+          id={`${id}-strategy`}
+          strategies={strategies}
+          value={form.strategyId}
+          disabled={pending}
+          onChange={(strategyId) => onChange(setStrategyId(form, strategyId))}
+        />
       </div>
       <div className="workflow-field">
         <label htmlFor={`${id}-capital`}>초기 모의자산 (KRW)</label>
