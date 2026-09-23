@@ -3,7 +3,7 @@ import type { ContestProgressResponse } from './types'
 
 /*
  * 목업 32. 5단계 표시 대신 끝난 백테스트 비율을 보여 준다 (대회 기능 설계 9절).
- * 제출마다 데이터셋 4벌을 돌리므로 전체 수는 참가 수 × 4다.
+ * 제출마다 데이터셋 4벌을 돌리므로 전체 수는 제출 수 × 4다.
  */
 export function ContestProgressPanel({ progress }: { progress: ContestProgressResponse }) {
   const ratio = progressRatio(progress.finishedBacktests, progress.totalBacktests)

@@ -185,16 +185,12 @@ function LiveRoundCard({ round }: { round: ContestRoundItemResponse }) {
         </p>
         <div className="ct-facts">
           <div>
-            <span>참가</span>
+            <span>제출</span>
             <strong>{round.entryCount}</strong>
           </div>
           <div>
             <span>내 제출</span>
             <strong className="txt">{round.mySubmission?.strategyName ?? '없음'}</strong>
-          </div>
-          <div>
-            <span>남은 제출</span>
-            <strong>{round.mySubmission ? round.mySubmission.remainingSubmissions : '—'}</strong>
           </div>
           <div>
             <span>채점 장세</span>

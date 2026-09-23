@@ -15,8 +15,8 @@ type ContestSubmitDialogProps = {
 }
 
 /*
- * 목업 36 의 제출 확인. 제출하면 그 시점 전략이 동결되고 교체 횟수가 하나 줄어든다.
- * 같은 전략을 다시 내도 횟수에 들어가므로 무엇이 줄어드는지 숫자로 보인다.
+ * 목업 36 의 제출 확인. 제출하면 그 시점 전략이 동결되고 별개의 제출로 순위에 오른다.
+ * 횟수 제한이 없어 무엇이 줄어드는지 보일 것이 없고, 대신 동결된다는 사실을 확인받는다.
  */
 export function ContestSubmitDialog({ open, round, strategy, pending, onConfirm, onCancel }: ContestSubmitDialogProps) {
   const agreeId = useId()
@@ -26,8 +26,6 @@ export function ContestSubmitDialog({ open, round, strategy, pending, onConfirm,
     setWasOpen(open)
     setAgreed(false)
   }
-
-  const remaining = round.mySubmission?.remainingSubmissions ?? round.maxSubmissions
 
   return (
     <ConfirmDialog
@@ -50,12 +48,6 @@ export function ContestSubmitDialog({ open, round, strategy, pending, onConfirm,
             <span>일반 · 상승 · 하락 · 횡보 (마감 후 공개)</span>
           </div>
           <div className="krow">
-            <span>남은 제출</span>
-            <span className="mono">
-              {remaining} / {round.maxSubmissions}회 → {Math.max(remaining - 1, 0)} / {round.maxSubmissions}회
-            </span>
-          </div>
-          <div className="krow">
             <span>제출 마감</span>
             <span>{formatDateTime(round.submissionEndsAt)}</span>
           </div>
@@ -67,7 +59,7 @@ export function ContestSubmitDialog({ open, round, strategy, pending, onConfirm,
               disabled={pending}
               onChange={(event) => setAgreed(event.target.checked)}
             />{' '}
-            같은 전략을 다시 제출해도 횟수가 줄어드는 것을 확인했으며 이 버전으로 제출합니다.
+            이 제출이 순위에 따로 오르고 이후 전략을 수정해도 바뀌지 않는 것을 확인했습니다.
           </label>
         </>
       }

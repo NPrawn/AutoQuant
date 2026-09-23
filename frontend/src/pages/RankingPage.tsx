@@ -87,7 +87,7 @@ export function RankingPage() {
           <span className="eyebrow">
             {round === null
               ? '대회 결과'
-              : `${round.title} ${round.status === 'FINISHED' ? '채점 완료' : '잠정 순위'} · ${round.entryCount}팀`}
+              : `${round.title} ${round.status === 'FINISHED' ? '채점 완료' : '잠정 순위'} · ${round.entryCount}건`}
           </span>
           <h1>어떤 장세에도 버티는 전략</h1>
           <p className="sub">
