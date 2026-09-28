@@ -9,6 +9,7 @@ fi
 
 compose_file="$1"
 env_file="$2"
+http_max_attempts=48
 
 for command in docker curl grep seq; do
     if ! command -v "$command" >/dev/null 2>&1; then
@@ -17,7 +18,7 @@ for command in docker curl grep seq; do
     fi
 done
 
-for attempt in $(seq 1 12); do
+for attempt in $(seq 1 "$http_max_attempts"); do
     frontend_status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:3000 || true)
     backend_status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 5 http://127.0.0.1:18080 || true)
 
@@ -26,7 +27,7 @@ for attempt in $(seq 1 12); do
         break
     fi
 
-    if [ "$attempt" = "12" ]; then
+    if [ "$attempt" = "$http_max_attempts" ]; then
         echo "HTTP smoke test failed: frontend=$frontend_status backend=$backend_status" >&2
         exit 1
     fi

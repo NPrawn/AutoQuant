@@ -2,6 +2,8 @@
 
 `develop` 배포 후 Jenkins는 `infra/verify-production-services.sh`를 실행한다.
 
+Backend는 컨테이너 재생성 후 Spring 초기화와 Flyway 검증을 마친 뒤 응답한다. HTTP 점검은 이를 고려해 최대 4분 동안 재시도한다.
+
 ## 판정 기준
 
 - Frontend는 `200`, Backend API는 `200` 또는 인증 미포함 상태의 `401`을 반환한다.
