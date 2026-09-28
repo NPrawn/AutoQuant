@@ -150,6 +150,26 @@ pipeline {
                     fi
 
                     export IMAGE_TAG
+
+                    docker compose --env-file "$PRODUCTION_ENV_FILE" \
+                      -f "$PRODUCTION_COMPOSE" up -d kafka
+
+                    kafka_health=""
+                    for attempt in $(seq 1 30); do
+                        kafka_health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' a107-kafka 2>/dev/null || true)"
+                        if [ "$kafka_health" = "healthy" ]; then
+                            break
+                        fi
+
+                        echo "Waiting for Kafka health ($attempt/30): ${kafka_health:-missing}"
+                        sleep 5
+                    done
+
+                    if [ "$kafka_health" != "healthy" ]; then
+                        echo "Kafka is not healthy; aborting before application containers are recreated."
+                        exit 1
+                    fi
+
                     docker compose --env-file "$PRODUCTION_ENV_FILE" \
                       -f "$PRODUCTION_COMPOSE" up -d --pull missing --remove-orphans \
                       --scale backtest-worker="$BACKTEST_WORKER_REPLICAS"
