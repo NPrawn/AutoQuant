@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 
 import { routes, to } from '../app/routes'
 import { LoadingState } from '../components/LoadingState'
@@ -21,6 +21,7 @@ import { useStrategies } from '../strategy/queries'
 export function ContestDetailPage() {
   const { contestId } = useParams<{ contestId: string }>()
   const contest = useContest(contestId)
+  const navigate = useNavigate()
   const now = useNow()
   const strategies = useStrategies()
   const submit = useSubmitContestEntry(contestId ?? '')
@@ -163,7 +164,8 @@ export function ContestDetailPage() {
         onConfirm={() =>
           submit.mutate(
             { strategyId: Number(strategyId) },
-            { onSettled: () => setConfirmOpen(false) },
+            /* 제출하면 결과 화면으로 넘어가 내 채점을 바로 본다. */
+            { onSuccess: () => navigate(to.contestResult(round.roundId)), onSettled: () => setConfirmOpen(false) },
           )
         }
         onCancel={() => {
