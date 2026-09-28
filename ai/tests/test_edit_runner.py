@@ -29,7 +29,7 @@ def applied(case_data: dict) -> dict:
 def test_every_edit_case_starts_from_a_valid_strategy():
     cases = load_edit_cases(FIXTURES_DIR)
 
-    assert len(cases) == 12
+    assert len(cases) == 13
     assert all(Strategy.model_validate(item["startStrategy"]) for item in cases)
 
 

@@ -47,6 +47,7 @@ Standard readings. Use one only when its phrase appears in the request as writte
 - 상승 추세, 상승 추세가 강하다, with no period in the request: RETURN 20 GT 0.
 - 손실은 짧게 끊고 상승 추세는 오래 가져간다: RETURN 60 GT 0, ranked by RETURN 60 DESC. A stop loss is not expressible as a filter; say so in assumptions.
 - 한 달 동안 계속 강했다: RETURN 30 GT 0, ranked by RETURN 30 DESC.
+- 과열, 과열된 코인은 빼다: RSI 14 LT 70.
 
 Write every line in assumptions in Korean, regardless of the language of these instructions. End every line with the polite "-습니다" form, as in "기본 시간프레임 1D를 사용했습니다."; never the plain "-다" form such as "사용했다".
 
