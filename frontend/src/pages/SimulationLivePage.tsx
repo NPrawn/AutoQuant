@@ -30,7 +30,8 @@ import { SimulationTradeTable } from '../simulation/SimulationTradeTable'
 import type { SimulationEntryState } from '../simulation/simulationEntry'
 import type { SimulationResult, SimulationRun } from '../simulation/types'
 import { rebalanceOf, timeframeLabel } from '../strategy/labels'
-import { useStrategy } from '../strategy/queries'
+import { latestLabels } from '../strategy/lineage'
+import { useStrategies, useStrategy } from '../strategy/queries'
 import { summarizeDsl } from '../strategy/summary'
 import type { Strategy } from '../strategy/types'
 
@@ -50,6 +51,8 @@ export function SimulationLivePage() {
   const { simulationId } = useParams<{ simulationId: string }>()
   const run = useSimulationRun(simulationId)
   const strategy = useStrategy(run.data?.strategyId)
+  /* 이름을 고치면 새 버전이 생긴다. 제목은 옛 버전으로 도는 실행도 최신 이름으로 적는다. */
+  const strategies = useStrategies()
   const lookup = useAssetLookup()
 
   if (!simulationId) {
@@ -75,18 +78,20 @@ export function SimulationLivePage() {
     )
   }
 
-  return <LiveView run={run.data} strategy={strategy.data ?? null} lookup={lookup} />
+  const latestName = latestLabels(strategies.data ?? []).get(run.data.strategyId)?.name ?? null
+  return <LiveView run={run.data} strategy={strategy.data ?? null} latestName={latestName} lookup={lookup} />
 }
 
 type LiveViewProps = {
   run: SimulationRun
   strategy: Strategy | null
+  latestName: string | null
   lookup: AssetLookup
 }
 
 const noAssets: ChartAsset[] = []
 
-function LiveView({ run, strategy, lookup }: LiveViewProps) {
+function LiveView({ run, strategy, latestName, lookup }: LiveViewProps) {
   const live = run.status === 'RUNNING'
   const positions = useSimulationPositions(run.id, live)
   const result = useSimulationResult(run.id, live)
@@ -127,7 +132,7 @@ function LiveView({ run, strategy, lookup }: LiveViewProps) {
     mutation.mutate(run.id, { onError: (error) => setTransitionError(describeTransitionError(error, action)) })
   }
 
-  const strategyName = strategy?.name ?? `전략 #${run.strategyId}`
+  const strategyName = latestName ?? strategy?.name ?? `전략 #${run.strategyId}`
   const status = statusOf(run.status)
 
   return (

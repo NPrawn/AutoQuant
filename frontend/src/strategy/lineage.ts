@@ -85,3 +85,17 @@ export function strategyLabelOf(strategies: readonly Strategy[], strategyId: str
   const found = strategies.find((strategy) => strategy.id === strategyId)
   return found === undefined ? { name: fallback, version: null } : labelOf(found)
 }
+
+/*
+ * 실행 기록에 적는 전략 표기. 이름을 고치면 새 버전이 생기므로 이름은 같은 뿌리의 최신 버전에서,
+ * 버전은 실행이 돌고 있는 그 버전에서 가져온다. 대회 순위표와 같은 규칙이다.
+ */
+export function latestLabels(strategies: readonly Strategy[]): Map<string, StrategyLabel> {
+  const labels = new Map<string, StrategyLabel>()
+  for (const lineage of groupByLineage(strategies)) {
+    for (const version of lineage.versions) {
+      labels.set(version.id, { name: lineage.head.name, version: version.version })
+    }
+  }
+  return labels
+}

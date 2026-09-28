@@ -43,7 +43,7 @@ public class SimulationRunReadService {
     }
 
     public Page<SimulationRun> getSimulationRuns(UUID memberId, Pageable pageable) {
-        return simulationRunRepository.findAllByMemberMemberIdOrderByCreatedAtDesc(memberId, pageable);
+        return simulationRunRepository.findMemberRunsRunningFirst(memberId, pageable);
     }
 
     public SimulationRun getSimulationRun(UUID memberId, UUID simulationId) {
