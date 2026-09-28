@@ -406,5 +406,60 @@
       "rebalance": {"period": "MONTHLY"}
     },
     "changed": {}
+  },
+  {
+    "id": "E-13",
+    "category": "filter-add",
+    "userInput": "너무 과열된 코인은 빼줘",
+    "preservation": "strict",
+    "startStrategy": {
+      "timeframe": "1D",
+      "filters": {
+        "type": "GROUP",
+        "logic": "AND",
+        "children": [
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "RETURN", "period": 60},
+            "operator": "GT",
+            "right": {"type": "VALUE", "value": 0}
+          },
+          {
+            "type": "CONDITION",
+            "left": {"type": "FACTOR", "factor": "VOLATILITY", "period": 20},
+            "operator": "LT",
+            "right": {"type": "VALUE", "value": 5}
+          }
+        ]
+      },
+      "ranking": {"factor": "RETURN", "period": 60, "direction": "DESC"},
+      "selection": {"topN": 5},
+      "rebalance": {"period": "WEEKLY"}
+    },
+    "changed": {},
+    "expectedFilters": {
+      "type": "GROUP",
+      "logic": "AND",
+      "children": [
+        {
+          "type": "CONDITION",
+          "left": {"type": "FACTOR", "factor": "RETURN", "period": 60},
+          "operator": "GT",
+          "right": {"type": "VALUE", "value": 0}
+        },
+        {
+          "type": "CONDITION",
+          "left": {"type": "FACTOR", "factor": "VOLATILITY", "period": 20},
+          "operator": "LT",
+          "right": {"type": "VALUE", "value": 5}
+        },
+        {
+          "type": "CONDITION",
+          "left": {"type": "FACTOR", "factor": "RSI", "period": 14},
+          "operator": "LT",
+          "right": {"type": "VALUE", "value": 70}
+        }
+      ]
+    }
   }
 ]
