@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { forVersions, groupByLineage, labelOf, lineageIds, lineageOf, pickerOptions, strategyLabelOf, versionLabel, versionOf } from '../src/strategy/lineage.ts'
+import { forVersions, groupByLineage, labelOf, latestLabels, lineageIds, lineageOf, pickerOptions, strategyLabelOf, versionLabel, versionOf } from '../src/strategy/lineage.ts'
 
 const strategy = (id, rootId, version, createdAt = '2026-09-01T00:00:00Z') => ({
   id,
@@ -91,4 +91,13 @@ test('전략 표기는 이름과 버전을 따로 들고 지워진 전략은 버
   assert.deepEqual(labelOf(strategy('3', '1', 2)), { name: '전략 1', version: 2 })
   assert.deepEqual(strategyLabelOf(all, '3', '삭제된 전략'), { name: '전략 1', version: 2 })
   assert.deepEqual(strategyLabelOf(all, '404', '삭제된 전략'), { name: '삭제된 전략', version: null })
+})
+
+test('실행 기록 표기는 최신 버전의 이름과 실행한 버전 번호다', () => {
+  const renamed = { ...strategy('5', '1', 2), name: '새 이름' }
+  const labels = latestLabels([strategy('1', '1', 1), renamed, strategy('2', '2', 1)])
+
+  assert.deepEqual(labels.get('1'), { name: '새 이름', version: 1 })
+  assert.deepEqual(labels.get('5'), { name: '새 이름', version: 2 })
+  assert.deepEqual(labels.get('2'), { name: '전략 2', version: 1 })
 })

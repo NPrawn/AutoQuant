@@ -23,8 +23,15 @@ public interface SimulationRunRepository extends JpaRepository<SimulationRun, UU
     @EntityGraph(attributePaths = "strategy")
     Optional<SimulationRun> findBySimulationIdAndMemberMemberId(UUID simulationId, UUID memberId);
 
+    /* 목록은 운용 중인 실행을 먼저 올리고, 같은 상태 안에서는 최근에 만든 순서다. */
     @EntityGraph(attributePaths = "strategy")
-    Page<SimulationRun> findAllByMemberMemberIdOrderByCreatedAtDesc(UUID memberId, Pageable pageable);
+    @Query(value = "select simulationRun from SimulationRun simulationRun "
+            + "where simulationRun.member.memberId = :memberId "
+            + "order by case when simulationRun.status = com.ssafy.a107.trading.simulation.domain.SimulationRunStatus.RUNNING then 0 else 1 end, "
+            + "simulationRun.createdAt desc",
+            countQuery = "select count(simulationRun) from SimulationRun simulationRun "
+                    + "where simulationRun.member.memberId = :memberId")
+    Page<SimulationRun> findMemberRunsRunningFirst(@Param("memberId") UUID memberId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = "strategy")

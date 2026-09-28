@@ -13,7 +13,7 @@ import { readSimulationEntry } from '../simulation/simulationEntry'
 import { SimulationStartDialog } from '../simulation/SimulationStartDialog'
 import { SimulationStartPanel } from '../simulation/SimulationStartPanel'
 import { createStartForm, setStrategyId, toCreateRequest, validateStartForm } from '../simulation/startForm'
-import { labelOf, pickerOptions } from '../strategy/lineage'
+import { latestLabels, pickerOptions } from '../strategy/lineage'
 import { useStrategies } from '../strategy/queries'
 
 /*
@@ -44,8 +44,8 @@ export function SimulationListPage() {
   }
 
   const selectedStrategy = options.find((strategy) => strategy.id === form.strategyId) ?? null
-  /* 카드의 전략 이름은 옛 버전으로 돌린 실행도 있어 모든 버전으로 찾는다. */
-  const strategyNames = new Map((strategies.data ?? []).map((strategy) => [strategy.id, labelOf(strategy)]))
+  /* 카드의 전략 이름은 옛 버전으로 돌린 실행도 최신 이름으로 적는다. */
+  const strategyNames = latestLabels(strategies.data ?? [])
 
   const requestStart = () => {
     setShowIssues(true)
