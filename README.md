@@ -118,9 +118,9 @@ Spring Boot API는 관련 도메인을 하나의 애플리케이션에서 관리
 
 **접근**
 
-- 실행 기록의 \`queued_at\`, \`started_at\`, \`completed_at\`으로 **큐 대기 시간과 실제 실행 시간**을 분리해 분석
+- 실행 기록의 `queued_at`, `started_at`, `completed_at`으로 **큐 대기 시간과 실제 실행 시간**을 분리해 분석
 - Worker 1·2·4개 구성을 비교해 처리량뿐 아니라 CPU·DB I/O 경합 및 처리 시간 편차 확인
-- Worker의 DB 연결 풀 제한과 RabbitMQ \`prefetch=1\`을 적용해 자원 사용과 메시지 선점 조절
+- Worker의 DB 연결 풀 제한과 RabbitMQ `prefetch=1`을 적용해 자원 사용과 메시지 선점 조절
 - 동일 캔들 윈도우의 시계열 표현을 재사용해 반복 변환을 줄이는 방향으로 엔진 개선
 - 후보군 스냅샷을 **500건 단위 JDBC Batch**로 저장하고, NULL 순위·빈 목록 등의 경계 조건 검증
 - 배포 후 Worker 수가 달라지지 않도록 Jenkins의 기본 Worker 복제 수 명시
@@ -143,10 +143,10 @@ Spring Boot API는 관련 도메인을 하나의 애플리케이션에서 관리
 
 ## 데이터 정합성과 배포 운영
 
-- **DB 스키마 단일 소유:** Flyway SQL 마이그레이션을 기준으로 관리하며 Hibernate는 \`ddl-auto=validate\` 사용
+- **DB 스키마 단일 소유:** Flyway SQL 마이그레이션을 기준으로 관리하며 Hibernate는 `ddl-auto=validate` 사용
 - **데이터 제약:** 모의투자 잔고 CHECK, 실행·시점·종목 기준 중복 방지용 복합 키, Outbox 미발행 조회 인덱스 적용
 - **실행 비용 반영:** 수수료, 슬리피지, 가격 호가 단위 및 수량 정밀도 등을 고려한 가상 체결
-- **CI/CD:** Jenkins에서 Java·Go·Python 테스트와 프론트엔드 검증을 수행하도록 구성하고, \`develop\` 브랜치의 Docker 이미지 빌드·배포 경로 정의
+- **CI/CD:** Jenkins에서 Java·Go·Python 테스트와 프론트엔드 검증을 수행하도록 구성하고, `develop` 브랜치의 Docker 이미지 빌드·배포 경로 정의
 - **운영 점검:** Kafka 준비 상태, 컨테이너 Health Check, 배포 후 서비스 응답 확인, 이전 이미지로 복구하는 수동 롤백 절차 마련
 
 관련 근거: [Flyway V17](backend/api/src/main/resources/db/migration/V17__create_simulation_tables.sql) · [운영 점검](infra/OPERATIONS.md) · [롤백 절차](docs/infra-rollback.md)
@@ -155,12 +155,12 @@ Spring Boot API는 관련 도메인을 하나의 애플리케이션에서 관리
 
 | 영역 | 기술 | 위치 |
 | --- | --- | --- |
-| API·백테스트 | Java 21, Spring Boot, Spring Data JPA, JDBC, Flyway | [\`backend/api\`](backend/api) |
-| 시세 수집·가공 | Go, Upbit WebSocket/REST, Kafka | [\`backend/ingest\`](backend/ingest) |
-| AI 전략 변환 | Python, FastAPI | [\`ai\`](ai) |
-| 프론트엔드 | React, TypeScript, Vite | [\`frontend\`](frontend) |
-| 데이터·메시징 | PostgreSQL, Redis, Kafka, RabbitMQ | [\`infra\`](infra) |
-| 빌드·배포 | Docker Compose, Jenkins, Nginx | [\`infra\`](infra) · [\`Jenkinsfile\`](Jenkinsfile) |
+| API·백테스트 | Java 21, Spring Boot, Spring Data JPA, JDBC, Flyway | [`backend/api`](backend/api) |
+| 시세 수집·가공 | Go, Upbit WebSocket/REST, Kafka | [`backend/ingest`](backend/ingest) |
+| AI 전략 변환 | Python, FastAPI | [`ai`](ai) |
+| 프론트엔드 | React, TypeScript, Vite | [`frontend`](frontend) |
+| 데이터·메시징 | PostgreSQL, Redis, Kafka, RabbitMQ | [`infra`](infra) |
+| 빌드·배포 | Docker Compose, Jenkins, Nginx | [`infra`](infra) · [`Jenkinsfile`](Jenkinsfile) |
 
 ## 로컬 실행
 
@@ -184,7 +184,7 @@ PostgreSQL, Redis, Kafka, RabbitMQ가 기동됩니다.
 
 ### 2. Spring Boot API 실행
 
-서버 실행 전에 \`SSAFY_CLIENT_ID\`, \`SSAFY_CLIENT_SECRET\`, \`SSAFY_REDIRECT_URI\`, \`JWT_SECRET\` 등 필수 설정을 **실행 환경변수로** 주입해야 합니다. 민감정보는 커밋하지 않습니다.
+서버 실행 전에 `SSAFY_CLIENT_ID`, `SSAFY_CLIENT_SECRET`, `SSAFY_REDIRECT_URI`, `JWT_SECRET` 등 필수 설정을 **실행 환경변수로** 주입해야 합니다. 민감정보는 커밋하지 않습니다.
 
 ~~~bash
 cd backend/api
@@ -222,7 +222,7 @@ go run ./cmd/consumer
 go run ./cmd/backfill
 ~~~
 
-백테스트 계산에는 별도 \`backtest-worker\` 프로필의 Spring Boot 프로세스와 RabbitMQ가 필요합니다. 세부 환경변수, 실행 흐름 및 운영 구성이 필요한 경우 [API 문서](backend/api/README.md), [수집기 문서](backend/ingest/README.md), [AI 문서](ai/README.md), [인프라 문서](infra/README.md)를 참고하세요.
+백테스트 계산에는 별도 `backtest-worker` 프로필의 Spring Boot 프로세스와 RabbitMQ가 필요합니다. 세부 환경변수, 실행 흐름 및 운영 구성이 필요한 경우 [API 문서](backend/api/README.md), [수집기 문서](backend/ingest/README.md), [AI 문서](ai/README.md), [인프라 문서](infra/README.md)를 참고하세요.
 
 > 로컬 실행은 SSAFY 인증 및 AI 게이트웨이 자격증명과 외부 시세 API에 의존합니다. 저장소를 복제하는 것만으로 모든 서비스 기능이 동작하는 것은 아닙니다.
 
@@ -230,10 +230,10 @@ go run ./cmd/backfill
 
 | 대상 | 명령/자료 |
 | --- | --- |
-| 백엔드 테스트 | \`cd backend/api && ./gradlew test\` |
-| Go 테스트·정적 검사 | \`cd backend/ingest && go test ./... && go vet ./...\` |
-| 프론트엔드 정적 검증·빌드 | \`cd frontend && npm ci && npm run lint && npm run build\` |
-| Python 테스트 | \`cd ai && python -m pytest -q\` |
+| 백엔드 테스트 | `cd backend/api && ./gradlew test` |
+| Go 테스트·정적 검사 | `cd backend/ingest && go test ./... && go vet ./...` |
+| 프론트엔드 정적 검증·빌드 | `cd frontend && npm ci && npm run lint && npm run build` |
+| Python 테스트 | `cd ai && python -m pytest -q` |
 | 백테스트 메시지 계약 | [docs/backtest-job-contract.md](docs/backtest-job-contract.md) |
 | 백테스트·모의투자 데이터 모델 | [docs/backtest_simulation_erd.md](docs/backtest_simulation_erd.md) |
 | 백엔드 기능별 상세 설명 | [backend/api/README.md](backend/api/README.md) |
