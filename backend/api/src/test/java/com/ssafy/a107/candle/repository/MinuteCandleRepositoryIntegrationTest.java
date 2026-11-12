@@ -55,8 +55,8 @@ class MinuteCandleRepositoryIntegrationTest {
     void readLatestThousandForOneAsset() {
         UUID bitcoin = UUID.randomUUID();
         UUID ethereum = UUID.randomUUID();
-        insertAsset(bitcoin, "BTC");
-        insertAsset(ethereum, "ETH");
+        insertAsset(bitcoin, "TESTBTC");
+        insertAsset(ethereum, "TESTETH");
         insertCandles(bitcoin, 1, 1002);
         insertCandles(bitcoin, 5, 1);
         insertCandles(ethereum, 1, 1);
@@ -79,8 +79,8 @@ class MinuteCandleRepositoryIntegrationTest {
     void readSelectedInterval() {
         UUID bitcoin = UUID.randomUUID();
         UUID ethereum = UUID.randomUUID();
-        insertAsset(bitcoin, "BTC");
-        insertAsset(ethereum, "ETH");
+        insertAsset(bitcoin, "TESTBTC");
+        insertAsset(ethereum, "TESTETH");
         insertCandles(bitcoin, 1, 3);
         insertCandles(bitcoin, 5, 1);
         insertCandles(ethereum, 5, 2);
@@ -124,9 +124,9 @@ class MinuteCandleRepositoryIntegrationTest {
         UUID bitcoin = UUID.randomUUID();
         UUID ethereum = UUID.randomUUID();
         UUID excluded = UUID.randomUUID();
-        insertAsset(bitcoin, "BTC");
-        insertAsset(ethereum, "ETH");
-        insertAsset(excluded, "XRP");
+        insertAsset(bitcoin, "TESTBTC");
+        insertAsset(ethereum, "TESTETH");
+        insertAsset(excluded, "TESTXRP");
         insertCandles(bitcoin, 1, 3);
         insertCandlesFrom(ethereum, 1, 2, "2025-12-31 23:00:00+00");
         insertCandlesFrom(excluded, 1, 2, "2020-01-01 00:00:00+00");
@@ -142,7 +142,7 @@ class MinuteCandleRepositoryIntegrationTest {
     @DisplayName("보유 구간은 요청한 간격의 봉만 본다")
     void readCoverageOfSelectedInterval() {
         UUID bitcoin = UUID.randomUUID();
-        insertAsset(bitcoin, "BTC");
+        insertAsset(bitcoin, "TESTBTC");
         insertCandles(bitcoin, 1, 3);
         insertCandlesFrom(bitcoin, 5, 1, "2019-01-01 00:00:00+00");
         entityManager.clear();
