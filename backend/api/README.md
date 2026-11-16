@@ -157,6 +157,8 @@ $env:CANDLE_TEST_DB_PORT = '15432'
 .\gradlew.bat test --tests 'com.ssafy.a107.candle.*' --rerun-tasks
 ```
 
+차트 종목·실시간 테스트를 함께 실행하는 Bash 명령과 전체 빌드 검증은 [실제 PostgreSQL·Redis 통합 테스트](#실제-postgresqlredis-통합-테스트)를 따른다.
+
 ## 현재 팩터 값 조회
 
 ```http
@@ -312,6 +314,8 @@ $env:REALTIME_TEST_REDIS_PORT = '16379'
 .\gradlew.bat test --tests 'com.ssafy.a107.realtime.*' --rerun-tasks
 ```
 
+DB 조회·캐시·실시간 테스트를 함께 검증하는 절차는 [실제 PostgreSQL·Redis 통합 테스트](#실제-postgresqlredis-통합-테스트)에 정리한다.
+
 WebSocket/STOMP 계약은 이 절에서 관리하며 REST Docs/OpenAPI에는 포함하지 않는다.
 
 ## 모의투자 재선정과 확정 봉 준비
@@ -362,6 +366,48 @@ Controller 테스트는 `RestAssuredMockMvc`로 실행하고 REST Docs 리소스
 ```
 
 산출물은 `build/api-spec/openapi.yaml`이며 Swagger Editor와 Swagger UI에서 바로 읽을 수 있다. stale snippet이 남지 않도록 최종 문서는 `./gradlew clean openapi3`으로 생성하며 `build/` 생성물은 커밋하지 않는다.
+
+## 실제 PostgreSQL·Redis 통합 테스트
+
+실행 위치는 `backend/api`다. PostgreSQL 16과 Redis 7의 테스트 전용 인스턴스를 준비한다. PostgreSQL의 DB·계정은 `candle_test`이며 접속 설정은 Repository 통합 테스트의 `@DataJpaTest` 설정을 따른다. Flyway는 테스트 컨텍스트 초기화 시 스키마와 초기 데이터를 적용한다.
+
+| 환경변수 | 로컬 예시 | 용도 |
+|---|---|---|
+| `CANDLE_TEST_DB_PORT` | `15432` | 캔들·차트 종목 Repository 테스트의 PostgreSQL 포트 |
+| `CANDLE_TEST_REDIS_PORT` | `16379` | 최근 캔들 캐시 테스트의 Redis 포트 |
+| `REALTIME_TEST_REDIS_PORT` | `16379` | 실시간 Pub/Sub·WebSocket 연계 테스트의 Redis 포트 |
+
+테스트는 `127.0.0.1`로 접속한다. 각 환경변수가 없거나 숫자가 아니면 관련 테스트가 건너뛰어질 수 있으므로 `BUILD SUCCESSFUL`과 함께 실패·오류·건너뜀 수를 확인한다. 아래 환경변수는 해당 명령에만 적용한다. Bash로 Wrapper를 실행하면 `gradlew` 파일의 실행 권한 없이도 사용할 수 있다.
+
+```bash
+CANDLE_TEST_DB_PORT=15432 \
+CANDLE_TEST_REDIS_PORT=16379 \
+REALTIME_TEST_REDIS_PORT=16379 \
+bash ./gradlew test --rerun-tasks \
+  --tests '*RedisRecentMinuteCandleCacheIntegrationTest' \
+  --tests '*MinuteCandleRepositoryIntegrationTest' \
+  --tests '*ChartAssetRepositoryIntegrationTest' \
+  --tests '*RealtimeRedisIntegrationTest' \
+  --tests '*RealtimeWebSocketIntegrationTest'
+```
+
+현재 대상은 5개 클래스, 파라미터 사례를 포함해 총 43개다. 실패·오류·건너뜀 없이 통과하는지 확인한다. 비활성화된 파라미터 테스트는 사례가 펼쳐지기 전의 개수로 집계될 수 있어 이전의 건너뜀 보고서와 전체 개수가 다를 수 있다.
+
+대상 테스트 검증 후 같은 환경변수로 전체 빌드를 실행한다.
+
+```bash
+CANDLE_TEST_DB_PORT=15432 \
+CANDLE_TEST_REDIS_PORT=16379 \
+REALTIME_TEST_REDIS_PORT=16379 \
+bash ./gradlew build --rerun-tasks
+```
+
+전체 빌드에서는 필터로 제한하지 않은 모든 테스트의 전체·실패·오류·건너뜀 수를 별도로 확인한다. 결과 위치는 다음과 같다.
+
+- HTML 보고서: `build/reports/tests/test/index.html`
+- JUnit XML: `build/test-results/test/TEST-*.xml`
+
+다음 실행으로 보고서가 덮어써지기 전에 필요한 원본을 `~/AutoQuant-evidence` 같은 저장소 밖 경로에 보관한다. 검증한 코드 버전·미커밋 변경, 실행 명령·환경변수, 테스트 집계와 보관 위치를 함께 확보한다. 생성물은 직접 수정하거나 커밋하지 않는다.
 
 ## 명령
 
