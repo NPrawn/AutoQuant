@@ -3,6 +3,8 @@ package com.ssafy.a107.asset.repository;
 import com.ssafy.a107.asset.domain.Asset;
 import com.ssafy.a107.asset.domain.Exchange;
 import com.ssafy.a107.asset.service.AssetReadService;
+import com.ssafy.a107.asset.service.CollectedAssetReadService;
+import com.ssafy.a107.asset.domain.MarketDataCollectionTarget;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,24 +41,40 @@ class ChartAssetRepositoryIntegrationTest {
     }
 
     @Test
-    @DisplayName("원화 거래지원 종목만 마켓 코드순으로 조회하고 중단·폐지 종목을 제외한다")
+    @DisplayName("수집 중인 원화 거래지원 종목만 마켓 코드순으로 조회한다")
     void filterAndOrderChartAssets() {
-        Asset ethereum = asset("ETH", "KRW");
-        Asset bitcoin = asset("BTC", "KRW");
-        Asset suspended = asset("XRP", "KRW");
+        Asset ethereum = asset("TESTETH", "KRW");
+        Asset bitcoin = asset("TESTBTC", "KRW");
+
+        Asset suspended = asset("TESTXRP", "KRW");
         suspended.suspendTrading();
-        Asset delisted = asset("ADA", "KRW");
+
+        Asset delisted = asset("TESTADA", "KRW");
         delisted.endTradingSupport(Instant.now());
-        entityManager.persist(ethereum);
-        entityManager.persist(bitcoin);
-        entityManager.persist(suspended);
-        entityManager.persist(delisted);
-        entityManager.persist(asset("ETH", "BTC"));
+
+        Asset bitcoinMarket = asset("TESTETH", "BTC");
+        Asset uncollected = asset("TESTDOGE", "KRW");
+
+        persistCollected(ethereum);
+        persistCollected(bitcoin);
+        persistCollected(suspended);
+        persistCollected(delisted);
+        persistCollected(bitcoinMarket);
+
+        // 거래지원 중이어도 수집 대상이 아니면 조회에서 제외한다.
+        entityManager.persist(uncollected);
+
         entityManager.flush();
         entityManager.clear();
 
-        assertThat(service.findChartAssets()).extracting(Asset::getExchangeMarketCode)
-                .containsExactly("KRW-BTC", "KRW-ETH");
+        assertThat(service.findChartAssets())
+                .extracting(Asset::getExchangeMarketCode)
+                .containsExactly("KRW-TESTBTC", "KRW-TESTETH");
+    }
+
+    private void persistCollected(Asset asset) {
+        entityManager.persist(asset);
+        entityManager.persist(new MarketDataCollectionTarget(asset));
     }
 
     private Asset asset(String base, String quote) {
@@ -66,7 +84,10 @@ class ChartAssetRepositoryIntegrationTest {
     @Configuration(proxyBeanMethods = false)
     @EntityScan(basePackageClasses = Asset.class)
     @EnableJpaRepositories(basePackageClasses = AssetRepository.class)
-    @Import(AssetReadService.class)
+    @Import({
+            AssetReadService.class,
+            CollectedAssetReadService.class
+    })
     static class TestConfiguration {
     }
 }
